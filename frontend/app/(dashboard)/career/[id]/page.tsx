@@ -30,9 +30,41 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CAREER_PATHS } from "@/lib/career-paths";
 import { getAlumniForCareer, type DavidsonAlumni } from "@/lib/davidson-alumni";
-import { ActivitiesCarousel } from "@/components/activities-carousel";
-
 type Tab = "overview" | "courses" | "summer" | "networking";
+
+const TAG_COLORS: Record<string, string> = {
+  "High Salary": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Technical": "bg-blue-50 text-blue-700 border-blue-200",
+  "Analytical": "bg-purple-50 text-purple-700 border-purple-200",
+  "Leadership": "bg-amber-50 text-amber-700 border-amber-200",
+  "Creative": "bg-pink-50 text-pink-700 border-pink-200",
+  "Work-Life Balance": "bg-teal-50 text-teal-700 border-teal-200",
+};
+
+function getDeptColor(courseCode: string): { bg: string; text: string } {
+  const dept = courseCode.split(" ")[0];
+  const colors: Record<string, { bg: string; text: string }> = {
+    CSC: { bg: "bg-blue-50", text: "text-blue-600" },
+    MAT: { bg: "bg-purple-50", text: "text-purple-600" },
+    ECO: { bg: "bg-emerald-50", text: "text-emerald-600" },
+    BIO: { bg: "bg-green-50", text: "text-green-600" },
+    CHE: { bg: "bg-orange-50", text: "text-orange-600" },
+    PHI: { bg: "bg-indigo-50", text: "text-indigo-600" },
+    PSY: { bg: "bg-pink-50", text: "text-pink-600" },
+    POL: { bg: "bg-red-50", text: "text-red-600" },
+    ENG: { bg: "bg-amber-50", text: "text-amber-600" },
+    COM: { bg: "bg-cyan-50", text: "text-cyan-600" },
+    SOC: { bg: "bg-teal-50", text: "text-teal-600" },
+    ART: { bg: "bg-fuchsia-50", text: "text-fuchsia-600" },
+    HIS: { bg: "bg-rose-50", text: "text-rose-600" },
+    EDU: { bg: "bg-sky-50", text: "text-sky-600" },
+    ACC: { bg: "bg-lime-50", text: "text-lime-700" },
+    ENV: { bg: "bg-green-50", text: "text-green-700" },
+    ANT: { bg: "bg-stone-100", text: "text-stone-600" },
+    DIG: { bg: "bg-violet-50", text: "text-violet-600" },
+  };
+  return colors[dept] || { bg: "bg-gray-50", text: "text-gray-600" };
+}
 
 export default function CareerDetailPage() {
   const params = useParams();
@@ -141,7 +173,7 @@ export default function CareerDetailPage() {
               {careerPath.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-[10px] tracking-wide uppercase px-2 py-0.5 rounded border border-gray-200 text-gray-500 bg-white"
+                  className={`text-[10px] font-medium tracking-wide px-2 py-0.5 rounded-full border ${TAG_COLORS[tag] || "bg-gray-50 text-gray-600 border-gray-200"}`}
                 >
                   {tag}
                 </span>
@@ -186,7 +218,7 @@ export default function CareerDetailPage() {
               {careerPath.skills.map((skill) => (
                 <span
                   key={skill}
-                  className="text-xs px-3 py-1.5 text-gray-600 bg-gray-50 border border-gray-150 rounded"
+                  className="text-xs px-3 py-1.5 text-navy bg-navy/5 border border-navy/10 rounded"
                 >
                   {skill}
                 </span>
@@ -222,36 +254,43 @@ export default function CareerDetailPage() {
             Recommended courses at Davidson for {careerPath.title.toLowerCase()}.
           </p>
           <div className="divide-y divide-gray-100">
-            {careerPath.courses.map((course, i) => (
-              <div key={i} className="py-4 first:pt-0 last:pb-0">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="font-mono text-xs font-semibold text-[#111111] tracking-wide">
-                        {course.code}
-                      </span>
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <div
-                            key={n}
-                            className={`h-1 w-2 rounded-full ${
-                              n <= course.difficulty ? "bg-davidson" : "bg-gray-200"
-                            }`}
-                          />
-                        ))}
+            {careerPath.courses.map((course, i) => {
+              const deptColor = getDeptColor(course.code);
+              return (
+                <div key={i} className="py-4 first:pt-0 last:pb-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-3 mb-1.5">
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
+                          {course.code}
+                        </span>
+                        <div className="flex gap-0.5">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star
+                              key={n}
+                              className={`h-3 w-3 ${
+                                n <= course.difficulty
+                                  ? "text-amber-400 fill-amber-400"
+                                  : "text-gray-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
                       </div>
+                      <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.description}</p>
+                      {course.bestProfessor && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <span className="text-xs px-2 py-0.5 rounded bg-navy/5 text-navy font-medium">
+                            {course.bestProfessor}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.description}</p>
-                    {course.bestProfessor && (
-                      <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
-                        <GraduationCap className="h-3 w-3" /> {course.bestProfessor}
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -442,8 +481,6 @@ export default function CareerDetailPage() {
         )}
       </AnimatePresence>
 
-      {/* Activities Carousel */}
-      <ActivitiesCarousel />
     </motion.div>
   );
 }

@@ -27,8 +27,6 @@ import {
 } from "lucide-react";
 import { SUBJECT_AREAS } from "@/lib/utils";
 import { DAVIDSON_COURSES, type SeedCourse } from "@/lib/davidson-courses";
-import { ActivitiesCarousel } from "@/components/activities-carousel";
-
 // Major name -> abbreviation map
 const MAJOR_ABBREV: Record<string, string> = {
   "Computer Science": "CSC",
@@ -527,8 +525,6 @@ export default function ExplorePage() {
         </div>
       )}
 
-      {/* Activities carousel */}
-      <ActivitiesCarousel />
     </motion.div>
   );
 }

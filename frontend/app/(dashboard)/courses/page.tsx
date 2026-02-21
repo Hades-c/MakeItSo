@@ -85,6 +85,31 @@ const STATUS_CONFIG: Record<
   },
 };
 
+function getDeptColor(courseCode: string): { bg: string; text: string } {
+  const dept = courseCode.split(" ")[0];
+  const colors: Record<string, { bg: string; text: string }> = {
+    CSC: { bg: "bg-blue-50", text: "text-blue-600" },
+    MAT: { bg: "bg-purple-50", text: "text-purple-600" },
+    ECO: { bg: "bg-emerald-50", text: "text-emerald-600" },
+    BIO: { bg: "bg-green-50", text: "text-green-600" },
+    CHE: { bg: "bg-orange-50", text: "text-orange-600" },
+    PHI: { bg: "bg-indigo-50", text: "text-indigo-600" },
+    PSY: { bg: "bg-pink-50", text: "text-pink-600" },
+    POL: { bg: "bg-red-50", text: "text-red-600" },
+    ENG: { bg: "bg-amber-50", text: "text-amber-600" },
+    COM: { bg: "bg-cyan-50", text: "text-cyan-600" },
+    SOC: { bg: "bg-teal-50", text: "text-teal-600" },
+    ART: { bg: "bg-fuchsia-50", text: "text-fuchsia-600" },
+    HIS: { bg: "bg-rose-50", text: "text-rose-600" },
+    EDU: { bg: "bg-sky-50", text: "text-sky-600" },
+    ACC: { bg: "bg-lime-50", text: "text-lime-700" },
+    ENV: { bg: "bg-green-50", text: "text-green-700" },
+    ANT: { bg: "bg-stone-100", text: "text-stone-600" },
+    DIG: { bg: "bg-violet-50", text: "text-violet-600" },
+  };
+  return colors[dept] || { bg: "bg-gray-50", text: "text-gray-600" };
+}
+
 const SEMESTER_ORDER: Record<string, number> = { Spring: 0, Summer: 1, Fall: 2 };
 
 const GRADE_OPTIONS = [
@@ -576,7 +601,7 @@ export default function CoursesPage() {
                         {/* Course info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium text-[#111111]">
+                            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${getDeptColor(pc.courseCode).bg} ${getDeptColor(pc.courseCode).text}`}>
                               {pc.courseCode}
                             </span>
                             <span className="text-sm text-[#555555] truncate">
@@ -752,7 +777,7 @@ export default function CoursesPage() {
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-[#111111]">
+                              <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${getDeptColor(c.code).bg} ${getDeptColor(c.code).text}`}>
                                 {c.code}
                               </span>
                               <span className="text-xs text-gray-400">{c.department}</span>

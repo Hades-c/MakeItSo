@@ -17,6 +17,15 @@ import {
   type CareerFilter,
 } from "@/lib/career-paths";
 
+const TAG_COLORS: Record<string, string> = {
+  "High Salary": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Technical": "bg-blue-50 text-blue-700 border-blue-200",
+  "Analytical": "bg-purple-50 text-purple-700 border-purple-200",
+  "Leadership": "bg-amber-50 text-amber-700 border-amber-200",
+  "Creative": "bg-pink-50 text-pink-700 border-pink-200",
+  "Work-Life Balance": "bg-teal-50 text-teal-700 border-teal-200",
+};
+
 export default function CareerPage() {
   const [activeFilter, setActiveFilter] = useState<CareerFilter>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,7 +39,7 @@ export default function CareerPage() {
 
   return (
     <motion.div
-      className="max-w-4xl mx-auto"
+      className="max-w-5xl mx-auto"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -63,10 +72,12 @@ export default function CareerPage() {
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
-              className={`px-4 py-1.5 text-xs tracking-wide transition-colors ${
+              className={`px-4 py-1.5 text-xs tracking-wide rounded-full border transition-colors ${
                 activeFilter === f
-                  ? "bg-davidson text-white"
-                  : "text-[#555555] hover:text-davidson bg-gray-100 hover:bg-gray-200"
+                  ? f === "All"
+                    ? "bg-davidson text-white border-davidson"
+                    : TAG_COLORS[f] || "bg-davidson text-white border-davidson"
+                  : "text-[#555555] border-gray-200 hover:border-gray-300 bg-white"
               }`}
             >
               {f}
@@ -82,14 +93,18 @@ export default function CareerPage() {
         </p>
       </div>
 
-      {/* Career listing */}
-      <div className="divide-y divide-gray-100">
+      {/* Career card grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <AnimatePresence mode="popLayout">
           {filtered.map((career, i) => {
             const iconName = career.icon as keyof typeof LucideIcons;
             const Icon =
               (LucideIcons[iconName] as LucideIcons.LucideIcon) ||
               LucideIcons.Briefcase;
+            const salaryPercent = Math.min(
+              100,
+              (career.salaryRange.max / 200000) * 100
+            );
 
             return (
               <motion.div
@@ -98,43 +113,78 @@ export default function CareerPage() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.2, delay: i * 0.02 }}
+                transition={{ duration: 0.2, delay: i * 0.03 }}
               >
                 <Link href={`/career/${career.id}`}>
-                  <div className="group py-6 flex items-start gap-5 transition-colors hover:bg-gray-50/50 -mx-4 px-4 rounded">
-                    {/* Icon */}
-                    <div className="mt-1 shrink-0">
-                      <Icon className="h-5 w-5 text-[#555555] group-hover:text-davidson transition-colors" />
+                  <div className="group bg-white border border-gray-100 rounded-xl p-5 hover:shadow-md hover:border-gray-200 transition-all h-full flex flex-col">
+                    {/* Icon + Title */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-lg bg-davidson-light border border-davidson/10 flex items-center justify-center shrink-0">
+                        <Icon className="h-5 w-5 text-davidson" />
+                      </div>
+                      <h3 className="font-serif text-lg text-[#111111] group-hover:text-davidson transition-colors leading-tight">
+                        {career.title}
+                      </h3>
                     </div>
 
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <h3 className="font-serif text-lg text-[#111111] group-hover:underline underline-offset-4 decoration-gray-300">
-                          {career.title}
-                        </h3>
-                        <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-davidson group-hover:translate-x-0.5 transition-all shrink-0" />
-                      </div>
-                      <p className="text-sm text-[#555555] leading-relaxed line-clamp-2 mb-3">
-                        {career.description}
-                      </p>
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs text-gray-400">
-                          ${(career.salaryRange.min / 1000).toFixed(0)}k &ndash; $
-                          {(career.salaryRange.max / 1000).toFixed(0)}k
+                    {/* Description */}
+                    <p className="text-sm text-[#555555] leading-relaxed line-clamp-2 mb-4">
+                      {career.description}
+                    </p>
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {career.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                            TAG_COLORS[tag] ||
+                            "bg-gray-50 text-gray-600 border-gray-200"
+                          }`}
+                        >
+                          {tag}
                         </span>
-                        <span className="text-gray-200">|</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {career.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="text-[11px] px-2 py-0.5 text-[#555555] bg-gray-100 border border-gray-200"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
+                      ))}
+                    </div>
+
+                    {/* Salary bar */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1.5">
+                        <span>
+                          ${(career.salaryRange.min / 1000).toFixed(0)}k
+                        </span>
+                        <span>
+                          ${(career.salaryRange.max / 1000).toFixed(0)}k
+                        </span>
                       </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-davidson/40 to-davidson rounded-full"
+                          style={{ width: `${salaryPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Skills */}
+                    <div className="flex flex-wrap gap-1 mb-4 mt-auto">
+                      {career.skills.slice(0, 3).map((skill) => (
+                        <span
+                          key={skill}
+                          className="text-[10px] px-2 py-0.5 bg-gray-50 text-gray-500 rounded border border-gray-100"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                      {career.skills.length > 3 && (
+                        <span className="text-[10px] px-2 py-0.5 text-gray-400">
+                          +{career.skills.length - 3}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* View link */}
+                    <div className="flex items-center gap-1 text-xs font-medium text-davidson group-hover:gap-2 transition-all pt-3 border-t border-gray-50">
+                      View <ArrowRight className="h-3 w-3" />
                     </div>
                   </div>
                 </Link>

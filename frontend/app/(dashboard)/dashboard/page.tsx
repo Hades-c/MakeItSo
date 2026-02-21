@@ -16,8 +16,6 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { ActivitiesCarousel } from "@/components/activities-carousel";
-
 const fadeIn = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
@@ -159,10 +157,6 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* Activities carousel */}
-      <motion.div variants={fadeIn}>
-        <ActivitiesCarousel />
-      </motion.div>
     </motion.div>
   );
 }
