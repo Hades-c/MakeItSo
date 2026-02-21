@@ -349,15 +349,15 @@ export default function ExplorePage() {
             })}
           </div>
 
-          {/* Course list */}
-          <div className="grid gap-2">
+          {/* Course grid */}
+          <div className="grid sm:grid-cols-2 gap-4">
             {filteredCourses.slice(0, 50).map((course) => (
               "careerRelevance" in course
                 ? <StaticCourseCard key={course.code} course={course as SeedCourse} />
                 : <LiveCourseCard key={course.code} course={course as LiveCourse} />
             ))}
             {filteredCourses.length > 50 && (
-              <p className="text-xs text-gray-400 text-center py-4">
+              <p className="text-xs text-gray-400 text-center py-4 sm:col-span-2">
                 Showing 50 of {filteredCourses.length} courses. Use search to narrow results.
               </p>
             )}
@@ -432,88 +432,99 @@ export default function ExplorePage() {
 /* ===== Live course card ===== */
 function LiveCourseCard({ course }: { course: LiveCourse }) {
   const [expanded, setExpanded] = useState(false);
+  const fillPct = course.enrollment.max > 0
+    ? Math.min(100, (course.enrollment.current / course.enrollment.max) * 100)
+    : 0;
 
   return (
-    <div
-      className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-all duration-150 cursor-pointer"
-      onClick={() => setExpanded(!expanded)}
-    >
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="font-mono text-xs font-semibold text-gray-900">{course.code}</span>
-              {course.gradRequirements.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">
-                  {course.gradRequirements.join(", ")}
-                </span>
-              )}
-              {course.sections > 1 && (
-                <span className="text-[10px] text-gray-400">{course.sections} sections</span>
-              )}
-            </div>
-            <h3 className="font-medium text-sm text-gray-900">{course.name}</h3>
-            <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-              <span>{course.department}</span>
-              {course.professor && <span>· {course.professor}</span>}
-              <span>· {course.enrollment.current}/{course.enrollment.max} enrolled</span>
-            </div>
+    <div className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-150 flex flex-col">
+      <div className="p-5 flex-1 space-y-3">
+        {/* Header */}
+        <div>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="font-mono text-xs font-bold text-gray-900">{course.code}</span>
+            {course.gradRequirements.length > 0 && (
+              <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-700 bg-amber-50 py-0 h-4">
+                {course.gradRequirements.join(", ")}
+              </Badge>
+            )}
+            {course.sections > 1 && (
+              <span className="text-[10px] text-gray-400">{course.sections} sections</span>
+            )}
           </div>
-          <ChevronDown className={`h-4 w-4 text-gray-300 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          <h3 className="font-semibold text-sm text-gray-900">{course.name}</h3>
         </div>
+
+        {/* Professor + schedule info */}
+        <div className="text-xs text-gray-500 space-y-0.5">
+          {course.professor && course.professor !== "Staff" && (
+            <div className="flex items-center gap-1.5">
+              <GraduationCap className="h-3 w-3 text-gray-400 shrink-0" />
+              <span>{course.professor}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-3 text-gray-400">
+            {course.schedule && course.schedule !== "TBA" && <span>{course.schedule}</span>}
+            {course.location && course.location !== "TBA" && <span>· {course.location}</span>}
+          </div>
+        </div>
+
+        {/* Description */}
+        {course.description && (
+          <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{course.description}</p>
+        )}
+
+        {/* Enrollment bar */}
+        <div>
+          <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+            <span>Enrollment</span>
+            <span className="font-medium">{course.enrollment.current}/{course.enrollment.max}</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                fillPct > 90 ? "bg-red-400" : fillPct > 70 ? "bg-amber-400" : "bg-emerald-400"
+              }`}
+              style={{ width: `${fillPct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Instructors list (if multiple real names) */}
+        {course.instructors.filter(i => i !== "Staff").length > 1 && (
+          <div className="text-xs text-gray-500">
+            <span className="text-gray-400 font-medium">All instructors:</span> {course.instructors.filter(i => i !== "Staff").join(", ")}
+          </div>
+        )}
       </div>
 
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-4 pt-0 border-t border-gray-50 space-y-3">
-              {course.description && (
-                <p className="text-xs text-gray-500 leading-relaxed">{course.description}</p>
-              )}
-              <div className="flex flex-wrap gap-3 text-xs text-gray-400">
-                {course.schedule && (
-                  <span className="flex items-center gap-1">
-                    <BookOpen className="h-3 w-3" /> {course.schedule}
-                  </span>
-                )}
-                {course.location && (
-                  <span className="flex items-center gap-1">
-                    <Filter className="h-3 w-3" /> {course.location}
-                  </span>
-                )}
+      {/* Details expand */}
+      <div className="border-t border-gray-50">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <span>{expanded ? "Less" : "Details"}</span>
+          <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </button>
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="px-5 pb-4 space-y-2 text-xs text-gray-500">
+                {course.department && <p><span className="text-gray-400">Department:</span> {course.department}</p>}
+                {course.schedule && <p><span className="text-gray-400">Schedule:</span> {course.schedule}</p>}
+                {course.location && <p><span className="text-gray-400">Location:</span> {course.location}</p>}
               </div>
-              {course.instructors.length > 0 && (
-                <div className="text-xs text-gray-500">
-                  <span className="text-gray-400">Instructors:</span> {course.instructors.join(", ")}
-                </div>
-              )}
-              {/* Enrollment bar */}
-              <div>
-                <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-                  <span>Enrollment</span>
-                  <span>{course.enrollment.current}/{course.enrollment.max}</span>
-                </div>
-                <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      course.enrollment.current / course.enrollment.max > 0.9 ? "bg-red-400" :
-                      course.enrollment.current / course.enrollment.max > 0.7 ? "bg-amber-400" :
-                      "bg-emerald-400"
-                    }`}
-                    style={{ width: `${Math.min(100, (course.enrollment.current / course.enrollment.max) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -555,168 +566,196 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
   }
 
   return (
-    <div
-      className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 transition-all duration-150 cursor-pointer"
-      onClick={() => setExpanded(!expanded)}
-    >
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-              <span className="font-mono text-xs font-semibold text-gray-900">{course.code}</span>
-              {course.majorRequirements && course.majorRequirements.length > 0 && (
-                <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-700 bg-amber-50 py-0 h-4">
-                  {formatMajorReq(course.majorRequirements)}
-                </Badge>
-              )}
-            </div>
-            <h3 className="font-medium text-sm text-gray-900">{course.name}</h3>
-            <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-              <span>{course.department}</span>
-              {course.professor && <span>· {course.professor}</span>}
+    <div className="bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-150 flex flex-col">
+      <div className="p-5 flex-1 space-y-3">
+        {/* Header */}
+        <div>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="font-mono text-xs font-bold text-gray-900">{course.code}</span>
+            {course.majorRequirements && course.majorRequirements.length > 0 && (
+              <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-700 bg-amber-50 py-0 h-4">
+                {formatMajorReq(course.majorRequirements)}
+              </Badge>
+            )}
+          </div>
+          <h3 className="font-semibold text-sm text-gray-900">{course.name}</h3>
+        </div>
+
+        {/* Professor */}
+        {course.professor && (
+          <div className="text-xs text-gray-500">
+            <span className="font-medium">{course.professor}</span>
+            {prof?.title && <span className="text-gray-400"> · {prof.title}</span>}
+          </div>
+        )}
+
+        {/* Offering */}
+        <div className="text-xs text-gray-400">
+          {course.offered.join(", ")}
+        </div>
+
+        {/* Description */}
+        <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{course.description}</p>
+
+        {/* Career Relevance bars */}
+        {course.careerRelevance.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Career Relevance</p>
+            <div className="space-y-1">
+              {course.careerRelevance.map(({ field, relevance }) => (
+                <div key={field} className="flex items-center gap-2">
+                  <span className="text-[11px] w-32 truncate text-gray-500">{field}</span>
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-rose-400" style={{ width: `${relevance * 100}%` }} />
+                  </div>
+                  <span className="text-[10px] text-gray-400 w-7 text-right">{Math.round(relevance * 100)}%</span>
+                </div>
+              ))}
             </div>
           </div>
-          <ChevronDown className={`h-4 w-4 text-gray-300 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
-        </div>
+        )}
+
+        {/* Explore Career Impact button */}
+        {course.careerRelevance.length > 0 && (
+          <Button variant="outline" size="sm" className="text-xs h-7 w-full" asChild>
+            <a href={`/career`}>
+              <Briefcase className="mr-1.5 h-3 w-3" />
+              Explore Career Impact
+            </a>
+          </Button>
+        )}
+
+        {/* Key Topics */}
+        {course.courseInsights?.keyTopics && course.courseInsights.keyTopics.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Key Topics</p>
+            <div className="flex flex-wrap gap-1">
+              {course.courseInsights.keyTopics.map((t) => (
+                <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">{t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Skills You'll Gain */}
+        {course.courseInsights?.skillsGained && course.courseInsights.skillsGained.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Skills You&apos;ll Gain</p>
+            <div className="flex flex-wrap gap-1">
+              {course.courseInsights.skillsGained.map((s) => (
+                <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-medium">{s}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AI Deep Dive */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchAiInsights}
+          disabled={loadingInsights || !!aiInsights}
+          className="text-xs h-7"
+        >
+          {loadingInsights ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Brain className="mr-1 h-3 w-3" />}
+          {aiInsights ? "AI Loaded" : "AI Deep Dive"}
+        </Button>
+
+        {aiInsights && (
+          <div className="rounded-lg border border-rose-100 bg-rose-50/30 p-3 space-y-2">
+            <p className="text-[10px] font-medium text-rose-700">AI Analysis</p>
+            {aiInsights.courseHighlights && (
+              <p className="text-xs text-gray-600">{aiInsights.courseHighlights}</p>
+            )}
+            {aiInsights.careerApplications && (
+              <ul className="space-y-0.5">
+                {aiInsights.careerApplications.map((app) => (
+                  <li key={app} className="text-[11px] text-gray-500 flex items-start gap-1">
+                    <Briefcase className="h-3 w-3 mt-0.5 shrink-0 text-rose-400" />
+                    {app}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-4 pt-0 border-t border-gray-50 space-y-3">
-              <p className="text-xs text-gray-500 leading-relaxed">{course.description}</p>
-
-              {/* Professor with RMP */}
-              {course.professor && prof?.rmpRating != null && (
-                <div className="rounded-lg bg-gray-50 p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-xs font-medium text-gray-900">{course.professor}</span>
-                    {prof.title && <span className="text-[10px] text-gray-400">{prof.title}</span>}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-xs">
-                    <span className="flex items-center gap-1">
-                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                      <span className="font-semibold">{prof.rmpRating}</span>
-                      <span className="text-gray-400">/5</span>
-                    </span>
-                    {prof.rmpWouldTakeAgain != null && (
-                      <span className="text-emerald-600">
-                        <ThumbsUp className="h-3 w-3 inline mr-0.5" />
-                        {prof.rmpWouldTakeAgain}% again
+      {/* Details expand — professor RMP, prereqs */}
+      <div className="border-t border-gray-50">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <span>{expanded ? "Less" : "Details"}</span>
+          <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </button>
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="px-5 pb-4 space-y-3">
+                {/* Professor RMP section */}
+                {course.professor && prof?.rmpRating != null && (
+                  <div className="rounded-lg bg-gray-50 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="text-xs font-medium text-gray-900">{course.professor}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs">
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                        <span className="font-semibold">{prof.rmpRating}</span>
+                        <span className="text-gray-400">/5</span>
                       </span>
-                    )}
-                    {prof.rmpDifficulty != null && (
-                      <span className="text-orange-600">
-                        <Zap className="h-3 w-3 inline mr-0.5" />
-                        {prof.rmpDifficulty} difficulty
-                      </span>
-                    )}
-                    {prof.rmpNumRatings != null && (
-                      <span className="text-gray-400">
-                        <Users className="h-3 w-3 inline mr-0.5" />
-                        {prof.rmpNumRatings} ratings
-                      </span>
-                    )}
-                  </div>
-                  {prof.rmpTags && prof.rmpTags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {prof.rmpTags.slice(0, 4).map((tag) => (
-                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
-                          {tag}
+                      {prof.rmpWouldTakeAgain != null && (
+                        <span className="text-emerald-600">
+                          <ThumbsUp className="h-3 w-3 inline mr-0.5" />
+                          {prof.rmpWouldTakeAgain}% again
                         </span>
-                      ))}
+                      )}
+                      {prof.rmpDifficulty != null && (
+                        <span className="text-orange-600">
+                          <Zap className="h-3 w-3 inline mr-0.5" />
+                          {prof.rmpDifficulty} difficulty
+                        </span>
+                      )}
+                      {prof.rmpNumRatings != null && (
+                        <span className="text-gray-400">
+                          <Users className="h-3 w-3 inline mr-0.5" />
+                          {prof.rmpNumRatings} ratings
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* Course insights */}
-              {course.courseInsights && (
-                <div className="space-y-2">
-                  {course.courseInsights.keyTopics && (
-                    <div className="flex flex-wrap gap-1">
-                      {course.courseInsights.keyTopics.map((t) => (
-                        <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600">{t}</span>
-                      ))}
-                    </div>
-                  )}
-                  {course.courseInsights.skillsGained && (
-                    <div className="flex flex-wrap gap-1">
-                      {course.courseInsights.skillsGained.map((s) => (
-                        <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">{s}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Prereqs & offering */}
-              <div className="flex flex-wrap gap-3 text-xs text-gray-400">
-                {course.prerequisites.length > 0 && (
-                  <span>Prerequisites: {course.prerequisites.join(", ")}</span>
-                )}
-                <span>Offered: {course.offered.join(", ")}</span>
-              </div>
-
-              {/* Career relevance */}
-              {course.careerRelevance.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-medium text-gray-400 mb-1.5">Career Relevance</p>
-                  <div className="space-y-1">
-                    {course.careerRelevance.map(({ field, relevance }) => (
-                      <div key={field} className="flex items-center gap-2">
-                        <span className="text-[11px] w-36 truncate text-gray-500">{field}</span>
-                        <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-rose-400" style={{ width: `${relevance * 100}%` }} />
-                        </div>
-                        <span className="text-[10px] text-gray-400 w-7 text-right">{Math.round(relevance * 100)}%</span>
+                    {prof.rmpTags && prof.rmpTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {prof.rmpTags.slice(0, 4).map((tag) => (
+                          <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                            {tag}
+                          </span>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* AI Deep Dive */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchAiInsights}
-                disabled={loadingInsights || !!aiInsights}
-                className="text-xs h-7"
-              >
-                {loadingInsights ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Brain className="mr-1 h-3 w-3" />}
-                {aiInsights ? "AI Loaded" : "AI Deep Dive"}
-              </Button>
-
-              {aiInsights && (
-                <div className="rounded-lg border border-rose-100 bg-rose-50/30 p-3 space-y-2">
-                  <p className="text-[10px] font-medium text-rose-700">AI Analysis</p>
-                  {aiInsights.courseHighlights && (
-                    <p className="text-xs text-gray-600">{aiInsights.courseHighlights}</p>
+                {/* Prereqs & offering */}
+                <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+                  {course.prerequisites.length > 0 && (
+                    <span>Prerequisites: {course.prerequisites.join(", ")}</span>
                   )}
-                  {aiInsights.careerApplications && (
-                    <ul className="space-y-0.5">
-                      {aiInsights.careerApplications.map((app) => (
-                        <li key={app} className="text-[11px] text-gray-500 flex items-start gap-1">
-                          <Briefcase className="h-3 w-3 mt-0.5 shrink-0 text-rose-400" />
-                          {app}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <span>Offered: {course.offered.join(", ")}</span>
                 </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
