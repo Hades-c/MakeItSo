@@ -17,10 +17,12 @@ export async function GET() {
     await connectToDatabase();
 
     const userId = (session.user as { id: string }).id;
-    let plan = await CoursePlan.findOne({ userId }).lean();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let plan: any = await CoursePlan.findOne({ userId }).lean();
 
     if (!plan) {
-      plan = await CoursePlan.create({ userId, plannedCourses: [] });
+      const created = await CoursePlan.create({ userId, plannedCourses: [] });
+      plan = created.toObject();
     }
 
     return NextResponse.json({ plan });
@@ -103,7 +105,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
-    const course = plan.plannedCourses.id(plannedCourseId);
+    const course = (plan.plannedCourses as unknown as { id: (id: string) => Record<string, unknown> | null }).id(plannedCourseId);
     if (!course) {
       return NextResponse.json({ error: "Planned course not found" }, { status: 404 });
     }
@@ -137,7 +139,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     plan.plannedCourses = plan.plannedCourses.filter(
-      (c) => c._id?.toString() !== plannedCourseId
+      (c) => (c as unknown as { _id?: { toString(): string } })._id?.toString() !== plannedCourseId
     ) as typeof plan.plannedCourses;
 
     await plan.save();
