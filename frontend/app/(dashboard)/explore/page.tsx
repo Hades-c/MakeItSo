@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -93,8 +93,6 @@ type Step = "interests" | "browse" | "recommendations";
 export default function ExplorePage() {
   const [step, setStep] = useState<Step>("interests");
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
-  const [expandedAreas, setExpandedAreas] = useState<string[]>([]);
-  const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(
     null
@@ -136,37 +134,14 @@ export default function ExplorePage() {
   }, []);
 
   const toggleArea = (id: string) => {
-    setSelectedAreas((prev) => {
-      const next = prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id];
-      // When selecting an area, also add all its departments; when deselecting, remove them
-      const area = SUBJECT_AREAS.find((a) => a.id === id);
-      if (area) {
-        const areaDepts: string[] = [...area.departments];
-        if (next.includes(id)) {
-          setSelectedDepts((d) => Array.from(new Set([...d, ...areaDepts])));
-        } else {
-          setSelectedDepts((d) => d.filter((dept) => !areaDepts.includes(dept)));
-        }
-      }
-      return next;
-    });
-  };
-
-  const toggleExpandArea = (id: string) => {
-    setExpandedAreas((prev) =>
+    setSelectedAreas((prev) =>
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
     );
   };
 
-  const toggleDept = (dept: string) => {
-    setSelectedDepts((prev) =>
-      prev.includes(dept) ? prev.filter((d) => d !== dept) : [...prev, dept]
-    );
-  };
-
-  const selectedDepartments: string[] = selectedDepts.length > 0
-    ? selectedDepts
-    : SUBJECT_AREAS.filter((a) => selectedAreas.includes(a.id)).flatMap((a) => [...a.departments]);
+  const selectedDepartments: string[] = SUBJECT_AREAS.filter((a) =>
+    selectedAreas.includes(a.id)
+  ).flatMap((a) => [...a.departments]);
 
   // Build a set of static course codes for quick lookup
   const staticCodes = new Set(DAVIDSON_COURSES.map((c) => c.code));
@@ -298,89 +273,44 @@ export default function ExplorePage() {
 
       {/* Step 1: Interest Selection */}
       {step === "interests" && (
-        <div className="space-y-5">
+        <div className="space-y-6">
           <div>
             <h2 className="font-serif text-lg font-semibold text-[#111111] mb-1">
               What areas interest you?
             </h2>
             <p className="text-sm text-[#555555]">
-              Select subject areas or expand to pick individual departments.
+              Select one or more subject areas to filter the catalog.
             </p>
           </div>
 
-          {/* Subject areas as horizontal expandable boxes */}
-          <div className="flex flex-wrap gap-2">
-            {SUBJECT_AREAS.map((area) => {
-              const isSelected = selectedAreas.includes(area.id);
-              const isExpanded = expandedAreas.includes(area.id);
-              const selectedCount = area.departments.filter((d) => selectedDepts.includes(d)).length;
-              return (
-                <div key={area.id} className="flex flex-col">
-                  <div className="flex items-center gap-0">
-                    <button
-                      onClick={() => toggleArea(area.id)}
-                      className={`px-3.5 py-2 rounded-l-lg border text-left transition-all duration-150 ${
-                        isSelected
-                          ? "bg-davidson text-white border-davidson"
-                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <span className="font-medium text-sm">{area.label}</span>
-                      {selectedCount > 0 && !isSelected && (
-                        <span className="ml-1.5 text-[10px] bg-davidson/10 text-davidson px-1.5 py-0.5 rounded-full">
-                          {selectedCount}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => toggleExpandArea(area.id)}
-                      className={`px-2 py-2 border border-l-0 rounded-r-lg transition-all duration-150 ${
-                        isSelected
-                          ? "bg-davidson/90 text-white border-davidson"
-                          : "bg-white text-gray-400 border-gray-200 hover:text-gray-600"
-                      }`}
-                    >
-                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                    </button>
-                  </div>
-
-                  {/* Expanded departments dropdown */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="mt-1 bg-white border border-gray-200 rounded-lg p-2 shadow-sm space-y-0.5">
-                          {area.departments.map((dept) => {
-                            const isDeptSelected = selectedDepts.includes(dept);
-                            return (
-                              <button
-                                key={dept}
-                                onClick={() => toggleDept(dept)}
-                                className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition-colors ${
-                                  isDeptSelected
-                                    ? "bg-davidson-light text-davidson font-medium"
-                                    : "text-gray-600 hover:bg-gray-50"
-                                }`}
-                              >
-                                {dept}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {SUBJECT_AREAS.map((area) => (
+              <button
+                key={area.id}
+                onClick={() => toggleArea(area.id)}
+                className={`p-3.5 rounded-lg border text-left transition-all duration-150 ${
+                  selectedAreas.includes(area.id)
+                    ? "bg-davidson text-white border-davidson"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <div className="font-medium text-sm">{area.label}</div>
+                <div
+                  className={`text-xs mt-0.5 ${
+                    selectedAreas.includes(area.id)
+                      ? "text-white/70"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {area.departments.slice(0, 3).join(", ")}
+                  {area.departments.length > 3 &&
+                    ` +${area.departments.length - 3}`}
                 </div>
-              );
-            })}
+              </button>
+            ))}
           </div>
 
-          {(selectedAreas.length > 0 || selectedDepts.length > 0) && (
+          {selectedAreas.length > 0 && (
             <div className="flex gap-3 pt-1">
               <Button
                 onClick={() => setStep("browse")}
