@@ -2,213 +2,150 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
+import * as LucideIcons from "lucide-react";
 import {
   ArrowRight,
-  BarChart3,
-  Code2,
   DollarSign,
-  GraduationCap,
-  Heart,
-  HeartHandshake,
-  Landmark,
-  Layers,
-  Lightbulb,
-  Megaphone,
-  Microscope,
-  Newspaper,
-  Palette,
-  Rocket,
-  Scale,
-  TreePine,
-  TrendingUp,
+  Search,
+  SlidersHorizontal,
 } from "lucide-react";
-import { CAREER_PATHS, CAREER_PATH_FILTERS, filterCareerPaths } from "@/lib/career-paths";
-import type { CareerFilter } from "@/lib/career-paths";
+import {
+  CAREER_PATHS,
+  CAREER_PATH_FILTERS,
+  filterCareerPaths,
+  type CareerFilter,
+} from "@/lib/career-paths";
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  Code2,
-  BarChart3,
-  TrendingUp,
-  Lightbulb,
-  Layers,
-  Heart,
-  Scale,
-  Megaphone,
-  Microscope,
-  Landmark,
-  Rocket,
-  Palette,
-  HeartHandshake,
-  GraduationCap,
-  Newspaper,
-  TreePine,
+const ICON_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  Code2: { bg: "bg-blue-50", text: "text-blue-600", border: "hover:border-blue-200" },
+  BarChart3: { bg: "bg-emerald-50", text: "text-emerald-600", border: "hover:border-emerald-200" },
+  LineChart: { bg: "bg-violet-50", text: "text-violet-600", border: "hover:border-violet-200" },
+  Users: { bg: "bg-amber-50", text: "text-amber-600", border: "hover:border-amber-200" },
+  Layout: { bg: "bg-pink-50", text: "text-pink-600", border: "hover:border-pink-200" },
+  Stethoscope: { bg: "bg-teal-50", text: "text-teal-600", border: "hover:border-teal-200" },
+  Scale: { bg: "bg-indigo-50", text: "text-indigo-600", border: "hover:border-indigo-200" },
+  Megaphone: { bg: "bg-orange-50", text: "text-orange-600", border: "hover:border-orange-200" },
+  Microscope: { bg: "bg-cyan-50", text: "text-cyan-600", border: "hover:border-cyan-200" },
+  Building2: { bg: "bg-slate-50", text: "text-slate-600", border: "hover:border-slate-200" },
+  Rocket: { bg: "bg-rose-50", text: "text-rose-600", border: "hover:border-rose-200" },
+  Newspaper: { bg: "bg-sky-50", text: "text-sky-600", border: "hover:border-sky-200" },
+  Leaf: { bg: "bg-lime-50", text: "text-lime-600", border: "hover:border-lime-200" },
+  Palette: { bg: "bg-fuchsia-50", text: "text-fuchsia-600", border: "hover:border-fuchsia-200" },
+  Heart: { bg: "bg-red-50", text: "text-red-600", border: "hover:border-red-200" },
+  GraduationCap: { bg: "bg-yellow-50", text: "text-yellow-600", border: "hover:border-yellow-200" },
 };
 
-function formatSalary(amount: number): string {
-  if (amount >= 1000) return `$${Math.round(amount / 1000)}k`;
-  return `$${amount}`;
-}
+const DEFAULT_COLOR = { bg: "bg-gray-50", text: "text-gray-600", border: "hover:border-gray-200" };
 
-const fadeIn = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-};
-
-const stagger = {
-  animate: { transition: { staggerChildren: 0.05 } },
-};
-
-export default function CareerPathsPage() {
+export default function CareerPage() {
   const [activeFilter, setActiveFilter] = useState<CareerFilter>("All");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredPaths = filterCareerPaths(CAREER_PATHS, activeFilter);
+  const filtered = filterCareerPaths(CAREER_PATHS, activeFilter).filter((p) =>
+    searchQuery
+      ? p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.description.toLowerCase().includes(searchQuery.toLowerCase())
+      : true
+  );
 
   return (
     <motion.div
-      className="max-w-6xl mx-auto space-y-6"
-      initial={{ opacity: 0, y: 20 }}
+      className="max-w-5xl mx-auto space-y-6"
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.3 }}
     >
-      {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-          Career Paths
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Explore careers and see how Davidson prepares you for each one.
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Career Paths</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Explore careers with courses, alumni connections, and AI-powered guidance.
         </p>
       </div>
 
-      {/* Filter pills */}
-      <div className="flex flex-wrap gap-2">
-        {CAREER_PATH_FILTERS.map((filter) => (
-          <button
-            key={filter}
-            onClick={() => setActiveFilter(filter)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-              activeFilter === filter
-                ? "bg-red-800 text-white shadow-sm"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            {filter}
-          </button>
-        ))}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search career paths..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 h-9 rounded-lg border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition-all"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {CAREER_PATH_FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setActiveFilter(f)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                activeFilter === f
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-500 hover:text-gray-900 bg-white border border-gray-200"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Career cards grid */}
-      <motion.div
-        className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"
-        initial="initial"
-        animate="animate"
-        variants={stagger}
-        key={activeFilter}
-      >
-        {filteredPaths.map((career) => {
-          const IconComponent = ICON_MAP[career.icon] || Lightbulb;
-          const maxSalary = 300000;
-          const salaryPercent = Math.round(
-            ((career.salaryRange.max - career.salaryRange.min) / maxSalary) * 100
-          );
-          const salaryStart = Math.round(
-            (career.salaryRange.min / maxSalary) * 100
-          );
+      <div className="grid sm:grid-cols-2 gap-3">
+        <AnimatePresence mode="popLayout">
+          {filtered.map((career, i) => {
+            const iconName = career.icon as keyof typeof LucideIcons;
+            const Icon = (LucideIcons[iconName] as LucideIcons.LucideIcon) || LucideIcons.Briefcase;
+            const colors = ICON_COLORS[career.icon] || DEFAULT_COLOR;
 
-          return (
-            <motion.div key={career.id} variants={fadeIn}>
-              <Link href={`/career/${career.id}`} className="group block">
-                <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg hover:border-red-200 transition-all duration-300 h-full flex flex-col">
-                  {/* Icon + Title */}
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="h-10 w-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                      <IconComponent className="h-5 w-5 text-red-800" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-base group-hover:text-red-800 transition-colors">
-                        {career.title}
-                      </h3>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                    {career.description}
-                  </p>
-
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {career.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Salary range */}
-                  <div className="mb-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" />
-                        Salary Range
-                      </span>
-                      <span className="font-medium text-foreground">
-                        {formatSalary(career.salaryRange.min)} – {formatSalary(career.salaryRange.max)}
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-red-800 rounded-full transition-all duration-500"
-                        style={{
-                          width: `${salaryStart + salaryPercent}%`,
-                          marginLeft: `${salaryStart}%`,
-                        }}
-                      />
+            return (
+              <motion.div
+                key={career.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2, delay: i * 0.03 }}
+              >
+                <Link href={`/career/${career.id}`}>
+                  <div className={`bg-white rounded-xl border border-gray-100 p-5 transition-all duration-200 hover:shadow-md ${colors.border} group`}>
+                    <div className="flex items-start gap-4">
+                      <div className={`h-10 w-10 rounded-xl ${colors.bg} flex items-center justify-center shrink-0`}>
+                        <Icon className={`h-5 w-5 ${colors.text}`} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-sm text-gray-900">{career.title}</h3>
+                          <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all" />
+                        </div>
+                        <p className="text-xs text-gray-500 line-clamp-2 mb-3">{career.description}</p>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-3 w-3 text-emerald-500" />
+                          <span className="text-xs text-gray-500">
+                            ${(career.salaryRange.min / 1000).toFixed(0)}k – ${(career.salaryRange.max / 1000).toFixed(0)}k
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {career.tags.map((tag) => (
+                            <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-500">{tag}</span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
 
-                  {/* Skills */}
-                  <div className="flex flex-wrap gap-1 mb-4 flex-1">
-                    {career.skills.slice(0, 4).map((skill) => (
-                      <span
-                        key={skill}
-                        className="text-[11px] text-gray-500"
-                      >
-                        {skill}{career.skills.indexOf(skill) < Math.min(career.skills.length, 4) - 1 ? " · " : ""}
-                      </span>
-                    ))}
-                    {career.skills.length > 4 && (
-                      <span className="text-[11px] text-gray-400">
-                        +{career.skills.length - 4} more
-                      </span>
-                    )}
-                  </div>
-
-                  {/* View link */}
-                  <div className="flex items-center text-sm font-medium text-red-800 group-hover:gap-2 transition-all duration-200">
-                    <span>View</span>
-                    <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </Link>
-            </motion.div>
-          );
-        })}
-      </motion.div>
-
-      {filteredPaths.length === 0 && (
-        <div className="text-center py-16">
-          <p className="text-muted-foreground">No career paths match this filter.</p>
-          <button
-            onClick={() => setActiveFilter("All")}
-            className="mt-2 text-sm text-red-800 hover:underline"
-          >
-            Clear filter
-          </button>
+      {filtered.length === 0 && (
+        <div className="text-center py-12">
+          <SlidersHorizontal className="h-8 w-8 text-gray-300 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">No careers match your criteria.</p>
+          <Button variant="outline" size="sm" className="mt-2" onClick={() => { setActiveFilter("All"); setSearchQuery(""); }}>Clear Filters</Button>
         </div>
       )}
     </motion.div>
