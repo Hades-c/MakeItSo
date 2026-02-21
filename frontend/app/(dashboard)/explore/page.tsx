@@ -136,46 +136,37 @@ export default function ExplorePage() {
     .filter((a) => selectedAreas.includes(a.id))
     .flatMap((a) => [...a.departments]);
 
-  const filteredCourses = (liveCourses.length > 0
-    ? liveCourses.filter((c) => {
-        const matchesDept = selectedDepartment
-          ? c.department === selectedDepartment
-          : selectedDepartments.length > 0
-          ? selectedDepartments.includes(c.department)
-          : true;
-        const q = searchQuery.toLowerCase();
-        const matchesSearch = searchQuery
-          ? c.code.toLowerCase().includes(q) ||
-            c.name.toLowerCase().includes(q) ||
-            c.department.toLowerCase().includes(q) ||
-            c.professor?.toLowerCase().includes(q)
-          : true;
-        return matchesDept && matchesSearch;
-      })
-    : DAVIDSON_COURSES.filter((c) => {
-        const matchesDept = selectedDepartment
-          ? c.department === selectedDepartment
-          : selectedDepartments.length > 0
-          ? selectedDepartments.includes(c.department)
-          : true;
-        const q = searchQuery.toLowerCase();
-        const matchesSearch = searchQuery
-          ? c.code.toLowerCase().includes(q) ||
-            c.name.toLowerCase().includes(q) ||
-            c.department.toLowerCase().includes(q) ||
-            (c.professor && c.professor.toLowerCase().includes(q))
-          : true;
-        return matchesDept && matchesSearch;
-      })
-  );
+  // Build a set of static course codes for quick lookup
+  const staticCodes = new Set(DAVIDSON_COURSES.map((c) => c.code));
+
+  // Live-only courses: courses from the API that don't exist in our static data
+  const liveOnlyCourses = liveCourses.filter((c) => !staticCodes.has(c.code));
+
+  // Combined courses: static (rich data with RMP) first, then live-only extras
+  // Static courses are ALWAYS primary — they have RMP, topics, skills, career relevance
+  const allCourses: (SeedCourse | LiveCourse)[] = [
+    ...DAVIDSON_COURSES,
+    ...liveOnlyCourses,
+  ];
+
+  const filteredCourses = allCourses.filter((c) => {
+    const matchesDept = selectedDepartment
+      ? c.department === selectedDepartment
+      : selectedDepartments.length > 0
+      ? selectedDepartments.includes(c.department)
+      : true;
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = searchQuery
+      ? c.code.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q) ||
+        c.department.toLowerCase().includes(q) ||
+        ("professor" in c && c.professor ? c.professor.toLowerCase().includes(q) : false)
+      : true;
+    return matchesDept && matchesSearch;
+  });
 
   const departments = Array.from(new Set(
-    (liveCourses.length > 0
-      ? liveCourses.map((c) => c.department)
-      : DAVIDSON_COURSES
-          .filter((c) => selectedDepartments.length === 0 || selectedDepartments.includes(c.department))
-          .map((c) => c.department)
-    )
+    allCourses.map((c) => c.department)
   )).sort();
 
   async function getRecommendations() {
@@ -247,9 +238,7 @@ export default function ExplorePage() {
             )}
           </h1>
           <p className="text-muted-foreground mt-2">
-            {liveCourses.length > 0
-              ? "Real-time data from Davidson's Spring 2026 course schedule."
-              : "Discover courses based on your interests and see how they connect to careers."}
+            Discover courses based on your interests and see how they connect to careers.
           </p>
         </div>
       </div>
@@ -500,11 +489,15 @@ function RatingBar({ value, max, color }: { value: number; max: number; color: s
   );
 }
 
-/* ===== Live course card ===== */
+/* ===== Live course card (courses from Davidson API without static RMP data) ===== */
 function LiveCourseCard({ course }: { course: LiveCourse }) {
   const [expanded, setExpanded] = useState(false);
   const realProfessor = course.professor && course.professor !== "Staff" ? course.professor : null;
   const realInstructors = course.instructors.filter(i => i !== "Staff");
+  // Truncate description to first sentence
+  const shortDesc = course.description
+    ? course.description.split(/\.\s/)[0] + (course.description.includes(". ") ? "." : "")
+    : "";
 
   return (
     <Card className="hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-200 border-gray-200/60">
@@ -523,12 +516,16 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
               )}
             </div>
             <h3 className="font-semibold mb-0.5">{course.name}</h3>
-            <p className="text-xs text-muted-foreground">{course.department}</p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{course.department}</span>
+              {realProfessor && <span>· {realProfessor}</span>}
+              {course.schedule && course.schedule !== "TBA" && <span>· {course.schedule}</span>}
+            </div>
 
             {expanded && (
               <div className="mt-3 space-y-4 animate-fade-in">
-                {course.description && (
-                  <p className="text-sm text-muted-foreground">{course.description}</p>
+                {shortDesc && (
+                  <p className="text-sm text-muted-foreground">{shortDesc}</p>
                 )}
 
                 {/* Professor Section */}
