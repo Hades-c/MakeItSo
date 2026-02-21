@@ -44,7 +44,7 @@ export default function DashboardPage() {
     >
       {/* Welcome header */}
       <motion.div variants={fadeIn}>
-        <div className="flex items-center gap-2 text-sm text-violet-600 font-medium mb-1">
+        <div className="flex items-center gap-2 text-sm text-red-800 font-medium mb-1">
           <Sparkles className="h-4 w-4" />
           {greeting}
         </div>
@@ -60,7 +60,7 @@ export default function DashboardPage() {
       <motion.div variants={fadeIn} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Courses Available", value: "200+", icon: BookOpen, color: "emerald" },
-          { label: "Career Paths", value: "12+", icon: Target, color: "violet" },
+          { label: "Career Paths", value: "16", icon: Target, color: "red" },
           { label: "AI-Powered", value: "Gemini", icon: Zap, color: "blue" },
           { label: "Made For", value: "Davidson", icon: GraduationCap, color: "rose" },
         ].map(({ label, value, icon: Icon, color }) => (
@@ -99,19 +99,19 @@ export default function DashboardPage() {
         </Link>
 
         <Link href="/career" className="group">
-          <Card className="h-full border-2 border-transparent hover:border-violet-200 hover:shadow-lg hover:shadow-violet-500/5 transition-all duration-300 overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-violet-50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Card className="h-full border-2 border-transparent hover:border-red-200 hover:shadow-lg hover:shadow-red-500/5 transition-all duration-300 overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-red-50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4 opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardContent className="p-6 flex items-start gap-5 relative">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
+              <div className="h-12 w-12 rounded-xl bg-red-800 flex items-center justify-center shadow-lg shadow-red-800/20 shrink-0">
                 <Briefcase className="h-6 w-6 text-white" />
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold text-lg mb-1 group-hover:text-violet-700 transition-colors">
-                  Career Planner
+                <h3 className="font-semibold text-lg mb-1 group-hover:text-red-800 transition-colors">
+                  Career Paths
                   <ArrowRight className="inline ml-2 h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Choose a career path and get a complete plan — courses, people, and opportunities.
+                  Explore 16 career paths and see courses, skills, and opportunities for each.
                 </p>
               </div>
             </CardContent>
@@ -178,10 +178,10 @@ export default function DashboardPage() {
 
       {/* AI Insight card */}
       <motion.div variants={fadeIn}>
-        <Card className="relative overflow-hidden border-violet-100">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-violet-100/50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4" />
+        <Card className="relative overflow-hidden border-red-100">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-red-100/50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4" />
           <CardContent className="relative p-6 flex items-start gap-5">
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 shadow-md shadow-violet-500/20">
+            <div className="h-10 w-10 rounded-lg bg-red-800 flex items-center justify-center shrink-0 shadow-md shadow-red-800/20">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -191,14 +191,14 @@ export default function DashboardPage() {
                 to give you personalized recommendations you won&apos;t find anywhere else.
               </p>
               <div className="flex gap-3">
-                <Button size="sm" className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700" asChild>
+                <Button size="sm" className="bg-red-800 hover:bg-red-900" asChild>
                   <Link href="/explore">
                     <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
                     Explore Courses
                   </Link>
                 </Button>
                 <Button size="sm" variant="outline" asChild>
-                  <Link href="/career">Plan My Career</Link>
+                  <Link href="/career">Browse Careers</Link>
                 </Button>
               </div>
             </div>

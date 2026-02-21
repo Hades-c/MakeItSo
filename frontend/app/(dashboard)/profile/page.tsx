@@ -49,7 +49,7 @@ export default function ProfilePage() {
       <motion.div variants={fadeIn}>
         <Card className="shadow-sm overflow-hidden">
           {/* Profile header with gradient background */}
-          <div className="h-24 bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-600 relative">
+          <div className="h-24 bg-gradient-to-r from-red-800 via-red-700 to-rose-800 relative">
             <div className="absolute -bottom-8 left-6">
               <div className="h-16 w-16 rounded-2xl bg-white shadow-lg flex items-center justify-center border-4 border-white">
                 <span className="text-2xl font-bold gradient-text">
@@ -69,8 +69,8 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-2 gap-4 py-4 border-t">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-violet-50 flex items-center justify-center">
-                  <GraduationCap className="h-4 w-4 text-violet-600" />
+                <div className="h-9 w-9 rounded-lg bg-red-50 flex items-center justify-center">
+                  <GraduationCap className="h-4 w-4 text-red-800" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">College</p>
@@ -110,11 +110,11 @@ export default function ProfilePage() {
       </motion.div>
 
       <motion.div variants={fadeIn}>
-        <Card className="border-violet-100 bg-gradient-to-r from-violet-50/30 to-indigo-50/30">
+        <Card className="border-red-100 bg-gradient-to-r from-red-50/30 to-rose-50/30">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-8 w-8 rounded-lg bg-violet-100 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-violet-600" />
+              <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-red-800" />
               </div>
               <h3 className="font-semibold text-sm">About MakeItSo</h3>
             </div>

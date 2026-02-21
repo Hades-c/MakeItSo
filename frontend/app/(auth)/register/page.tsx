@@ -68,9 +68,9 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center px-4 py-10 relative overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-white to-indigo-50" />
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-violet-200/30 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl animate-float" style={{ animationDelay: "3s" }} />
+        <div className="absolute inset-0 bg-gradient-to-br from-red-50 via-white to-rose-50" />
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-red-100/30 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-rose-100/30 rounded-full blur-3xl animate-float" style={{ animationDelay: "3s" }} />
       </div>
 
       <motion.div
@@ -81,7 +81,7 @@ export default function RegisterPage() {
       >
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20">
+            <div className="h-9 w-9 rounded-lg bg-red-800 flex items-center justify-center shadow-md shadow-red-800/20">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <span className="text-xl font-bold tracking-tight">MakeItSo</span>
@@ -171,14 +171,14 @@ export default function RegisterPage() {
             <CardFooter className="flex flex-col gap-4">
               <Button
                 type="submit"
-                className="w-full h-11 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-500/20"
+                className="w-full h-11 bg-red-800 hover:bg-red-900 shadow-lg shadow-red-800/20"
                 disabled={loading}
               >
                 {loading ? "Creating account..." : "Create Account"}
               </Button>
               <p className="text-sm text-muted-foreground text-center">
                 Already have an account?{" "}
-                <Link href="/login" className="text-violet-600 hover:underline font-medium">
+                <Link href="/login" className="text-red-800 hover:underline font-medium">
                   Sign in
                 </Link>
               </p>

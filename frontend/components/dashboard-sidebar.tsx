@@ -18,7 +18,7 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/explore", label: "Explore Courses", icon: Compass },
-  { href: "/career", label: "Career Planner", icon: Briefcase },
+  { href: "/career", label: "Career Paths", icon: Briefcase },
   { href: "/roadmap", label: "My Roadmap", icon: Map },
   { href: "/courses", label: "Course Plan", icon: GraduationCap },
   { href: "/profile", label: "Profile", icon: User },
@@ -38,7 +38,7 @@ export function DashboardSidebar({ userName, userEmail }: DashboardSidebarProps)
       <aside className="hidden md:flex flex-col w-[260px] border-r bg-white/80 backdrop-blur-sm fixed inset-y-0 left-0 z-30">
         <div className="px-6 py-5 border-b">
           <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20">
+            <div className="h-8 w-8 rounded-lg bg-red-800 flex items-center justify-center shadow-md shadow-red-800/20">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <span className="text-lg font-bold tracking-tight">MakeItSo</span>
@@ -47,25 +47,25 @@ export function DashboardSidebar({ userName, userEmail }: DashboardSidebarProps)
 
         <nav className="flex flex-col gap-0.5 px-3 py-4 flex-1">
           {navItems.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href;
+            const isActive = pathname === href || (href === "/career" && pathname.startsWith("/career/"));
             return (
               <Link
                 key={href}
                 href={href}
                 className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? "text-violet-700 bg-violet-50"
+                    ? "text-red-800 bg-red-50"
                     : "text-muted-foreground hover:text-foreground hover:bg-gray-100/80"
                 }`}
               >
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active"
-                    className="absolute inset-0 rounded-lg bg-violet-50 border border-violet-100"
+                    className="absolute inset-0 rounded-lg bg-red-50 border border-red-100"
                     transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
                   />
                 )}
-                <Icon className={`h-[18px] w-[18px] relative z-10 ${isActive ? "text-violet-600" : ""}`} />
+                <Icon className={`h-[18px] w-[18px] relative z-10 ${isActive ? "text-red-800" : ""}`} />
                 <span className="relative z-10">{label}</span>
               </Link>
             );
@@ -84,7 +84,7 @@ export function DashboardSidebar({ userName, userEmail }: DashboardSidebarProps)
 
         <div className="border-t px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-sm">
+            <div className="h-9 w-9 rounded-full bg-red-800 flex items-center justify-center shadow-sm">
               <span className="text-xs font-semibold text-white">
                 {userName?.charAt(0)?.toUpperCase() || "?"}
               </span>
@@ -100,21 +100,21 @@ export function DashboardSidebar({ userName, userEmail }: DashboardSidebarProps)
       {/* Mobile top nav */}
       <header className="md:hidden border-b bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between sticky top-0 z-30">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
+          <div className="h-7 w-7 rounded-lg bg-red-800 flex items-center justify-center">
             <Sparkles className="h-3.5 w-3.5 text-white" />
           </div>
           <span className="font-bold">MakeItSo</span>
         </Link>
         <nav className="flex gap-1">
           {navItems.map(({ href, icon: Icon }) => {
-            const isActive = pathname === href;
+            const isActive = pathname === href || (href === "/career" && pathname.startsWith("/career/"));
             return (
               <Link
                 key={href}
                 href={href}
                 className={`p-2 rounded-lg transition-colors ${
                   isActive
-                    ? "text-violet-600 bg-violet-50"
+                    ? "text-red-800 bg-red-50"
                     : "text-muted-foreground hover:text-foreground hover:bg-gray-100"
                 }`}
               >

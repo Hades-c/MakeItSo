@@ -64,13 +64,13 @@ export default function CoursesPage() {
                   <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
                     year === 1 ? "bg-emerald-50" :
                     year === 2 ? "bg-blue-50" :
-                    year === 3 ? "bg-violet-50" :
+                    year === 3 ? "bg-red-50" :
                     "bg-amber-50"
                   }`}>
                     <Calendar className={`h-4 w-4 ${
                       year === 1 ? "text-emerald-600" :
                       year === 2 ? "text-blue-600" :
-                      year === 3 ? "text-violet-600" :
+                      year === 3 ? "text-red-800" :
                       "text-amber-600"
                     }`} />
                   </div>
