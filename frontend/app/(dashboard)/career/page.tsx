@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import * as LucideIcons from "lucide-react";
 import {
   ArrowRight,
-  DollarSign,
   Search,
   SlidersHorizontal,
 } from "lucide-react";
@@ -17,27 +16,6 @@ import {
   filterCareerPaths,
   type CareerFilter,
 } from "@/lib/career-paths";
-
-const ICON_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  Code2: { bg: "bg-blue-50", text: "text-blue-600", border: "hover:border-blue-200" },
-  BarChart3: { bg: "bg-emerald-50", text: "text-emerald-600", border: "hover:border-emerald-200" },
-  LineChart: { bg: "bg-violet-50", text: "text-violet-600", border: "hover:border-violet-200" },
-  Users: { bg: "bg-amber-50", text: "text-amber-600", border: "hover:border-amber-200" },
-  Layout: { bg: "bg-pink-50", text: "text-pink-600", border: "hover:border-pink-200" },
-  Stethoscope: { bg: "bg-teal-50", text: "text-teal-600", border: "hover:border-teal-200" },
-  Scale: { bg: "bg-indigo-50", text: "text-indigo-600", border: "hover:border-indigo-200" },
-  Megaphone: { bg: "bg-orange-50", text: "text-orange-600", border: "hover:border-orange-200" },
-  Microscope: { bg: "bg-cyan-50", text: "text-cyan-600", border: "hover:border-cyan-200" },
-  Building2: { bg: "bg-slate-50", text: "text-slate-600", border: "hover:border-slate-200" },
-  Rocket: { bg: "bg-rose-50", text: "text-rose-600", border: "hover:border-rose-200" },
-  Newspaper: { bg: "bg-sky-50", text: "text-sky-600", border: "hover:border-sky-200" },
-  Leaf: { bg: "bg-lime-50", text: "text-lime-600", border: "hover:border-lime-200" },
-  Palette: { bg: "bg-fuchsia-50", text: "text-fuchsia-600", border: "hover:border-fuchsia-200" },
-  Heart: { bg: "bg-red-50", text: "text-red-600", border: "hover:border-red-200" },
-  GraduationCap: { bg: "bg-yellow-50", text: "text-yellow-600", border: "hover:border-yellow-200" },
-};
-
-const DEFAULT_COLOR = { bg: "bg-gray-50", text: "text-gray-600", border: "hover:border-gray-200" };
 
 export default function CareerPage() {
   const [activeFilter, setActiveFilter] = useState<CareerFilter>("All");
@@ -52,38 +30,43 @@ export default function CareerPage() {
 
   return (
     <motion.div
-      className="max-w-5xl mx-auto space-y-6"
+      className="max-w-4xl mx-auto"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Career Paths</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Explore careers with courses, alumni connections, and AI-powered guidance.
+      {/* Header */}
+      <div className="pt-4 pb-10 border-b border-gray-200">
+        <h1 className="font-serif text-4xl tracking-tight text-[#111]">
+          Career Paths
+        </h1>
+        <p className="text-base text-gray-500 mt-3 max-w-2xl leading-relaxed">
+          Explore careers with curated courses, alumni connections, and
+          AI-powered guidance tailored to your interests.
         </p>
       </div>
 
-      <div className="space-y-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      {/* Search and Filters */}
+      <div className="py-8 space-y-5">
+        <div className="relative max-w-md">
+          <Search className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search career paths..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 h-9 rounded-lg border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition-all"
+            className="w-full pl-6 pr-4 py-2 bg-transparent border-b border-gray-300 text-sm text-[#111] placeholder:text-gray-400 focus:outline-none focus:border-[#111] transition-colors"
           />
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {CAREER_PATH_FILTERS.map((f) => (
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`px-4 py-1.5 text-xs tracking-wide transition-colors ${
                 activeFilter === f
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-500 hover:text-gray-900 bg-white border border-gray-200"
+                  ? "bg-[#111] text-white"
+                  : "text-gray-500 hover:text-[#111] bg-gray-100 hover:bg-gray-200"
               }`}
             >
               {f}
@@ -92,12 +75,21 @@ export default function CareerPage() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3">
+      {/* Results count */}
+      <div className="pb-4">
+        <p className="text-xs text-gray-400 uppercase tracking-widest">
+          {filtered.length} {filtered.length === 1 ? "path" : "paths"} found
+        </p>
+      </div>
+
+      {/* Career listing */}
+      <div className="divide-y divide-gray-100">
         <AnimatePresence mode="popLayout">
           {filtered.map((career, i) => {
             const iconName = career.icon as keyof typeof LucideIcons;
-            const Icon = (LucideIcons[iconName] as LucideIcons.LucideIcon) || LucideIcons.Briefcase;
-            const colors = ICON_COLORS[career.icon] || DEFAULT_COLOR;
+            const Icon =
+              (LucideIcons[iconName] as LucideIcons.LucideIcon) ||
+              LucideIcons.Briefcase;
 
             return (
               <motion.div
@@ -105,30 +97,41 @@ export default function CareerPage() {
                 layout
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, delay: i * 0.03 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2, delay: i * 0.02 }}
               >
                 <Link href={`/career/${career.id}`}>
-                  <div className={`bg-white rounded-xl border border-gray-100 p-5 transition-all duration-200 hover:shadow-md ${colors.border} group`}>
-                    <div className="flex items-start gap-4">
-                      <div className={`h-10 w-10 rounded-xl ${colors.bg} flex items-center justify-center shrink-0`}>
-                        <Icon className={`h-5 w-5 ${colors.text}`} />
+                  <div className="group py-6 flex items-start gap-5 transition-colors hover:bg-gray-50/50 -mx-4 px-4 rounded">
+                    {/* Icon */}
+                    <div className="mt-1 shrink-0">
+                      <Icon className="h-5 w-5 text-gray-400 group-hover:text-[#111] transition-colors" />
+                    </div>
+
+                    {/* Content */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <h3 className="font-serif text-lg text-[#111] group-hover:underline underline-offset-4 decoration-gray-300">
+                          {career.title}
+                        </h3>
+                        <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-[#111] group-hover:translate-x-0.5 transition-all shrink-0" />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-sm text-gray-900">{career.title}</h3>
-                          <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all" />
-                        </div>
-                        <p className="text-xs text-gray-500 line-clamp-2 mb-3">{career.description}</p>
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-3 w-3 text-emerald-500" />
-                          <span className="text-xs text-gray-500">
-                            ${(career.salaryRange.min / 1000).toFixed(0)}k – ${(career.salaryRange.max / 1000).toFixed(0)}k
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 mt-2">
+                      <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-3">
+                        {career.description}
+                      </p>
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs text-gray-400">
+                          ${(career.salaryRange.min / 1000).toFixed(0)}k &ndash; $
+                          {(career.salaryRange.max / 1000).toFixed(0)}k
+                        </span>
+                        <span className="text-gray-200">|</span>
+                        <div className="flex flex-wrap gap-1.5">
                           {career.tags.map((tag) => (
-                            <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-500">{tag}</span>
+                            <span
+                              key={tag}
+                              className="text-[11px] px-2 py-0.5 text-gray-500 bg-gray-100"
+                            >
+                              {tag}
+                            </span>
                           ))}
                         </div>
                       </div>
@@ -141,11 +144,24 @@ export default function CareerPage() {
         </AnimatePresence>
       </div>
 
+      {/* Empty state */}
       {filtered.length === 0 && (
-        <div className="text-center py-12">
-          <SlidersHorizontal className="h-8 w-8 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">No careers match your criteria.</p>
-          <Button variant="outline" size="sm" className="mt-2" onClick={() => { setActiveFilter("All"); setSearchQuery(""); }}>Clear Filters</Button>
+        <div className="text-center py-20">
+          <SlidersHorizontal className="h-6 w-6 text-gray-300 mx-auto mb-4" />
+          <p className="text-sm text-gray-500 mb-4">
+            No careers match your current criteria.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50"
+            onClick={() => {
+              setActiveFilter("All");
+              setSearchQuery("");
+            }}
+          >
+            Clear Filters
+          </Button>
         </div>
       )}
     </motion.div>
