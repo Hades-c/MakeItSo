@@ -50,9 +50,9 @@ export default function ExplorePage() {
     );
   };
 
-  const selectedDepartments = SUBJECT_AREAS
+  const selectedDepartments: string[] = SUBJECT_AREAS
     .filter((a) => selectedAreas.includes(a.id))
-    .flatMap((a) => a.departments);
+    .flatMap((a) => [...a.departments]);
 
   const filteredCourses = DAVIDSON_COURSES.filter((c) => {
     const matchesDept = selectedDepartment
@@ -68,11 +68,11 @@ export default function ExplorePage() {
     return matchesDept && matchesSearch;
   });
 
-  const departments = [...new Set(
+  const departments = Array.from(new Set(
     DAVIDSON_COURSES
       .filter((c) => selectedDepartments.length === 0 || selectedDepartments.includes(c.department))
       .map((c) => c.department)
-  )].sort();
+  )).sort();
 
   async function getRecommendations() {
     setLoading(true);
