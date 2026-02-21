@@ -62,6 +62,36 @@ Include 4-6 career connections with realistic relevance scores. Return ONLY the 
   }
 }
 
+export async function generateCourseInsights(
+  courseCode: string,
+  courseName: string,
+  description: string,
+  department: string
+) {
+  const prompt = `For the Davidson College course "${courseCode}: ${courseName}" in the ${department} department with the following description: "${description}"
+
+Generate a JSON response with key course information and skills students will gain:
+
+{
+  "keyTopics": ["topic1", "topic2", "topic3", "topic4", "topic5"],
+  "skillsGained": ["skill1", "skill2", "skill3", "skill4", "skill5"],
+  "courseHighlights": "A 2-3 sentence summary of what makes this course valuable and what students can expect to learn",
+  "careerApplications": ["specific application 1", "specific application 2", "specific application 3"]
+}
+
+Be specific and practical. keyTopics should be the main subject areas covered. skillsGained should be tangible, marketable skills. careerApplications should be concrete ways the skills apply professionally. Return ONLY the JSON.`;
+
+  const result = await geminiModel.generateContent(prompt);
+  const text = result.response.text();
+
+  try {
+    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMajorRoadmap(
   major: string,
   completedCourses: string[],
