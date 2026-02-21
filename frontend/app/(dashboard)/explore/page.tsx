@@ -658,6 +658,13 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
     careerApplications?: string[];
   } | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [profSummary, setProfSummary] = useState<{
+    summary?: string;
+    strengths?: string[];
+    considerations?: string[];
+    tipForSuccess?: string;
+  } | null>(null);
+  const [loadingProfSummary, setLoadingProfSummary] = useState(false);
 
   const prof = course.professorInfo;
 
@@ -694,6 +701,35 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
       console.error("Failed to get AI insights:", err);
     } finally {
       setLoadingInsights(false);
+    }
+  }
+
+  async function fetchProfSummary() {
+    if (profSummary || loadingProfSummary || !prof) return;
+    setLoadingProfSummary(true);
+    try {
+      const res = await fetch("/api/ai/professor-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          professorName: prof.name,
+          courseCode: course.code,
+          courseName: course.name,
+          rmpRating: prof.rmpRating,
+          rmpDifficulty: prof.rmpDifficulty,
+          rmpNumRatings: prof.rmpNumRatings,
+          rmpWouldTakeAgain: prof.rmpWouldTakeAgain,
+          rmpTags: prof.rmpTags,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfSummary(data.summary);
+      }
+    } catch (err) {
+      console.error("Failed to get professor summary:", err);
+    } finally {
+      setLoadingProfSummary(false);
     }
   }
 
@@ -816,6 +852,84 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                               {tag}
                             </span>
                           ))}
+                        </div>
+                      )}
+
+                      {/* AI Professor Summary Button */}
+                      <div className="pt-1">
+                        <button
+                          onClick={fetchProfSummary}
+                          disabled={loadingProfSummary || !!profSummary}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-medium text-davidson hover:text-davidson-dark disabled:text-gray-300 transition-colors"
+                        >
+                          {loadingProfSummary ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Analyzing reviews...
+                            </>
+                          ) : profSummary ? (
+                            <>
+                              <Sparkles className="h-3 w-3" />
+                              Summary loaded
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-3 w-3" />
+                              AI Professor Summary
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* AI Professor Summary Display */}
+                      {profSummary && (
+                        <div className="rounded-lg border border-davidson/10 bg-davidson-light/30 p-3 space-y-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="h-3 w-3 text-davidson" />
+                            <span className="text-[10px] font-semibold text-davidson uppercase tracking-wide">
+                              AI Professor Summary
+                            </span>
+                          </div>
+                          {profSummary.summary && (
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              {profSummary.summary}
+                            </p>
+                          )}
+                          <div className="grid grid-cols-2 gap-2">
+                            {profSummary.strengths && profSummary.strengths.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-medium text-emerald-600 mb-1">Strengths</p>
+                                <ul className="space-y-0.5">
+                                  {profSummary.strengths.map((s, i) => (
+                                    <li key={i} className="text-[10px] text-gray-600 flex items-start gap-1">
+                                      <span className="text-emerald-400 mt-0.5 shrink-0">+</span> {s}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {profSummary.considerations && profSummary.considerations.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-medium text-amber-600 mb-1">Considerations</p>
+                                <ul className="space-y-0.5">
+                                  {profSummary.considerations.map((c, i) => (
+                                    <li key={i} className="text-[10px] text-gray-600 flex items-start gap-1">
+                                      <span className="text-amber-400 mt-0.5 shrink-0">!</span> {c}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          {profSummary.tipForSuccess && (
+                            <div className="flex items-start gap-1.5 bg-white/60 rounded p-2">
+                              <Lightbulb className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+                              <p className="text-[10px] text-gray-600">
+                                <span className="font-medium text-gray-700">Tip: </span>
+                                {profSummary.tipForSuccess}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

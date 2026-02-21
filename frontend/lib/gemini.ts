@@ -115,6 +115,49 @@ Be specific and practical. Use the additional context to provide more accurate a
   }
 }
 
+export async function generateProfessorSummary(
+  professorName: string,
+  courseCode: string,
+  courseName: string,
+  rmpRating?: number,
+  rmpDifficulty?: number,
+  rmpNumRatings?: number,
+  rmpWouldTakeAgain?: number,
+  rmpTags?: string[]
+) {
+  const parts: string[] = [];
+  if (rmpRating != null) parts.push(`Overall quality rating: ${rmpRating}/5`);
+  if (rmpDifficulty != null) parts.push(`Difficulty rating: ${rmpDifficulty}/5`);
+  if (rmpNumRatings != null) parts.push(`Total number of student ratings: ${rmpNumRatings}`);
+  if (rmpWouldTakeAgain != null) parts.push(`${rmpWouldTakeAgain}% of students would take this professor again`);
+  if (rmpTags?.length) parts.push(`Student feedback tags: ${rmpTags.join(", ")}`);
+
+  const prompt = `You are summarizing student reviews for Professor ${professorName} who teaches ${courseCode}: ${courseName} at Davidson College.
+
+Based on the following RateMyProfessors data:
+${parts.join("\n")}
+
+Generate a JSON response:
+{
+  "summary": "A 3-4 sentence summary of what students can expect from this professor. Cover teaching style, workload expectations, and overall student sentiment. Be balanced and helpful.",
+  "strengths": ["strength 1", "strength 2", "strength 3"],
+  "considerations": ["thing to be aware of 1", "thing to be aware of 2"],
+  "tipForSuccess": "One practical tip for succeeding in this professor's class"
+}
+
+Be honest but constructive. Derive insights from the rating numbers and student tags. If the rating is high, reflect that positively. If difficulty is high, frame it as rigorous but rewarding. Return ONLY the JSON.`;
+
+  const result = await geminiModel.generateContent(prompt);
+  const text = result.response.text();
+
+  try {
+    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMajorRoadmap(
   major: string,
   completedCourses: string[],

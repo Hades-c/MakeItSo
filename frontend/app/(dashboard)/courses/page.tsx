@@ -8,13 +8,18 @@ import {
   BookOpen,
   Calendar,
   Check,
+  CheckCircle2,
   ChevronDown,
+  Circle,
+  Clock,
   GraduationCap,
   Loader2,
+  PlayCircle,
   Plus,
   Search,
   Trash2,
   X,
+  XCircle,
   AlertCircle,
 } from "lucide-react";
 
@@ -53,7 +58,7 @@ const REQUIRED_COURSES = REQUIRED_CREDITS / CREDITS_PER_COURSE; // 32
 
 const STATUS_CONFIG: Record<
   PlannedCourse["status"],
-  { label: string; dotClass: string; bgClass: string; textClass: string; borderClass: string }
+  { label: string; dotClass: string; bgClass: string; textClass: string; borderClass: string; iconColor: string }
 > = {
   planned: {
     label: "Planned",
@@ -61,6 +66,7 @@ const STATUS_CONFIG: Record<
     bgClass: "bg-gray-50",
     textClass: "text-gray-600",
     borderClass: "border-gray-200",
+    iconColor: "text-gray-400",
   },
   "in-progress": {
     label: "In Progress",
@@ -68,6 +74,7 @@ const STATUS_CONFIG: Record<
     bgClass: "bg-blue-50",
     textClass: "text-blue-700",
     borderClass: "border-blue-200",
+    iconColor: "text-blue-500",
   },
   completed: {
     label: "Completed",
@@ -75,6 +82,7 @@ const STATUS_CONFIG: Record<
     bgClass: "bg-green-50",
     textClass: "text-green-700",
     borderClass: "border-green-200",
+    iconColor: "text-green-500",
   },
   dropped: {
     label: "Dropped",
@@ -82,8 +90,19 @@ const STATUS_CONFIG: Record<
     bgClass: "bg-red-50",
     textClass: "text-red-700",
     borderClass: "border-red-200",
+    iconColor: "text-red-500",
   },
 };
+
+function getGradeColor(grade: string): { bg: string; text: string; border: string } {
+  if (grade.startsWith("A")) return { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" };
+  if (grade.startsWith("B")) return { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" };
+  if (grade.startsWith("C")) return { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" };
+  if (grade.startsWith("D")) return { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200" };
+  if (grade === "Pass") return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" };
+  if (grade === "F" || grade === "Fail") return { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" };
+  return { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200" };
+}
 
 function getDeptColor(courseCode: string): { bg: string; text: string } {
   const dept = courseCode.split(" ")[0];
@@ -523,6 +542,7 @@ export default function CoursesPage() {
                 credits={stats.completedCredits}
                 accent="text-green-600"
                 bg="bg-green-50"
+                icon={<CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
               />
               <StatBlock
                 label="In Progress"
@@ -530,6 +550,7 @@ export default function CoursesPage() {
                 credits={stats.inProgressCredits}
                 accent="text-blue-600"
                 bg="bg-blue-50"
+                icon={<PlayCircle className="h-3.5 w-3.5 text-blue-500" />}
               />
               <StatBlock
                 label="Planned"
@@ -537,6 +558,7 @@ export default function CoursesPage() {
                 credits={stats.plannedCredits}
                 accent="text-gray-600"
                 bg="bg-gray-50"
+                icon={<Circle className="h-3.5 w-3.5 text-gray-400" />}
               />
               <StatBlock
                 label="Remaining"
@@ -544,6 +566,7 @@ export default function CoursesPage() {
                 credits={Math.max(0, REQUIRED_CREDITS - stats.activeCredits)}
                 accent="text-davidson"
                 bg="bg-davidson-light"
+                icon={<BookOpen className="h-3.5 w-3.5 text-davidson/60" />}
               />
             </div>
           </div>
@@ -614,10 +637,16 @@ export default function CoursesPage() {
                         transition={{ duration: 0.2 }}
                         className="px-5 py-3 flex items-center gap-3 group"
                       >
-                        {/* Status dot */}
-                        <span
-                          className={`h-2.5 w-2.5 rounded-full shrink-0 ${cfg.dotClass}`}
-                        />
+                        {/* Status icon */}
+                        {pc.status === "completed" ? (
+                          <CheckCircle2 className={`h-4 w-4 shrink-0 ${cfg.iconColor}`} />
+                        ) : pc.status === "in-progress" ? (
+                          <PlayCircle className={`h-4 w-4 shrink-0 ${cfg.iconColor}`} />
+                        ) : pc.status === "dropped" ? (
+                          <XCircle className={`h-4 w-4 shrink-0 ${cfg.iconColor}`} />
+                        ) : (
+                          <Circle className={`h-4 w-4 shrink-0 ${cfg.iconColor}`} />
+                        )}
 
                         {/* Course info */}
                         <div className="flex-1 min-w-0">
@@ -632,14 +661,14 @@ export default function CoursesPage() {
                         </div>
 
                         {/* Grade badge if completed */}
-                        {pc.status === "completed" && pc.grade && (
-                          <Badge
-                            variant="success"
-                            className="text-[10px] px-1.5 py-0"
-                          >
-                            {pc.grade}
-                          </Badge>
-                        )}
+                        {pc.status === "completed" && pc.grade && (() => {
+                          const gc = getGradeColor(pc.grade);
+                          return (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${gc.bg} ${gc.text} ${gc.border}`}>
+                              {pc.grade}
+                            </span>
+                          );
+                        })()}
 
                         {/* Status badge */}
                         <Badge
@@ -938,16 +967,21 @@ function StatBlock({
   credits,
   accent,
   bg,
+  icon,
 }: {
   label: string;
   courses: number;
   credits: number;
   accent: string;
   bg: string;
+  icon?: React.ReactNode;
 }) {
   return (
     <div className={`${bg} rounded-lg p-3 border border-gray-100`}>
-      <p className={`text-lg font-bold ${accent}`}>{courses}</p>
+      <div className="flex items-center justify-between mb-1">
+        <p className={`text-lg font-bold ${accent}`}>{courses}</p>
+        {icon}
+      </div>
       <p className="text-xs font-medium text-gray-700">{label}</p>
       <p className="text-[10px] text-gray-400">{credits} credits</p>
     </div>
