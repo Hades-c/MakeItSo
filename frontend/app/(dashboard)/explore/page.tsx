@@ -660,6 +660,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
   } | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
+  const [showProfModal, setShowProfModal] = useState(false);
   const [profSummary, setProfSummary] = useState<{
     summary?: string;
     strengths?: string[];
@@ -845,34 +846,41 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
 
                       {prof.rmpTags && prof.rmpTags.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {prof.rmpTags.slice(0, 5).map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-[#555555]"
-                            >
-                              <MessageSquare className="h-2.5 w-2.5" />
-                              {tag}
-                            </span>
-                          ))}
+                          {prof.rmpTags.slice(0, 5).map((tag, idx) => {
+                            const tagColors = [
+                              "bg-blue-50 text-blue-600 border-blue-200",
+                              "bg-purple-50 text-purple-600 border-purple-200",
+                              "bg-emerald-50 text-emerald-600 border-emerald-200",
+                              "bg-amber-50 text-amber-600 border-amber-200",
+                              "bg-rose-50 text-rose-600 border-rose-200",
+                            ];
+                            return (
+                              <span
+                                key={tag}
+                                className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border ${tagColors[idx % tagColors.length]}`}
+                              >
+                                <MessageSquare className="h-2.5 w-2.5" />
+                                {tag}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
 
                       {/* AI Professor Summary Button */}
                       <div className="pt-1">
                         <button
-                          onClick={fetchProfSummary}
-                          disabled={loadingProfSummary || !!profSummary}
-                          className="inline-flex items-center gap-1.5 text-[11px] font-medium text-davidson hover:text-davidson-dark disabled:text-gray-300 transition-colors"
+                          onClick={() => {
+                            if (!profSummary && !loadingProfSummary) fetchProfSummary();
+                            setShowProfModal(true);
+                          }}
+                          disabled={loadingProfSummary}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-davidson-light text-davidson hover:bg-davidson-light/80 disabled:text-gray-300 transition-colors"
                         >
                           {loadingProfSummary ? (
                             <>
                               <Loader2 className="h-3 w-3 animate-spin" />
                               Analyzing reviews...
-                            </>
-                          ) : profSummary ? (
-                            <>
-                              <Sparkles className="h-3 w-3" />
-                              Summary loaded
                             </>
                           ) : (
                             <>
@@ -883,57 +891,155 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                         </button>
                       </div>
 
-                      {/* AI Professor Summary Display */}
-                      {profSummary && (
-                        <div className="rounded-lg border border-davidson/10 bg-davidson-light/30 p-3 space-y-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles className="h-3 w-3 text-davidson" />
-                            <span className="text-[10px] font-semibold text-davidson uppercase tracking-wide">
-                              AI Professor Summary
-                            </span>
-                          </div>
-                          {profSummary.summary && (
-                            <p className="text-xs text-gray-600 leading-relaxed">
-                              {profSummary.summary}
-                            </p>
-                          )}
-                          <div className="grid grid-cols-2 gap-2">
-                            {profSummary.strengths && profSummary.strengths.length > 0 && (
-                              <div>
-                                <p className="text-[10px] font-medium text-emerald-600 mb-1">Strengths</p>
-                                <ul className="space-y-0.5">
-                                  {profSummary.strengths.map((s, i) => (
-                                    <li key={i} className="text-[10px] text-gray-600 flex items-start gap-1">
-                                      <span className="text-emerald-400 mt-0.5 shrink-0">+</span> {s}
-                                    </li>
-                                  ))}
-                                </ul>
+                      {/* Professor Summary Modal */}
+                      <AnimatePresence>
+                        {showProfModal && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4"
+                          >
+                            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowProfModal(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[85vh] overflow-y-auto z-10"
+                            >
+                              {/* Modal header */}
+                              <div className="sticky top-0 bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
+                                <div>
+                                  <div className="flex items-center gap-2.5 mb-1">
+                                    <GraduationCap className="h-5 w-5 text-davidson" />
+                                    <h2 className="font-serif font-semibold text-xl text-[#111111]">Professor Summary</h2>
+                                  </div>
+                                  <p className="text-sm text-[#555555]">{prof.name} · {course.code} {course.name}</p>
+                                </div>
+                                <button onClick={() => setShowProfModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                                  <X className="h-5 w-5" />
+                                </button>
                               </div>
-                            )}
-                            {profSummary.considerations && profSummary.considerations.length > 0 && (
-                              <div>
-                                <p className="text-[10px] font-medium text-amber-600 mb-1">Considerations</p>
-                                <ul className="space-y-0.5">
-                                  {profSummary.considerations.map((c, i) => (
-                                    <li key={i} className="text-[10px] text-gray-600 flex items-start gap-1">
-                                      <span className="text-amber-400 mt-0.5 shrink-0">!</span> {c}
-                                    </li>
-                                  ))}
-                                </ul>
+
+                              {/* Modal content */}
+                              <div className="px-8 py-6 space-y-6">
+                                {/* RMP stats bar */}
+                                <div className="bg-white rounded-xl border border-gray-100 p-5">
+                                  <div className="flex flex-wrap items-center gap-6 text-sm">
+                                    <span className="flex items-center gap-1.5">
+                                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                                      <span className="font-bold text-lg text-[#111111]">{prof.rmpRating}</span>
+                                      <span className="text-gray-400">/5</span>
+                                    </span>
+                                    {prof.rmpWouldTakeAgain != null && (
+                                      <span className="flex items-center gap-1.5 text-[#555555]">
+                                        <ThumbsUp className="h-4 w-4" />
+                                        {prof.rmpWouldTakeAgain}% would take again
+                                      </span>
+                                    )}
+                                    {prof.rmpDifficulty != null && (
+                                      <span className="flex items-center gap-1.5 text-[#555555]">
+                                        <Zap className="h-4 w-4" />
+                                        {prof.rmpDifficulty} difficulty
+                                      </span>
+                                    )}
+                                    {prof.rmpNumRatings != null && (
+                                      <span className="flex items-center gap-1.5 text-gray-400">
+                                        <Users className="h-4 w-4" />
+                                        {prof.rmpNumRatings} ratings
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {loadingProfSummary ? (
+                                  <div className="flex flex-col items-center justify-center py-16">
+                                    <Loader2 className="h-8 w-8 animate-spin text-davidson mb-3" />
+                                    <p className="text-sm text-[#555555]">Analyzing professor reviews...</p>
+                                  </div>
+                                ) : profSummary ? (
+                                  <>
+                                    {profSummary.summary && (
+                                      <div className="bg-white rounded-xl border border-gray-100 p-6">
+                                        <h3 className="text-sm font-semibold text-[#111111] mb-3 flex items-center gap-2">
+                                          <Sparkles className="h-4 w-4 text-davidson" />
+                                          Overview
+                                        </h3>
+                                        <p className="text-base text-[#555555] leading-relaxed">{profSummary.summary}</p>
+                                      </div>
+                                    )}
+
+                                    <div className="grid sm:grid-cols-2 gap-4">
+                                      {profSummary.strengths && profSummary.strengths.length > 0 && (
+                                        <div className="bg-white rounded-xl border border-gray-100 p-6">
+                                          <h3 className="text-sm font-semibold text-emerald-600 mb-3">Strengths</h3>
+                                          <ul className="space-y-2">
+                                            {profSummary.strengths.map((s, i) => (
+                                              <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                                                <span className="text-emerald-500 mt-0.5 shrink-0 font-bold">+</span> {s}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      {profSummary.considerations && profSummary.considerations.length > 0 && (
+                                        <div className="bg-white rounded-xl border border-gray-100 p-6">
+                                          <h3 className="text-sm font-semibold text-amber-600 mb-3">Considerations</h3>
+                                          <ul className="space-y-2">
+                                            {profSummary.considerations.map((c, i) => (
+                                              <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                                                <span className="text-amber-500 mt-0.5 shrink-0 font-bold">!</span> {c}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {profSummary.tipForSuccess && (
+                                      <div className="bg-white rounded-xl border border-gray-100 p-6 flex items-start gap-3">
+                                        <Lightbulb className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                                        <div>
+                                          <h3 className="text-sm font-semibold text-[#111111] mb-1">Tip for Success</h3>
+                                          <p className="text-sm text-[#555555] leading-relaxed">{profSummary.tipForSuccess}</p>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* RMP Tags */}
+                                    {prof.rmpTags && prof.rmpTags.length > 0 && (
+                                      <div className="bg-white rounded-xl border border-gray-100 p-6">
+                                        <h3 className="text-sm font-semibold text-[#111111] mb-3">Student Tags</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                          {prof.rmpTags.map((tag, idx) => {
+                                            const tc = [
+                                              "bg-blue-50 text-blue-700 border-blue-200",
+                                              "bg-purple-50 text-purple-700 border-purple-200",
+                                              "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                              "bg-amber-50 text-amber-700 border-amber-200",
+                                              "bg-rose-50 text-rose-700 border-rose-200",
+                                            ];
+                                            return (
+                                              <span key={tag} className={`text-sm px-3 py-1 rounded-lg border ${tc[idx % tc.length]}`}>
+                                                {tag}
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center py-16">
+                                    <GraduationCap className="h-8 w-8 text-gray-300 mb-3" />
+                                    <p className="text-sm text-gray-400">No summary available yet</p>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                          {profSummary.tipForSuccess && (
-                            <div className="flex items-start gap-1.5 bg-white/60 rounded p-2">
-                              <Lightbulb className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
-                              <p className="text-[10px] text-gray-600">
-                                <span className="font-medium text-gray-700">Tip: </span>
-                                {profSummary.tipForSuccess}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                            </motion.div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   )}
                 </div>
@@ -952,7 +1058,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                           {course.courseInsights.keyTopics.map((topic) => (
                             <span
                               key={topic}
-                              className="text-[11px] px-2 py-0.5 rounded bg-gray-50 text-gray-600 border border-gray-100"
+                              className="text-[11px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
                             >
                               {topic}
                             </span>
@@ -971,7 +1077,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                           {course.courseInsights.skillsGained.map((skill) => (
                             <span
                               key={skill}
-                              className="text-[11px] px-2 py-0.5 rounded bg-gray-50 text-gray-600 border border-gray-100"
+                              className="text-[11px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200"
                             >
                               {skill}
                             </span>
@@ -1058,42 +1164,41 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 flex items-start justify-center pt-[8vh] px-4"
-                    onClick={(e) => { if (e.target === e.currentTarget) setShowAiModal(false); }}
+                    className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4"
                   >
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowAiModal(false)} />
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                      className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[80vh] overflow-y-auto z-10"
+                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[85vh] overflow-y-auto z-10"
                     >
                       {/* Modal header */}
-                      <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
+                      <div className="sticky top-0 bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
                         <div>
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <Sparkles className="h-4 w-4 text-davidson" />
-                            <h2 className="font-serif font-semibold text-lg text-[#111111]">AI Deep Dive</h2>
+                          <div className="flex items-center gap-2.5 mb-1">
+                            <Sparkles className="h-5 w-5 text-davidson" />
+                            <h2 className="font-serif font-semibold text-xl text-[#111111]">AI Deep Dive</h2>
                           </div>
                           <p className="text-sm text-[#555555]">{course.code} · {course.name}</p>
                         </div>
-                        <button onClick={() => setShowAiModal(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                        <button onClick={() => setShowAiModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                           <X className="h-5 w-5" />
                         </button>
                       </div>
 
                       {/* Modal content */}
-                      <div className="px-6 py-5 space-y-6">
+                      <div className="px-8 py-6 space-y-5">
                         {loadingInsights ? (
-                          <div className="flex flex-col items-center justify-center py-12">
+                          <div className="flex flex-col items-center justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin text-davidson mb-3" />
                             <p className="text-sm text-[#555555]">Analyzing course with AI...</p>
                           </div>
                         ) : aiInsights ? (
                           <>
                             {aiInsights.courseHighlights && (
-                              <div>
-                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                              <div className="bg-white rounded-xl border border-gray-100 p-6">
+                                <h3 className="text-sm font-semibold text-[#111111] mb-3 flex items-center gap-2">
                                   <Sparkles className="h-4 w-4 text-davidson" />
                                   Course Highlights
                                 </h3>
@@ -1103,45 +1208,47 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                               </div>
                             )}
 
-                            {aiInsights.keyTopics && aiInsights.keyTopics.length > 0 && (
-                              <div>
-                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
-                                  <BookOpen className="h-4 w-4 text-navy" />
-                                  Deep Dive Topics
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                  {aiInsights.keyTopics.map((topic) => (
-                                    <span key={topic} className="text-sm px-3 py-1 rounded-lg bg-gray-50 text-gray-700 border border-gray-200">
-                                      {topic}
-                                    </span>
-                                  ))}
+                            <div className="grid sm:grid-cols-2 gap-4">
+                              {aiInsights.keyTopics && aiInsights.keyTopics.length > 0 && (
+                                <div className="bg-white rounded-xl border border-gray-100 p-6">
+                                  <h3 className="text-sm font-semibold text-[#111111] mb-3 flex items-center gap-2">
+                                    <BookOpen className="h-4 w-4 text-blue-600" />
+                                    Deep Dive Topics
+                                  </h3>
+                                  <div className="flex flex-wrap gap-2">
+                                    {aiInsights.keyTopics.map((topic) => (
+                                      <span key={topic} className="text-sm px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                                        {topic}
+                                      </span>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
 
-                            {aiInsights.skillsGained && aiInsights.skillsGained.length > 0 && (
-                              <div>
-                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
-                                  <Lightbulb className="h-4 w-4 text-amber-500" />
-                                  Skills You&apos;ll Gain
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                  {aiInsights.skillsGained.map((skill) => (
-                                    <span key={skill} className="text-sm px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      {skill}
-                                    </span>
-                                  ))}
+                              {aiInsights.skillsGained && aiInsights.skillsGained.length > 0 && (
+                                <div className="bg-white rounded-xl border border-gray-100 p-6">
+                                  <h3 className="text-sm font-semibold text-[#111111] mb-3 flex items-center gap-2">
+                                    <Lightbulb className="h-4 w-4 text-amber-500" />
+                                    Skills You&apos;ll Gain
+                                  </h3>
+                                  <div className="flex flex-wrap gap-2">
+                                    {aiInsights.skillsGained.map((skill) => (
+                                      <span key={skill} className="text-sm px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        {skill}
+                                      </span>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
 
                             {aiInsights.careerApplications && aiInsights.careerApplications.length > 0 && (
-                              <div>
-                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                              <div className="bg-white rounded-xl border border-gray-100 p-6">
+                                <h3 className="text-sm font-semibold text-[#111111] mb-3 flex items-center gap-2">
                                   <Briefcase className="h-4 w-4 text-davidson" />
                                   Career Applications
                                 </h3>
-                                <ul className="space-y-2">
+                                <ul className="space-y-2.5">
                                   {aiInsights.careerApplications.map((app) => (
                                     <li key={app} className="text-sm text-[#555555] flex items-start gap-2">
                                       <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-davidson/50" />
@@ -1151,57 +1258,9 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                                 </ul>
                               </div>
                             )}
-
-                            {/* Professor summary in modal too */}
-                            {profSummary && (
-                              <div className="rounded-xl border border-davidson/10 bg-davidson-light/30 p-5 space-y-4">
-                                <h3 className="text-sm font-semibold text-davidson flex items-center gap-2">
-                                  <GraduationCap className="h-4 w-4" />
-                                  Professor Summary — {course.professor}
-                                </h3>
-                                {profSummary.summary && (
-                                  <p className="text-sm text-gray-700 leading-relaxed">{profSummary.summary}</p>
-                                )}
-                                <div className="grid sm:grid-cols-2 gap-4">
-                                  {profSummary.strengths && profSummary.strengths.length > 0 && (
-                                    <div>
-                                      <p className="text-xs font-semibold text-emerald-600 mb-1.5">Strengths</p>
-                                      <ul className="space-y-1">
-                                        {profSummary.strengths.map((s, i) => (
-                                          <li key={i} className="text-sm text-gray-600 flex items-start gap-1.5">
-                                            <span className="text-emerald-500 mt-0.5 shrink-0">+</span> {s}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                  {profSummary.considerations && profSummary.considerations.length > 0 && (
-                                    <div>
-                                      <p className="text-xs font-semibold text-amber-600 mb-1.5">Considerations</p>
-                                      <ul className="space-y-1">
-                                        {profSummary.considerations.map((c, i) => (
-                                          <li key={i} className="text-sm text-gray-600 flex items-start gap-1.5">
-                                            <span className="text-amber-500 mt-0.5 shrink-0">!</span> {c}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                </div>
-                                {profSummary.tipForSuccess && (
-                                  <div className="flex items-start gap-2 bg-white/60 rounded-lg p-3">
-                                    <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                                    <p className="text-sm text-gray-600">
-                                      <span className="font-medium text-gray-700">Tip: </span>
-                                      {profSummary.tipForSuccess}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
                           </>
                         ) : (
-                          <div className="flex flex-col items-center justify-center py-12">
+                          <div className="flex flex-col items-center justify-center py-16">
                             <Brain className="h-8 w-8 text-gray-300 mb-3" />
                             <p className="text-sm text-gray-400">No insights available yet</p>
                           </div>
