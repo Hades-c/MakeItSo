@@ -88,10 +88,10 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; border: string; do
     dot: "bg-emerald-400",
   },
   distribution: {
-    bg: "bg-navy/5",
-    text: "text-navy",
-    border: "border-navy/20",
-    dot: "bg-navy",
+    bg: "bg-blue-50",
+    text: "text-blue-600",
+    border: "border-blue-200",
+    dot: "bg-blue-400",
   },
 };
 

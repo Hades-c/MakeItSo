@@ -61,7 +61,7 @@ export function ActivitiesCarousel() {
   const activity = DAVIDSON_ACTIVITIES[index];
 
   return (
-    <div className="mt-12 border-t border-gray-100 pt-6 pb-4">
+    <div className="py-3">
       <div
         className="flex items-center gap-3 cursor-default select-none"
         onMouseEnter={() => setPaused(true)}

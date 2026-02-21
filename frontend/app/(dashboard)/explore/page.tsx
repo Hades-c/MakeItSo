@@ -846,24 +846,15 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
 
                       {prof.rmpTags && prof.rmpTags.length > 0 && (
                         <div className="flex flex-wrap gap-1">
-                          {prof.rmpTags.slice(0, 5).map((tag, idx) => {
-                            const tagColors = [
-                              "bg-blue-50 text-blue-600 border-blue-200",
-                              "bg-purple-50 text-purple-600 border-purple-200",
-                              "bg-emerald-50 text-emerald-600 border-emerald-200",
-                              "bg-amber-50 text-amber-600 border-amber-200",
-                              "bg-rose-50 text-rose-600 border-rose-200",
-                            ];
-                            return (
+                          {prof.rmpTags.slice(0, 5).map((tag) => (
                               <span
                                 key={tag}
-                                className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border ${tagColors[idx % tagColors.length]}`}
+                                className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-600 border-gray-200"
                               >
                                 <MessageSquare className="h-2.5 w-2.5" />
                                 {tag}
                               </span>
-                            );
-                          })}
+                            ))}
                         </div>
                       )}
 
@@ -898,7 +889,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4 md:pl-[240px]"
+                            className="fixed inset-0 md:left-[240px] z-50 flex items-start justify-center pt-[6vh] px-4"
                           >
                             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowProfModal(false)} />
                             <motion.div
@@ -1011,20 +1002,11 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                                       <div className="bg-white rounded-xl border border-gray-100 p-6">
                                         <h3 className="text-sm font-semibold text-[#111111] mb-3">Student Tags</h3>
                                         <div className="flex flex-wrap gap-2">
-                                          {prof.rmpTags.map((tag, idx) => {
-                                            const tc = [
-                                              "bg-blue-50 text-blue-700 border-blue-200",
-                                              "bg-purple-50 text-purple-700 border-purple-200",
-                                              "bg-emerald-50 text-emerald-700 border-emerald-200",
-                                              "bg-amber-50 text-amber-700 border-amber-200",
-                                              "bg-rose-50 text-rose-700 border-rose-200",
-                                            ];
-                                            return (
-                                              <span key={tag} className={`text-sm px-3 py-1 rounded-lg border ${tc[idx % tc.length]}`}>
+                                          {prof.rmpTags.map((tag) => (
+                                              <span key={tag} className="text-sm px-3 py-1 rounded-lg border bg-gray-50 text-gray-600 border-gray-200">
                                                 {tag}
                                               </span>
-                                            );
-                                          })}
+                                            ))}
                                         </div>
                                       </div>
                                     )}
@@ -1164,7 +1146,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4 md:pl-[240px]"
+                    className="fixed inset-0 md:left-[240px] z-50 flex items-start justify-center pt-[6vh] px-4"
                   >
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowAiModal(false)} />
                     <motion.div
