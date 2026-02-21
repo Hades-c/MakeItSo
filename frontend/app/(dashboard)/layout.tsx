@@ -2,12 +2,22 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Link from "next/link";
-import { BookOpen, LayoutDashboard, GraduationCap, Briefcase, User } from "lucide-react";
+import {
+  Briefcase,
+  Compass,
+  GraduationCap,
+  LayoutDashboard,
+  Map,
+  Sparkles,
+  User,
+} from "lucide-react";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/courses", label: "Courses", icon: GraduationCap },
-  { href: "/career", label: "Career", icon: Briefcase },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/explore", label: "Explore Courses", icon: Compass },
+  { href: "/career", label: "Career Planner", icon: Briefcase },
+  { href: "/roadmap", label: "My Roadmap", icon: Map },
+  { href: "/courses", label: "Course Plan", icon: GraduationCap },
   { href: "/profile", label: "Profile", icon: User },
 ];
 
@@ -19,47 +29,68 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-gray-50/50">
       {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 border-r bg-white px-4 py-6">
-        <Link href="/dashboard" className="flex items-center gap-2 text-primary font-bold text-xl mb-8 px-2">
-          <BookOpen className="h-6 w-6" />
-          MakeItSo
-        </Link>
-        <nav className="flex flex-col gap-1 flex-1">
+      <aside className="hidden md:flex flex-col w-[260px] border-r bg-white/80 backdrop-blur-sm">
+        <div className="px-6 py-5 border-b">
+          <Link href="/dashboard" className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-lg font-bold tracking-tight">MakeItSo</span>
+          </Link>
+        </div>
+
+        <nav className="flex flex-col gap-0.5 px-3 py-4 flex-1">
           {navItems.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-gray-100/80 transition-all duration-200"
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-[18px] w-[18px]" />
               {label}
             </Link>
           ))}
         </nav>
-        <div className="border-t pt-4 px-2">
-          <p className="text-xs text-muted-foreground truncate">{session.user?.name}</p>
-          <p className="text-xs text-muted-foreground truncate">{session.user?.email}</p>
+
+        <div className="border-t px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center">
+              <span className="text-xs font-semibold text-violet-700">
+                {session.user?.name?.charAt(0)?.toUpperCase() || "?"}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{session.user?.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{session.user?.email}</p>
+            </div>
+          </div>
         </div>
       </aside>
 
       {/* Mobile top nav */}
       <div className="flex flex-col flex-1 min-w-0">
-        <header className="md:hidden border-b bg-white px-4 py-3 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2 text-primary font-bold">
-            <BookOpen className="h-5 w-5" />
-            MakeItSo
+        <header className="md:hidden border-b bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
+              <Sparkles className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="font-bold">MakeItSo</span>
           </Link>
-          <nav className="flex gap-3">
-            {navItems.map(({ href, icon: Icon }) => (
-              <Link key={href} href={href} className="text-muted-foreground hover:text-foreground">
+          <nav className="flex gap-1">
+            {navItems.slice(0, 5).map(({ href, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-gray-100 transition-colors"
+              >
                 <Icon className="h-5 w-5" />
               </Link>
             ))}
           </nav>
         </header>
-        <main className="flex-1 p-6 bg-gray-50">{children}</main>
+        <main className="flex-1 p-4 md:p-8 overflow-auto">{children}</main>
       </div>
     </div>
   );

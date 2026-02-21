@@ -1,172 +1,161 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/models/User";
-import CoursePlan from "@/models/CoursePlan";
-import CareerGoal from "@/models/CareerGoal";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
+"use client";
+
+import { useSession } from "next-auth/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { BookOpen, Briefcase, CheckCircle, GraduationCap } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  Briefcase,
+  Compass,
+  GraduationCap,
+  Map,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as { id: string })?.id;
-
-  await connectToDatabase();
-
-  const [user, plan, goals] = await Promise.all([
-    User.findById(userId).lean(),
-    CoursePlan.findOne({ userId }).lean(),
-    CareerGoal.find({ userId }).lean(),
-  ]);
-
-  const creditsCompleted = plan?.totalCreditsCompleted ?? 0;
-  const creditsRequired = user?.totalCreditsRequired ?? 128;
-  const creditsProgress = Math.round((creditsCompleted / creditsRequired) * 100);
-
-  const completedMilestones = goals.flatMap((g) => g.milestones.filter((m) => m.completed)).length;
-  const totalMilestones = goals.flatMap((g) => g.milestones).length;
-
-  const currentSemesterCourses = plan?.plannedCourses.filter(
-    (c) => c.status === "in-progress"
-  ) ?? [];
+export default function DashboardPage() {
+  const { data: session } = useSession();
+  const firstName = session?.user?.name?.split(" ")[0] || "there";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-8">
+      {/* Welcome header */}
       <div>
-        <h1 className="text-2xl font-bold">
-          Welcome back, {session?.user?.name?.split(" ")[0]}
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          Welcome back, {firstName}
         </h1>
-        <p className="text-muted-foreground">
-          {user?.major ?? "Undecided"} · {user?.currentYear} · Class of {user?.graduationYear}
+        <p className="text-muted-foreground mt-1">
+          Let&apos;s keep building your academic and career plan.
         </p>
       </div>
 
-      {/* Stats row */}
+      {/* Quick Actions */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Link href="/explore" className="group">
+          <Card className="h-full border-2 border-transparent hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300">
+            <CardContent className="p-6 flex items-start gap-5">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+                <Compass className="h-6 w-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-lg mb-1 group-hover:text-emerald-700 transition-colors">
+                  Explore Courses
+                  <ArrowRight className="inline ml-2 h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Find your next courses based on your interests and see how they connect to careers.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/career" className="group">
+          <Card className="h-full border-2 border-transparent hover:border-violet-200 hover:shadow-lg hover:shadow-violet-500/5 transition-all duration-300">
+            <CardContent className="p-6 flex items-start gap-5">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
+                <Briefcase className="h-6 w-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-lg mb-1 group-hover:text-violet-700 transition-colors">
+                  Career Planner
+                  <ArrowRight className="inline ml-2 h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Choose a career path and get a complete plan — courses, people, and opportunities.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* Features grid */}
       <div className="grid sm:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Degree Progress</CardDescription>
-            <CardTitle className="text-3xl">{creditsProgress}%</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Progress value={creditsProgress} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-2">
-              {creditsCompleted} / {creditsRequired} credits
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/roadmap" className="group">
+          <Card className="h-full hover:shadow-md transition-all duration-200 hover:border-gray-300">
+            <CardHeader className="pb-3">
+              <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center mb-2">
+                <Map className="h-5 w-5 text-blue-600" />
+              </div>
+              <CardTitle className="text-base group-hover:text-blue-700 transition-colors">
+                My Roadmap
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                AI-generated semester-by-semester course sequence optimized for your major.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Courses Planned</CardDescription>
-            <CardTitle className="text-3xl">{plan?.plannedCourses.length ?? 0}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {currentSemesterCourses.length} in progress this semester
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/courses" className="group">
+          <Card className="h-full hover:shadow-md transition-all duration-200 hover:border-gray-300">
+            <CardHeader className="pb-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                <GraduationCap className="h-5 w-5 text-amber-600" />
+              </div>
+              <CardTitle className="text-base group-hover:text-amber-700 transition-colors">
+                Course Plan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Manage your 4-year course plan, track credits, and monitor degree progress.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Career Milestones</CardDescription>
-            <CardTitle className="text-3xl">{completedMilestones}/{totalMilestones}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {goals.length} career goal{goals.length !== 1 ? "s" : ""} tracked
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/profile" className="group">
+          <Card className="h-full hover:shadow-md transition-all duration-200 hover:border-gray-300">
+            <CardHeader className="pb-3">
+              <div className="h-10 w-10 rounded-lg bg-rose-50 flex items-center justify-center mb-2">
+                <BookOpen className="h-5 w-5 text-rose-600" />
+              </div>
+              <CardTitle className="text-base group-hover:text-rose-700 transition-colors">
+                Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Update your major, interests, and academic info.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Current courses */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <GraduationCap className="h-4 w-4" />
-              Current Courses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {currentSemesterCourses.length === 0 ? (
-              <div className="text-center py-6">
-                <BookOpen className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-3">No courses marked as in-progress</p>
-                <Button size="sm" asChild>
-                  <Link href="/courses">Plan Courses</Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {currentSemesterCourses.map((course) => (
-                  <div key={course.courseCode} className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{course.courseCode}</p>
-                      <p className="text-xs text-muted-foreground">{course.courseName}</p>
-                    </div>
-                    <Badge variant="secondary">{course.credits} cr</Badge>
-                  </div>
-                ))}
-                <Button size="sm" variant="ghost" className="w-full mt-2" asChild>
-                  <Link href="/courses">View all courses</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Career goals */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Briefcase className="h-4 w-4" />
-              Career Goals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {goals.length === 0 ? (
-              <div className="text-center py-6">
-                <Briefcase className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-3">No career goals set yet</p>
-                <Button size="sm" asChild>
-                  <Link href="/career">Set a Goal</Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {goals.slice(0, 2).map((goal) => {
-                  const done = goal.milestones.filter((m) => m.completed).length;
-                  const total = goal.milestones.length;
-                  const pct = total ? Math.round((done / total) * 100) : 0;
-                  return (
-                    <div key={goal._id?.toString()}>
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="text-sm font-medium">{goal.targetRole}</p>
-                        <span className="text-xs text-muted-foreground">{pct}%</span>
-                      </div>
-                      <Progress value={pct} className="h-1.5" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        <CheckCircle className="inline h-3 w-3 mr-1" />
-                        {done}/{total} milestones
-                      </p>
-                    </div>
-                  );
-                })}
-                <Button size="sm" variant="ghost" className="w-full" asChild>
-                  <Link href="/career">View all goals</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* AI Insight card */}
+      <Card className="relative overflow-hidden border-violet-100">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-violet-100/50 to-transparent rounded-full -translate-y-1/2 translate-x-1/4" />
+        <CardContent className="relative p-6 flex items-start gap-5">
+          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0 shadow-md shadow-violet-500/20">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold mb-1">Powered by AI</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              MakeItSo uses AI to analyze Davidson&apos;s course catalog, career data, and alumni patterns
+              to give you personalized recommendations you won&apos;t find anywhere else.
+            </p>
+            <div className="flex gap-3">
+              <Button size="sm" className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700" asChild>
+                <Link href="/explore">
+                  <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
+                  Explore Courses
+                </Link>
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/career">Plan My Career</Link>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
