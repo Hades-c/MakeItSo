@@ -378,10 +378,10 @@ export default function CoursesPage() {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white border border-red-200 rounded-xl p-8 text-center">
           <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">
+          <h2 className="text-lg font-semibold text-[#111111] mb-1">
             Failed to load your course plan
           </h2>
-          <p className="text-sm text-gray-500 mb-4">{error}</p>
+          <p className="text-sm text-[#555555] mb-4">{error}</p>
           <Button
             variant="outline"
             onClick={() => {
@@ -410,19 +410,19 @@ export default function CoursesPage() {
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
         >
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-lg shadow-rose-500/20">
+            <h1 className="text-2xl sm:text-3xl font-bold font-serif tracking-tight flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-davidson flex items-center justify-center">
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
               Course Plan
             </h1>
-            <p className="text-gray-500 mt-1 text-sm">
+            <p className="text-[#555555] mt-1 text-sm">
               Plan your path to graduation at Davidson.
             </p>
           </div>
           <Button
             onClick={() => setShowAddModal(true)}
-            className="bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+            className="bg-davidson hover:bg-davidson-dark text-white shadow-sm"
           >
             <Plus className="h-4 w-4 mr-1.5" />
             Add Course
@@ -453,11 +453,11 @@ export default function CoursesPage() {
         <motion.div variants={fadeIn}>
           <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-rose-500" />
+              <h2 className="text-sm font-semibold text-[#111111] flex items-center gap-2">
+                <GraduationCap className="h-4 w-4 text-davidson" />
                 Graduation Progress
               </h2>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-[#555555]">
                 {REQUIRED_CREDITS} credits required ({REQUIRED_COURSES} courses)
               </span>
             </div>
@@ -465,7 +465,7 @@ export default function CoursesPage() {
             {/* Progress bar */}
             <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden mb-4">
               <motion.div
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-rose-500 to-rose-400 rounded-full"
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-davidson to-davidson rounded-full"
                 initial={{ width: 0 }}
                 animate={{ width: `${stats.progressPercent}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
@@ -499,8 +499,8 @@ export default function CoursesPage() {
                 label="Remaining"
                 courses={Math.max(0, REQUIRED_COURSES - stats.activeCount)}
                 credits={Math.max(0, REQUIRED_CREDITS - stats.activeCredits)}
-                accent="text-rose-600"
-                bg="bg-rose-50"
+                accent="text-davidson"
+                bg="bg-davidson-light"
               />
             </div>
           </div>
@@ -513,16 +513,16 @@ export default function CoursesPage() {
               <div className="h-14 w-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
                 <BookOpen className="h-7 w-7 text-gray-300" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">
+              <h2 className="text-lg font-semibold text-[#111111] mb-1">
                 No courses in your plan yet
               </h2>
-              <p className="text-sm text-gray-500 mb-5 max-w-md mx-auto">
+              <p className="text-sm text-[#555555] mb-5 max-w-md mx-auto">
                 Start building your four-year course plan. Search Davidson's catalog and add
                 courses to each semester.
               </p>
               <Button
                 onClick={() => setShowAddModal(true)}
-                className="bg-rose-600 hover:bg-rose-700 text-white"
+                className="bg-davidson hover:bg-davidson-dark text-white"
               >
                 <Plus className="h-4 w-4 mr-1.5" />
                 Add Your First Course
@@ -538,8 +538,8 @@ export default function CoursesPage() {
               {/* Semester header */}
               <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-rose-400" />
-                  <h3 className="font-semibold text-sm text-gray-900">{semKey}</h3>
+                  <Calendar className="h-4 w-4 text-davidson" />
+                  <h3 className="font-semibold text-sm text-[#111111]">{semKey}</h3>
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     {courses.length} {courses.length === 1 ? "course" : "courses"}
                   </Badge>
@@ -576,10 +576,10 @@ export default function CoursesPage() {
                         {/* Course info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-[#111111]">
                               {pc.courseCode}
                             </span>
-                            <span className="text-sm text-gray-500 truncate">
+                            <span className="text-sm text-[#555555] truncate">
                               {pc.courseName}
                             </span>
                           </div>
@@ -670,7 +670,7 @@ export default function CoursesPage() {
             >
               {/* Modal header */}
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-                <h2 className="text-base font-semibold text-gray-900">Add Course to Plan</h2>
+                <h2 className="text-base font-semibold text-[#111111]">Add Course to Plan</h2>
                 <button
                   onClick={() => {
                     setShowAddModal(false);
@@ -691,7 +691,7 @@ export default function CoursesPage() {
                     onChange={(e) =>
                       setAddSemester(e.target.value as "Fall" | "Spring" | "Summer")
                     }
-                    className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-400"
+                    className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson"
                   >
                     <option value="Fall">Fall</option>
                     <option value="Spring">Spring</option>
@@ -703,7 +703,7 @@ export default function CoursesPage() {
                   <select
                     value={addYear}
                     onChange={(e) => setAddYear(Number(e.target.value))}
-                    className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-400"
+                    className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson"
                   >
                     {yearOptions.map((y) => (
                       <option key={y} value={y}>
@@ -724,7 +724,7 @@ export default function CoursesPage() {
                     value={courseSearch}
                     onChange={(e) => setCourseSearch(e.target.value)}
                     autoFocus
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-400 transition-colors"
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson transition-colors"
                   />
                 </div>
               </div>
@@ -752,12 +752,12 @@ export default function CoursesPage() {
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-900">
+                              <span className="text-sm font-medium text-[#111111]">
                                 {c.code}
                               </span>
                               <span className="text-xs text-gray-400">{c.department}</span>
                             </div>
-                            <p className="text-xs text-gray-500 truncate">{c.name}</p>
+                            <p className="text-xs text-[#555555] truncate">{c.name}</p>
                           </div>
 
                           {alreadyAdded ? (
@@ -774,7 +774,7 @@ export default function CoursesPage() {
                               variant="outline"
                               disabled={isAdding}
                               onClick={() => addCourse(c._id)}
-                              className="h-7 text-xs px-2.5 border-gray-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200"
+                              className="h-7 text-xs px-2.5 border-gray-200 hover:bg-davidson-light hover:text-davidson hover:border-davidson/20"
                             >
                               {isAdding ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -821,10 +821,10 @@ export default function CoursesPage() {
               variants={modalContent}
               className="relative bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-5 z-10"
             >
-              <h2 className="text-base font-semibold text-gray-900 mb-1">
+              <h2 className="text-base font-semibold text-[#111111] mb-1">
                 Mark as Completed
               </h2>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-[#555555] mb-4">
                 Set a grade for{" "}
                 <span className="font-medium text-gray-700">
                   {gradeModal.courseCode}
@@ -838,7 +838,7 @@ export default function CoursesPage() {
                     onClick={() => setSelectedGrade(g)}
                     className={`py-1.5 text-xs font-medium rounded-md border transition-colors ${
                       selectedGrade === g
-                        ? "bg-rose-50 border-rose-300 text-rose-700"
+                        ? "bg-davidson-light border-davidson/30 text-davidson"
                         : "border-gray-200 text-gray-600 hover:bg-gray-50"
                     }`}
                   >
@@ -859,7 +859,7 @@ export default function CoursesPage() {
                   Cancel
                 </Button>
                 <Button
-                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
+                  className="flex-1 bg-davidson hover:bg-davidson-dark text-white"
                   disabled={!selectedGrade || updatingId === gradeModal._id}
                   onClick={setGrade}
                 >

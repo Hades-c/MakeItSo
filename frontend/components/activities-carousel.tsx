@@ -36,12 +36,12 @@ const DAVIDSON_ACTIVITIES: Activity[] = [
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Tradition: "text-amber-600",
-  Social: "text-blue-600",
+  Tradition: "text-davidson",
+  Social: "text-navy",
   Outdoor: "text-emerald-600",
   Arts: "text-purple-600",
-  Athletics: "text-rose-600",
-  Local: "text-orange-600",
+  Athletics: "text-davidson",
+  Local: "text-amber-600",
 };
 
 export function ActivitiesCarousel() {

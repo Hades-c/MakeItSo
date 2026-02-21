@@ -217,10 +217,10 @@ export default function ExplorePage() {
     >
       {/* Header */}
       <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-gray-900">
+        <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
           Explore Courses
         </h1>
-        <p className="text-sm text-gray-500 mt-1.5 max-w-xl">
+        <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
           Discover Davidson&apos;s course catalog and see how courses connect to
           your career goals.
           {liveCourses.length > 0 && (
@@ -256,7 +256,7 @@ export default function ExplorePage() {
             }}
             className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
               step === s.key
-                ? "text-gray-900"
+                ? "text-[#111111]"
                 : "text-gray-400 hover:text-gray-600"
             }`}
           >
@@ -264,7 +264,7 @@ export default function ExplorePage() {
             {step === s.key && (
               <motion.div
                 layoutId="explore-tab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 rounded-full"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-davidson rounded-full"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
               />
             )}
@@ -276,10 +276,10 @@ export default function ExplorePage() {
       {step === "interests" && (
         <div className="space-y-6">
           <div>
-            <h2 className="font-serif text-lg font-semibold text-gray-900 mb-1">
+            <h2 className="font-serif text-lg font-semibold text-[#111111] mb-1">
               What areas interest you?
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[#555555]">
               Select one or more subject areas to filter the catalog.
             </p>
           </div>
@@ -291,7 +291,7 @@ export default function ExplorePage() {
                 onClick={() => toggleArea(area.id)}
                 className={`p-3.5 rounded-lg border text-left transition-all duration-150 ${
                   selectedAreas.includes(area.id)
-                    ? "bg-gray-900 text-white border-gray-900"
+                    ? "bg-davidson text-white border-davidson"
                     : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
                 }`}
               >
@@ -315,7 +315,7 @@ export default function ExplorePage() {
             <div className="flex gap-3 pt-2">
               <Button
                 onClick={() => setStep("browse")}
-                className="bg-gray-900 hover:bg-gray-800 text-white"
+                className="bg-davidson hover:bg-davidson-dark text-white"
               >
                 Browse Courses
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -324,7 +324,7 @@ export default function ExplorePage() {
                 variant="outline"
                 onClick={getRecommendations}
                 disabled={loading}
-                className="border-gray-200"
+                className="border-navy/30 text-navy hover:bg-navy hover:text-white"
               >
                 {loading ? (
                   <>
@@ -378,7 +378,7 @@ export default function ExplorePage() {
               variant="outline"
               onClick={getRecommendations}
               disabled={loading}
-              className="shrink-0 border-gray-200"
+              className="shrink-0 border-navy/30 text-navy hover:bg-navy hover:text-white"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -440,10 +440,10 @@ export default function ExplorePage() {
         <div className="space-y-5">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-serif text-lg font-semibold text-gray-900">
+              <h2 className="font-serif text-lg font-semibold text-[#111111]">
                 AI-Powered Recommendations
               </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-[#555555] mt-0.5">
                 Based on:{" "}
                 {SUBJECT_AREAS.filter((a) => selectedAreas.includes(a.id))
                   .map((a) => a.label)
@@ -469,13 +469,13 @@ export default function ExplorePage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-sm font-semibold text-gray-900">
+                      <span className="font-mono text-sm font-semibold text-[#111111]">
                         {rec.code}
                       </span>
                       <span
                         className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
                           rec.priority === "high"
-                            ? "bg-gray-900 text-white"
+                            ? "bg-davidson text-white"
                             : rec.priority === "medium"
                               ? "bg-gray-100 text-gray-600"
                               : "bg-gray-50 text-gray-400"
@@ -488,10 +488,10 @@ export default function ExplorePage() {
                             : "Optional"}
                       </span>
                     </div>
-                    <h3 className="font-medium text-sm text-gray-900 mb-1">
+                    <h3 className="font-medium text-sm text-[#111111] mb-1">
                       {rec.name}
                     </h3>
-                    <p className="text-sm text-gray-500 mb-3">{rec.reason}</p>
+                    <p className="text-sm text-[#555555] mb-3">{rec.reason}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {rec.careerImpact?.map((career) => (
                         <span
@@ -512,7 +512,7 @@ export default function ExplorePage() {
                             key={n}
                             className={`h-1.5 w-3 rounded-full ${
                               n <= rec.difficulty
-                                ? "bg-gray-400"
+                                ? "bg-navy"
                                 : "bg-gray-100"
                             }`}
                           />
@@ -570,11 +570,11 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-sm font-semibold text-gray-900">
+            <span className="font-mono text-sm font-semibold text-[#111111]">
               {course.code}
             </span>
             {course.gradRequirements.length > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
                 {course.gradRequirements.join(", ")}
               </span>
             )}
@@ -584,7 +584,7 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
               </span>
             )}
           </div>
-          <h3 className="font-medium text-sm text-gray-900 mb-0.5">
+          <h3 className="font-medium text-sm text-[#111111] mb-0.5">
             {course.name}
           </h3>
           <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -598,7 +598,7 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
           {expanded && (
             <div className="mt-4 space-y-4 animate-fade-in">
               {shortDesc && (
-                <p className="text-sm text-gray-500 leading-relaxed">
+                <p className="text-sm text-[#555555] leading-relaxed">
                   {shortDesc}
                 </p>
               )}
@@ -623,7 +623,7 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
                 {course.schedule && course.schedule !== "TBA" && (
                   <div className="flex items-center gap-2">
                     <BookOpen className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-[#555555]">
                       {course.schedule}
                     </span>
                   </div>
@@ -631,7 +631,7 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
                 {course.location && course.location !== "TBA" && (
                   <div className="flex items-center gap-2">
                     <Filter className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-[#555555]">
                       {course.location}
                     </span>
                   </div>
@@ -706,16 +706,16 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-sm font-semibold text-gray-900">
+            <span className="font-mono text-sm font-semibold text-[#111111]">
               {course.code}
             </span>
             {course.majorRequirements && course.majorRequirements.length > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
                 {formatMajorReq(course.majorRequirements)}
               </span>
             )}
           </div>
-          <h3 className="font-medium text-sm text-gray-900 mb-0.5">
+          <h3 className="font-medium text-sm text-[#111111] mb-0.5">
             {course.name}
           </h3>
           <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -726,7 +726,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
 
           {expanded && (
             <div className="mt-4 space-y-4 animate-fade-in">
-              <p className="text-sm text-gray-500 leading-relaxed">
+              <p className="text-sm text-[#555555] leading-relaxed">
                 {course.description}
               </p>
 
@@ -747,19 +747,19 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                       <div className="flex flex-wrap items-center gap-3 text-xs">
                         <span className="flex items-center gap-1">
                           <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                          <span className="font-semibold text-sm text-gray-900">
+                          <span className="font-semibold text-sm text-[#111111]">
                             {prof.rmpRating}
                           </span>
                           <span className="text-gray-400">/5</span>
                         </span>
                         {prof.rmpWouldTakeAgain != null && (
-                          <span className="flex items-center gap-1 text-gray-500">
+                          <span className="flex items-center gap-1 text-[#555555]">
                             <ThumbsUp className="h-3 w-3" />
                             {prof.rmpWouldTakeAgain}% would take again
                           </span>
                         )}
                         {prof.rmpDifficulty != null && (
-                          <span className="flex items-center gap-1 text-gray-500">
+                          <span className="flex items-center gap-1 text-[#555555]">
                             <Zap className="h-3 w-3" />
                             {prof.rmpDifficulty} difficulty
                           </span>
@@ -814,7 +814,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                           {prof.rmpTags.slice(0, 5).map((tag) => (
                             <span
                               key={tag}
-                              className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500"
+                              className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-[#555555]"
                             >
                               <MessageSquare className="h-2.5 w-2.5" />
                               {tag}
@@ -875,14 +875,14 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                 {course.prerequisites.length > 0 && (
                   <div className="flex items-center gap-2">
                     <BookOpen className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-[#555555]">
                       Prerequisites: {course.prerequisites.join(", ")}
                     </span>
                   </div>
                 )}
                 <div className="flex items-center gap-2">
                   <Filter className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-[#555555]">
                     Offered: {course.offered.join(", ")}
                   </span>
                 </div>
@@ -902,7 +902,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                         </span>
                         <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-gray-400"
+                            className="h-full rounded-full bg-davidson"
                             style={{ width: `${relevance * 100}%` }}
                           />
                         </div>
@@ -920,7 +920,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                 <button
                   onClick={fetchAiInsights}
                   disabled={loadingInsights || !!aiInsights}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 disabled:text-gray-300 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-navy hover:text-davidson disabled:text-gray-300 transition-colors"
                 >
                   {loadingInsights ? (
                     <>
@@ -945,14 +945,14 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
               {aiInsights && (
                 <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4 space-y-3">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-gray-500" />
+                    <Sparkles className="h-3.5 w-3.5 text-davidson" />
                     <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
                       AI Analysis
                     </span>
                   </div>
 
                   {aiInsights.courseHighlights && (
-                    <p className="text-sm text-gray-500 leading-relaxed">
+                    <p className="text-sm text-[#555555] leading-relaxed">
                       {aiInsights.courseHighlights}
                     </p>
                   )}
@@ -1004,7 +1004,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                           {aiInsights.careerApplications.map((app) => (
                             <li
                               key={app}
-                              className="text-[11px] text-gray-500 flex items-start gap-1.5"
+                              className="text-[11px] text-[#555555] flex items-start gap-1.5"
                             >
                               <Briefcase className="h-3 w-3 mt-0.5 shrink-0 text-gray-300" />
                               {app}

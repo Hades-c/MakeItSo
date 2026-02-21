@@ -115,25 +115,25 @@ export default function CareerDetailPage() {
       {/* Breadcrumb */}
       <Link
         href="/career"
-        className="inline-flex items-center gap-1.5 text-xs tracking-wide uppercase text-gray-400 hover:text-[#111827] transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs tracking-wide uppercase text-gray-400 hover:text-davidson transition-colors"
       >
         <ArrowLeft className="h-3 w-3" /> Back to Careers
       </Link>
 
       {/* Header */}
       <div className="flex items-start gap-5">
-        <div className="h-11 w-11 rounded-lg border border-gray-200 bg-white flex items-center justify-center shrink-0">
-          <Icon className="h-5 w-5 text-[#111827]" />
+        <div className="h-11 w-11 rounded-lg border border-davidson/20 bg-davidson-light flex items-center justify-center shrink-0">
+          <Icon className="h-5 w-5 text-davidson" />
         </div>
         <div className="space-y-2">
-          <h1 className="font-serif text-3xl font-semibold tracking-tight text-[#111827] leading-tight">
+          <h1 className="font-serif text-3xl font-semibold tracking-tight text-navy leading-tight">
             {careerPath.title}
           </h1>
           <p className="text-sm text-gray-500 leading-relaxed max-w-2xl">
             {careerPath.description}
           </p>
           <div className="flex items-center gap-4 pt-1">
-            <span className="text-sm text-[#111827] font-medium tabular-nums">
+            <span className="text-sm text-davidson font-semibold tabular-nums">
               ${(careerPath.salaryRange.min / 1000).toFixed(0)}k &ndash; ${(careerPath.salaryRange.max / 1000).toFixed(0)}k
             </span>
             <span className="text-gray-200">|</span>
@@ -161,14 +161,14 @@ export default function CareerDetailPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`relative px-4 py-2.5 text-sm font-medium tracking-tight transition-colors ${
-              activeTab === tab.id ? "text-[#111827]" : "text-gray-400 hover:text-gray-600"
+              activeTab === tab.id ? "text-[#111111]" : "text-gray-400 hover:text-gray-600"
             }`}
           >
             {tab.label}
             {activeTab === tab.id && (
               <motion.div
                 layoutId="career-tab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#111827] rounded-full"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-davidson rounded-full"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
               />
             )}
@@ -181,7 +181,7 @@ export default function CareerDetailPage() {
         <div className="space-y-8">
           {/* Skills */}
           <section>
-            <h2 className="font-serif text-lg font-semibold text-[#111827] mb-4">Key Skills</h2>
+            <h2 className="font-serif text-lg font-semibold text-navy mb-4">Key Skills</h2>
             <div className="flex flex-wrap gap-2">
               {careerPath.skills.map((skill) => (
                 <span
@@ -196,7 +196,7 @@ export default function CareerDetailPage() {
 
           {/* What You'll Do */}
           <section>
-            <h2 className="font-serif text-lg font-semibold text-[#111827] mb-4">What You&apos;ll Do</h2>
+            <h2 className="font-serif text-lg font-semibold text-navy mb-4">What You&apos;ll Do</h2>
             <ul className="space-y-3">
               {careerPath.whatYoullDo.map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm text-gray-600 leading-relaxed">
@@ -209,7 +209,7 @@ export default function CareerDetailPage() {
 
           {/* Day in Life */}
           <section>
-            <h2 className="font-serif text-lg font-semibold text-[#111827] mb-3">A Day in the Life</h2>
+            <h2 className="font-serif text-lg font-semibold text-navy mb-3">A Day in the Life</h2>
             <p className="text-sm text-gray-500 leading-relaxed">{careerPath.dayInLife}</p>
           </section>
         </div>
@@ -227,7 +227,7 @@ export default function CareerDetailPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-3 mb-1">
-                      <span className="font-mono text-xs font-semibold text-[#111827] tracking-wide">
+                      <span className="font-mono text-xs font-semibold text-[#111111] tracking-wide">
                         {course.code}
                       </span>
                       <div className="flex gap-0.5">
@@ -235,13 +235,13 @@ export default function CareerDetailPage() {
                           <div
                             key={n}
                             className={`h-1 w-2 rounded-full ${
-                              n <= course.difficulty ? "bg-[#111827]" : "bg-gray-200"
+                              n <= course.difficulty ? "bg-davidson" : "bg-gray-200"
                             }`}
                           />
                         ))}
                       </div>
                     </div>
-                    <h3 className="font-medium text-sm text-[#111827]">{course.name}</h3>
+                    <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
                     <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.description}</p>
                     {course.bestProfessor && (
                       <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
@@ -271,13 +271,13 @@ export default function CareerDetailPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2.5 mb-0.5">
-                      <h3 className="font-medium text-sm text-[#111827]">{opp.title}</h3>
+                      <h3 className="font-medium text-sm text-[#111111]">{opp.title}</h3>
                       <span className="text-[10px] tracking-wide uppercase px-1.5 py-0.5 rounded border border-gray-200 text-gray-400 bg-white">
                         {opp.type}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 leading-relaxed">{opp.description}</p>
-                    <p className="text-xs text-[#111827] font-medium mt-1.5">{opp.timing}</p>
+                    <p className="text-xs text-[#111111] font-medium mt-1.5">{opp.timing}</p>
                   </div>
                 </div>
               </div>
@@ -292,19 +292,19 @@ export default function CareerDetailPage() {
           {/* Davidson Alumni */}
           {careerAlumni.length > 0 && (
             <section>
-              <h2 className="font-serif text-lg font-semibold text-[#111827] mb-5">
+              <h2 className="font-serif text-lg font-semibold text-navy mb-5">
                 Davidson Alumni in {careerPath.title}
               </h2>
               <div className="divide-y divide-gray-100">
                 {careerAlumni.map((alumni) => (
                   <div key={alumni.name} className="py-5 first:pt-0 last:pb-0">
                     <div className="flex items-start gap-4">
-                      <div className="h-10 w-10 rounded-full bg-[#111827] flex items-center justify-center text-white text-xs font-medium tracking-wide shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-davidson flex items-center justify-center text-white text-xs font-medium tracking-wide shrink-0">
                         {alumni.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-2">
-                          <h4 className="font-medium text-sm text-[#111827]">{alumni.name}</h4>
+                          <h4 className="font-medium text-sm text-[#111111]">{alumni.name}</h4>
                           <span className="text-xs text-gray-400">Class of {alumni.classYear}</span>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
@@ -316,14 +316,14 @@ export default function CareerDetailPage() {
                             href={alumni.linkedinSearch}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-medium border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-medium border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-davidson hover:text-davidson transition-colors"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Linkedin className="h-3 w-3" /> Find on LinkedIn
                           </a>
                           <button
                             onClick={() => generateEmail(alumni)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-medium border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-medium border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-davidson hover:text-davidson transition-colors"
                           >
                             <Mail className="h-3 w-3" /> Generate Cold Email
                           </button>
@@ -338,7 +338,7 @@ export default function CareerDetailPage() {
 
           {/* General Networking */}
           <section>
-            <h2 className="font-serif text-lg font-semibold text-[#111827] mb-5">Networking Tips</h2>
+            <h2 className="font-serif text-lg font-semibold text-navy mb-5">Networking Tips</h2>
             <div className="divide-y divide-gray-100">
               {careerPath.networking.map((contact, i) => (
                 <div key={i} className="py-4 first:pt-0 last:pb-0">
@@ -348,11 +348,11 @@ export default function CareerDetailPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2.5 mb-0.5">
-                        <h4 className="font-medium text-xs text-[#111827]">{contact.role}</h4>
+                        <h4 className="font-medium text-xs text-[#111111]">{contact.role}</h4>
                         <span className="text-[10px] tracking-wide uppercase text-gray-400">{contact.type}</span>
                       </div>
                       <p className="text-xs text-gray-500 leading-relaxed">{contact.description}</p>
-                      <p className="text-xs text-[#111827] font-medium mt-1.5">{contact.howToConnect}</p>
+                      <p className="text-xs text-[#111111] font-medium mt-1.5">{contact.howToConnect}</p>
                     </div>
                   </div>
                 </div>
@@ -381,7 +381,7 @@ export default function CareerDetailPage() {
             >
               <div className="flex items-start justify-between mb-5">
                 <div>
-                  <h3 className="font-serif text-lg font-semibold text-[#111827]">
+                  <h3 className="font-serif text-lg font-semibold text-navy">
                     Cold Email for {selectedAlumni.name}
                   </h3>
                   <p className="text-xs text-gray-500 mt-0.5">
@@ -398,7 +398,7 @@ export default function CareerDetailPage() {
 
               {emailLoading && (
                 <div className="flex items-center gap-2.5 py-10 justify-center">
-                  <Loader2 className="h-4 w-4 animate-spin text-[#111827]" />
+                  <Loader2 className="h-4 w-4 animate-spin text-davidson" />
                   <span className="text-sm text-gray-500">Generating personalized email...</span>
                 </div>
               )}
@@ -407,7 +407,7 @@ export default function CareerDetailPage() {
                 <div className="space-y-4">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <p className="text-[10px] font-medium tracking-widest uppercase text-gray-400 mb-1.5">Subject</p>
-                    <p className="text-sm font-medium text-[#111827]">{coldEmail.subject}</p>
+                    <p className="text-sm font-medium text-[#111111]">{coldEmail.subject}</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <p className="text-[10px] font-medium tracking-widest uppercase text-gray-400 mb-1.5">Body</p>
@@ -427,7 +427,7 @@ export default function CareerDetailPage() {
                   )}
                   <Button
                     onClick={copyEmail}
-                    className="w-full bg-[#111827] hover:bg-[#1f2937] text-white rounded-lg"
+                    className="w-full bg-davidson hover:bg-davidson-dark text-white rounded-lg"
                   >
                     {emailCopied ? (
                       <><Check className="mr-1.5 h-3.5 w-3.5" /> Copied</>

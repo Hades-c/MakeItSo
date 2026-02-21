@@ -37,10 +37,10 @@ export default function CareerPage() {
     >
       {/* Header */}
       <div className="pt-4 pb-10 border-b border-gray-200">
-        <h1 className="font-serif text-4xl tracking-tight text-[#111]">
+        <h1 className="font-serif text-4xl tracking-tight text-[#111111]">
           Career Paths
         </h1>
-        <p className="text-base text-gray-500 mt-3 max-w-2xl leading-relaxed">
+        <p className="text-base text-[#555555] mt-3 max-w-2xl leading-relaxed">
           Explore careers with curated courses, alumni connections, and
           AI-powered guidance tailored to your interests.
         </p>
@@ -55,7 +55,7 @@ export default function CareerPage() {
             placeholder="Search career paths..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-6 pr-4 py-2 bg-transparent border-b border-gray-300 text-sm text-[#111] placeholder:text-gray-400 focus:outline-none focus:border-[#111] transition-colors"
+            className="w-full pl-6 pr-4 py-2 bg-transparent border-b border-gray-300 text-sm text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-davidson transition-colors"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -65,8 +65,8 @@ export default function CareerPage() {
               onClick={() => setActiveFilter(f)}
               className={`px-4 py-1.5 text-xs tracking-wide transition-colors ${
                 activeFilter === f
-                  ? "bg-[#111] text-white"
-                  : "text-gray-500 hover:text-[#111] bg-gray-100 hover:bg-gray-200"
+                  ? "bg-davidson text-white"
+                  : "text-[#555555] hover:text-davidson bg-gray-100 hover:bg-gray-200"
               }`}
             >
               {f}
@@ -104,18 +104,18 @@ export default function CareerPage() {
                   <div className="group py-6 flex items-start gap-5 transition-colors hover:bg-gray-50/50 -mx-4 px-4 rounded">
                     {/* Icon */}
                     <div className="mt-1 shrink-0">
-                      <Icon className="h-5 w-5 text-gray-400 group-hover:text-[#111] transition-colors" />
+                      <Icon className="h-5 w-5 text-[#555555] group-hover:text-davidson transition-colors" />
                     </div>
 
                     {/* Content */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1.5">
-                        <h3 className="font-serif text-lg text-[#111] group-hover:underline underline-offset-4 decoration-gray-300">
+                        <h3 className="font-serif text-lg text-[#111111] group-hover:underline underline-offset-4 decoration-gray-300">
                           {career.title}
                         </h3>
-                        <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-[#111] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-davidson group-hover:translate-x-0.5 transition-all shrink-0" />
                       </div>
-                      <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-3">
+                      <p className="text-sm text-[#555555] leading-relaxed line-clamp-2 mb-3">
                         {career.description}
                       </p>
                       <div className="flex items-center gap-4">
@@ -128,7 +128,7 @@ export default function CareerPage() {
                           {career.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="text-[11px] px-2 py-0.5 text-gray-500 bg-gray-100"
+                              className="text-[11px] px-2 py-0.5 text-[#555555] bg-gray-100 border border-gray-200"
                             >
                               {tag}
                             </span>
@@ -148,13 +148,13 @@ export default function CareerPage() {
       {filtered.length === 0 && (
         <div className="text-center py-20">
           <SlidersHorizontal className="h-6 w-6 text-gray-300 mx-auto mb-4" />
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-[#555555] mb-4">
             No careers match your current criteria.
           </p>
           <Button
             variant="outline"
             size="sm"
-            className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50"
+            className="text-xs border-navy text-navy hover:bg-navy hover:text-white transition-colors"
             onClick={() => {
               setActiveFilter("All");
               setSearchQuery("");

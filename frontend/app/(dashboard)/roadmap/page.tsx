@@ -76,10 +76,10 @@ const CLASS_YEARS = ["Freshman", "Sophomore", "Junior", "Senior"] as const;
 
 const TYPE_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   "major-requirement": {
-    bg: "bg-rose-50",
-    text: "text-rose-700",
-    border: "border-rose-200",
-    dot: "bg-rose-400",
+    bg: "bg-davidson-light",
+    text: "text-davidson",
+    border: "border-davidson/20",
+    dot: "bg-davidson",
   },
   elective: {
     bg: "bg-emerald-50",
@@ -88,10 +88,10 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; border: string; do
     dot: "bg-emerald-400",
   },
   distribution: {
-    bg: "bg-sky-50",
-    text: "text-sky-700",
-    border: "border-sky-200",
-    dot: "bg-sky-400",
+    bg: "bg-navy/5",
+    text: "text-navy",
+    border: "border-navy/20",
+    dot: "bg-navy",
   },
 };
 
@@ -227,8 +227,8 @@ function ConfirmDialog({
               <AlertTriangle className="h-5 w-5 text-rose-500" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">{title}</h3>
-              <p className="text-sm text-gray-500 mt-1">{description}</p>
+              <h3 className="font-semibold text-[#111111]">{title}</h3>
+              <p className="text-sm text-[#555555] mt-1">{description}</p>
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -238,7 +238,7 @@ function ConfirmDialog({
             <Button
               size="sm"
               onClick={onConfirm}
-              className="bg-rose-600 hover:bg-rose-700 text-white"
+              className="bg-davidson hover:bg-davidson-dark text-white"
             >
               {confirmLabel}
             </Button>
@@ -471,10 +471,10 @@ export default function RoadmapPage() {
         {/* Header                                                            */}
         {/* ----------------------------------------------------------------- */}
         <div>
-          <h1 className="font-serif text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
             My Roadmap
           </h1>
-          <p className="text-gray-500 mt-1.5">
+          <p className="text-[#555555] mt-1.5">
             AI-generated semester-by-semester course plan tailored to your major and interests.
           </p>
         </div>
@@ -492,11 +492,11 @@ export default function RoadmapPage() {
             {/* Major selection */}
             <div className="rounded-xl border border-gray-100 bg-white p-6 space-y-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5 text-rose-500" />
+                <h2 className="text-lg font-semibold text-[#111111] flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-davidson" />
                   Select Your Major
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-[#555555] mt-1">
                   Choose your intended major to build a personalized course plan.
                 </p>
               </div>
@@ -505,7 +505,7 @@ export default function RoadmapPage() {
                 <select
                   value={selectedMajor}
                   onChange={(e) => setSelectedMajor(e.target.value)}
-                  className="w-full appearance-none rounded-lg border border-gray-200 bg-white pl-4 pr-10 py-3 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-400 transition-colors cursor-pointer"
+                  className="w-full appearance-none rounded-lg border border-gray-200 bg-white pl-4 pr-10 py-3 text-sm font-medium text-[#111111] focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson transition-colors cursor-pointer"
                 >
                   <option value="">Select a major...</option>
                   {MAJORS.filter((m) => m !== "Undecided").map((major) => (
@@ -519,11 +519,11 @@ export default function RoadmapPage() {
             {/* Class year & interests */}
             <div className="rounded-xl border border-gray-100 bg-white p-6 space-y-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-rose-500" />
+                <h2 className="text-lg font-semibold text-[#111111] flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-davidson" />
                   Your Details
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-[#555555] mt-1">
                   Help us personalize your roadmap even further.
                 </p>
               </div>
@@ -538,8 +538,8 @@ export default function RoadmapPage() {
                       onClick={() => setClassYear(yr)}
                       className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all duration-200 ${
                         classYear === yr
-                          ? "bg-rose-600 text-white border-rose-600 shadow-sm"
-                          : "border-gray-100 bg-white text-gray-700 hover:border-rose-200 hover:bg-rose-50/40"
+                          ? "bg-davidson text-white border-davidson shadow-sm"
+                          : "border-gray-100 bg-white text-gray-700 hover:border-davidson/30 hover:bg-davidson-light"
                       }`}
                     >
                       {yr}
@@ -558,7 +558,7 @@ export default function RoadmapPage() {
                   value={interests}
                   onChange={(e) => setInterests(e.target.value)}
                   placeholder="e.g. machine learning, environmental policy, creative writing"
-                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-300 transition-colors"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-[#111111] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson transition-colors"
                 />
                 <p className="text-xs text-gray-400">
                   Separate multiple interests with commas. These help the AI suggest relevant electives.
@@ -578,7 +578,7 @@ export default function RoadmapPage() {
                     step={1}
                     value={specificity}
                     onChange={(e) => setSpecificity(Number(e.target.value))}
-                    className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-900 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gray-900 [&::-webkit-slider-thumb]:shadow-sm"
+                    className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-davidson [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-davidson [&::-webkit-slider-thumb]:shadow-sm"
                   />
                   <div className="flex justify-between text-[11px] text-gray-400">
                     <span>General</span>
@@ -605,7 +605,7 @@ export default function RoadmapPage() {
               >
                 <Button
                   onClick={generateRoadmap}
-                  className="bg-gray-900 hover:bg-gray-800 text-white shadow-sm h-11 px-6"
+                  className="bg-davidson hover:bg-davidson-dark text-white shadow-sm h-11 px-6"
                 >
                   <Sparkles className="mr-2 h-4 w-4" />
                   Generate My Roadmap
@@ -646,16 +646,16 @@ export default function RoadmapPage() {
           <div className="space-y-5">
             <div className="rounded-xl border border-gray-100 bg-white p-10 text-center">
               <motion.div
-                className="h-16 w-16 rounded-2xl bg-gradient-to-br from-rose-100 to-rose-50 flex items-center justify-center mx-auto mb-4"
+                className="h-16 w-16 rounded-2xl bg-gradient-to-br from-davidson-light to-white flex items-center justify-center mx-auto mb-4"
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
               >
-                <Loader2 className="h-8 w-8 text-rose-500 animate-spin" />
+                <Loader2 className="h-8 w-8 text-davidson animate-spin" />
               </motion.div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              <h3 className="text-lg font-semibold text-[#111111] mb-1">
                 Building Your Roadmap
               </h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">
+              <p className="text-sm text-[#555555] max-w-md mx-auto">
                 Our AI is analyzing {selectedMajor} requirements and crafting your
                 personalized semester-by-semester plan...
               </p>
@@ -679,7 +679,7 @@ export default function RoadmapPage() {
               <div className="flex items-start gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="font-serif text-lg font-bold text-gray-900">
+                    <h2 className="font-serif text-lg font-bold text-[#111111]">
                       {savedMeta?.major} Roadmap
                     </h2>
                     {roadmap.estimatedGraduation && (
@@ -691,7 +691,7 @@ export default function RoadmapPage() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                  <div className="flex items-center gap-3 mt-1 text-sm text-[#555555]">
                     <span>{roadmap.roadmap.length} semesters</span>
                     <span className="text-gray-300">|</span>
                     <span>{totalCourses} courses</span>
@@ -772,7 +772,7 @@ export default function RoadmapPage() {
             {/* Type legend */}
             <div className="flex items-center gap-3 flex-wrap px-1">
               {Object.entries(TYPE_STYLES).map(([type, style]) => (
-                <div key={type} className="flex items-center gap-1.5 text-xs text-gray-500">
+                <div key={type} className="flex items-center gap-1.5 text-xs text-[#555555]">
                   <span className={`h-2 w-2 rounded-full ${style.dot}`} />
                   {formatTypeLabel(type)}
                 </div>
@@ -808,17 +808,17 @@ export default function RoadmapPage() {
                           {sem.isSummer ? (
                             <Sun className="h-4 w-4 text-amber-500" />
                           ) : (
-                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <Calendar className="h-4 w-4 text-[#555555]" />
                           )}
                         </div>
                         {!sem.isSummer && (
-                          <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-gray-900 text-white text-[10px] font-bold flex items-center justify-center">
+                          <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-navy text-white text-[10px] font-bold flex items-center justify-center">
                             {i + 1}
                           </span>
                         )}
                       </div>
                       <div className="text-left">
-                        <h3 className="font-semibold text-sm text-gray-900">{sem.semester}</h3>
+                        <h3 className="font-semibold text-sm text-[#111111]">{sem.semester}</h3>
                         <p className="text-xs text-gray-400">
                           {sem.isSummer
                             ? `${sem.activities?.length || 0} suggested activit${sem.activities?.length !== 1 ? "ies" : "y"}`
@@ -881,7 +881,7 @@ export default function RoadmapPage() {
                                   className={`flex items-start gap-3 p-3.5 rounded-lg border ${style.border} ${style.bg}`}
                                 >
                                   <div className="h-8 w-8 rounded-md bg-white border border-gray-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                                    <BookOpen className="h-4 w-4 text-gray-500" />
+                                    <BookOpen className="h-4 w-4 text-[#555555]" />
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -890,11 +890,11 @@ export default function RoadmapPage() {
                                       </span>
                                       <TypeBadge type={course.type} />
                                     </div>
-                                    <h4 className="text-sm font-medium text-gray-900">
+                                    <h4 className="text-sm font-medium text-[#111111]">
                                       {course.name}
                                     </h4>
                                     {course.reason && (
-                                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                                      <p className="text-xs text-[#555555] mt-1 leading-relaxed">
                                         {course.reason}
                                       </p>
                                     )}
@@ -923,7 +923,7 @@ export default function RoadmapPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                    <h4 className="text-sm font-medium text-gray-900">
+                                    <h4 className="text-sm font-medium text-[#111111]">
                                       {activity.activity}
                                     </h4>
                                     <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
@@ -931,7 +931,7 @@ export default function RoadmapPage() {
                                     </span>
                                   </div>
                                   {activity.reason && (
-                                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                                    <p className="text-xs text-[#555555] mt-1 leading-relaxed">
                                       {activity.reason}
                                     </p>
                                   )}

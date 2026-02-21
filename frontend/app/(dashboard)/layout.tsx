@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50/50">
+    <div className="min-h-screen flex bg-[#F8F9FB]">
       <DashboardSidebar
         userName={session.user?.name}
         userEmail={session.user?.email}

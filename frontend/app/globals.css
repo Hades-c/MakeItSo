@@ -10,7 +10,7 @@
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 346 77% 50%;
+    --primary: 0 65% 33%;
     --primary-foreground: 0 0% 100%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
@@ -22,7 +22,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 346 77% 50%;
+    --ring: 0 65% 33%;
     --radius: 0.75rem;
   }
 }
@@ -42,7 +42,7 @@
     text-wrap: balance;
   }
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-rose-600 to-pink-600;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-davidson to-davidson-dark;
   }
   .glass {
     @apply bg-white/80 backdrop-blur-xl border border-white/50 shadow-sm;
@@ -97,8 +97,8 @@ html {
 }
 
 ::selection {
-  background: hsl(346 77% 50% / 0.12);
-  color: hsl(346 77% 30%);
+  background: rgba(140, 29, 29, 0.12);
+  color: #8C1D1D;
 }
 
 .carousel-scroll {

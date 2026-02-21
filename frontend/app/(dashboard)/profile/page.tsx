@@ -273,10 +273,10 @@ export default function ProfilePage() {
 
       {/* ---- Page heading ---- */}
       <motion.div variants={fadeIn}>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+        <h1 className="text-2xl sm:text-3xl font-bold font-serif tracking-tight text-[#111111]">
           Profile
         </h1>
-        <p className="text-gray-500 mt-1 text-sm">
+        <p className="text-[#555555] mt-1 text-sm">
           Your academic information and settings.
         </p>
       </motion.div>
@@ -287,7 +287,7 @@ export default function ProfilePage() {
           {/* Avatar header */}
           <div className="px-6 pt-6 pb-4 flex items-start justify-between">
             <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-full bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-sm">
+              <div className="h-14 w-14 rounded-full bg-davidson flex items-center justify-center shadow-sm">
                 <span className="text-lg font-bold text-white">{initials}</span>
               </div>
               <div>
@@ -298,15 +298,15 @@ export default function ProfilePage() {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, name: e.target.value }))
                     }
-                    className="text-xl font-semibold text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-400 transition-colors"
+                    className="text-xl font-semibold text-[#111111] bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson transition-colors"
                     placeholder="Your name"
                   />
                 ) : (
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-xl font-semibold text-[#111111]">
                     {displayProfile.name}
                   </h2>
                 )}
-                <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
+                <p className="text-sm text-[#555555] flex items-center gap-1.5 mt-0.5">
                   <Mail className="h-3.5 w-3.5" />
                   {displayProfile.email}
                 </p>
@@ -338,7 +338,7 @@ export default function ProfilePage() {
                   size="sm"
                   onClick={handleSave}
                   disabled={saving}
-                  className="bg-rose-600 text-white hover:bg-rose-700"
+                  className="bg-davidson text-white hover:bg-davidson-dark"
                 >
                   {saving ? (
                     <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -364,7 +364,7 @@ export default function ProfilePage() {
                   options={MAJORS as unknown as string[]}
                 />
               ) : (
-                <span className="text-sm text-gray-900">{displayProfile.major}</span>
+                <span className="text-sm text-[#111111]">{displayProfile.major}</span>
               )}
             </FieldRow>
 
@@ -382,7 +382,7 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={removeMinor}
-                      className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      className="p-1.5 rounded-md text-gray-400 hover:text-davidson hover:bg-davidson-light transition-colors"
                       title="Remove minor"
                     >
                       <X className="h-4 w-4" />
@@ -392,14 +392,14 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => setShowMinorField(true)}
-                    className="inline-flex items-center gap-1.5 text-sm text-rose-600 hover:text-rose-700 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-sm text-davidson hover:text-davidson-dark transition-colors"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Add a minor
                   </button>
                 )
               ) : (
-                <span className="text-sm text-gray-900">
+                <span className="text-sm text-[#111111]">
                   {displayProfile.minor || (
                     <span className="text-gray-400">None</span>
                   )}
@@ -421,7 +421,7 @@ export default function ProfilePage() {
                   options={CURRENT_YEARS as unknown as string[]}
                 />
               ) : (
-                <span className="text-sm text-gray-900">
+                <span className="text-sm text-[#111111]">
                   {displayProfile.currentYear}
                 </span>
               )}
@@ -438,7 +438,7 @@ export default function ProfilePage() {
                   options={GRADUATION_YEARS.map(String)}
                 />
               ) : (
-                <span className="text-sm text-gray-900">
+                <span className="text-sm text-[#111111]">
                   {displayProfile.graduationYear}
                 </span>
               )}
@@ -458,10 +458,10 @@ export default function ProfilePage() {
                   maxLength={500}
                   rows={3}
                   placeholder="Tell us a bit about yourself..."
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-400 resize-none transition-colors"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-[#111111] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson resize-none transition-colors"
                 />
               ) : (
-                <p className="text-sm text-gray-900 leading-relaxed">
+                <p className="text-sm text-[#111111] leading-relaxed">
                   {displayProfile.bio || (
                     <span className="text-gray-400">No bio added yet.</span>
                   )}
@@ -491,7 +491,7 @@ export default function ProfilePage() {
                         onClick={() => toggleCareerInterest(field)}
                         className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium border transition-all ${
                           selected
-                            ? "bg-rose-50 border-rose-200 text-rose-700"
+                            ? "bg-davidson-light border-davidson/20 text-davidson"
                             : "bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100"
                         }`}
                       >
@@ -529,8 +529,8 @@ export default function ProfilePage() {
         <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="px-6 py-4 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-gray-900">Sign Out</h3>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <h3 className="text-sm font-semibold text-[#111111]">Sign Out</h3>
+              <p className="text-xs text-[#555555] mt-0.5">
                 Sign out of your MakeItSo account
               </p>
             </div>
@@ -538,7 +538,7 @@ export default function ProfilePage() {
               variant="outline"
               size="sm"
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+              className="text-davidson border-davidson/20 hover:bg-davidson-light hover:text-davidson-dark"
             >
               <LogOut className="h-3.5 w-3.5 mr-1.5" />
               Sign Out
@@ -592,7 +592,7 @@ function SelectInput({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 pl-3 pr-8 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-400 transition-colors"
+        className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 pl-3 pr-8 py-1.5 text-sm text-[#111111] focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson transition-colors"
       >
         {placeholder && (
           <option value="" disabled>
