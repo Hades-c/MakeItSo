@@ -23,12 +23,11 @@ import {
   ThumbsUp,
   TrendingUp,
   Users,
+  X,
   Zap,
 } from "lucide-react";
 import { SUBJECT_AREAS } from "@/lib/utils";
 import { DAVIDSON_COURSES, type SeedCourse } from "@/lib/davidson-courses";
-import { ActivitiesCarousel } from "@/components/activities-carousel";
-
 // Major name -> abbreviation map
 const MAJOR_ABBREV: Record<string, string> = {
   "Computer Science": "CSC",
@@ -210,7 +209,7 @@ export default function ExplorePage() {
 
   return (
     <motion.div
-      className="max-w-4xl mx-auto space-y-8"
+      className="max-w-4xl mx-auto space-y-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -299,7 +298,7 @@ export default function ExplorePage() {
                 <div
                   className={`text-xs mt-0.5 ${
                     selectedAreas.includes(area.id)
-                      ? "text-gray-400"
+                      ? "text-white/70"
                       : "text-gray-400"
                   }`}
                 >
@@ -312,7 +311,7 @@ export default function ExplorePage() {
           </div>
 
           {selectedAreas.length > 0 && (
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-1">
               <Button
                 onClick={() => setStep("browse")}
                 className="bg-davidson hover:bg-davidson-dark text-white"
@@ -527,8 +526,6 @@ export default function ExplorePage() {
         </div>
       )}
 
-      {/* Activities carousel */}
-      <ActivitiesCarousel />
     </motion.div>
   );
 }
@@ -662,6 +659,14 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
     careerApplications?: string[];
   } | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [profSummary, setProfSummary] = useState<{
+    summary?: string;
+    strengths?: string[];
+    considerations?: string[];
+    tipForSuccess?: string;
+  } | null>(null);
+  const [loadingProfSummary, setLoadingProfSummary] = useState(false);
 
   const prof = course.professorInfo;
 
@@ -698,6 +703,35 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
       console.error("Failed to get AI insights:", err);
     } finally {
       setLoadingInsights(false);
+    }
+  }
+
+  async function fetchProfSummary() {
+    if (profSummary || loadingProfSummary || !prof) return;
+    setLoadingProfSummary(true);
+    try {
+      const res = await fetch("/api/ai/professor-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          professorName: prof.name,
+          courseCode: course.code,
+          courseName: course.name,
+          rmpRating: prof.rmpRating,
+          rmpDifficulty: prof.rmpDifficulty,
+          rmpNumRatings: prof.rmpNumRatings,
+          rmpWouldTakeAgain: prof.rmpWouldTakeAgain,
+          rmpTags: prof.rmpTags,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfSummary(data.summary);
+      }
+    } catch (err) {
+      console.error("Failed to get professor summary:", err);
+    } finally {
+      setLoadingProfSummary(false);
     }
   }
 
@@ -822,6 +856,84 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                           ))}
                         </div>
                       )}
+
+                      {/* AI Professor Summary Button */}
+                      <div className="pt-1">
+                        <button
+                          onClick={fetchProfSummary}
+                          disabled={loadingProfSummary || !!profSummary}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-medium text-davidson hover:text-davidson-dark disabled:text-gray-300 transition-colors"
+                        >
+                          {loadingProfSummary ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Analyzing reviews...
+                            </>
+                          ) : profSummary ? (
+                            <>
+                              <Sparkles className="h-3 w-3" />
+                              Summary loaded
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-3 w-3" />
+                              AI Professor Summary
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* AI Professor Summary Display */}
+                      {profSummary && (
+                        <div className="rounded-lg border border-davidson/10 bg-davidson-light/30 p-3 space-y-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="h-3 w-3 text-davidson" />
+                            <span className="text-[10px] font-semibold text-davidson uppercase tracking-wide">
+                              AI Professor Summary
+                            </span>
+                          </div>
+                          {profSummary.summary && (
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              {profSummary.summary}
+                            </p>
+                          )}
+                          <div className="grid grid-cols-2 gap-2">
+                            {profSummary.strengths && profSummary.strengths.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-medium text-emerald-600 mb-1">Strengths</p>
+                                <ul className="space-y-0.5">
+                                  {profSummary.strengths.map((s, i) => (
+                                    <li key={i} className="text-[10px] text-gray-600 flex items-start gap-1">
+                                      <span className="text-emerald-400 mt-0.5 shrink-0">+</span> {s}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {profSummary.considerations && profSummary.considerations.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-medium text-amber-600 mb-1">Considerations</p>
+                                <ul className="space-y-0.5">
+                                  {profSummary.considerations.map((c, i) => (
+                                    <li key={i} className="text-[10px] text-gray-600 flex items-start gap-1">
+                                      <span className="text-amber-400 mt-0.5 shrink-0">!</span> {c}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          {profSummary.tipForSuccess && (
+                            <div className="flex items-start gap-1.5 bg-white/60 rounded p-2">
+                              <Lightbulb className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+                              <p className="text-[10px] text-gray-600">
+                                <span className="font-medium text-gray-700">Tip: </span>
+                                {profSummary.tipForSuccess}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -918,103 +1030,187 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
               {/* AI Deep Dive Button */}
               <div className="pt-1">
                 <button
-                  onClick={fetchAiInsights}
-                  disabled={loadingInsights || !!aiInsights}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-navy hover:text-davidson disabled:text-gray-300 transition-colors"
+                  onClick={() => {
+                    if (!aiInsights && !loadingInsights) fetchAiInsights();
+                    setShowAiModal(true);
+                  }}
+                  disabled={loadingInsights}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-navy/5 text-navy hover:bg-navy/10 hover:text-davidson disabled:text-gray-300 transition-colors"
                 >
                   {loadingInsights ? (
                     <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       Analyzing...
-                    </>
-                  ) : aiInsights ? (
-                    <>
-                      <Brain className="h-3 w-3" />
-                      AI Insights Loaded
                     </>
                   ) : (
                     <>
-                      <Brain className="h-3 w-3" />
-                      Get AI Deep Dive
+                      <Brain className="h-3.5 w-3.5" />
+                      AI Deep Dive
                     </>
                   )}
                 </button>
               </div>
 
-              {/* AI-Generated Insights */}
-              {aiInsights && (
-                <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4 space-y-3">
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-davidson" />
-                    <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      AI Analysis
-                    </span>
-                  </div>
-
-                  {aiInsights.courseHighlights && (
-                    <p className="text-sm text-[#555555] leading-relaxed">
-                      {aiInsights.courseHighlights}
-                    </p>
-                  )}
-
-                  {aiInsights.keyTopics && aiInsights.keyTopics.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
-                        Deep Dive Topics
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {aiInsights.keyTopics.map((topic) => (
-                          <span
-                            key={topic}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-white text-gray-600 border border-gray-200"
-                          >
-                            {topic}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {aiInsights.skillsGained &&
-                    aiInsights.skillsGained.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
-                          Additional Skills
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {aiInsights.skillsGained.map((skill) => (
-                            <span
-                              key={skill}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-white text-gray-600 border border-gray-200"
-                            >
-                              {skill}
-                            </span>
-                          ))}
+              {/* AI Deep Dive Modal */}
+              <AnimatePresence>
+                {showAiModal && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-start justify-center pt-[8vh] px-4"
+                    onClick={(e) => { if (e.target === e.currentTarget) setShowAiModal(false); }}
+                  >
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowAiModal(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 12 }}
+                      className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[80vh] overflow-y-auto z-10"
+                    >
+                      {/* Modal header */}
+                      <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
+                        <div>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <Sparkles className="h-4 w-4 text-davidson" />
+                            <h2 className="font-serif font-semibold text-lg text-[#111111]">AI Deep Dive</h2>
+                          </div>
+                          <p className="text-sm text-[#555555]">{course.code} · {course.name}</p>
                         </div>
+                        <button onClick={() => setShowAiModal(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                          <X className="h-5 w-5" />
+                        </button>
                       </div>
-                    )}
 
-                  {aiInsights.careerApplications &&
-                    aiInsights.careerApplications.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
-                          Career Applications
-                        </p>
-                        <ul className="space-y-0.5">
-                          {aiInsights.careerApplications.map((app) => (
-                            <li
-                              key={app}
-                              className="text-[11px] text-[#555555] flex items-start gap-1.5"
-                            >
-                              <Briefcase className="h-3 w-3 mt-0.5 shrink-0 text-gray-300" />
-                              {app}
-                            </li>
-                          ))}
-                        </ul>
+                      {/* Modal content */}
+                      <div className="px-6 py-5 space-y-6">
+                        {loadingInsights ? (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-davidson mb-3" />
+                            <p className="text-sm text-[#555555]">Analyzing course with AI...</p>
+                          </div>
+                        ) : aiInsights ? (
+                          <>
+                            {aiInsights.courseHighlights && (
+                              <div>
+                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                                  <Sparkles className="h-4 w-4 text-davidson" />
+                                  Course Highlights
+                                </h3>
+                                <p className="text-base text-[#555555] leading-relaxed">
+                                  {aiInsights.courseHighlights}
+                                </p>
+                              </div>
+                            )}
+
+                            {aiInsights.keyTopics && aiInsights.keyTopics.length > 0 && (
+                              <div>
+                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                                  <BookOpen className="h-4 w-4 text-navy" />
+                                  Deep Dive Topics
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                  {aiInsights.keyTopics.map((topic) => (
+                                    <span key={topic} className="text-sm px-3 py-1 rounded-lg bg-gray-50 text-gray-700 border border-gray-200">
+                                      {topic}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {aiInsights.skillsGained && aiInsights.skillsGained.length > 0 && (
+                              <div>
+                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                                  Skills You&apos;ll Gain
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                  {aiInsights.skillsGained.map((skill) => (
+                                    <span key={skill} className="text-sm px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {aiInsights.careerApplications && aiInsights.careerApplications.length > 0 && (
+                              <div>
+                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                                  <Briefcase className="h-4 w-4 text-davidson" />
+                                  Career Applications
+                                </h3>
+                                <ul className="space-y-2">
+                                  {aiInsights.careerApplications.map((app) => (
+                                    <li key={app} className="text-sm text-[#555555] flex items-start gap-2">
+                                      <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-davidson/50" />
+                                      {app}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* Professor summary in modal too */}
+                            {profSummary && (
+                              <div className="rounded-xl border border-davidson/10 bg-davidson-light/30 p-5 space-y-4">
+                                <h3 className="text-sm font-semibold text-davidson flex items-center gap-2">
+                                  <GraduationCap className="h-4 w-4" />
+                                  Professor Summary — {course.professor}
+                                </h3>
+                                {profSummary.summary && (
+                                  <p className="text-sm text-gray-700 leading-relaxed">{profSummary.summary}</p>
+                                )}
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                  {profSummary.strengths && profSummary.strengths.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-emerald-600 mb-1.5">Strengths</p>
+                                      <ul className="space-y-1">
+                                        {profSummary.strengths.map((s, i) => (
+                                          <li key={i} className="text-sm text-gray-600 flex items-start gap-1.5">
+                                            <span className="text-emerald-500 mt-0.5 shrink-0">+</span> {s}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  {profSummary.considerations && profSummary.considerations.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-amber-600 mb-1.5">Considerations</p>
+                                      <ul className="space-y-1">
+                                        {profSummary.considerations.map((c, i) => (
+                                          <li key={i} className="text-sm text-gray-600 flex items-start gap-1.5">
+                                            <span className="text-amber-500 mt-0.5 shrink-0">!</span> {c}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                                {profSummary.tipForSuccess && (
+                                  <div className="flex items-start gap-2 bg-white/60 rounded-lg p-3">
+                                    <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                                    <p className="text-sm text-gray-600">
+                                      <span className="font-medium text-gray-700">Tip: </span>
+                                      {profSummary.tipForSuccess}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <Brain className="h-8 w-8 text-gray-300 mb-3" />
+                            <p className="text-sm text-gray-400">No insights available yet</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                </div>
-              )}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </div>

@@ -19,6 +19,7 @@ import {
   Linkedin,
   Loader2,
   Mail,
+  Map,
   Sparkles,
   Star,
   Sun,
@@ -30,9 +31,70 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CAREER_PATHS } from "@/lib/career-paths";
 import { getAlumniForCareer, type DavidsonAlumni } from "@/lib/davidson-alumni";
-import { ActivitiesCarousel } from "@/components/activities-carousel";
+type Tab = "overview" | "courses" | "summer" | "networking" | "roadmap";
 
-type Tab = "overview" | "courses" | "summer" | "networking";
+interface CareerPlan {
+  recommendedMajor: string;
+  coursesToTake: { code: string; name: string; reason: string; priority: string; typicalYear: string }[];
+  peopleToMeet: { role: string; type: string; reason: string; suggestedTiming: string; howToFind: string }[];
+  thingsToDo: { activity: string; type: string; reason: string; timing: string; classYear: string }[];
+  careerInsights: string;
+}
+
+const PRIORITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  required: { bg: "bg-davidson-light", text: "text-davidson", border: "border-davidson/20" },
+  recommended: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  helpful: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+};
+
+const ACTIVITY_COLORS: Record<string, { bg: string; text: string }> = {
+  internship: { bg: "bg-amber-50", text: "text-amber-700" },
+  research: { bg: "bg-purple-50", text: "text-purple-700" },
+  club: { bg: "bg-teal-50", text: "text-teal-700" },
+  certification: { bg: "bg-blue-50", text: "text-blue-700" },
+  project: { bg: "bg-pink-50", text: "text-pink-700" },
+};
+
+const YEAR_COLORS: Record<string, { bg: string; text: string }> = {
+  Freshman: { bg: "bg-emerald-50", text: "text-emerald-700" },
+  Sophomore: { bg: "bg-blue-50", text: "text-blue-700" },
+  Junior: { bg: "bg-amber-50", text: "text-amber-700" },
+  Senior: { bg: "bg-davidson-light", text: "text-davidson" },
+};
+
+const TAG_COLORS: Record<string, string> = {
+  "High Salary": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Technical": "bg-blue-50 text-blue-700 border-blue-200",
+  "Analytical": "bg-purple-50 text-purple-700 border-purple-200",
+  "Leadership": "bg-amber-50 text-amber-700 border-amber-200",
+  "Creative": "bg-pink-50 text-pink-700 border-pink-200",
+  "Work-Life Balance": "bg-teal-50 text-teal-700 border-teal-200",
+};
+
+function getDeptColor(courseCode: string): { bg: string; text: string } {
+  const dept = courseCode.split(" ")[0];
+  const colors: Record<string, { bg: string; text: string }> = {
+    CSC: { bg: "bg-blue-50", text: "text-blue-600" },
+    MAT: { bg: "bg-purple-50", text: "text-purple-600" },
+    ECO: { bg: "bg-emerald-50", text: "text-emerald-600" },
+    BIO: { bg: "bg-green-50", text: "text-green-600" },
+    CHE: { bg: "bg-orange-50", text: "text-orange-600" },
+    PHI: { bg: "bg-indigo-50", text: "text-indigo-600" },
+    PSY: { bg: "bg-pink-50", text: "text-pink-600" },
+    POL: { bg: "bg-red-50", text: "text-red-600" },
+    ENG: { bg: "bg-amber-50", text: "text-amber-600" },
+    COM: { bg: "bg-cyan-50", text: "text-cyan-600" },
+    SOC: { bg: "bg-teal-50", text: "text-teal-600" },
+    ART: { bg: "bg-fuchsia-50", text: "text-fuchsia-600" },
+    HIS: { bg: "bg-rose-50", text: "text-rose-600" },
+    EDU: { bg: "bg-sky-50", text: "text-sky-600" },
+    ACC: { bg: "bg-lime-50", text: "text-lime-700" },
+    ENV: { bg: "bg-green-50", text: "text-green-700" },
+    ANT: { bg: "bg-stone-100", text: "text-stone-600" },
+    DIG: { bg: "bg-violet-50", text: "text-violet-600" },
+  };
+  return colors[dept] || { bg: "bg-gray-50", text: "text-gray-600" };
+}
 
 export default function CareerDetailPage() {
   const params = useParams();
@@ -42,6 +104,9 @@ export default function CareerDetailPage() {
   const [coldEmail, setColdEmail] = useState<{ subject: string; body: string; tips: string[] } | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
+  const [careerPlan, setCareerPlan] = useState<CareerPlan | null>(null);
+  const [roadmapLoading, setRoadmapLoading] = useState(false);
+  const [roadmapError, setRoadmapError] = useState(false);
 
   const careerPath = CAREER_PATHS.find((c) => c.id === params.id);
   if (!careerPath) {
@@ -62,9 +127,37 @@ export default function CareerDetailPage() {
   const tabs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "courses", label: "Courses" },
-    { id: "summer", label: "Summer" },
-    { id: "networking", label: `Alumni (${careerAlumni.length})` },
+    { id: "summer", label: "Summer Opportunities" },
+    { id: "networking", label: "Networking" },
+    { id: "roadmap", label: "Roadmap" },
   ];
+
+  async function generateRoadmap() {
+    setRoadmapLoading(true);
+    setRoadmapError(false);
+    setCareerPlan(null);
+    try {
+      const res = await fetch("/api/ai/career-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          career: careerPath!.title,
+          major: "Undecided",
+          classYear: "Freshman",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCareerPlan(data.plan);
+      } else {
+        setRoadmapError(true);
+      }
+    } catch {
+      setRoadmapError(true);
+    } finally {
+      setRoadmapLoading(false);
+    }
+  }
 
   async function generateEmail(alumni: DavidsonAlumni) {
     setSelectedAlumni(alumni);
@@ -141,7 +234,7 @@ export default function CareerDetailPage() {
               {careerPath.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-[10px] tracking-wide uppercase px-2 py-0.5 rounded border border-gray-200 text-gray-500 bg-white"
+                  className={`text-[10px] font-medium tracking-wide px-2 py-0.5 rounded-full border ${TAG_COLORS[tag] || "bg-gray-50 text-gray-600 border-gray-200"}`}
                 >
                   {tag}
                 </span>
@@ -186,7 +279,7 @@ export default function CareerDetailPage() {
               {careerPath.skills.map((skill) => (
                 <span
                   key={skill}
-                  className="text-xs px-3 py-1.5 text-gray-600 bg-gray-50 border border-gray-150 rounded"
+                  className="text-xs px-3 py-1.5 text-navy bg-navy/5 border border-navy/10 rounded"
                 >
                   {skill}
                 </span>
@@ -222,36 +315,43 @@ export default function CareerDetailPage() {
             Recommended courses at Davidson for {careerPath.title.toLowerCase()}.
           </p>
           <div className="divide-y divide-gray-100">
-            {careerPath.courses.map((course, i) => (
-              <div key={i} className="py-4 first:pt-0 last:pb-0">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="font-mono text-xs font-semibold text-[#111111] tracking-wide">
-                        {course.code}
-                      </span>
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <div
-                            key={n}
-                            className={`h-1 w-2 rounded-full ${
-                              n <= course.difficulty ? "bg-davidson" : "bg-gray-200"
-                            }`}
-                          />
-                        ))}
+            {careerPath.courses.map((course, i) => {
+              const deptColor = getDeptColor(course.code);
+              return (
+                <div key={i} className="py-4 first:pt-0 last:pb-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-3 mb-1.5">
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
+                          {course.code}
+                        </span>
+                        <div className="flex gap-0.5">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star
+                              key={n}
+                              className={`h-3 w-3 ${
+                                n <= course.difficulty
+                                  ? "text-amber-400 fill-amber-400"
+                                  : "text-gray-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
                       </div>
+                      <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.description}</p>
+                      {course.bestProfessor && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <span className="text-xs px-2 py-0.5 rounded bg-navy/5 text-navy font-medium">
+                            {course.bestProfessor}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.description}</p>
-                    {course.bestProfessor && (
-                      <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
-                        <GraduationCap className="h-3 w-3" /> {course.bestProfessor}
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -362,6 +462,192 @@ export default function CareerDetailPage() {
         </div>
       )}
 
+      {/* Roadmap Tab */}
+      {activeTab === "roadmap" && (
+        <div className="space-y-6">
+          {!careerPlan && !roadmapLoading && !roadmapError && (
+            <div className="bg-white border border-gray-100 rounded-xl p-10 text-center shadow-sm">
+              <div className="h-14 w-14 rounded-2xl bg-davidson-light border border-davidson/10 flex items-center justify-center mx-auto mb-4">
+                <Map className="h-7 w-7 text-davidson/60" />
+              </div>
+              <h2 className="font-serif text-lg font-semibold text-navy mb-2">
+                Career Roadmap for {careerPath.title}
+              </h2>
+              <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto leading-relaxed">
+                Generate an AI-powered roadmap with recommended courses, activities, and networking strategies tailored to this career path.
+              </p>
+              <Button
+                onClick={generateRoadmap}
+                className="bg-davidson hover:bg-davidson-dark text-white shadow-sm"
+              >
+                <Sparkles className="h-4 w-4 mr-1.5" />
+                Generate Roadmap
+              </Button>
+            </div>
+          )}
+
+          {roadmapLoading && (
+            <div className="space-y-4">
+              <div className="bg-white border border-gray-100 rounded-xl p-8 text-center shadow-sm">
+                <Loader2 className="h-6 w-6 animate-spin text-davidson mx-auto mb-3" />
+                <p className="text-sm text-gray-500">Generating your personalized career roadmap...</p>
+              </div>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+                  <div className="animate-pulse space-y-3">
+                    <div className="h-4 bg-gray-100 rounded w-32" />
+                    <div className="h-3 bg-gray-100 rounded w-full" />
+                    <div className="h-3 bg-gray-100 rounded w-3/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {roadmapError && (
+            <div className="bg-white border border-red-200 rounded-xl p-8 text-center shadow-sm">
+              <p className="text-sm text-red-600 mb-4">Failed to generate roadmap. Please try again.</p>
+              <Button
+                onClick={generateRoadmap}
+                variant="outline"
+                className="border-davidson text-davidson hover:bg-davidson-light"
+              >
+                Try Again
+              </Button>
+            </div>
+          )}
+
+          {careerPlan && (
+            <div className="space-y-6">
+              {/* Career Insights */}
+              <div className="bg-gradient-to-r from-davidson-light to-white border border-davidson/10 rounded-xl p-5">
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-davidson flex items-center justify-center shrink-0">
+                    <Sparkles className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-sm font-semibold text-navy mb-1">Career Insights</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">{careerPlan.careerInsights}</p>
+                    <p className="text-xs text-davidson font-medium mt-2">
+                      Recommended Major: {careerPlan.recommendedMajor}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Courses to Take */}
+              <section>
+                <h2 className="font-serif text-lg font-semibold text-navy mb-4 flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-davidson" />
+                  Recommended Courses
+                </h2>
+                <div className="grid gap-2">
+                  {careerPlan.coursesToTake.map((course, i) => {
+                    const pColor = PRIORITY_COLORS[course.priority] || PRIORITY_COLORS.helpful;
+                    const yColor = YEAR_COLORS[course.typicalYear] || { bg: "bg-gray-50", text: "text-gray-600" };
+                    const deptColor = getDeptColor(course.code);
+                    return (
+                      <div key={i} className="bg-white border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
+                                {course.code}
+                              </span>
+                              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${pColor.bg} ${pColor.text} ${pColor.border}`}>
+                                {course.priority}
+                              </span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded ${yColor.bg} ${yColor.text}`}>
+                                {course.typicalYear}
+                              </span>
+                            </div>
+                            <h4 className="font-medium text-sm text-[#111111]">{course.name}</h4>
+                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.reason}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Things to Do */}
+              <section>
+                <h2 className="font-serif text-lg font-semibold text-navy mb-4 flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  Activities & Experiences
+                </h2>
+                <div className="grid gap-2">
+                  {careerPlan.thingsToDo.map((item, i) => {
+                    const aColor = ACTIVITY_COLORS[item.type] || { bg: "bg-gray-50", text: "text-gray-600" };
+                    const yColor = YEAR_COLORS[item.classYear] || { bg: "bg-gray-50", text: "text-gray-600" };
+                    return (
+                      <div key={i} className="bg-white border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${aColor.bg} ${aColor.text}`}>
+                            {item.type}
+                          </span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded ${yColor.bg} ${yColor.text}`}>
+                            {item.classYear}
+                          </span>
+                          <span className="text-[10px] text-gray-400">{item.timing}</span>
+                        </div>
+                        <h4 className="font-medium text-sm text-[#111111]">{item.activity}</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">{item.reason}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* People to Meet */}
+              <section>
+                <h2 className="font-serif text-lg font-semibold text-navy mb-4 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-teal-500" />
+                  People to Connect With
+                </h2>
+                <div className="grid gap-2">
+                  {careerPlan.peopleToMeet.map((person, i) => {
+                    const typeColor: Record<string, string> = {
+                      alumni: "bg-davidson-light text-davidson",
+                      faculty: "bg-navy/5 text-navy",
+                      advisor: "bg-purple-50 text-purple-700",
+                      professional: "bg-emerald-50 text-emerald-700",
+                    };
+                    return (
+                      <div key={i} className="bg-white border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${typeColor[person.type] || "bg-gray-50 text-gray-600"}`}>
+                            {person.type}
+                          </span>
+                          <span className="text-[10px] text-gray-400">{person.suggestedTiming}</span>
+                        </div>
+                        <h4 className="font-medium text-sm text-[#111111]">{person.role}</h4>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">{person.reason}</p>
+                        <p className="text-xs text-navy font-medium mt-1.5">{person.howToFind}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Regenerate button */}
+              <div className="text-center pt-2">
+                <Button
+                  onClick={generateRoadmap}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs border-gray-200 text-gray-500 hover:text-davidson hover:border-davidson"
+                >
+                  <Sparkles className="h-3 w-3 mr-1.5" />
+                  Regenerate Roadmap
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Cold Email Modal */}
       <AnimatePresence>
         {selectedAlumni && (
@@ -442,8 +728,6 @@ export default function CareerDetailPage() {
         )}
       </AnimatePresence>
 
-      {/* Activities Carousel */}
-      <ActivitiesCarousel />
     </motion.div>
   );
 }
