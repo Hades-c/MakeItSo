@@ -130,6 +130,52 @@ Plan through graduation. Include 4-5 courses per semester. Davidson requires 128
   }
 }
 
+export async function generateColdEmail(
+  alumniName: string,
+  alumniRole: string,
+  alumniCompany: string,
+  alumniBio: string,
+  alumniMajor: string,
+  alumniClassYear: number,
+  studentName: string,
+  studentMajor: string,
+  studentClassYear: string,
+  careerField: string
+) {
+  const prompt = `You are helping a Davidson College student write a cold email to a Davidson alumnus/alumna for networking purposes.
+
+Alumni details:
+- Name: ${alumniName}
+- Davidson Class of ${alumniClassYear}, majored in ${alumniMajor}
+- Current Role: ${alumniRole} at ${alumniCompany}
+- Bio: ${alumniBio}
+
+Student details:
+- Name: ${studentName || "a current student"}
+- Major: ${studentMajor || "Undecided"}
+- Class Year: ${studentClassYear || "Freshman"}
+- Career Interest: ${careerField}
+
+Generate a JSON response with a personalized cold email:
+{
+  "subject": "A concise, compelling subject line that references the Davidson connection",
+  "body": "The full email body. Should be 150-200 words. Include: 1) A warm Davidson connection opener, 2) Specific reference to the alumni's work/role that shows genuine interest, 3) Brief mention of the student's relevant interests/experience, 4) A clear, low-commitment ask (15-min call or coffee chat), 5) Professional sign-off. Tone should be respectful but not overly formal — like one Wildcat to another.",
+  "tips": ["3-4 short tips for the student on how to make the most of this outreach"]
+}
+
+Make the email feel genuine and specific — not templated. Reference specific details from the alumni's bio and role. Return ONLY the JSON.`;
+
+  const result = await geminiModel.generateContent(prompt);
+  const text = result.response.text();
+
+  try {
+    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+}
+
 export async function generateCourseRecommendations(
   interests: string[],
   completedCourses: string[],

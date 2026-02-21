@@ -10,14 +10,19 @@ import {
   BookOpen,
   Briefcase,
   Code2,
+  Copy,
+  Check,
   DollarSign,
+  ExternalLink,
   GraduationCap,
   Heart,
   HeartHandshake,
   Landmark,
   Layers,
   Lightbulb,
+  Linkedin,
   Loader2,
+  Mail,
   Megaphone,
   Microscope,
   Newspaper,
@@ -30,8 +35,10 @@ import {
   TreePine,
   TrendingUp,
   Users,
+  X,
 } from "lucide-react";
 import { CAREER_PATHS } from "@/lib/career-paths";
+import { getAlumniForCareer, type DavidsonAlumni } from "@/lib/davidson-alumni";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Code2,
@@ -98,6 +105,12 @@ export default function CareerDetailPage() {
   const [aiRoadmap, setAiRoadmap] = useState<AiRoadmap | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // Cold email state
+  const [selectedAlumni, setSelectedAlumni] = useState<DavidsonAlumni | null>(null);
+  const [coldEmail, setColdEmail] = useState<{ subject: string; body: string; tips: string[] } | null>(null);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailCopied, setEmailCopied] = useState<"subject" | "body" | null>(null);
 
   if (!careerPath) {
     return (
@@ -178,6 +191,46 @@ export default function CareerDetailPage() {
       setAiLoading(false);
     }
   }
+
+  async function generateColdEmail(alumni: DavidsonAlumni) {
+    setSelectedAlumni(alumni);
+    setColdEmail(null);
+    setEmailLoading(true);
+    try {
+      const res = await fetch("/api/ai/cold-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          alumniName: alumni.name,
+          alumniRole: alumni.currentRole,
+          alumniCompany: alumni.company,
+          alumniBio: alumni.bio,
+          alumniMajor: alumni.major,
+          alumniClassYear: alumni.classYear,
+          careerField: careerPath?.title || "",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setColdEmail(data.email);
+      } else if (res.status === 401) {
+        setColdEmail(null);
+        setSelectedAlumni(null);
+      }
+    } catch {
+      setColdEmail(null);
+    } finally {
+      setEmailLoading(false);
+    }
+  }
+
+  function copyToClipboard(text: string, type: "subject" | "body") {
+    navigator.clipboard.writeText(text);
+    setEmailCopied(type);
+    setTimeout(() => setEmailCopied(null), 2000);
+  }
+
+  const careerAlumni = careerPath ? getAlumniForCareer(careerPath.id) : [];
 
   return (
     <motion.div
@@ -425,42 +478,221 @@ export default function CareerDetailPage() {
       {/* Networking Tab */}
       {activeTab === "networking" && (
         <motion.div
-          className="space-y-4"
+          className="space-y-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <p className="text-sm text-muted-foreground">
-            Key people and connections to build for a career in{" "}
-            {careerPath.title.toLowerCase()}.
-          </p>
-          <div className="grid gap-3">
-            {careerPath.networking.map((contact, i) => (
-              <div
-                key={i}
-                className="bg-white border rounded-xl p-5 hover:shadow-sm transition-shadow"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
-                    <Users className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-sm">{contact.role}</h3>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700">
-                        {contact.type}
-                      </span>
+          {/* Davidson Alumni Section */}
+          {careerAlumni.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Linkedin className="h-5 w-5 text-[#0A66C2]" />
+                <h2 className="text-lg font-semibold">Davidson Alumni in {careerPath.title}</h2>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Reach out to these Davidson alumni working in {careerPath.title.toLowerCase()}. Use the cold email generator for a personalized introduction.
+              </p>
+              <div className="grid gap-3">
+                {careerAlumni.map((alumni) => (
+                  <div
+                    key={alumni.name}
+                    className="bg-white border rounded-xl p-5 hover:shadow-sm transition-shadow"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[#0A66C2] to-[#004182] flex items-center justify-center shrink-0 text-white font-semibold text-sm">
+                          {alumni.name.split(" ").map((n) => n[0]).join("")}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <h3 className="font-semibold text-sm">{alumni.name}</h3>
+                            <span className="text-xs text-muted-foreground">
+                              &apos;{String(alumni.classYear).slice(-2)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700">
+                            {alumni.currentRole} at <span className="font-medium">{alumni.company}</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {alumni.major} &middot; {alumni.location}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-2">
+                            {alumni.bio}
+                          </p>
+                          <div className="flex items-center gap-2 mt-3">
+                            <a
+                              href={alumni.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0A66C2] text-white hover:bg-[#004182] transition-colors"
+                            >
+                              <Linkedin className="h-3 w-3" />
+                              View LinkedIn
+                              <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                            <button
+                              onClick={() => generateColdEmail(alumni)}
+                              disabled={emailLoading && selectedAlumni?.name === alumni.name}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-800 hover:bg-red-100 transition-colors disabled:opacity-50"
+                            >
+                              {emailLoading && selectedAlumni?.name === alumni.name ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Generating...
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="h-3 w-3" />
+                                  Generate Cold Email
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {contact.description}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-2 font-medium">
-                      How to connect: {contact.howToConnect}
-                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cold Email Modal */}
+          {selectedAlumni && (coldEmail || emailLoading) && (
+            <motion.div
+              className="bg-white border-2 border-red-100 rounded-xl p-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-red-800" />
+                  <h3 className="font-semibold">Cold Email to {selectedAlumni.name}</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedAlumni(null);
+                    setColdEmail(null);
+                  }}
+                  className="h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {emailLoading && (
+                <div className="py-8 text-center">
+                  <Loader2 className="h-6 w-6 text-red-800 animate-spin mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    Crafting a personalized email based on {selectedAlumni.name}&apos;s background...
+                  </p>
+                </div>
+              )}
+
+              {coldEmail && !emailLoading && (
+                <div className="space-y-4">
+                  {/* Subject Line */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subject</label>
+                      <button
+                        onClick={() => copyToClipboard(coldEmail.subject, "subject")}
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {emailCopied === "subject" ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                        {emailCopied === "subject" ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg px-4 py-2.5 text-sm font-medium">
+                      {coldEmail.subject}
+                    </div>
+                  </div>
+
+                  {/* Email Body */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Body</label>
+                      <button
+                        onClick={() => copyToClipboard(coldEmail.body, "body")}
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {emailCopied === "body" ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                        {emailCopied === "body" ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+                      {coldEmail.body}
+                    </div>
+                  </div>
+
+                  {/* Tips */}
+                  {coldEmail.tips && coldEmail.tips.length > 0 && (
+                    <div className="bg-amber-50 rounded-lg px-4 py-3">
+                      <h4 className="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-2">
+                        Tips for your outreach
+                      </h4>
+                      <ul className="space-y-1.5">
+                        {coldEmail.tips.map((tip, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-amber-900">
+                            <Sparkles className="h-3 w-3 mt-0.5 shrink-0" />
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => generateColdEmail(selectedAlumni)}
+                    className="text-sm text-red-800 hover:underline"
+                  >
+                    Regenerate Email
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* General Networking Contacts */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-semibold">Key Connections to Build</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Other important people and resources for a career in{" "}
+              {careerPath.title.toLowerCase()}.
+            </p>
+            <div className="grid gap-3">
+              {careerPath.networking.map((contact, i) => (
+                <div
+                  key={i}
+                  className="bg-white border rounded-xl p-5 hover:shadow-sm transition-shadow"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+                      <Users className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-sm">{contact.role}</h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700">
+                          {contact.type}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {contact.description}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-2 font-medium">
+                        How to connect: {contact.howToConnect}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </motion.div>
       )}
