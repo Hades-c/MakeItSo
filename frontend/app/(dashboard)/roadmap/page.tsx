@@ -39,11 +39,13 @@ export default function RoadmapPage() {
   const [selectedMajor, setSelectedMajor] = useState("");
   const [loading, setLoading] = useState(false);
   const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [expandedSemesters, setExpandedSemesters] = useState<Set<number>>(new Set([0, 1]));
 
   async function generateRoadmap() {
     if (!selectedMajor) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/ai/roadmap", {
         method: "POST",
@@ -59,9 +61,15 @@ export default function RoadmapPage() {
         const data = await res.json();
         setRoadmap(data.roadmap);
         setExpandedSemesters(new Set([0, 1]));
+      } else if (res.status === 401) {
+        setError("You need to sign in before generating a roadmap.");
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Failed to generate roadmap. Please try again.");
       }
     } catch (err) {
       console.error("Failed to generate roadmap:", err);
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -148,6 +156,22 @@ export default function RoadmapPage() {
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               Planning your optimal course sequence through graduation...
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error state */}
+      {error && !loading && !roadmap && (
+        <Card className="border-red-200 bg-red-50/50">
+          <CardContent className="py-10 text-center">
+            <div className="h-12 w-12 rounded-xl bg-red-100 flex items-center justify-center mx-auto mb-3">
+              <Map className="h-6 w-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-1 text-red-800">Something went wrong</h3>
+            <p className="text-sm text-red-600 mb-4 max-w-md mx-auto">{error}</p>
+            <Button variant="outline" onClick={() => { setError(null); }}>
+              Try Again
+            </Button>
           </CardContent>
         </Card>
       )}
