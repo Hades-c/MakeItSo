@@ -110,6 +110,12 @@ function getDeptColor(courseCode: string): { bg: string; text: string } {
   return colors[dept] || { bg: "bg-gray-50", text: "text-gray-600" };
 }
 
+const SEMESTER_COLORS: Record<string, { accent: string; bg: string; text: string; icon: string; border: string }> = {
+  Fall: { accent: "border-l-amber-400", bg: "bg-amber-50", text: "text-amber-700", icon: "text-amber-500", border: "border-amber-200" },
+  Spring: { accent: "border-l-emerald-400", bg: "bg-emerald-50", text: "text-emerald-700", icon: "text-emerald-500", border: "border-emerald-200" },
+  Summer: { accent: "border-l-sky-400", bg: "bg-sky-50", text: "text-sky-700", icon: "text-sky-500", border: "border-sky-200" },
+};
+
 const SEMESTER_ORDER: Record<string, number> = { Spring: 0, Summer: 1, Fall: 2 };
 
 const GRADE_OPTIONS = [
@@ -478,7 +484,7 @@ export default function CoursesPage() {
         <motion.div variants={fadeIn}>
           <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-[#111111] flex items-center gap-2">
+              <h2 className="text-sm font-semibold font-serif text-[#111111] flex items-center gap-2">
                 <GraduationCap className="h-4 w-4 text-davidson" />
                 Graduation Progress
               </h2>
@@ -487,13 +493,25 @@ export default function CoursesPage() {
               </span>
             </div>
 
-            {/* Progress bar */}
-            <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden mb-4">
+            {/* Segmented progress bar */}
+            <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden mb-4 flex">
               <motion.div
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-davidson to-davidson rounded-full"
+                className="bg-green-500 h-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${stats.progressPercent}%` }}
+                animate={{ width: `${Math.min(100, (stats.completedCredits / REQUIRED_CREDITS) * 100)}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
+              />
+              <motion.div
+                className="bg-blue-400 h-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, (stats.inProgressCredits / REQUIRED_CREDITS) * 100)}%` }}
+                transition={{ duration: 0.8, ease: "easeOut", delay: 0.15 }}
+              />
+              <motion.div
+                className="bg-gray-300 h-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, (stats.plannedCredits / REQUIRED_CREDITS) * 100)}%` }}
+                transition={{ duration: 0.8, ease: "easeOut", delay: 0.3 }}
               />
             </div>
 
@@ -535,10 +553,10 @@ export default function CoursesPage() {
         {isEmpty && (
           <motion.div variants={fadeIn}>
             <div className="bg-white border border-gray-100 rounded-xl p-10 text-center shadow-sm">
-              <div className="h-14 w-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="h-7 w-7 text-gray-300" />
+              <div className="h-14 w-14 rounded-2xl bg-davidson-light border border-davidson/10 flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="h-7 w-7 text-davidson/40" />
               </div>
-              <h2 className="text-lg font-semibold text-[#111111] mb-1">
+              <h2 className="text-lg font-semibold font-serif text-[#111111] mb-1">
                 No courses in your plan yet
               </h2>
               <p className="text-sm text-[#555555] mb-5 max-w-md mx-auto">
@@ -557,15 +575,18 @@ export default function CoursesPage() {
         )}
 
         {/* ---- Semester Sections ---- */}
-        {semesterGroups.map(([semKey, courses]) => (
+        {semesterGroups.map(([semKey, courses]) => {
+          const semName = semKey.split(" ")[0];
+          const semColors = SEMESTER_COLORS[semName] || { accent: "border-l-gray-300", bg: "bg-gray-50", text: "text-gray-600", icon: "text-gray-400", border: "border-gray-200" };
+          return (
           <motion.div key={semKey} variants={fadeIn}>
-            <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+            <div className={`bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden border-l-4 ${semColors.accent}`}>
               {/* Semester header */}
               <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-davidson" />
-                  <h3 className="font-semibold text-sm text-[#111111]">{semKey}</h3>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  <Calendar className={`h-4 w-4 ${semColors.icon}`} />
+                  <h3 className="font-semibold font-serif text-sm text-[#111111]">{semKey}</h3>
+                  <Badge className={`text-[10px] px-1.5 py-0 border-0 ${semColors.bg} ${semColors.text}`}>
                     {courses.length} {courses.length === 1 ? "course" : "courses"}
                   </Badge>
                 </div>
@@ -664,7 +685,8 @@ export default function CoursesPage() {
               </div>
             </div>
           </motion.div>
-        ))}
+          );
+        })}
       </motion.div>
 
       {/* ================================================================= */}
@@ -695,7 +717,7 @@ export default function CoursesPage() {
             >
               {/* Modal header */}
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-                <h2 className="text-base font-semibold text-[#111111]">Add Course to Plan</h2>
+                <h2 className="text-base font-semibold font-serif text-[#111111]">Add Course to Plan</h2>
                 <button
                   onClick={() => {
                     setShowAddModal(false);
@@ -846,7 +868,7 @@ export default function CoursesPage() {
               variants={modalContent}
               className="relative bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-5 z-10"
             >
-              <h2 className="text-base font-semibold text-[#111111] mb-1">
+              <h2 className="text-base font-semibold font-serif text-[#111111] mb-1">
                 Mark as Completed
               </h2>
               <p className="text-sm text-[#555555] mb-4">

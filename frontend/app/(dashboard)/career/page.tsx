@@ -122,7 +122,7 @@ export default function CareerPage() {
                       <div className="h-10 w-10 rounded-lg bg-davidson-light border border-davidson/10 flex items-center justify-center shrink-0">
                         <Icon className="h-5 w-5 text-davidson" />
                       </div>
-                      <h3 className="font-serif text-lg text-[#111111] group-hover:text-davidson transition-colors leading-tight">
+                      <h3 className="font-serif text-lg font-semibold text-[#111111] group-hover:text-davidson transition-colors leading-tight">
                         {career.title}
                       </h3>
                     </div>
