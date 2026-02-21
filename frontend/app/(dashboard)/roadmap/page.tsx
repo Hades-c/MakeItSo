@@ -482,20 +482,18 @@ export default function RoadmapPage() {
                 </p>
               </div>
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {MAJORS.filter((m) => m !== "Undecided").map((major) => (
-                  <button
-                    key={major}
-                    onClick={() => setSelectedMajor(major)}
-                    className={`p-3 rounded-lg border text-left text-sm font-medium transition-all duration-200 ${
-                      selectedMajor === major
-                        ? "bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-500/20"
-                        : "border-gray-100 bg-white text-gray-700 hover:border-rose-200 hover:bg-rose-50/40"
-                    }`}
-                  >
-                    {major}
-                  </button>
-                ))}
+              <div className="relative max-w-sm">
+                <select
+                  value={selectedMajor}
+                  onChange={(e) => setSelectedMajor(e.target.value)}
+                  className="w-full appearance-none rounded-lg border border-gray-200 bg-white pl-4 pr-10 py-3 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-400 transition-colors cursor-pointer"
+                >
+                  <option value="">Select a major...</option>
+                  {MAJORS.filter((m) => m !== "Undecided").map((major) => (
+                    <option key={major} value={major}>{major}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               </div>
             </div>
 

@@ -601,6 +601,17 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
           courseName: course.name,
           description: course.description,
           department: course.department,
+          extraContext: {
+            professor: prof?.name,
+            rmpRating: prof?.rmpRating,
+            rmpDifficulty: prof?.rmpDifficulty,
+            knownTopics: course.courseInsights?.keyTopics,
+            knownSkills: course.courseInsights?.skillsGained,
+            careerRelevance: course.careerRelevance?.map((cr) => ({
+              field: cr.field,
+              relevance: cr.relevance,
+            })),
+          },
         }),
       });
       if (res.ok) {

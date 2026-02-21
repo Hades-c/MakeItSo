@@ -66,9 +66,32 @@ export async function generateCourseInsights(
   courseCode: string,
   courseName: string,
   description: string,
-  department: string
+  department: string,
+  extraContext?: {
+    professor?: string;
+    rmpRating?: number;
+    rmpDifficulty?: number;
+    knownTopics?: string[];
+    knownSkills?: string[];
+    careerRelevance?: { field: string; relevance: number }[];
+  }
 ) {
-  const prompt = `For the Davidson College course "${courseCode}: ${courseName}" in the ${department} department with the following description: "${description}"
+  let contextBlock = "";
+  if (extraContext) {
+    const parts: string[] = [];
+    if (extraContext.professor) parts.push(`Instructor: ${extraContext.professor}`);
+    if (extraContext.rmpRating) parts.push(`RateMyProfessors quality rating: ${extraContext.rmpRating}/5`);
+    if (extraContext.rmpDifficulty) parts.push(`RateMyProfessors difficulty rating: ${extraContext.rmpDifficulty}/5`);
+    if (extraContext.knownTopics?.length) parts.push(`Known topics covered: ${extraContext.knownTopics.join(", ")}`);
+    if (extraContext.knownSkills?.length) parts.push(`Known skills gained: ${extraContext.knownSkills.join(", ")}`);
+    if (extraContext.careerRelevance?.length) {
+      const careers = extraContext.careerRelevance.map(c => `${c.field} (${Math.round(c.relevance * 100)}%)`).join(", ");
+      parts.push(`Career relevance: ${careers}`);
+    }
+    if (parts.length) contextBlock = `\n\nAdditional context about this course:\n${parts.join("\n")}`;
+  }
+
+  const prompt = `For the Davidson College course "${courseCode}: ${courseName}" in the ${department} department with the following description: "${description}"${contextBlock}
 
 Generate a JSON response with key course information and skills students will gain:
 
@@ -79,7 +102,7 @@ Generate a JSON response with key course information and skills students will ga
   "careerApplications": ["specific application 1", "specific application 2", "specific application 3"]
 }
 
-Be specific and practical. keyTopics should be the main subject areas covered. skillsGained should be tangible, marketable skills. careerApplications should be concrete ways the skills apply professionally. Return ONLY the JSON.`;
+Be specific and practical. Use the additional context to provide more accurate and detailed insights. keyTopics should be the main subject areas covered. skillsGained should be tangible, marketable skills. careerApplications should be concrete ways the skills apply professionally. Return ONLY the JSON.`;
 
   const result = await geminiModel.generateContent(prompt);
   const text = result.response.text();
