@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   BookOpen,
@@ -11,6 +14,15 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+
+const fadeIn = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+};
+
+const stagger = {
+  animate: { transition: { staggerChildren: 0.1 } },
+};
 
 export default function HomePage() {
   return (
@@ -39,31 +51,48 @@ export default function HomePage() {
       <section className="relative pt-32 pb-20 overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 -z-10">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-200/40 rounded-full blur-3xl" />
-          <div className="absolute top-20 right-1/4 w-80 h-80 bg-indigo-200/40 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-1/2 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl" />
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-200/40 rounded-full blur-3xl animate-float" />
+          <div className="absolute top-20 right-1/4 w-80 h-80 bg-indigo-200/40 rounded-full blur-3xl animate-float" style={{ animationDelay: "2s" }} />
+          <div className="absolute bottom-0 left-1/2 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl animate-float" style={{ animationDelay: "4s" }} />
         </div>
 
-        <div className="container text-center max-w-4xl">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-sm font-medium mb-8 animate-fade-in">
+        <motion.div
+          className="container text-center max-w-4xl"
+          initial="initial"
+          animate="animate"
+          variants={stagger}
+        >
+          <motion.div
+            variants={fadeIn}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-sm font-medium mb-8"
+          >
             <GraduationCap className="h-4 w-4" />
             Built for Davidson College students
-          </div>
+          </motion.div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6 animate-slide-up">
+          <motion.h1
+            variants={fadeIn}
+            className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6"
+          >
             Your degree.
             <br />
             Your career.
             <br />
             <span className="gradient-text">One plan.</span>
-          </h1>
+          </motion.h1>
 
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed animate-slide-up" style={{ animationDelay: "0.1s" }}>
+          <motion.p
+            variants={fadeIn}
+            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
+          >
             AI-powered course planning that connects what you study to where you&apos;re going.
             Plan forward from your interests or backward from your dream career.
-          </p>
+          </motion.p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: "0.2s" }}>
+          <motion.div
+            variants={fadeIn}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+          >
             <Button size="lg" className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-xl shadow-violet-500/25 text-base h-12 px-8" asChild>
               <Link href="/register">
                 Start Planning
@@ -73,22 +102,34 @@ export default function HomePage() {
             <Button size="lg" variant="outline" className="text-base h-12 px-8 border-gray-300" asChild>
               <Link href="/login">Sign In</Link>
             </Button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* How it works */}
       <section className="py-24 bg-gray-50/80">
         <div className="container">
-          <div className="text-center max-w-2xl mx-auto mb-16">
+          <motion.div
+            className="text-center max-w-2xl mx-auto mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
             <p className="text-sm font-semibold text-violet-600 uppercase tracking-wider mb-3">How it works</p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">Two ways to plan your path</h2>
             <p className="text-muted-foreground text-lg">Start from where you are or where you want to be.</p>
-          </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {/* Forward Planning */}
-            <div className="group relative bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-lg hover:border-violet-200 transition-all duration-300">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="group relative bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-lg hover:border-violet-200 transition-all duration-300"
+            >
               <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/20">
                 <TrendingUp className="h-6 w-6 text-white" />
               </div>
@@ -111,10 +152,16 @@ export default function HomePage() {
                   <span>See personalized recommendations with career impact</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Backward Planning */}
-            <div className="group relative bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-lg hover:border-violet-200 transition-all duration-300">
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="group relative bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-lg hover:border-violet-200 transition-all duration-300"
+            >
               <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-6 shadow-lg shadow-violet-500/20">
                 <Map className="h-6 w-6 text-white" />
               </div>
@@ -137,7 +184,7 @@ export default function HomePage() {
                   <span>Generate an optimized semester roadmap</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -145,12 +192,24 @@ export default function HomePage() {
       {/* Features Grid */}
       <section className="py-24">
         <div className="container">
-          <div className="text-center max-w-2xl mx-auto mb-16">
+          <motion.div
+            className="text-center max-w-2xl mx-auto mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
             <p className="text-sm font-semibold text-violet-600 uppercase tracking-wider mb-3">Features</p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Everything you need to graduate with purpose</h2>
-          </div>
+          </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <motion.div
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto"
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={stagger}
+          >
             {[
               { icon: BookOpen, title: "Smart Course Planning", desc: "Prerequisite-aware recommendations from Davidson's real course catalog with professor ratings.", color: "violet" },
               { icon: Briefcase, title: "Career Mapping", desc: "See how every course connects to career outcomes with AI-powered relevance scoring.", color: "indigo" },
@@ -159,22 +218,62 @@ export default function HomePage() {
               { icon: Users, title: "People to Meet", desc: "Find alumni in your target field, department chairs, and career advisors with contact info.", color: "blue" },
               { icon: GraduationCap, title: "Davidson-Native", desc: "Built with real Davidson data — every major, department, and course offering.", color: "rose" },
             ].map(({ icon: Icon, title, desc, color }) => (
-              <div key={title} className="group p-6 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-300">
+              <motion.div
+                key={title}
+                variants={fadeIn}
+                className="group p-6 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-300 bg-white"
+              >
                 <div className={`h-10 w-10 rounded-lg bg-${color}-50 flex items-center justify-center mb-4`}>
                   <Icon className={`h-5 w-5 text-${color}-600`} />
                 </div>
                 <h3 className="font-semibold mb-2">{title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Social proof */}
+      <section className="py-12 border-y bg-gray-50/50">
+        <div className="container">
+          <motion.div
+            className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-16"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="text-center">
+              <p className="text-3xl font-bold gradient-text">200+</p>
+              <p className="text-sm text-muted-foreground mt-1">Davidson Courses</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold gradient-text">12+</p>
+              <p className="text-sm text-muted-foreground mt-1">Career Fields</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold gradient-text">AI</p>
+              <p className="text-sm text-muted-foreground mt-1">Powered by Gemini</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold gradient-text">4 Years</p>
+              <p className="text-sm text-muted-foreground mt-1">Full Roadmap</p>
+            </div>
+          </motion.div>
         </div>
       </section>
 
       {/* CTA */}
       <section className="py-24">
         <div className="container">
-          <div className="relative max-w-3xl mx-auto rounded-3xl overflow-hidden">
+          <motion.div
+            className="relative max-w-3xl mx-auto rounded-3xl overflow-hidden"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700" />
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImEiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3QgZmlsbD0idXJsKCNhKSIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIvPjwvc3ZnPg==')] opacity-30" />
             <div className="relative px-8 py-16 sm:px-16 text-center text-white">
@@ -189,7 +288,7 @@ export default function HomePage() {
                 </Link>
               </Button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 

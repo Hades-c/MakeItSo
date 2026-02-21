@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -68,11 +69,16 @@ export default function RegisterPage() {
       {/* Background */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-white to-indigo-50" />
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-violet-200/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-violet-200/30 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl animate-float" style={{ animationDelay: "3s" }} />
       </div>
 
-      <div className="w-full max-w-md">
+      <motion.div
+        className="w-full max-w-md"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20">
@@ -89,9 +95,13 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               {error && (
-                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+                >
                   {error}
-                </div>
+                </motion.div>
               )}
               <div className="space-y-1.5">
                 <Label htmlFor="name">Full Name</Label>
@@ -175,7 +185,7 @@ export default function RegisterPage() {
             </CardFooter>
           </form>
         </Card>
-      </div>
+      </motion.div>
     </div>
   );
 }

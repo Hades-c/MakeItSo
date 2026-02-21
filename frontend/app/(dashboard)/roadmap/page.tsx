@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   BookOpen,
@@ -91,7 +92,12 @@ export default function RoadmapPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <motion.div
+      className="max-w-4xl mx-auto space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
@@ -254,6 +260,6 @@ export default function RoadmapPage() {
           </div>
         </>
       )}
-    </div>
+    </motion.div>
   );
 }
