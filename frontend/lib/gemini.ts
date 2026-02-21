@@ -152,6 +152,17 @@ Generate a JSON response:
       "courses": [
         {"code": "DEPT 101", "name": "Course Name", "type": "major-requirement|elective|distribution", "reason": "Why take this now"}
       ]
+    },
+    {
+      "semester": "Spring 2026",
+      "courses": [...]
+    },
+    {
+      "semester": "Summer 2026",
+      "isSummer": true,
+      "activities": [
+        {"activity": "Activity name", "type": "internship|research|study-abroad|fellowship|personal-project|networking", "reason": "Why this is valuable", "examples": "1-2 specific examples relevant to the student"}
+      ]
     }
   ],
   "advice": "2-3 sentences of personalized advice",
@@ -159,7 +170,7 @@ Generate a JSON response:
   "estimatedGraduation": "Spring 2028"
 }
 
-Plan through graduation. Include 4-5 courses per semester. Davidson requires 128 credits (32 courses) to graduate. Return ONLY the JSON.`;
+Plan through graduation. Include 4-5 courses per semester. IMPORTANT: Between each academic year (after Spring, before Fall), include a "Summer YYYY" entry with isSummer: true and 3-4 suggested summer activities (internships, research, study abroad, personal projects, networking, etc.) tailored to the student's major and interests. These should be progressively more advanced — freshman summer more exploratory, senior summer more career-focused. Davidson requires 128 credits (32 courses) to graduate. Return ONLY the JSON.`;
 
   const result = await geminiModel.generateContent(prompt);
   const text = result.response.text();

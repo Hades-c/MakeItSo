@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ArrowRight,
   BookOpen,
+  Briefcase,
   Calendar,
   CheckCircle2,
   ChevronDown,
@@ -19,6 +20,7 @@ import {
   Map,
   RefreshCw,
   Sparkles,
+  Sun,
   Trash2,
   X,
 } from "lucide-react";
@@ -35,9 +37,18 @@ interface Course {
   reason: string;
 }
 
+interface SummerActivity {
+  activity: string;
+  type: string;
+  reason: string;
+  examples?: string;
+}
+
 interface Semester {
   semester: string;
-  courses: Course[];
+  courses?: Course[];
+  isSummer?: boolean;
+  activities?: SummerActivity[];
 }
 
 interface RoadmapData {
@@ -410,8 +421,17 @@ export default function RoadmapPage() {
   // ---------------------------------------------------------------------------
 
   const totalCourses = roadmap
-    ? roadmap.roadmap.reduce((sum, sem) => sum + (sem.courses?.length || 0), 0)
+    ? roadmap.roadmap.reduce((sum, sem) => sum + (sem.isSummer ? 0 : (sem.courses?.length || 0)), 0)
     : 0;
+
+  const SUMMER_ACTIVITY_STYLES: Record<string, { icon: string; bg: string }> = {
+    internship: { icon: "briefcase", bg: "bg-blue-50" },
+    research: { icon: "microscope", bg: "bg-purple-50" },
+    "study-abroad": { icon: "globe", bg: "bg-emerald-50" },
+    fellowship: { icon: "award", bg: "bg-amber-50" },
+    "personal-project": { icon: "code", bg: "bg-gray-50" },
+    networking: { icon: "users", bg: "bg-rose-50" },
+  };
 
   const showForm = !roadmap && !loading;
 
@@ -774,28 +794,42 @@ export default function RoadmapPage() {
                   {/* Semester header (clickable) */}
                   <button
                     onClick={() => toggleSemester(i)}
-                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50/60 transition-colors rounded-xl"
+                    className={`w-full p-4 flex items-center justify-between hover:bg-gray-50/60 transition-colors rounded-xl ${
+                      sem.isSummer ? "" : ""
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <div className="h-9 w-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center">
-                          <Calendar className="h-4 w-4 text-gray-500" />
+                        <div className={`h-9 w-9 rounded-lg border flex items-center justify-center ${
+                          sem.isSummer
+                            ? "bg-amber-50 border-amber-100"
+                            : "bg-gray-50 border-gray-100"
+                        }`}>
+                          {sem.isSummer ? (
+                            <Sun className="h-4 w-4 text-amber-500" />
+                          ) : (
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                          )}
                         </div>
-                        {/* Semester number indicator */}
-                        <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
-                          {i + 1}
-                        </span>
+                        {!sem.isSummer && (
+                          <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-gray-900 text-white text-[10px] font-bold flex items-center justify-center">
+                            {i + 1}
+                          </span>
+                        )}
                       </div>
                       <div className="text-left">
                         <h3 className="font-semibold text-sm text-gray-900">{sem.semester}</h3>
                         <p className="text-xs text-gray-400">
-                          {sem.courses?.length || 0} course{sem.courses?.length !== 1 ? "s" : ""}
+                          {sem.isSummer
+                            ? `${sem.activities?.length || 0} suggested activit${sem.activities?.length !== 1 ? "ies" : "y"}`
+                            : `${sem.courses?.length || 0} course${sem.courses?.length !== 1 ? "s" : ""}`
+                          }
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {/* Mini type summary when collapsed */}
-                      {!expandedSemesters.has(i) && sem.courses && (
+                      {!expandedSemesters.has(i) && !sem.isSummer && sem.courses && (
                         <div className="hidden sm:flex items-center gap-1">
                           {sem.courses.slice(0, 3).map((c, j) => {
                             const s = TYPE_STYLES[c.type] || DEFAULT_TYPE_STYLE;
@@ -810,6 +844,11 @@ export default function RoadmapPage() {
                           )}
                         </div>
                       )}
+                      {!expandedSemesters.has(i) && sem.isSummer && (
+                        <span className="hidden sm:inline text-[10px] text-amber-500 font-medium">
+                          Summer Break
+                        </span>
+                      )}
                       {expandedSemesters.has(i) ? (
                         <ChevronDown className="h-4 w-4 text-gray-400" />
                       ) : (
@@ -818,9 +857,9 @@ export default function RoadmapPage() {
                     </div>
                   </button>
 
-                  {/* Expanded course list */}
+                  {/* Expanded content */}
                   <AnimatePresence>
-                    {expandedSemesters.has(i) && sem.courses && (
+                    {expandedSemesters.has(i) && (sem.courses || sem.activities) && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
@@ -830,7 +869,8 @@ export default function RoadmapPage() {
                       >
                         <div className="px-4 pb-4">
                           <div className="border-t border-gray-100 pt-3 grid gap-2">
-                            {sem.courses.map((course, j) => {
+                            {/* Regular courses */}
+                            {!sem.isSummer && sem.courses?.map((course, j) => {
                               const style = TYPE_STYLES[course.type] || DEFAULT_TYPE_STYLE;
                               return (
                                 <motion.div
@@ -862,6 +902,47 @@ export default function RoadmapPage() {
                                 </motion.div>
                               );
                             })}
+
+                            {/* Summer activities */}
+                            {sem.isSummer && sem.activities?.map((activity, j) => (
+                              <motion.div
+                                key={j}
+                                initial={{ opacity: 0, x: -8 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.2, delay: 0.04 * j }}
+                                className="flex items-start gap-3 p-3.5 rounded-lg border border-amber-100 bg-amber-50/50"
+                              >
+                                <div className="h-8 w-8 rounded-md bg-white border border-amber-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                  {activity.type === "internship" ? (
+                                    <Briefcase className="h-4 w-4 text-amber-600" />
+                                  ) : activity.type === "research" ? (
+                                    <Sparkles className="h-4 w-4 text-amber-600" />
+                                  ) : (
+                                    <Sun className="h-4 w-4 text-amber-600" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                    <h4 className="text-sm font-medium text-gray-900">
+                                      {activity.activity}
+                                    </h4>
+                                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                      {activity.type.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                                    </span>
+                                  </div>
+                                  {activity.reason && (
+                                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                                      {activity.reason}
+                                    </p>
+                                  )}
+                                  {activity.examples && (
+                                    <p className="text-xs text-amber-700 mt-1.5 font-medium">
+                                      {activity.examples}
+                                    </p>
+                                  )}
+                                </div>
+                              </motion.div>
+                            ))}
                           </div>
                         </div>
                       </motion.div>
