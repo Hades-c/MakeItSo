@@ -59,6 +59,25 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   TreePine,
 };
 
+const ICON_GRADIENTS: Record<string, string> = {
+  Code2: "from-blue-500 to-indigo-600",
+  BarChart3: "from-emerald-500 to-teal-600",
+  TrendingUp: "from-green-500 to-emerald-600",
+  Lightbulb: "from-amber-500 to-orange-600",
+  Layers: "from-violet-500 to-purple-600",
+  Heart: "from-red-500 to-rose-600",
+  Scale: "from-slate-600 to-gray-700",
+  Megaphone: "from-pink-500 to-rose-600",
+  Microscope: "from-cyan-500 to-blue-600",
+  Landmark: "from-indigo-500 to-blue-600",
+  Rocket: "from-orange-500 to-red-600",
+  Palette: "from-fuchsia-500 to-pink-600",
+  HeartHandshake: "from-teal-500 to-cyan-600",
+  GraduationCap: "from-yellow-500 to-amber-600",
+  Newspaper: "from-gray-500 to-slate-600",
+  TreePine: "from-green-600 to-emerald-700",
+};
+
 type Tab = "overview" | "courses" | "summer" | "networking" | "ai-roadmap";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -250,8 +269,8 @@ export default function CareerDetailPage() {
 
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div className="h-14 w-14 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-          <IconComponent className="h-7 w-7 text-red-800" />
+        <div className={`h-14 w-14 rounded-xl bg-gradient-to-br ${ICON_GRADIENTS[careerPath.icon] || "from-red-600 to-rose-600"} flex items-center justify-center shrink-0 shadow-lg`}>
+          <IconComponent className="h-7 w-7 text-white" />
         </div>
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
@@ -262,7 +281,7 @@ export default function CareerDetailPage() {
             {careerPath.tags.map((tag) => (
               <span
                 key={tag}
-                className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-800"
+                className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
               >
                 {tag}
               </span>
@@ -272,7 +291,7 @@ export default function CareerDetailPage() {
       </div>
 
       {/* Tab navigation */}
-      <div className="border-b">
+      <div className="border-b border-gray-200/60">
         <div className="flex gap-0 overflow-x-auto">
           {TABS.map((tab) => (
             <button
@@ -283,13 +302,20 @@ export default function CareerDetailPage() {
                   generateAiRoadmap();
                 }
               }}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`relative px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "border-red-800 text-red-800"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
+                  ? "text-gray-900"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tab.label}
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="career-tab-indicator"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 rounded-full"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                />
+              )}
             </button>
           ))}
         </div>
@@ -325,7 +351,7 @@ export default function CareerDetailPage() {
               <Sun className="h-5 w-5 text-amber-500" />
               A Day in the Life
             </h2>
-            <div className="bg-gray-50 rounded-xl p-5 text-sm text-gray-700 leading-relaxed">
+            <div className="bg-white border border-gray-200/60 rounded-xl p-5 text-sm text-gray-700 leading-relaxed">
               {careerPath.dayInLife}
             </div>
           </div>
@@ -361,7 +387,7 @@ export default function CareerDetailPage() {
               </div>
               <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-red-700 to-red-500 rounded-full"
+                  className={`h-full bg-gradient-to-r ${ICON_GRADIENTS[careerPath.icon] || "from-red-600 to-rose-600"} rounded-full`}
                   style={{
                     width: `${(careerPath.salaryRange.max / maxSalary) * 100}%`,
                   }}
@@ -392,16 +418,16 @@ export default function CareerDetailPage() {
             {careerPath.courses.map((course) => (
               <div
                 key={course.code}
-                className="bg-white border rounded-xl p-5 hover:shadow-sm transition-shadow"
+                className="bg-white border border-gray-200/60 rounded-xl p-5 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 flex-1">
-                    <div className="h-9 w-9 rounded-lg bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
-                      <BookOpen className="h-4 w-4 text-red-800" />
+                    <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${ICON_GRADIENTS[careerPath.icon] || "from-red-600 to-rose-600"} flex items-center justify-center shrink-0 mt-0.5 shadow-sm`}>
+                      <BookOpen className="h-4 w-4 text-white" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-mono text-sm font-semibold text-red-800">
+                        <span className="font-mono text-sm font-semibold text-gray-900">
                           {course.code}
                         </span>
                       </div>
@@ -522,13 +548,13 @@ export default function CareerDetailPage() {
                           </p>
                           <div className="flex items-center gap-2 mt-3">
                             <a
-                              href={alumni.linkedinUrl}
+                              href={alumni.linkedinSearch}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0A66C2] text-white hover:bg-[#004182] transition-colors"
                             >
                               <Linkedin className="h-3 w-3" />
-                              View LinkedIn
+                              Find on LinkedIn
                               <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                             <button

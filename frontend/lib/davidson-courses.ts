@@ -26,6 +26,7 @@ export interface SeedCourse {
   prerequisites: string[];
   offered: ("Fall" | "Spring" | "Summer")[];
   tags: string[];
+  majorRequirements?: string[]; // Which major(s) this course is required for
   difficulty: number;
   professor?: string;
   professorRating?: number;
@@ -40,7 +41,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "CSC 121", name: "Programming and Problem Solving",
     description: "Introduction to computer science through programming. Topics include variables, control structures, functions, arrays, and object-oriented design.",
     credits: 4, department: "Computer Science", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement"], difficulty: 2,
+    tags: ["core", "major-requirement"], majorRequirements: ["Computer Science"], difficulty: 2,
     professor: "Dr. Tabitha Peck", professorRating: 2.4,
     professorInfo: {
       name: "Dr. Tabitha Peck",
@@ -58,7 +59,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "CSC 222", name: "Data Structures",
     description: "Study of fundamental data structures including lists, stacks, queues, trees, and graphs. Algorithm analysis and design.",
     credits: 4, department: "Computer Science", prerequisites: ["CSC 121"], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement"], difficulty: 3,
+    tags: ["core", "major-requirement"], majorRequirements: ["Computer Science"], difficulty: 3,
     professor: "Dr. Raghu Ramanujan", professorRating: 4.5,
     professorInfo: {
       name: "Dr. Raghu Ramanujan",
@@ -76,7 +77,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "CSC 231", name: "Computer Organization and Assembly",
     description: "Computer architecture, assembly language, digital logic, and machine-level programming.",
     credits: 4, department: "Computer Science", prerequisites: ["CSC 121"], offered: ["Spring"],
-    tags: ["major-requirement"], difficulty: 4,
+    tags: ["major-requirement"], majorRequirements: ["Computer Science"], difficulty: 4,
     professor: "Dr. Hammurabi Mendes", professorRating: 4.2,
     professorInfo: {
       name: "Dr. Hammurabi Mendes",
@@ -94,7 +95,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "CSC 250", name: "Discrete Mathematics",
     description: "Mathematical foundations of computer science including logic, sets, functions, relations, and graph theory.",
     credits: 4, department: "Computer Science", prerequisites: ["CSC 121", "MAT 112"], offered: ["Fall"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Computer Science", "Mathematics"], difficulty: 3,
     professor: "Dr. Tabitha Peck", professorRating: 2.4,
     professorInfo: {
       name: "Dr. Tabitha Peck",
@@ -112,7 +113,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "CSC 321", name: "Analysis of Algorithms",
     description: "Design and analysis of algorithms. Topics include sorting, graph algorithms, dynamic programming, and NP-completeness.",
     credits: 4, department: "Computer Science", prerequisites: ["CSC 222", "CSC 250"], offered: ["Fall"],
-    tags: ["major-requirement"], difficulty: 4,
+    tags: ["major-requirement"], majorRequirements: ["Computer Science"], difficulty: 4,
     professor: "Dr. Raghu Ramanujan", professorRating: 4.5,
     professorInfo: {
       name: "Dr. Raghu Ramanujan",
@@ -204,7 +205,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "ECO 101", name: "Principles of Economics",
     description: "Introduction to micro and macroeconomic concepts including supply and demand, market structures, GDP, and monetary policy.",
     credits: 4, department: "Economics", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 2,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Economics"], difficulty: 2,
     professor: "Dr. Fred Smith", professorRating: 4.9,
     professorInfo: {
       name: "Dr. Fred Smith",
@@ -222,7 +223,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "ECO 201", name: "Intermediate Microeconomics",
     description: "Consumer theory, producer theory, market structures, game theory, and welfare economics.",
     credits: 4, department: "Economics", prerequisites: ["ECO 101", "MAT 112"], offered: ["Fall"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Economics"], difficulty: 3,
     professor: "Dr. Mark Foley", professorRating: 3.8,
     professorInfo: {
       name: "Dr. Mark Foley",
@@ -240,7 +241,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "ECO 202", name: "Intermediate Macroeconomics",
     description: "National income accounting, IS-LM model, fiscal and monetary policy, economic growth theories.",
     credits: 4, department: "Economics", prerequisites: ["ECO 101", "MAT 112"], offered: ["Spring"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Economics"], difficulty: 3,
     professor: "Dr. Vikram Kumar", professorRating: 4.3,
     professorInfo: {
       name: "Dr. Vikram Kumar",
@@ -258,7 +259,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "ECO 250", name: "Statistics and Econometrics",
     description: "Statistical methods for economic analysis. Regression analysis, hypothesis testing, and empirical research methods.",
     credits: 4, department: "Economics", prerequisites: ["ECO 101", "MAT 112"], offered: ["Fall", "Spring"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Economics"], difficulty: 3,
     professor: "Dr. Angela Cools", professorRating: 4.6,
     professorInfo: {
       name: "Dr. Angela Cools",
@@ -368,7 +369,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "MAT 214", name: "Linear Algebra",
     description: "Vector spaces, linear transformations, matrices, determinants, eigenvalues, and diagonalization.",
     credits: 4, department: "Mathematics", prerequisites: ["MAT 113"], offered: ["Fall", "Spring"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Mathematics", "Computer Science"], difficulty: 3,
     professor: "Dr. Laurie Heyer", professorRating: 3.8,
     professorInfo: {
       name: "Dr. Laurie Heyer",
@@ -386,7 +387,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "MAT 220", name: "Multivariable Calculus",
     description: "Functions of several variables, partial derivatives, multiple integrals, vector calculus.",
     credits: 4, department: "Mathematics", prerequisites: ["MAT 113"], offered: ["Fall", "Spring"],
-    tags: ["major-requirement"], difficulty: 4,
+    tags: ["major-requirement"], majorRequirements: ["Mathematics", "Physics"], difficulty: 4,
     professor: "Dr. Heather Blake", professorRating: 4.3,
     professorInfo: {
       name: "Dr. Heather Blake",
@@ -404,7 +405,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "MAT 230", name: "Probability and Statistics",
     description: "Probability theory, random variables, distributions, estimation, and hypothesis testing.",
     credits: 4, department: "Mathematics", prerequisites: ["MAT 113"], offered: ["Fall", "Spring"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Mathematics"], difficulty: 3,
     professor: "Dr. Tim Chartier", professorRating: 4.4,
     professorInfo: {
       name: "Dr. Tim Chartier",
@@ -424,7 +425,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "BIO 111", name: "Molecules, Genes, and Cells",
     description: "Introduction to molecular biology, genetics, cell structure and function, and biotechnology.",
     credits: 4, department: "Biology", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 3,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Biology"], difficulty: 3,
     professor: "Dr. Barbara Lom", professorRating: 4.6,
     professorInfo: {
       name: "Dr. Barbara Lom",
@@ -442,7 +443,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "BIO 112", name: "Organisms and Ecosystems",
     description: "Ecology, evolution, organismal biology, and biodiversity.",
     credits: 4, department: "Biology", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 3,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Biology"], difficulty: 3,
     professor: "Dr. Mark Barsoum", professorRating: 4.2,
     professorInfo: {
       name: "Dr. Mark Barsoum",
@@ -458,7 +459,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "BIO 220", name: "Genetics",
     description: "Principles of heredity, molecular genetics, gene expression, and genomics.",
     credits: 4, department: "Biology", prerequisites: ["BIO 111"], offered: ["Fall"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Biology"], difficulty: 3,
     professor: "Dr. Barbara Lom", professorRating: 4.6,
     professorInfo: {
       name: "Dr. Barbara Lom",
@@ -496,7 +497,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "CHE 115", name: "Principles of Chemistry",
     description: "Atomic structure, bonding, stoichiometry, thermochemistry, and introduction to organic chemistry.",
     credits: 4, department: "Chemistry", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 3,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Chemistry"], difficulty: 3,
     professor: "Dr. Nicole Snyder", professorRating: 4.8,
     professorInfo: {
       name: "Dr. Nicole Snyder",
@@ -514,7 +515,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "CHE 230", name: "Organic Chemistry I",
     description: "Structure, reactivity, and synthesis of organic compounds. Stereochemistry and reaction mechanisms.",
     credits: 4, department: "Chemistry", prerequisites: ["CHE 115"], offered: ["Fall"],
-    tags: ["major-requirement"], difficulty: 4,
+    tags: ["major-requirement"], majorRequirements: ["Chemistry"], difficulty: 4,
     professor: "Dr. Nicole Snyder", professorRating: 4.8,
     professorInfo: {
       name: "Dr. Nicole Snyder",
@@ -534,7 +535,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "PHY 120", name: "General Physics I",
     description: "Mechanics, thermodynamics, and waves. Calculus-based approach.",
     credits: 4, department: "Physics", prerequisites: ["MAT 112"], offered: ["Fall"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 3,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Physics"], difficulty: 3,
     professor: "Dr. Mario Belloni", professorRating: 4.9,
     professorInfo: {
       name: "Dr. Mario Belloni",
@@ -552,7 +553,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "PHY 220", name: "General Physics II",
     description: "Electricity, magnetism, optics, and modern physics.",
     credits: 4, department: "Physics", prerequisites: ["PHY 120", "MAT 113"], offered: ["Spring"],
-    tags: ["major-requirement"], difficulty: 4,
+    tags: ["major-requirement"], majorRequirements: ["Physics"], difficulty: 4,
     professor: "Dr. Mario Belloni", professorRating: 4.9,
     professorInfo: {
       name: "Dr. Mario Belloni",
@@ -572,7 +573,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "PSY 100", name: "General Psychology",
     description: "Survey of major areas in psychology including cognition, development, social behavior, and psychopathology.",
     credits: 4, department: "Psychology", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 2,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Psychology"], difficulty: 2,
     professor: "Dr. Mark Smith", professorRating: 4.4,
     professorInfo: {
       name: "Dr. Mark Smith",
@@ -588,7 +589,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "PSY 210", name: "Research Methods",
     description: "Experimental design, data analysis, and scientific writing in psychology.",
     credits: 4, department: "Psychology", prerequisites: ["PSY 100"], offered: ["Fall", "Spring"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Psychology"], difficulty: 3,
     professor: "Dr. Mark Smith", professorRating: 4.4,
     professorInfo: {
       name: "Dr. Mark Smith",
@@ -622,7 +623,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "POL 101", name: "American Government",
     description: "Institutions, processes, and politics of the American political system.",
     credits: 4, department: "Political Science", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 2,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Political Science"], difficulty: 2,
     professor: "Dr. Susan Roberts", professorRating: 4.3,
     professorInfo: {
       name: "Dr. Susan Roberts",
@@ -638,7 +639,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "POL 210", name: "International Relations",
     description: "Theories and practices of international politics, conflict, cooperation, and global governance.",
     credits: 4, department: "Political Science", prerequisites: [], offered: ["Fall"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Political Science"], difficulty: 3,
     professor: "Dr. Susan Roberts", professorRating: 4.3,
     professorInfo: {
       name: "Dr. Susan Roberts",
@@ -672,7 +673,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "ENG 101", name: "Literature and Interpretation",
     description: "Introduction to literary analysis through close reading of poetry, fiction, drama, and essays.",
     credits: 4, department: "English", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 2,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["English"], difficulty: 2,
     professor: "Dr. Shireen Campbell", professorRating: 4.6,
     professorInfo: {
       name: "Dr. Shireen Campbell",
@@ -728,7 +729,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "HIS 201", name: "United States History",
     description: "American history from colonial period to present with emphasis on social and political movements.",
     credits: 4, department: "History", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["major-requirement", "distribution"], difficulty: 2,
+    tags: ["major-requirement", "distribution"], majorRequirements: ["History"], difficulty: 2,
     professor: "Dr. Patricia Tilburg", professorRating: 4.8,
     professorInfo: {
       name: "Dr. Patricia Tilburg",
@@ -748,7 +749,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "SOC 101", name: "Introduction to Sociology",
     description: "Social institutions, stratification, culture, and social change through sociological perspectives.",
     credits: 4, department: "Sociology", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 2,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Sociology"], difficulty: 2,
     professor: "Dr. Gerardo Marti", professorRating: 3.7,
     professorInfo: {
       name: "Dr. Gerardo Marti",
@@ -858,7 +859,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "ENV 101", name: "Introduction to Environmental Studies",
     description: "Interdisciplinary approach to environmental issues including ecology, policy, and sustainability.",
     credits: 4, department: "Environmental Studies", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement", "distribution"], difficulty: 2,
+    tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Environmental Studies"], difficulty: 2,
     professor: "Dr. Chris Paradise", professorRating: 4.2,
     professorInfo: {
       name: "Dr. Chris Paradise",
@@ -874,7 +875,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "ENV 250", name: "Environmental Policy",
     description: "Analysis of environmental regulations, policy-making, and sustainability frameworks.",
     credits: 4, department: "Environmental Studies", prerequisites: ["ENV 101"], offered: ["Spring"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Environmental Studies"], difficulty: 3,
     professor: "Dr. Brad Johnson", professorRating: 4.2,
     professorInfo: {
       name: "Dr. Brad Johnson",
@@ -892,7 +893,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "PUH 101", name: "Introduction to Public Health",
     description: "Overview of public health principles, epidemiology, health policy, and global health challenges.",
     credits: 4, department: "Public Health", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement"], difficulty: 2,
+    tags: ["core", "major-requirement"], majorRequirements: ["Public Health"], difficulty: 2,
     professor: "Dr. Kata Chillag", professorRating: 4.4,
     professorInfo: {
       name: "Dr. Kata Chillag",
@@ -908,7 +909,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "PUH 250", name: "Epidemiology",
     description: "Study of disease patterns, health determinants, and public health interventions.",
     credits: 4, department: "Public Health", prerequisites: ["PUH 101"], offered: ["Fall"],
-    tags: ["major-requirement"], difficulty: 3,
+    tags: ["major-requirement"], majorRequirements: ["Public Health"], difficulty: 3,
     professor: "Dr. Lauren Stutts", professorRating: 4.4,
     professorInfo: {
       name: "Dr. Lauren Stutts",
@@ -998,7 +999,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     code: "EDU 200", name: "Education in American Society",
     description: "Historical, philosophical, and sociological foundations of American education.",
     credits: 4, department: "Educational Studies", prerequisites: [], offered: ["Fall", "Spring"],
-    tags: ["core", "major-requirement"], difficulty: 2,
+    tags: ["core", "major-requirement"], majorRequirements: ["Educational Studies"], difficulty: 2,
     professor: "Dr. Chris Marsicano", professorRating: 4.3,
     professorInfo: {
       name: "Dr. Chris Marsicano",
@@ -1161,5 +1162,722 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
       skillsGained: ["Mandarin basics", "Character recognition", "Cross-cultural communication", "Tonal language skills", "East Asian cultural literacy"],
     },
     careerRelevance: [{ field: "Finance & Banking", relevance: 0.4 }, { field: "Consulting", relevance: 0.4 }],
+  },
+
+  // ===== CLASSICS =====
+  {
+    code: "CLA 101", name: "Introduction to Classical Civilization",
+    description: "Survey of ancient Greek and Roman civilizations including literature, philosophy, art, and political institutions.",
+    credits: 4, department: "Classics", prerequisites: [], offered: ["Fall"],
+    tags: ["core", "distribution"], difficulty: 2,
+    careerRelevance: [{ field: "Education", relevance: 0.5 }, { field: "Law", relevance: 0.4 }],
+  },
+  {
+    code: "CLA 201", name: "Greek and Roman Mythology",
+    description: "Study of myths and legends from the ancient Mediterranean world and their lasting cultural influence.",
+    credits: 4, department: "Classics", prerequisites: [], offered: ["Spring"],
+    tags: ["elective"], difficulty: 2,
+    careerRelevance: [{ field: "Education", relevance: 0.5 }, { field: "Media & Journalism", relevance: 0.3 }],
+  },
+  {
+    code: "CLA 310", name: "Ancient Philosophy",
+    description: "Readings in Plato, Aristotle, and the Hellenistic philosophers with attention to ethics, metaphysics, and epistemology.",
+    credits: 4, department: "Classics", prerequisites: ["CLA 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Law", relevance: 0.5 }, { field: "Education", relevance: 0.4 }],
+  },
+
+  // ===== DANCE =====
+  {
+    code: "DAN 101", name: "Introduction to Dance",
+    description: "Exploration of dance as an art form through technique, improvisation, and choreography across multiple genres.",
+    credits: 4, department: "Dance", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "distribution"], difficulty: 2,
+    careerRelevance: [{ field: "Arts & Design", relevance: 0.7 }, { field: "Education", relevance: 0.3 }],
+  },
+  {
+    code: "DAN 220", name: "Choreography and Performance",
+    description: "Advanced study of choreographic methods, composition, and performance practices in contemporary dance.",
+    credits: 4, department: "Dance", prerequisites: ["DAN 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Arts & Design", relevance: 0.8 }, { field: "Education", relevance: 0.3 }],
+  },
+
+  // ===== GERMAN =====
+  {
+    code: "GER 101", name: "Elementary German I",
+    description: "Introduction to the German language with emphasis on speaking, listening, reading, and writing skills.",
+    credits: 4, department: "German", prerequisites: [], offered: ["Fall"],
+    tags: ["core", "distribution"], difficulty: 2,
+    careerRelevance: [{ field: "Consulting", relevance: 0.4 }, { field: "Government & Policy", relevance: 0.3 }],
+  },
+  {
+    code: "GER 202", name: "Intermediate German II",
+    description: "Continued development of German language skills with readings in German literature and culture.",
+    credits: 4, department: "German", prerequisites: ["GER 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Consulting", relevance: 0.4 }, { field: "Government & Policy", relevance: 0.3 }],
+  },
+
+  // ===== ANTHROPOLOGY (additional) =====
+  {
+    code: "ANT 210", name: "Cultural Anthropology",
+    description: "Ethnographic methods and cross-cultural comparison of kinship, religion, politics, and economic systems.",
+    credits: 4, department: "Anthropology", prerequisites: ["ANT 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Nonprofit & Social Impact", relevance: 0.7 }, { field: "Research & Academia", relevance: 0.6 }],
+  },
+  {
+    code: "ANT 340", name: "Medical Anthropology",
+    description: "Cross-cultural study of health, illness, and healing with attention to biomedical and traditional medical systems.",
+    credits: 4, department: "Anthropology", prerequisites: ["ANT 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.7 }, { field: "Nonprofit & Social Impact", relevance: 0.6 }],
+  },
+
+  // ===== ART (additional) =====
+  {
+    code: "ART 210", name: "Painting",
+    description: "Exploration of painting techniques, color theory, and conceptual approaches in oil, acrylic, and mixed media.",
+    credits: 4, department: "Art", prerequisites: ["ART 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Arts & Design", relevance: 0.9 }, { field: "Education", relevance: 0.3 }],
+  },
+  {
+    code: "ART 310", name: "Digital Art and Design",
+    description: "Advanced studio course in digital media, graphic design, and interactive art using industry-standard tools.",
+    credits: 4, department: "Art", prerequisites: ["ART 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Arts & Design", relevance: 0.9 }, { field: "Marketing & Communications", relevance: 0.6 }],
+  },
+
+  // ===== THEATRE (additional) =====
+  {
+    code: "THE 230", name: "Acting Techniques",
+    description: "Study and practice of acting methods including Stanislavski, Meisner, and contemporary approaches to character development.",
+    credits: 4, department: "Theatre", prerequisites: ["THE 100"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Arts & Design", relevance: 0.7 }, { field: "Marketing & Communications", relevance: 0.4 }],
+  },
+  {
+    code: "THE 340", name: "Directing and Dramaturgy",
+    description: "Theory and practice of theatrical directing, script analysis, and production dramaturgy.",
+    credits: 4, department: "Theatre", prerequisites: ["THE 100"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Arts & Design", relevance: 0.8 }, { field: "Media & Journalism", relevance: 0.4 }],
+  },
+
+  // ===== MUSIC (additional) =====
+  {
+    code: "MUS 210", name: "Music Theory and Composition",
+    description: "Fundamentals of music theory, harmony, counterpoint, and compositional techniques.",
+    credits: 4, department: "Music", prerequisites: ["MUS 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Arts & Design", relevance: 0.8 }, { field: "Education", relevance: 0.4 }],
+  },
+  {
+    code: "MUS 310", name: "Ethnomusicology",
+    description: "Study of music across world cultures, exploring the social, political, and spiritual roles of music in diverse societies.",
+    credits: 4, department: "Music", prerequisites: ["MUS 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Arts & Design", relevance: 0.6 }, { field: "Nonprofit & Social Impact", relevance: 0.4 }],
+  },
+
+  // ===== EDUCATIONAL STUDIES (additional) =====
+  {
+    code: "EDU 310", name: "Curriculum and Pedagogy",
+    description: "Theories of curriculum design, instructional methods, and assessment strategies in K-12 and higher education.",
+    credits: 4, department: "Educational Studies", prerequisites: ["EDU 200"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Educational Studies"], difficulty: 3,
+    careerRelevance: [{ field: "Education", relevance: 0.95 }, { field: "Nonprofit & Social Impact", relevance: 0.5 }],
+  },
+  {
+    code: "EDU 340", name: "Education Policy and Reform",
+    description: "Analysis of contemporary education policy debates, school reform movements, and the politics of education.",
+    credits: 4, department: "Educational Studies", prerequisites: ["EDU 200"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Education", relevance: 0.9 }, { field: "Government & Policy", relevance: 0.7 }],
+  },
+
+  // ===== RELIGIOUS STUDIES (additional) =====
+  {
+    code: "REL 220", name: "Religion and Ethics",
+    description: "Examination of ethical frameworks within major religious traditions and their application to contemporary moral issues.",
+    credits: 4, department: "Religious Studies", prerequisites: ["REL 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Nonprofit & Social Impact", relevance: 0.6 }, { field: "Law", relevance: 0.4 }],
+  },
+  {
+    code: "REL 310", name: "Islam and the Modern World",
+    description: "History, theology, and contemporary expressions of Islam with attention to politics, culture, and global relations.",
+    credits: 4, department: "Religious Studies", prerequisites: ["REL 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.5 }, { field: "Nonprofit & Social Impact", relevance: 0.5 }],
+  },
+
+  // ===== GENDER & SEXUALITY STUDIES (additional) =====
+  {
+    code: "GSS 250", name: "Feminist Theory",
+    description: "Survey of feminist thought from the Enlightenment to contemporary intersectional and transnational feminisms.",
+    credits: 4, department: "Gender & Sexuality Studies", prerequisites: ["GSS 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Nonprofit & Social Impact", relevance: 0.7 }, { field: "Law", relevance: 0.5 }],
+  },
+
+  // ===== AFRICANA STUDIES (additional) =====
+  {
+    code: "AFR 250", name: "African American Literature",
+    description: "Survey of African American literary traditions from slave narratives to contemporary fiction, poetry, and drama.",
+    credits: 4, department: "Africana Studies", prerequisites: ["AFR 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Education", relevance: 0.5 }, { field: "Media & Journalism", relevance: 0.4 }],
+  },
+
+  // ===== FILM & MEDIA STUDIES (additional) =====
+  {
+    code: "FMS 240", name: "Documentary Film",
+    description: "History and aesthetics of documentary filmmaking with hands-on production of short documentary projects.",
+    credits: 4, department: "Film & Media Studies", prerequisites: ["FMS 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Media & Journalism", relevance: 0.85 }, { field: "Arts & Design", relevance: 0.6 }],
+  },
+
+  // ===== DIGITAL STUDIES (additional) =====
+  {
+    code: "DAS 250", name: "Data Visualization",
+    description: "Principles and practices of effective data visualization using modern tools and design thinking.",
+    credits: 4, department: "Digital Studies", prerequisites: ["DAS 201"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Data Science & Analytics", relevance: 0.9 }, { field: "Marketing & Communications", relevance: 0.6 }],
+  },
+
+  // ===== FRENCH (additional) =====
+  {
+    code: "FRE 202", name: "Intermediate French II",
+    description: "Continued development of French language skills with emphasis on reading, writing, and Francophone literature.",
+    credits: 4, department: "French", prerequisites: ["FRE 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Consulting", relevance: 0.4 }, { field: "Government & Policy", relevance: 0.4 }],
+  },
+
+  // ===== HISPANIC STUDIES (additional) =====
+  {
+    code: "SPA 202", name: "Intermediate Spanish II",
+    description: "Advanced intermediate Spanish with focus on composition, conversation, and Hispanic cultural texts.",
+    credits: 4, department: "Hispanic Studies", prerequisites: ["SPA 101"], offered: ["Fall", "Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.4 }, { field: "Nonprofit & Social Impact", relevance: 0.4 }],
+  },
+
+  // ===== CHINESE (additional) =====
+  {
+    code: "CHI 202", name: "Intermediate Chinese II",
+    description: "Continued study of Mandarin Chinese with expanded vocabulary, grammar, and cultural topics.",
+    credits: 4, department: "Chinese", prerequisites: ["CHI 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Finance & Banking", relevance: 0.4 }, { field: "Consulting", relevance: 0.4 }],
+  },
+
+  // ===== ENGLISH (additional) =====
+  {
+    code: "ENG 240", name: "American Literature",
+    description: "Survey of American literary traditions from the colonial period through the twenty-first century.",
+    credits: 4, department: "English", prerequisites: ["ENG 101"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["English"], difficulty: 3,
+    careerRelevance: [{ field: "Media & Journalism", relevance: 0.7 }, { field: "Education", relevance: 0.6 }],
+  },
+  {
+    code: "ENG 315", name: "Shakespeare",
+    description: "Close reading of Shakespeare's major plays and sonnets with attention to performance history and critical interpretation.",
+    credits: 4, department: "English", prerequisites: ["ENG 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Education", relevance: 0.6 }, { field: "Law", relevance: 0.4 }],
+  },
+  {
+    code: "ENG 370", name: "Postcolonial Literature",
+    description: "Study of literature from formerly colonized regions exploring themes of identity, diaspora, and cultural resistance.",
+    credits: 4, department: "English", prerequisites: ["ENG 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Education", relevance: 0.5 }, { field: "Nonprofit & Social Impact", relevance: 0.5 }],
+  },
+
+  // ===== HISTORY (additional) =====
+  {
+    code: "HIS 225", name: "Modern European History",
+    description: "European history from the French Revolution to the present, including nationalism, world wars, and European integration.",
+    credits: 4, department: "History", prerequisites: [], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["History"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.6 }, { field: "Law", relevance: 0.5 }],
+  },
+  {
+    code: "HIS 310", name: "Civil Rights Movement",
+    description: "In-depth study of the American civil rights movement from Reconstruction through the Black Power era.",
+    credits: 4, department: "History", prerequisites: ["HIS 201"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Law", relevance: 0.6 }, { field: "Government & Policy", relevance: 0.7 }],
+  },
+  {
+    code: "HIS 355", name: "History of East Asia",
+    description: "Political, cultural, and economic history of China, Japan, and Korea from early empires to the contemporary period.",
+    credits: 4, department: "History", prerequisites: [], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.5 }, { field: "Consulting", relevance: 0.4 }],
+  },
+
+  // ===== SOCIOLOGY (additional) =====
+  {
+    code: "SOC 310", name: "Sociology of Religion",
+    description: "Sociological analysis of religious institutions, movements, and the role of religion in social life.",
+    credits: 4, department: "Sociology", prerequisites: ["SOC 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Nonprofit & Social Impact", relevance: 0.7 }, { field: "Education", relevance: 0.4 }],
+  },
+  {
+    code: "SOC 340", name: "Urban Sociology",
+    description: "Study of cities and urban life including gentrification, poverty, segregation, and community development.",
+    credits: 4, department: "Sociology", prerequisites: ["SOC 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.7 }, { field: "Nonprofit & Social Impact", relevance: 0.8 }],
+  },
+
+  // ===== COMMUNICATION STUDIES (additional) =====
+  {
+    code: "COM 310", name: "Media and Society",
+    description: "Critical analysis of media institutions, media effects, and the role of mass media in shaping public discourse.",
+    credits: 4, department: "Communication Studies", prerequisites: ["COM 100"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Media & Journalism", relevance: 0.9 }, { field: "Marketing & Communications", relevance: 0.7 }],
+  },
+  {
+    code: "COM 340", name: "Health Communication",
+    description: "Study of communication strategies in public health campaigns, patient-provider interactions, and health media.",
+    credits: 4, department: "Communication Studies", prerequisites: ["COM 100"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.6 }, { field: "Marketing & Communications", relevance: 0.7 }],
+  },
+
+  // ===== PHILOSOPHY (additional) =====
+  {
+    code: "PHI 310", name: "Philosophy of Mind",
+    description: "Exploration of consciousness, mental representation, artificial intelligence, and the mind-body problem.",
+    credits: 4, department: "Philosophy", prerequisites: ["PHI 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.6 }, { field: "Software Engineering", relevance: 0.3 }],
+  },
+  {
+    code: "PHI 340", name: "Political Philosophy",
+    description: "Major works in political philosophy from Plato to Rawls, examining justice, liberty, equality, and the state.",
+    credits: 4, department: "Philosophy", prerequisites: ["PHI 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Law", relevance: 0.8 }, { field: "Government & Policy", relevance: 0.7 }],
+  },
+
+  // ===== ENVIRONMENTAL STUDIES (additional) =====
+  {
+    code: "ENV 310", name: "Conservation Biology",
+    description: "Science of biodiversity conservation including species management, habitat restoration, and conservation genetics.",
+    credits: 4, department: "Environmental Studies", prerequisites: ["ENV 101", "BIO 112"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Environmental Studies"], difficulty: 3,
+    careerRelevance: [{ field: "Environmental Science", relevance: 0.95 }, { field: "Research & Academia", relevance: 0.6 }],
+  },
+  {
+    code: "ENV 340", name: "Climate Change Science and Policy",
+    description: "Interdisciplinary study of climate science, impacts, mitigation strategies, and international climate policy.",
+    credits: 4, department: "Environmental Studies", prerequisites: ["ENV 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Environmental Science", relevance: 0.9 }, { field: "Government & Policy", relevance: 0.8 }],
+  },
+
+  // ===== PUBLIC HEALTH (additional) =====
+  {
+    code: "PUH 310", name: "Global Health",
+    description: "Examination of health challenges in low- and middle-income countries including infectious disease, nutrition, and health systems.",
+    credits: 4, department: "Public Health", prerequisites: ["PUH 101"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Public Health"], difficulty: 3,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.9 }, { field: "Nonprofit & Social Impact", relevance: 0.8 }],
+  },
+  {
+    code: "PUH 340", name: "Health Equity and Social Justice",
+    description: "Analysis of health disparities, social determinants of health, and strategies for achieving health equity.",
+    credits: 4, department: "Public Health", prerequisites: ["PUH 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.8 }, { field: "Nonprofit & Social Impact", relevance: 0.9 }],
+  },
+
+  // ===== COMPUTER SCIENCE (additional) =====
+  {
+    code: "CSC 335", name: "Computer Networks",
+    description: "Network architecture, protocols, and applications including TCP/IP, HTTP, DNS, and network security fundamentals.",
+    credits: 4, department: "Computer Science", prerequisites: ["CSC 222", "CSC 231"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Software Engineering", relevance: 0.85 }, { field: "Data Science & Analytics", relevance: 0.4 }],
+  },
+  {
+    code: "CSC 390", name: "Computer Science Seminar",
+    description: "Advanced topics seminar in computer science. Recent offerings include cybersecurity, distributed systems, and computer graphics.",
+    credits: 4, department: "Computer Science", prerequisites: ["CSC 222"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Software Engineering", relevance: 0.8 }, { field: "Research & Academia", relevance: 0.6 }],
+  },
+
+  // ===== ECONOMICS (additional) =====
+  {
+    code: "ECO 330", name: "Labor Economics",
+    description: "Economic analysis of labor markets including wage determination, discrimination, human capital, and labor policy.",
+    credits: 4, department: "Economics", prerequisites: ["ECO 201"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.8 }, { field: "Consulting", relevance: 0.7 }],
+  },
+  {
+    code: "ECO 370", name: "Development Economics",
+    description: "Economic analysis of developing countries including poverty, inequality, trade, and institutional development.",
+    credits: 4, department: "Economics", prerequisites: ["ECO 201", "ECO 202"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.8 }, { field: "Nonprofit & Social Impact", relevance: 0.8 }],
+  },
+
+  // ===== MATHEMATICS (additional) =====
+  {
+    code: "MAT 240", name: "Differential Equations",
+    description: "Ordinary differential equations, systems of equations, Laplace transforms, and applications to physical sciences.",
+    credits: 4, department: "Mathematics", prerequisites: ["MAT 113"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Mathematics", "Physics"], difficulty: 4,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.7 }, { field: "Data Science & Analytics", relevance: 0.5 }],
+  },
+  {
+    code: "MAT 312", name: "Abstract Algebra",
+    description: "Study of algebraic structures including groups, rings, and fields with emphasis on proof-based mathematics.",
+    credits: 4, department: "Mathematics", prerequisites: ["MAT 214"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Mathematics"], difficulty: 4,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.8 }, { field: "Software Engineering", relevance: 0.3 }],
+  },
+  {
+    code: "MAT 340", name: "Real Analysis",
+    description: "Rigorous treatment of limits, continuity, differentiation, and integration in the real number system.",
+    credits: 4, department: "Mathematics", prerequisites: ["MAT 220"], offered: ["Spring"],
+    tags: ["major-requirement"], majorRequirements: ["Mathematics"], difficulty: 5,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.9 }, { field: "Finance & Banking", relevance: 0.5 }],
+  },
+
+  // ===== BIOLOGY (additional) =====
+  {
+    code: "BIO 230", name: "Ecology",
+    description: "Study of interactions between organisms and their environments, including population dynamics, community ecology, and ecosystems.",
+    credits: 4, department: "Biology", prerequisites: ["BIO 112"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Biology", "Environmental Studies"], difficulty: 3,
+    careerRelevance: [{ field: "Environmental Science", relevance: 0.9 }, { field: "Research & Academia", relevance: 0.7 }],
+  },
+  {
+    code: "BIO 301", name: "Cell Biology",
+    description: "Advanced study of cell structure and function including organelles, cell signaling, and the cytoskeleton.",
+    credits: 4, department: "Biology", prerequisites: ["BIO 111", "CHE 115"], offered: ["Spring"],
+    tags: ["major-requirement"], majorRequirements: ["Biology"], difficulty: 4,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.9 }, { field: "Research & Academia", relevance: 0.85 }],
+  },
+  {
+    code: "BIO 340", name: "Immunology",
+    description: "Study of the immune system including innate and adaptive immunity, immunological disorders, and vaccine development.",
+    credits: 4, department: "Biology", prerequisites: ["BIO 111"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.95 }, { field: "Research & Academia", relevance: 0.8 }],
+  },
+
+  // ===== CHEMISTRY (additional) =====
+  {
+    code: "CHE 305", name: "Physical Chemistry",
+    description: "Thermodynamics, kinetics, and quantum mechanics applied to chemical systems.",
+    credits: 4, department: "Chemistry", prerequisites: ["CHE 115", "MAT 220", "PHY 120"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Chemistry"], difficulty: 5,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.85 }, { field: "Environmental Science", relevance: 0.4 }],
+  },
+  {
+    code: "CHE 340", name: "Biochemistry",
+    description: "Chemistry of biological molecules including proteins, nucleic acids, lipids, and metabolic pathways.",
+    credits: 4, department: "Chemistry", prerequisites: ["CHE 230", "BIO 111"], offered: ["Spring"],
+    tags: ["major-requirement"], majorRequirements: ["Chemistry", "Biology"], difficulty: 4,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.9 }, { field: "Research & Academia", relevance: 0.85 }],
+  },
+
+  // ===== PHYSICS (additional) =====
+  {
+    code: "PHY 310", name: "Modern Physics",
+    description: "Special relativity, quantum mechanics, atomic structure, nuclear physics, and particle physics.",
+    credits: 4, department: "Physics", prerequisites: ["PHY 220", "MAT 220"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Physics"], difficulty: 4,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.9 }, { field: "Software Engineering", relevance: 0.2 }],
+  },
+  {
+    code: "PHY 340", name: "Electrodynamics",
+    description: "Maxwell's equations, electromagnetic waves, radiation, and relativistic electrodynamics.",
+    credits: 4, department: "Physics", prerequisites: ["PHY 220", "MAT 220"], offered: ["Spring"],
+    tags: ["major-requirement"], majorRequirements: ["Physics"], difficulty: 5,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.9 }],
+  },
+
+  // ===== PSYCHOLOGY (additional) =====
+  {
+    code: "PSY 250", name: "Developmental Psychology",
+    description: "Study of human development across the lifespan, including cognitive, social, and emotional development.",
+    credits: 4, department: "Psychology", prerequisites: ["PSY 100"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Psychology"], difficulty: 3,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.7 }, { field: "Education", relevance: 0.8 }],
+  },
+  {
+    code: "PSY 340", name: "Abnormal Psychology",
+    description: "Study of psychological disorders, their diagnosis, etiology, and treatment approaches.",
+    credits: 4, department: "Psychology", prerequisites: ["PSY 100"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.9 }, { field: "Nonprofit & Social Impact", relevance: 0.5 }],
+  },
+
+  // ===== POLITICAL SCIENCE (additional) =====
+  {
+    code: "POL 330", name: "Comparative Politics",
+    description: "Comparative analysis of political systems, regimes, and institutions across different countries and regions.",
+    credits: 4, department: "Political Science", prerequisites: ["POL 101"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Political Science"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.85 }, { field: "Consulting", relevance: 0.5 }],
+  },
+  {
+    code: "POL 350", name: "Political Theory",
+    description: "Major works of political theory from ancient to modern, examining justice, power, democracy, and freedom.",
+    credits: 4, department: "Political Science", prerequisites: ["POL 101"], offered: ["Spring"],
+    tags: ["major-requirement"], majorRequirements: ["Political Science"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.8 }, { field: "Law", relevance: 0.7 }],
+  },
+
+  // ===== ADDITIONAL BREADTH COURSES =====
+
+  // Biology (additional upper-level)
+  {
+    code: "BIO 315", name: "Microbiology",
+    description: "Study of microorganisms including bacteria, viruses, fungi, and their roles in health, disease, and the environment.",
+    credits: 4, department: "Biology", prerequisites: ["BIO 111"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.9 }, { field: "Research & Academia", relevance: 0.8 }],
+  },
+  {
+    code: "BIO 350", name: "Evolutionary Biology",
+    description: "Mechanisms of evolution including natural selection, genetic drift, speciation, and phylogenetics.",
+    credits: 4, department: "Biology", prerequisites: ["BIO 112", "BIO 220"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.85 }, { field: "Environmental Science", relevance: 0.6 }],
+  },
+
+  // Chemistry (additional upper-level)
+  {
+    code: "CHE 231", name: "Organic Chemistry II",
+    description: "Continuation of Organic Chemistry I covering advanced reactions, spectroscopy, and synthesis of complex molecules.",
+    credits: 4, department: "Chemistry", prerequisites: ["CHE 230"], offered: ["Spring"],
+    tags: ["major-requirement"], majorRequirements: ["Chemistry"], difficulty: 4,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.85 }, { field: "Research & Academia", relevance: 0.7 }],
+  },
+  {
+    code: "CHE 250", name: "Analytical Chemistry",
+    description: "Quantitative and qualitative chemical analysis using classical and instrumental methods.",
+    credits: 4, department: "Chemistry", prerequisites: ["CHE 115"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Chemistry"], difficulty: 3,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.7 }, { field: "Environmental Science", relevance: 0.6 }],
+  },
+
+  // Physics (additional)
+  {
+    code: "PHY 330", name: "Quantum Mechanics",
+    description: "Formal development of quantum theory including wave functions, operators, angular momentum, and perturbation theory.",
+    credits: 4, department: "Physics", prerequisites: ["PHY 310", "MAT 240"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Physics"], difficulty: 5,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.95 }],
+  },
+
+  // Mathematics (additional)
+  {
+    code: "MAT 350", name: "Complex Analysis",
+    description: "Theory of functions of a complex variable, analytic functions, contour integration, and residue theory.",
+    credits: 4, department: "Mathematics", prerequisites: ["MAT 220"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 5,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.8 }, { field: "Finance & Banking", relevance: 0.4 }],
+  },
+  {
+    code: "MAT 150", name: "Introduction to Statistical Modeling",
+    description: "Applied statistics course covering regression, ANOVA, and statistical computing with R.",
+    credits: 4, department: "Mathematics", prerequisites: ["MAT 112"], offered: ["Fall", "Spring"],
+    tags: ["elective"], difficulty: 2,
+    careerRelevance: [{ field: "Data Science & Analytics", relevance: 0.8 }, { field: "Consulting", relevance: 0.5 }],
+  },
+
+  // Computer Science (additional)
+  {
+    code: "CSC 311", name: "Theory of Computation",
+    description: "Formal languages, automata theory, computability, and computational complexity.",
+    credits: 4, department: "Computer Science", prerequisites: ["CSC 250"], offered: ["Spring"],
+    tags: ["major-requirement"], majorRequirements: ["Computer Science"], difficulty: 4,
+    careerRelevance: [{ field: "Software Engineering", relevance: 0.6 }, { field: "Research & Academia", relevance: 0.8 }],
+  },
+  {
+    code: "CSC 351", name: "Computer Graphics",
+    description: "Fundamentals of 2D and 3D graphics, rendering, transformations, and GPU programming.",
+    credits: 4, department: "Computer Science", prerequisites: ["CSC 222", "MAT 214"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Software Engineering", relevance: 0.8 }, { field: "Arts & Design", relevance: 0.6 }],
+  },
+
+  // Economics (additional)
+  {
+    code: "ECO 320", name: "Game Theory",
+    description: "Strategic decision-making with applications to economics, political science, and business.",
+    credits: 4, department: "Economics", prerequisites: ["ECO 201"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Finance & Banking", relevance: 0.7 }, { field: "Consulting", relevance: 0.8 }],
+  },
+
+  // English (additional)
+  {
+    code: "ENG 330", name: "Victorian Literature",
+    description: "Study of major Victorian novels, poetry, and essays in the context of industrial, social, and imperial change.",
+    credits: 4, department: "English", prerequisites: ["ENG 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Education", relevance: 0.6 }, { field: "Media & Journalism", relevance: 0.4 }],
+  },
+
+  // History (additional)
+  {
+    code: "HIS 340", name: "Latin American History",
+    description: "Political, social, and cultural history of Latin America from colonialism to the present.",
+    credits: 4, department: "History", prerequisites: [], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.6 }, { field: "Nonprofit & Social Impact", relevance: 0.5 }],
+  },
+
+  // Psychology (additional)
+  {
+    code: "PSY 320", name: "Social Psychology",
+    description: "Study of how individuals think about, influence, and relate to one another in social contexts.",
+    credits: 4, department: "Psychology", prerequisites: ["PSY 100"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Marketing & Communications", relevance: 0.7 }, { field: "Consulting", relevance: 0.5 }],
+  },
+  {
+    code: "PSY 360", name: "Behavioral Neuroscience",
+    description: "Biological bases of behavior including neural anatomy, pharmacology, and brain-behavior relationships.",
+    credits: 4, department: "Psychology", prerequisites: ["PSY 100", "BIO 111"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.85 }, { field: "Research & Academia", relevance: 0.8 }],
+  },
+
+  // Sociology (additional)
+  {
+    code: "SOC 250", name: "Criminology",
+    description: "Sociological theories of crime, criminal justice system, punishment, and social control.",
+    credits: 4, department: "Sociology", prerequisites: ["SOC 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Law", relevance: 0.8 }, { field: "Government & Policy", relevance: 0.7 }],
+  },
+
+  // Political Science (additional)
+  {
+    code: "POL 250", name: "Political Research Methods",
+    description: "Quantitative and qualitative research methods in political science, including survey design and data analysis.",
+    credits: 4, department: "Political Science", prerequisites: ["POL 101"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Political Science"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.8 }, { field: "Data Science & Analytics", relevance: 0.5 }],
+  },
+
+  // Communication Studies (additional)
+  {
+    code: "COM 220", name: "Digital Media Production",
+    description: "Hands-on production of digital media content including podcasts, video, and social media campaigns.",
+    credits: 4, department: "Communication Studies", prerequisites: ["COM 100"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 2,
+    careerRelevance: [{ field: "Media & Journalism", relevance: 0.9 }, { field: "Marketing & Communications", relevance: 0.85 }],
+  },
+
+  // Philosophy (additional)
+  {
+    code: "PHI 250", name: "Logic",
+    description: "Formal logic including propositional and predicate calculus, proofs, and metalogic.",
+    credits: 4, department: "Philosophy", prerequisites: ["PHI 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Law", relevance: 0.7 }, { field: "Software Engineering", relevance: 0.4 }],
+  },
+
+  // Africana Studies (additional)
+  {
+    code: "AFR 310", name: "African Politics and Society",
+    description: "Political systems, economic development, and social change in contemporary sub-Saharan Africa.",
+    credits: 4, department: "Africana Studies", prerequisites: ["AFR 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Government & Policy", relevance: 0.6 }, { field: "Nonprofit & Social Impact", relevance: 0.7 }],
+  },
+
+  // Gender & Sexuality Studies (additional)
+  {
+    code: "GSS 310", name: "Queer Studies",
+    description: "Interdisciplinary examination of sexuality, queer theory, and LGBTQ+ histories and cultures.",
+    credits: 4, department: "Gender & Sexuality Studies", prerequisites: ["GSS 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Nonprofit & Social Impact", relevance: 0.7 }, { field: "Law", relevance: 0.4 }],
+  },
+
+  // Film & Media Studies (additional)
+  {
+    code: "FMS 310", name: "Digital Media Theory",
+    description: "Critical examination of digital media, platform studies, algorithmic culture, and the politics of technology.",
+    credits: 4, department: "Film & Media Studies", prerequisites: ["FMS 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Media & Journalism", relevance: 0.8 }, { field: "Marketing & Communications", relevance: 0.6 }],
+  },
+
+  // Environmental Studies (additional)
+  {
+    code: "ENV 220", name: "Environmental Chemistry",
+    description: "Chemical processes in air, water, and soil environments, including pollution and remediation.",
+    credits: 4, department: "Environmental Studies", prerequisites: ["CHE 115"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Environmental Science", relevance: 0.9 }, { field: "Healthcare & Medicine", relevance: 0.3 }],
+  },
+
+  // Public Health (additional)
+  {
+    code: "PUH 220", name: "Biostatistics",
+    description: "Statistical methods for public health research including study design, hypothesis testing, and survival analysis.",
+    credits: 4, department: "Public Health", prerequisites: ["PUH 101", "MAT 112"], offered: ["Spring"],
+    tags: ["major-requirement"], majorRequirements: ["Public Health"], difficulty: 3,
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.85 }, { field: "Data Science & Analytics", relevance: 0.7 }],
+  },
+
+  // Hispanic Studies (additional)
+  {
+    code: "SPA 310", name: "Latin American Literature",
+    description: "Survey of major literary works from Latin America in Spanish, including magical realism and contemporary fiction.",
+    credits: 4, department: "Hispanic Studies", prerequisites: ["SPA 202"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Education", relevance: 0.5 }, { field: "Media & Journalism", relevance: 0.4 }],
+  },
+
+  // French (additional)
+  {
+    code: "FRE 310", name: "French Literature and Culture",
+    description: "Study of major works of French literature from the Enlightenment to the present in their cultural context.",
+    credits: 4, department: "French", prerequisites: ["FRE 202"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Education", relevance: 0.5 }, { field: "Government & Policy", relevance: 0.3 }],
+  },
+
+  // Anthropology (additional upper-level)
+  {
+    code: "ANT 310", name: "Archaeology of the Americas",
+    description: "Archaeological methods and evidence for pre-Columbian civilizations in North, Central, and South America.",
+    credits: 4, department: "Anthropology", prerequisites: ["ANT 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 3,
+    careerRelevance: [{ field: "Research & Academia", relevance: 0.7 }, { field: "Education", relevance: 0.4 }],
+  },
+
+  // Digital Studies (additional)
+  {
+    code: "DAS 310", name: "Natural Language Processing",
+    description: "Computational methods for analyzing and generating human language, including text classification and language models.",
+    credits: 4, department: "Digital Studies", prerequisites: ["DAS 201", "CSC 222"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 4,
+    careerRelevance: [{ field: "Data Science & Analytics", relevance: 0.9 }, { field: "Software Engineering", relevance: 0.7 }],
   },
 ];

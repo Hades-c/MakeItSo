@@ -154,8 +154,8 @@ export default function ExplorePage() {
       <div className="flex items-center gap-2 text-sm">
         <button
           onClick={() => setStep("interests")}
-          className={`px-3 py-1.5 rounded-full font-medium transition-colors ${
-            step === "interests" ? "bg-emerald-100 text-emerald-700" : "text-muted-foreground hover:text-foreground"
+          className={`px-3 py-1.5 rounded-full font-medium transition-all ${
+            step === "interests" ? "bg-[#0f1117] text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           1. Select Interests
@@ -163,8 +163,8 @@ export default function ExplorePage() {
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
         <button
           onClick={() => selectedAreas.length > 0 && setStep("browse")}
-          className={`px-3 py-1.5 rounded-full font-medium transition-colors ${
-            step === "browse" ? "bg-emerald-100 text-emerald-700" : "text-muted-foreground hover:text-foreground"
+          className={`px-3 py-1.5 rounded-full font-medium transition-all ${
+            step === "browse" ? "bg-[#0f1117] text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           2. Browse Courses
@@ -172,8 +172,8 @@ export default function ExplorePage() {
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
         <button
           onClick={() => recommendations && setStep("recommendations")}
-          className={`px-3 py-1.5 rounded-full font-medium transition-colors ${
-            step === "recommendations" ? "bg-emerald-100 text-emerald-700" : "text-muted-foreground hover:text-foreground"
+          className={`px-3 py-1.5 rounded-full font-medium transition-all ${
+            step === "recommendations" ? "bg-[#0f1117] text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           3. AI Recommendations
@@ -274,7 +274,7 @@ export default function ExplorePage() {
             <button
               onClick={() => setSelectedDepartment(null)}
               className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                !selectedDepartment ? "bg-gray-900 text-white border-gray-900" : "text-muted-foreground hover:text-foreground border-gray-200"
+                !selectedDepartment ? "bg-[#0f1117] text-white border-[#0f1117]" : "text-muted-foreground hover:text-foreground border-gray-200/60 bg-white"
               }`}
             >
               All ({filteredCourses.length})
@@ -288,7 +288,7 @@ export default function ExplorePage() {
                   key={dept}
                   onClick={() => setSelectedDepartment(selectedDepartment === dept ? null : dept)}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    selectedDepartment === dept ? "bg-gray-900 text-white border-gray-900" : "text-muted-foreground hover:text-foreground border-gray-200"
+                    selectedDepartment === dept ? "bg-[#0f1117] text-white border-[#0f1117]" : "text-muted-foreground hover:text-foreground border-gray-200/60 bg-white"
                   }`}
                 >
                   {dept} ({count})
@@ -424,16 +424,20 @@ function CourseCard({ course }: { course: SeedCourse }) {
   }
 
   return (
-    <Card className="hover:shadow-md transition-all duration-200">
+    <Card className="hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-200 border-gray-200/60">
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="font-mono text-sm font-semibold text-emerald-600">{course.code}</span>
               <span className="text-xs text-muted-foreground">{course.credits} cr</span>
-              {course.tags.includes("major-requirement") && (
-                <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700">Major Req</Badge>
-              )}
+              {course.majorRequirements && course.majorRequirements.length > 0 ? (
+                <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50/80">
+                  {course.majorRequirements.join(", ")}
+                </Badge>
+              ) : course.tags.includes("major-requirement") ? (
+                <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50/80">Major Req</Badge>
+              ) : null}
             </div>
             <h3 className="font-semibold mb-0.5">{course.name}</h3>
             <p className="text-xs text-muted-foreground">{course.department}</p>
