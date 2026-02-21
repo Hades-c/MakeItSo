@@ -898,7 +898,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4"
+                            className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4 md:pl-[240px]"
                           >
                             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowProfModal(false)} />
                             <motion.div
@@ -1164,7 +1164,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4"
+                    className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4 md:pl-[240px]"
                   >
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowAiModal(false)} />
                     <motion.div
