@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-export const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+export const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
 export async function generateCareerPlan(career: string, major: string, classYear: string) {
   const prompt = `You are a career advisor for Davidson College students. A ${classYear} student majoring in ${major} wants to pursue a career in ${career}.
