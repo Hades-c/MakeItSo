@@ -20,7 +20,20 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        serif: ["var(--font-serif)", "Georgia", "serif"],
+      },
       colors: {
+        davidson: {
+          DEFAULT: "#8C1D1D",
+          dark: "#7A1919",
+          light: "#F9EFEF",
+        },
+        navy: {
+          DEFAULT: "#1E2A38",
+          light: "#2A3A4C",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

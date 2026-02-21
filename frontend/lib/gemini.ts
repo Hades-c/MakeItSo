@@ -66,9 +66,32 @@ export async function generateCourseInsights(
   courseCode: string,
   courseName: string,
   description: string,
-  department: string
+  department: string,
+  extraContext?: {
+    professor?: string;
+    rmpRating?: number;
+    rmpDifficulty?: number;
+    knownTopics?: string[];
+    knownSkills?: string[];
+    careerRelevance?: { field: string; relevance: number }[];
+  }
 ) {
-  const prompt = `For the Davidson College course "${courseCode}: ${courseName}" in the ${department} department with the following description: "${description}"
+  let contextBlock = "";
+  if (extraContext) {
+    const parts: string[] = [];
+    if (extraContext.professor) parts.push(`Instructor: ${extraContext.professor}`);
+    if (extraContext.rmpRating) parts.push(`RateMyProfessors quality rating: ${extraContext.rmpRating}/5`);
+    if (extraContext.rmpDifficulty) parts.push(`RateMyProfessors difficulty rating: ${extraContext.rmpDifficulty}/5`);
+    if (extraContext.knownTopics?.length) parts.push(`Known topics covered: ${extraContext.knownTopics.join(", ")}`);
+    if (extraContext.knownSkills?.length) parts.push(`Known skills gained: ${extraContext.knownSkills.join(", ")}`);
+    if (extraContext.careerRelevance?.length) {
+      const careers = extraContext.careerRelevance.map(c => `${c.field} (${Math.round(c.relevance * 100)}%)`).join(", ");
+      parts.push(`Career relevance: ${careers}`);
+    }
+    if (parts.length) contextBlock = `\n\nAdditional context about this course:\n${parts.join("\n")}`;
+  }
+
+  const prompt = `For the Davidson College course "${courseCode}: ${courseName}" in the ${department} department with the following description: "${description}"${contextBlock}
 
 Generate a JSON response with key course information and skills students will gain:
 
@@ -79,7 +102,7 @@ Generate a JSON response with key course information and skills students will ga
   "careerApplications": ["specific application 1", "specific application 2", "specific application 3"]
 }
 
-Be specific and practical. keyTopics should be the main subject areas covered. skillsGained should be tangible, marketable skills. careerApplications should be concrete ways the skills apply professionally. Return ONLY the JSON.`;
+Be specific and practical. Use the additional context to provide more accurate and detailed insights. keyTopics should be the main subject areas covered. skillsGained should be tangible, marketable skills. careerApplications should be concrete ways the skills apply professionally. Return ONLY the JSON.`;
 
   const result = await geminiModel.generateContent(prompt);
   const text = result.response.text();
@@ -96,11 +119,30 @@ export async function generateMajorRoadmap(
   major: string,
   completedCourses: string[],
   classYear: string,
-  interests: string[]
+  interests: string[],
+  specificity: number = 3
 ) {
+  // specificity: 1 = very general ("Elective", "Science Elective"), 5 = very specific (exact course codes)
+  let specificityInstruction = "";
+  if (specificity <= 1) {
+    specificityInstruction = `\n\nIMPORTANT: Keep course suggestions VERY GENERAL. For electives and distribution courses, do NOT name specific courses. Instead use generic placeholders like:
+- code: "ELEC ---", name: "Free Elective" for free electives
+- code: "DIST ---", name: "Distribution: Social Science" for distribution requirements
+- code: "DEPT ---", name: "${major} Elective" for major electives
+Only name specific courses for absolute core requirements (e.g. the intro sequence for the major).`;
+  } else if (specificity === 2) {
+    specificityInstruction = `\n\nKeep course suggestions MOSTLY GENERAL. Name specific courses only for core major requirements. For electives and distributions, use category placeholders like "Social Science Elective", "Humanities Elective", "${major} Elective", etc. Use generic codes like "DIST ---" or "ELEC ---" for these.`;
+  } else if (specificity === 3) {
+    specificityInstruction = `\n\nUse a MIX of specific and general suggestions. Name specific courses for major requirements and key electives that align with the student's interests. For other slots, you may use general placeholders like "Free Elective" or "Distribution Elective".`;
+  } else if (specificity === 4) {
+    specificityInstruction = `\n\nBe MOSTLY SPECIFIC. Suggest specific Davidson courses with real course codes for most slots. You may use a few general placeholders for free electives where the student has maximum flexibility.`;
+  } else {
+    specificityInstruction = `\n\nBe VERY SPECIFIC. Suggest exact Davidson College courses with real course codes and names for every single slot. Use your best judgment to pick the best courses based on the student's major, interests, and career trajectory. No generic placeholders.`;
+  }
+
   const prompt = `You are an academic advisor at Davidson College. Create a semester-by-semester course roadmap for a ${classYear} student majoring in ${major} who has completed: ${completedCourses.join(", ") || "no courses yet"}.
 
-Their interests include: ${interests.join(", ") || "undecided"}.
+Their interests include: ${interests.join(", ") || "undecided"}.${specificityInstruction}
 
 Generate a JSON response:
 {
@@ -110,6 +152,17 @@ Generate a JSON response:
       "courses": [
         {"code": "DEPT 101", "name": "Course Name", "type": "major-requirement|elective|distribution", "reason": "Why take this now"}
       ]
+    },
+    {
+      "semester": "Spring 2026",
+      "courses": [...]
+    },
+    {
+      "semester": "Summer 2026",
+      "isSummer": true,
+      "activities": [
+        {"activity": "Activity name", "type": "internship|research|study-abroad|fellowship|personal-project|networking", "reason": "Why this is valuable", "examples": "1-2 specific examples relevant to the student"}
+      ]
     }
   ],
   "advice": "2-3 sentences of personalized advice",
@@ -117,7 +170,7 @@ Generate a JSON response:
   "estimatedGraduation": "Spring 2028"
 }
 
-Plan through graduation. Include 4-5 courses per semester. Davidson requires 128 credits (32 courses) to graduate. Return ONLY the JSON.`;
+Plan through graduation. Include 4-5 courses per semester. IMPORTANT: Between each academic year (after Spring, before Fall), include a "Summer YYYY" entry with isSummer: true and 3-4 suggested summer activities (internships, research, study abroad, personal projects, networking, etc.) tailored to the student's major and interests. These should be progressively more advanced — freshman summer more exploratory, senior summer more career-focused. Davidson requires 128 credits (32 courses) to graduate. Return ONLY the JSON.`;
 
   const result = await geminiModel.generateContent(prompt);
   const text = result.response.text();

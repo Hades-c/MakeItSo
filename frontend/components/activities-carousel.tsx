@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface Activity {
   name: string;
@@ -36,63 +36,63 @@ const DAVIDSON_ACTIVITIES: Activity[] = [
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Tradition: "bg-amber-50 text-amber-700",
-  Social: "bg-blue-50 text-blue-700",
-  Outdoor: "bg-emerald-50 text-emerald-700",
-  Arts: "bg-purple-50 text-purple-700",
-  Athletics: "bg-rose-50 text-rose-700",
-  Local: "bg-orange-50 text-orange-700",
+  Tradition: "text-davidson",
+  Social: "text-navy",
+  Outdoor: "text-emerald-600",
+  Arts: "text-purple-600",
+  Athletics: "text-davidson",
+  Local: "text-amber-600",
 };
 
 export function ActivitiesCarousel() {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
 
-  const scroll = (dir: "left" | "right") => {
-    if (!scrollRef.current) return;
-    const amount = dir === "left" ? -300 : 300;
-    scrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
-  };
+  const advance = useCallback(() => {
+    setIndex((i) => (i + 1) % DAVIDSON_ACTIVITIES.length);
+  }, []);
+
+  useEffect(() => {
+    if (paused) return;
+    const id = setInterval(advance, 5000);
+    return () => clearInterval(id);
+  }, [paused, advance]);
+
+  const activity = DAVIDSON_ACTIVITIES[index];
 
   return (
-    <div className="mt-12 border-t border-gray-100 pt-8 pb-4">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">Life at Davidson</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Fun things to do on and around campus</p>
-        </div>
-        <div className="flex gap-1">
-          <button onClick={() => scroll("left")} className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors">
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </button>
-          <button onClick={() => scroll("right")} className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors">
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-
+    <div className="mt-12 border-t border-gray-100 pt-6 pb-4">
       <div
-        ref={scrollRef}
-        className="flex gap-3 overflow-x-auto carousel-scroll pb-2"
+        className="flex items-center gap-3 cursor-default select-none"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onClick={advance}
       >
-        {DAVIDSON_ACTIVITIES.map((activity) => (
-          <div
-            key={activity.name}
-            className="flex-shrink-0 w-[220px] bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm hover:border-gray-200 transition-all"
+        <span className="text-[10px] font-medium text-gray-300 uppercase tracking-widest whitespace-nowrap">
+          Life at Davidson
+        </span>
+
+        <span className="text-gray-200">·</span>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35 }}
+            className="flex items-center gap-2 min-w-0"
           >
-            <div className="flex items-start gap-2.5">
-              <span className="text-xl">{activity.emoji}</span>
-              <div className="min-w-0">
-                <h4 className="text-xs font-semibold text-gray-900 mb-0.5">{activity.name}</h4>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[activity.category] || "bg-gray-50 text-gray-600"}`}>
-                  {activity.category}
-                </span>
-              </div>
-            </div>
-            <p className="text-[11px] text-gray-500 mt-2 leading-relaxed line-clamp-3">
-              {activity.description}
-            </p>
-          </div>
-        ))}
+            <span className="text-sm">{activity.emoji}</span>
+            <span className="text-xs font-medium text-gray-700">{activity.name}</span>
+            <span className={`text-[10px] font-medium ${CATEGORY_COLORS[activity.category] || "text-gray-500"}`}>
+              {activity.category}
+            </span>
+            <span className="text-[11px] text-gray-400 truncate hidden sm:inline">
+              — {activity.description}
+            </span>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
