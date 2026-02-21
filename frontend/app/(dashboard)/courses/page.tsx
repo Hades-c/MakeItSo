@@ -1,139 +1,79 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { connectToDatabase } from "@/lib/mongodb";
-import CoursePlan from "@/models/CoursePlan";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { PlusCircle } from "lucide-react";
-import User from "@/models/User";
+import {
+  BookOpen,
+  Compass,
+  GraduationCap,
+  Map,
+  Sparkles,
+} from "lucide-react";
 
-const STATUS_COLORS = {
-  completed: "success" as const,
-  "in-progress": "default" as const,
-  planned: "secondary" as const,
-  dropped: "destructive" as const,
-};
-
-function groupBySemester(courses: CoursePlan["plannedCourses"]) {
-  const map = new Map<string, typeof courses>();
-  for (const course of courses) {
-    const key = `${course.semester} ${course.year}`;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(course);
-  }
-  return map;
-}
-
-export default async function CoursesPage() {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as { id: string })?.id;
-
-  await connectToDatabase();
-
-  const [plan, user] = await Promise.all([
-    CoursePlan.findOne({ userId }).lean(),
-    User.findById(userId).lean(),
-  ]);
-
-  const courses = plan?.plannedCourses ?? [];
-  const grouped = groupBySemester(courses);
-  const semesterKeys = Array.from(grouped.keys()).sort((a, b) => {
-    const [semA, yearA] = a.split(" ");
-    const [semB, yearB] = b.split(" ");
-    if (yearA !== yearB) return parseInt(yearA) - parseInt(yearB);
-    const order = ["Spring", "Summer", "Fall"];
-    return order.indexOf(semA) - order.indexOf(semB);
-  });
-
-  const creditsCompleted = plan?.totalCreditsCompleted ?? 0;
-  const creditsRequired = user?.totalCreditsRequired ?? 128;
-
+export default function CoursesPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Course Plan</h1>
-          <p className="text-muted-foreground">
-            {creditsCompleted} of {creditsRequired} credits completed
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/courses/add">
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Add Course
-          </Link>
-        </Button>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
+            <GraduationCap className="h-5 w-5 text-white" />
+          </div>
+          Course Plan
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Track your 4-year course plan and degree progress.
+        </p>
       </div>
 
-      {/* Credit progress */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="font-medium">Degree Progress</span>
-            <span className="text-muted-foreground">
-              {creditsCompleted} / {creditsRequired} credits
-            </span>
+      {/* Empty state with beautiful call to action */}
+      <Card className="border-2 border-dashed">
+        <CardContent className="py-16 text-center">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center mx-auto mb-4">
+            <BookOpen className="h-8 w-8 text-amber-600" />
           </div>
-          <Progress value={(creditsCompleted / creditsRequired) * 100} />
+          <h3 className="text-lg font-semibold mb-2">Start Building Your Plan</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+            Explore courses to find the right ones for your interests and career goals,
+            or generate an AI roadmap for your major.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700" asChild>
+              <Link href="/explore">
+                <Compass className="h-4 w-4 mr-2" />
+                Explore Courses
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/roadmap">
+                <Map className="h-4 w-4 mr-2" />
+                Generate Roadmap
+              </Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Course list by semester */}
-      {semesterKeys.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <p className="text-muted-foreground mb-4">No courses in your plan yet.</p>
-            <Button asChild>
-              <Link href="/courses/add">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add Your First Course
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        semesterKeys.map((key) => {
-          const semCourses = grouped.get(key)!;
-          const semCredits = semCourses.reduce((s, c) => s + c.credits, 0);
-          return (
-            <Card key={key}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{key}</CardTitle>
-                  <CardDescription>{semCredits} credits</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="divide-y">
-                  {semCourses.map((course) => (
-                    <div
-                      key={course.courseCode}
-                      className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                    >
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{course.courseCode}</p>
-                        <p className="text-xs text-muted-foreground">{course.courseName}</p>
-                        {course.grade && (
-                          <p className="text-xs text-muted-foreground">Grade: {course.grade}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <span className="text-xs text-muted-foreground">{course.credits} cr</span>
-                        <Badge variant={STATUS_COLORS[course.status]}>
-                          {course.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })
-      )}
+      {/* Info card */}
+      <Card className="border-amber-100 bg-gradient-to-r from-amber-50/30 to-orange-50/30">
+        <CardContent className="p-5 flex items-start gap-4">
+          <div className="h-9 w-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 text-amber-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm mb-1">Coming Soon: Full Course Management</h3>
+            <p className="text-sm text-muted-foreground">
+              Soon you&apos;ll be able to add courses directly from the explorer, track prerequisites,
+              manage your semester schedule, and monitor degree progress all in one place.
+              For now, use the <Link href="/explore" className="text-violet-600 hover:underline">Explore</Link> and{" "}
+              <Link href="/roadmap" className="text-violet-600 hover:underline">Roadmap</Link> features to plan your path.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

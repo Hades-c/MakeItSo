@@ -7,6 +7,16 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  // Safelist colors used with dynamic class names
+  safelist: [
+    "bg-emerald-50", "text-emerald-600", "text-emerald-700", "bg-emerald-100", "border-emerald-200",
+    "bg-blue-50", "text-blue-600", "text-blue-700", "bg-blue-100", "border-blue-200",
+    "bg-purple-50", "text-purple-600", "text-purple-700", "bg-purple-100", "border-purple-200",
+    "bg-rose-50", "text-rose-600", "text-rose-700", "bg-rose-100", "border-rose-200",
+    "bg-amber-50", "text-amber-600", "text-amber-700", "bg-amber-100", "border-amber-200",
+    "bg-violet-50", "text-violet-600", "text-violet-700", "bg-violet-100", "border-violet-200",
+    "bg-indigo-50", "text-indigo-600", "text-indigo-700", "bg-indigo-100", "border-indigo-200",
+  ],
   theme: {
     container: {
       center: true,
