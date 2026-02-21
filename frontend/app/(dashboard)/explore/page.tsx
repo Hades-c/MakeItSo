@@ -8,16 +8,22 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowRight,
   BookOpen,
+  Brain,
   Briefcase,
   ChevronRight,
   Compass,
   Filter,
   GraduationCap,
+  Lightbulb,
   Loader2,
+  MessageSquare,
   Search,
   Sparkles,
   Star,
+  ThumbsUp,
   TrendingUp,
+  Users,
+  Zap,
 } from "lucide-react";
 import { SUBJECT_AREAS } from "@/lib/utils";
 import { DAVIDSON_COURSES, type SeedCourse } from "@/lib/davidson-courses";
@@ -63,7 +69,8 @@ export default function ExplorePage() {
     const matchesSearch = searchQuery
       ? c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.department.toLowerCase().includes(searchQuery.toLowerCase())
+        c.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.professor && c.professor.toLowerCase().includes(searchQuery.toLowerCase()))
       : true;
     return matchesDept && matchesSearch;
   });
@@ -239,7 +246,7 @@ export default function ExplorePage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search courses by name, code, or department..."
+                placeholder="Search by name, code, department, or professor..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -362,8 +369,53 @@ export default function ExplorePage() {
   );
 }
 
+function RatingBar({ value, max, color }: { value: number; max: number; color: string }) {
+  return (
+    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div
+        className={`h-full rounded-full ${color}`}
+        style={{ width: `${(value / max) * 100}%` }}
+      />
+    </div>
+  );
+}
+
 function CourseCard({ course }: { course: SeedCourse }) {
   const [expanded, setExpanded] = useState(false);
+  const [aiInsights, setAiInsights] = useState<{
+    courseHighlights?: string;
+    keyTopics?: string[];
+    skillsGained?: string[];
+    careerApplications?: string[];
+  } | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+
+  const prof = course.professorInfo;
+
+  async function fetchAiInsights() {
+    if (aiInsights || loadingInsights) return;
+    setLoadingInsights(true);
+    try {
+      const res = await fetch("/api/ai/course-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseCode: course.code,
+          courseName: course.name,
+          description: course.description,
+          department: course.department,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiInsights(data.insights);
+      }
+    } catch (err) {
+      console.error("Failed to get AI insights:", err);
+    } finally {
+      setLoadingInsights(false);
+    }
+  }
 
   return (
     <Card className="hover:shadow-md transition-all duration-200">
@@ -381,34 +433,138 @@ function CourseCard({ course }: { course: SeedCourse }) {
             <p className="text-xs text-muted-foreground">{course.department}</p>
 
             {expanded && (
-              <div className="mt-3 space-y-3 animate-fade-in">
+              <div className="mt-3 space-y-4 animate-fade-in">
                 <p className="text-sm text-muted-foreground">{course.description}</p>
 
+                {/* Professor Section with RMP Data */}
                 {course.professor && (
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm">{course.professor}</span>
-                    {course.professorRating && (
-                      <span className="flex items-center gap-0.5 text-xs text-amber-600">
-                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                        {course.professorRating}
-                      </span>
+                  <div className="rounded-lg border bg-slate-50/50 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4 text-slate-500" />
+                      <span className="text-sm font-medium">{course.professor}</span>
+                    </div>
+                    {prof?.title && (
+                      <p className="text-xs text-muted-foreground ml-6">{prof.title}</p>
+                    )}
+                    {prof?.rmpRating != null && (
+                      <div className="ml-6 space-y-2">
+                        {/* Rating overview row */}
+                        <div className="flex flex-wrap items-center gap-3 text-xs">
+                          <span className="flex items-center gap-1">
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                            <span className="font-semibold text-sm">{prof.rmpRating}</span>
+                            <span className="text-muted-foreground">/5</span>
+                          </span>
+                          {prof.rmpWouldTakeAgain != null && (
+                            <span className="flex items-center gap-1 text-emerald-600">
+                              <ThumbsUp className="h-3 w-3" />
+                              {prof.rmpWouldTakeAgain}% would take again
+                            </span>
+                          )}
+                          {prof.rmpDifficulty != null && (
+                            <span className="flex items-center gap-1 text-orange-600">
+                              <Zap className="h-3 w-3" />
+                              {prof.rmpDifficulty} difficulty
+                            </span>
+                          )}
+                          {prof.rmpNumRatings != null && (
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Users className="h-3 w-3" />
+                              {prof.rmpNumRatings} ratings
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Rating bars */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground w-14">Quality</span>
+                            <RatingBar
+                              value={prof.rmpRating}
+                              max={5}
+                              color={prof.rmpRating >= 4 ? "bg-emerald-500" : prof.rmpRating >= 3 ? "bg-amber-400" : "bg-red-400"}
+                            />
+                          </div>
+                          {prof.rmpDifficulty != null && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-muted-foreground w-14">Difficulty</span>
+                              <RatingBar
+                                value={prof.rmpDifficulty}
+                                max={5}
+                                color={prof.rmpDifficulty <= 2.5 ? "bg-emerald-500" : prof.rmpDifficulty <= 3.5 ? "bg-amber-400" : "bg-orange-500"}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* RMP Tags */}
+                        {prof.rmpTags && prof.rmpTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {prof.rmpTags.slice(0, 5).map((tag) => (
+                              <span key={tag} className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-100">
+                                <MessageSquare className="h-2.5 w-2.5" />
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
 
-                {course.prerequisites.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs">Prerequisites: {course.prerequisites.join(", ")}</span>
+                {/* Course Insights - Static data */}
+                {course.courseInsights && (
+                  <div className="space-y-3">
+                    {/* Key Topics */}
+                    {course.courseInsights.keyTopics && course.courseInsights.keyTopics.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                          <BookOpen className="h-3 w-3" /> Key Topics
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {course.courseInsights.keyTopics.map((topic) => (
+                            <span key={topic} className="text-[11px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+                              {topic}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Skills Gained */}
+                    {course.courseInsights.skillsGained && course.courseInsights.skillsGained.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                          <Lightbulb className="h-3 w-3" /> Skills You&apos;ll Gain
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {course.courseInsights.skillsGained.map((skill) => (
+                            <span key={skill} className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <div className="flex items-center gap-2">
-                  <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs">Offered: {course.offered.join(", ")}</span>
+                {/* Prerequisites and offering info */}
+                <div className="flex flex-wrap gap-4">
+                  {course.prerequisites.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs">Prerequisites: {course.prerequisites.join(", ")}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs">Offered: {course.offered.join(", ")}</span>
+                  </div>
                 </div>
 
+                {/* Career Relevance */}
                 {course.careerRelevance.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
@@ -430,6 +586,88 @@ function CourseCard({ course }: { course: SeedCourse }) {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* AI Deep Dive Button */}
+                <div className="pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchAiInsights}
+                    disabled={loadingInsights || !!aiInsights}
+                    className="text-xs"
+                  >
+                    {loadingInsights ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : aiInsights ? (
+                      <>
+                        <Brain className="mr-1.5 h-3 w-3" />
+                        AI Insights Loaded
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="mr-1.5 h-3 w-3" />
+                        Get AI Deep Dive
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* AI-Generated Insights */}
+                {aiInsights && (
+                  <div className="rounded-lg border border-violet-200 bg-violet-50/30 p-3 space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-violet-600" />
+                      <span className="text-xs font-semibold text-violet-700">AI Course Analysis</span>
+                    </div>
+
+                    {aiInsights.courseHighlights && (
+                      <p className="text-xs text-muted-foreground">{aiInsights.courseHighlights}</p>
+                    )}
+
+                    {aiInsights.keyTopics && aiInsights.keyTopics.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-medium text-violet-600 mb-1">Deep Dive Topics</p>
+                        <div className="flex flex-wrap gap-1">
+                          {aiInsights.keyTopics.map((topic) => (
+                            <span key={topic} className="text-[10px] px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700">
+                              {topic}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {aiInsights.skillsGained && aiInsights.skillsGained.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-medium text-violet-600 mb-1">Additional Skills</p>
+                        <div className="flex flex-wrap gap-1">
+                          {aiInsights.skillsGained.map((skill) => (
+                            <span key={skill} className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {aiInsights.careerApplications && aiInsights.careerApplications.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-medium text-violet-600 mb-1">Career Applications</p>
+                        <ul className="space-y-0.5">
+                          {aiInsights.careerApplications.map((app) => (
+                            <li key={app} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                              <Briefcase className="h-3 w-3 mt-0.5 shrink-0 text-violet-400" />
+                              {app}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

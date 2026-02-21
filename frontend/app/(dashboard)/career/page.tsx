@@ -57,6 +57,7 @@ export default function CareerPage() {
   const [customCareer, setCustomCareer] = useState("");
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<CareerPlan | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("courses");
 
   async function generatePlan() {
@@ -64,6 +65,7 @@ export default function CareerPage() {
     if (!career) return;
 
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/ai/career-plan", {
         method: "POST",
@@ -78,9 +80,15 @@ export default function CareerPage() {
       if (res.ok) {
         const data = await res.json();
         setPlan(data.plan);
+      } else if (res.status === 401) {
+        setError("You need to sign in before generating a career plan.");
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Failed to generate career plan. Please try again.");
       }
     } catch (err) {
       console.error("Failed to generate plan:", err);
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -197,6 +205,22 @@ export default function CareerPage() {
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               Our AI is analyzing Davidson&apos;s courses, alumni data, and career outcomes to create your personalized plan...
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error state */}
+      {error && !loading && !plan && (
+        <Card className="border-red-200 bg-red-50/50">
+          <CardContent className="py-10 text-center">
+            <div className="h-12 w-12 rounded-xl bg-red-100 flex items-center justify-center mx-auto mb-3">
+              <Target className="h-6 w-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-1 text-red-800">Something went wrong</h3>
+            <p className="text-sm text-red-600 mb-4 max-w-md mx-auto">{error}</p>
+            <Button variant="outline" onClick={() => { setError(null); }}>
+              Try Again
+            </Button>
           </CardContent>
         </Card>
       )}

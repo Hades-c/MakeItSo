@@ -1,5 +1,20 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
+export interface IProfessorInfo {
+  name: string;
+  title?: string;
+  rmpRating?: number;
+  rmpDifficulty?: number;
+  rmpNumRatings?: number;
+  rmpWouldTakeAgain?: number;
+  rmpTags?: string[];
+}
+
+export interface ICourseInsights {
+  keyTopics?: string[];
+  skillsGained?: string[];
+}
+
 export interface ICourse extends Document {
   code: string;
   name: string;
@@ -12,10 +27,27 @@ export interface ICourse extends Document {
   difficulty?: 1 | 2 | 3 | 4 | 5;
   professor?: string;
   professorRating?: number;
+  professorInfo?: IProfessorInfo;
+  courseInsights?: ICourseInsights;
   careerRelevance?: { field: string; relevance: number }[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+const ProfessorInfoSchema = new Schema<IProfessorInfo>({
+  name: { type: String, required: true },
+  title: { type: String },
+  rmpRating: { type: Number, min: 0, max: 5 },
+  rmpDifficulty: { type: Number, min: 0, max: 5 },
+  rmpNumRatings: { type: Number, min: 0 },
+  rmpWouldTakeAgain: { type: Number, min: 0, max: 100 },
+  rmpTags: [{ type: String }],
+}, { _id: false });
+
+const CourseInsightsSchema = new Schema<ICourseInsights>({
+  keyTopics: [{ type: String }],
+  skillsGained: [{ type: String }],
+}, { _id: false });
 
 const CourseSchema = new Schema<ICourse>(
   {
@@ -30,6 +62,8 @@ const CourseSchema = new Schema<ICourse>(
     difficulty: { type: Number, min: 1, max: 5 },
     professor: { type: String },
     professorRating: { type: Number, min: 1, max: 5 },
+    professorInfo: { type: ProfessorInfoSchema },
+    courseInsights: { type: CourseInsightsSchema },
     careerRelevance: [{
       field: { type: String },
       relevance: { type: Number, min: 0, max: 1 },
