@@ -12,13 +12,14 @@ import {
   GraduationCap,
   Map,
   Sparkles,
-  Target,
   TrendingUp,
+  Users,
   Zap,
 } from "lucide-react";
+import { ActivitiesCarousel } from "@/components/activities-carousel";
 
 const fadeIn = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
 };
 
@@ -36,63 +37,55 @@ export default function DashboardPage() {
 
   return (
     <motion.div
-      className="max-w-5xl mx-auto space-y-6"
+      className="max-w-5xl mx-auto space-y-8"
       initial="initial"
       animate="animate"
       variants={stagger}
     >
-      {/* Hero welcome */}
-      <motion.div variants={fadeIn} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f1117] via-[#1a1c25] to-[#0f1117] p-8 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(185,28,28,0.15),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.08),transparent_50%)]" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 text-sm text-red-300 font-medium mb-2">
-            <Sparkles className="h-4 w-4" />
-            {greeting}
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
-            Welcome back, {firstName}
-          </h1>
-          <p className="text-gray-400 max-w-lg">
-            Your academic journey, mapped out. Let&apos;s keep building your plan.
-          </p>
-        </div>
+      {/* Hero */}
+      <motion.div variants={fadeIn}>
+        <p className="text-sm text-gray-400 font-medium mb-1">{greeting}</p>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">
+          Welcome back, {firstName}
+        </h1>
+        <p className="text-gray-500 mt-1 max-w-lg">
+          Your academic journey at Davidson, all in one place.
+        </p>
       </motion.div>
 
-      {/* Stat cards */}
+      {/* Quick stats */}
       <motion.div variants={fadeIn} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Courses", value: "200+", icon: BookOpen, gradient: "from-emerald-500 to-teal-600" },
-          { label: "Career Paths", value: "16", icon: Target, gradient: "from-red-600 to-rose-600" },
-          { label: "Powered by", value: "Gemini", icon: Zap, gradient: "from-blue-500 to-indigo-600" },
-          { label: "Built for", value: "Davidson", icon: GraduationCap, gradient: "from-rose-500 to-pink-600" },
-        ].map(({ label, value, icon: Icon, gradient }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-200/60 p-4 hover:shadow-md transition-shadow">
-            <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center mb-3 shadow-sm`}>
-              <Icon className="h-4 w-4 text-white" />
+          { label: "Live Courses", value: "699", icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Career Paths", value: "16", icon: Briefcase, color: "text-rose-600", bg: "bg-rose-50" },
+          { label: "AI Powered", value: "Gemini", icon: Zap, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Alumni Network", value: "30+", icon: Users, color: "text-amber-600", bg: "bg-amber-50" },
+        ].map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition-all group">
+            <div className={`h-8 w-8 rounded-lg ${bg} flex items-center justify-center mb-3`}>
+              <Icon className={`h-4 w-4 ${color}`} />
             </div>
-            <p className="text-2xl font-bold tracking-tight">{value}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+            <p className="text-xl font-bold tracking-tight text-gray-900">{value}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{label}</p>
           </div>
         ))}
       </motion.div>
 
-      {/* Two big CTAs */}
+      {/* Primary CTAs */}
       <motion.div variants={fadeIn} className="grid sm:grid-cols-2 gap-4">
         <Link href="/explore" className="group">
-          <div className="h-full rounded-xl border border-gray-200/60 bg-white p-6 hover:shadow-lg hover:border-emerald-300/60 transition-all duration-300 overflow-hidden relative">
-            <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-bl from-emerald-100/80 to-transparent rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative flex items-start gap-4">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
-                <Compass className="h-6 w-6 text-white" />
+          <div className="h-full rounded-xl border border-gray-100 bg-white p-6 hover:shadow-md hover:border-emerald-200 transition-all duration-200 overflow-hidden relative">
+            <div className="flex items-start gap-4">
+              <div className="h-11 w-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                <Compass className="h-5 w-5 text-emerald-600" />
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold text-lg mb-1 group-hover:text-emerald-700 transition-colors">
+                <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
                   Explore Courses
-                  <ArrowRight className="inline ml-2 h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                  <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  Discover courses by interest and see how they connect to real careers.
+                <p className="text-sm text-gray-500">
+                  Browse all 699 Davidson courses with live enrollment data, professor ratings, and AI insights.
                 </p>
               </div>
             </div>
@@ -100,19 +93,18 @@ export default function DashboardPage() {
         </Link>
 
         <Link href="/career" className="group">
-          <div className="h-full rounded-xl border border-gray-200/60 bg-white p-6 hover:shadow-lg hover:border-red-300/60 transition-all duration-300 overflow-hidden relative">
-            <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-bl from-red-100/80 to-transparent rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative flex items-start gap-4">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-red-700 to-rose-600 flex items-center justify-center shadow-lg shadow-red-700/20 shrink-0">
-                <Briefcase className="h-6 w-6 text-white" />
+          <div className="h-full rounded-xl border border-gray-100 bg-white p-6 hover:shadow-md hover:border-rose-200 transition-all duration-200 overflow-hidden relative">
+            <div className="flex items-start gap-4">
+              <div className="h-11 w-11 rounded-xl bg-rose-50 flex items-center justify-center shrink-0 group-hover:bg-rose-100 transition-colors">
+                <Briefcase className="h-5 w-5 text-rose-600" />
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold text-lg mb-1 group-hover:text-red-800 transition-colors">
+                <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
                   Career Paths
-                  <ArrowRight className="inline ml-2 h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                  <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-rose-500 group-hover:translate-x-0.5 transition-all" />
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  Explore 16 careers with courses, alumni, and AI-powered roadmaps.
+                <p className="text-sm text-gray-500">
+                  Explore 16 career paths with alumni connections, AI roadmaps, and cold email generator.
                 </p>
               </div>
             </div>
@@ -120,79 +112,56 @@ export default function DashboardPage() {
         </Link>
       </motion.div>
 
-      {/* Feature bento grid */}
+      {/* Secondary features */}
       <motion.div variants={fadeIn} className="grid sm:grid-cols-3 gap-3">
-        <Link href="/roadmap" className="group">
-          <div className="h-full rounded-xl border border-gray-200/60 bg-white p-5 hover:shadow-md hover:border-blue-300/60 transition-all duration-300">
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-3 shadow-sm">
-              <Map className="h-5 w-5 text-white" />
+        {[
+          { href: "/roadmap", icon: Map, label: "AI Roadmap", desc: "Personalized semester plan for your major", color: "blue" },
+          { href: "/courses", icon: GraduationCap, label: "Course Plan", desc: "Track your 4-year degree progress", color: "amber" },
+          { href: "/profile", icon: TrendingUp, label: "Profile", desc: "Set your major, minor, and interests", color: "purple" },
+        ].map(({ href, icon: Icon, label, desc, color }) => (
+          <Link key={href} href={href} className="group">
+            <div className="h-full rounded-xl border border-gray-100 bg-white p-5 hover:shadow-sm hover:border-gray-200 transition-all duration-200">
+              <div className={`h-9 w-9 rounded-lg bg-${color}-50 flex items-center justify-center mb-3 group-hover:bg-${color}-100 transition-colors`}>
+                <Icon className={`h-4 w-4 text-${color}-600`} />
+              </div>
+              <h3 className="font-medium text-sm text-gray-900 mb-0.5">{label}</h3>
+              <p className="text-xs text-gray-400">{desc}</p>
             </div>
-            <h3 className="font-semibold mb-1 group-hover:text-blue-700 transition-colors">
-              My Roadmap
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              AI-generated semester-by-semester plan for your major.
-            </p>
-          </div>
-        </Link>
-
-        <Link href="/courses" className="group">
-          <div className="h-full rounded-xl border border-gray-200/60 bg-white p-5 hover:shadow-md hover:border-amber-300/60 transition-all duration-300">
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mb-3 shadow-sm">
-              <GraduationCap className="h-5 w-5 text-white" />
-            </div>
-            <h3 className="font-semibold mb-1 group-hover:text-amber-700 transition-colors">
-              Course Plan
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Build your 4-year plan and track degree progress.
-            </p>
-          </div>
-        </Link>
-
-        <Link href="/profile" className="group">
-          <div className="h-full rounded-xl border border-gray-200/60 bg-white p-5 hover:shadow-md hover:border-rose-300/60 transition-all duration-300">
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center mb-3 shadow-sm">
-              <BookOpen className="h-5 w-5 text-white" />
-            </div>
-            <h3 className="font-semibold mb-1 group-hover:text-rose-700 transition-colors">
-              Profile
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Update your major, interests, and academic info.
-            </p>
-          </div>
-        </Link>
+          </Link>
+        ))}
       </motion.div>
 
-      {/* AI callout */}
+      {/* AI banner */}
       <motion.div variants={fadeIn}>
-        <div className="relative overflow-hidden rounded-xl border border-red-200/60 bg-gradient-to-r from-white to-red-50/50 p-6">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-red-100/40 to-transparent rounded-full -translate-y-1/2 translate-x-1/4" />
-          <div className="relative flex items-start gap-5">
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-red-700 to-rose-600 flex items-center justify-center shrink-0 shadow-md shadow-red-800/20">
+        <div className="rounded-xl border border-rose-100 bg-gradient-to-r from-rose-50/50 to-white p-6">
+          <div className="flex items-start gap-4">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center shrink-0 shadow-sm">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h3 className="font-semibold mb-1">Powered by AI</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                MakeItSo uses Gemini to analyze Davidson&apos;s catalog, career data, and alumni patterns
-                to give you recommendations you won&apos;t find anywhere else.
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 mb-1">Powered by Gemini AI</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Get personalized course recommendations, career roadmaps, and networking emails — all tailored to your Davidson experience.
               </p>
-              <div className="flex gap-3">
-                <Button size="sm" className="bg-gradient-to-r from-red-700 to-rose-600 hover:from-red-800 hover:to-rose-700 shadow-sm" asChild>
+              <div className="flex gap-2">
+                <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white shadow-sm" asChild>
                   <Link href="/explore">
-                    <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
-                    Explore Courses
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                    Get Started
                   </Link>
                 </Button>
-                <Button size="sm" variant="outline" asChild>
+                <Button size="sm" variant="outline" className="text-gray-600" asChild>
                   <Link href="/career">Browse Careers</Link>
                 </Button>
               </div>
             </div>
           </div>
         </div>
+      </motion.div>
+
+      {/* Activities carousel */}
+      <motion.div variants={fadeIn}>
+        <ActivitiesCarousel />
       </motion.div>
     </motion.div>
   );

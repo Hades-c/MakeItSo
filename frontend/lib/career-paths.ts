@@ -93,10 +93,10 @@ export const CAREER_PATHS: CareerPath[] = [
       { code: "CSC 371", name: "Software Engineering", description: "Software development methodologies, testing, version control, and team-based project work.", bestProfessor: "Dr. Webber", difficulty: 3 },
     ],
     summerOpportunities: [
-      { title: "Software Engineering Internship", type: "Internship", description: "Work at a tech company building real products. Top destinations include Google, Microsoft, Meta, and startups.", timing: "Summer after Sophomore or Junior year" },
-      { title: "Open Source Contribution", type: "Project", description: "Contribute to major open source projects to build your portfolio and network with experienced developers.", timing: "Any summer" },
-      { title: "Hackathon Participation", type: "Competition", description: "Join hackathons like HackMIT, PennApps, or HackDavidson to build projects under pressure.", timing: "Year-round, especially fall" },
-      { title: "Research with Faculty", type: "Research", description: "Work with Davidson CS faculty on research in AI, systems, or computational biology.", timing: "Summer after Freshman or Sophomore year" },
+      { title: "Software Engineering Internship", type: "Internship", description: "Top Davidson destinations: Microsoft, Google, Meta, Red Ventures (Charlotte), LendingTree, and startups in the Hurt Hub network. Apply through Handshake by October.", timing: "Summer after Sophomore or Junior year" },
+      { title: "Hurt Hub Startup Fellowship", type: "Fellowship", description: "Work directly with a Charlotte-area startup through the Jay Hurt Hub for Innovation at Davidson. Stipend provided. Great for freshmen/sophomores.", timing: "Summer after Freshman or Sophomore year" },
+      { title: "Hackathon Participation", type: "Competition", description: "Join HackDavidson (on campus), HackMIT, PennApps, or HackNC at UNC. Build projects under pressure and win prizes.", timing: "Year-round, especially fall" },
+      { title: "CS Research with Davidson Faculty", type: "Research", description: "Work with Dr. Ramanujan (AI), Dr. Mendes (distributed systems), or Dr. Peck (VR) on summer research. Funded through Davidson Research Initiative.", timing: "Summer after Freshman or Sophomore year" },
     ],
     networking: [
       { role: "CS Department Faculty", type: "Faculty", description: "Build relationships with professors for research opportunities and grad school recommendations.", howToConnect: "Attend office hours regularly, especially Dr. Ramanujan and Dr. Tabor" },
