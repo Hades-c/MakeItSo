@@ -265,6 +265,7 @@ export default function RoadmapPage() {
   const [selectedMajor, setSelectedMajor] = useState("");
   const [classYear, setClassYear] = useState<string>("Freshman");
   const [interests, setInterests] = useState("");
+  const [specificity, setSpecificity] = useState(3);
 
   // Roadmap state
   const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
@@ -322,6 +323,7 @@ export default function RoadmapPage() {
           completedCourses: [],
           classYear,
           interests: interestList,
+          specificity,
         }),
       });
 
@@ -353,7 +355,7 @@ export default function RoadmapPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedMajor, classYear, interests]);
+  }, [selectedMajor, classYear, interests, specificity]);
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -449,13 +451,10 @@ export default function RoadmapPage() {
         {/* Header                                                            */}
         {/* ----------------------------------------------------------------- */}
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-lg shadow-rose-500/20">
-              <Map className="h-5 w-5 text-white" />
-            </div>
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-gray-900">
             My Roadmap
           </h1>
-          <p className="text-gray-500 mt-2">
+          <p className="text-gray-500 mt-1.5">
             AI-generated semester-by-semester course plan tailored to your major and interests.
           </p>
         </div>
@@ -545,6 +544,36 @@ export default function RoadmapPage() {
                   Separate multiple interests with commas. These help the AI suggest relevant electives.
                 </p>
               </div>
+
+              {/* Specificity slider */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-700">
+                  Course Specificity
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    step={1}
+                    value={specificity}
+                    onChange={(e) => setSpecificity(Number(e.target.value))}
+                    className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-900 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gray-900 [&::-webkit-slider-thumb]:shadow-sm"
+                  />
+                  <div className="flex justify-between text-[11px] text-gray-400">
+                    <span>General</span>
+                    <span>Balanced</span>
+                    <span>Specific</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400">
+                  {specificity <= 1 && "Slots labeled as \"Elective\" or \"Distribution Requirement\" — you choose the courses."}
+                  {specificity === 2 && "Mostly general categories like \"Social Science Elective\" with core requirements named."}
+                  {specificity === 3 && "A mix — specific courses for key requirements, general placeholders for flexible slots."}
+                  {specificity === 4 && "Mostly specific Davidson courses with a few open elective slots."}
+                  {specificity >= 5 && "Every slot filled with a specific Davidson course based on the AI's best judgment."}
+                </p>
+              </div>
             </div>
 
             {/* Generate button */}
@@ -556,7 +585,7 @@ export default function RoadmapPage() {
               >
                 <Button
                   onClick={generateRoadmap}
-                  className="bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-500/20 h-11 px-6"
+                  className="bg-gray-900 hover:bg-gray-800 text-white shadow-sm h-11 px-6"
                 >
                   <Sparkles className="mr-2 h-4 w-4" />
                   Generate My Roadmap
@@ -628,18 +657,15 @@ export default function RoadmapPage() {
             {/* Summary card */}
             <div className="rounded-xl border border-gray-100 bg-white p-6">
               <div className="flex items-start gap-4">
-                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shrink-0 shadow-md shadow-rose-500/20">
-                  <GraduationCap className="h-5 w-5 text-white" />
-                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-lg font-bold text-gray-900">
+                    <h2 className="font-serif text-lg font-bold text-gray-900">
                       {savedMeta?.major} Roadmap
                     </h2>
                     {roadmap.estimatedGraduation && (
                       <Badge
                         variant="outline"
-                        className="bg-rose-50 text-rose-700 border-rose-200 text-xs"
+                        className="bg-gray-50 text-gray-600 border-gray-200 text-xs"
                       >
                         Est. Graduation: {roadmap.estimatedGraduation}
                       </Badge>

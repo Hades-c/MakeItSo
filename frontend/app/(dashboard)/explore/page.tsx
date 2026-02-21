@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -11,8 +10,8 @@ import {
   BookOpen,
   Brain,
   Briefcase,
+  ChevronDown,
   ChevronRight,
-  Compass,
   Filter,
   GraduationCap,
   Lightbulb,
@@ -33,21 +32,21 @@ import { ActivitiesCarousel } from "@/components/activities-carousel";
 // Major name -> abbreviation map
 const MAJOR_ABBREV: Record<string, string> = {
   "Computer Science": "CSC",
-  "Mathematics": "MAT",
-  "Economics": "ECO",
-  "Biology": "BIO",
-  "Chemistry": "CHE",
-  "Physics": "PHY",
-  "Psychology": "PSY",
+  Mathematics: "MAT",
+  Economics: "ECO",
+  Biology: "BIO",
+  Chemistry: "CHE",
+  Physics: "PHY",
+  Psychology: "PSY",
   "Political Science": "POL",
-  "English": "ENG",
-  "History": "HIS",
-  "Sociology": "SOC",
-  "Philosophy": "PHI",
-  "Anthropology": "ANT",
-  "Art": "ART",
-  "Music": "MUS",
-  "Theatre": "THE",
+  English: "ENG",
+  History: "HIS",
+  Sociology: "SOC",
+  Philosophy: "PHI",
+  Anthropology: "ANT",
+  Art: "ART",
+  Music: "MUS",
+  Theatre: "THE",
   "Religious Studies": "REL",
   "Environmental Studies": "ENV",
   "Educational Studies": "EDU",
@@ -59,13 +58,20 @@ const MAJOR_ABBREV: Record<string, string> = {
   "Gender & Sexuality Studies": "GSS",
   "Public Health": "PBH",
   "Chinese Studies": "CHI",
-  "Classics": "CLA",
-  "Dance": "DAN",
+  Classics: "CLA",
+  Dance: "DAN",
   "Digital Studies": "DIG",
 };
 
 function formatMajorReq(majors: string[]): string {
-  return majors.map(m => MAJOR_ABBREV[m] || m.split(" ")[0].toUpperCase().slice(0, 3)).join("/") + " Req.";
+  return (
+    majors
+      .map(
+        (m) =>
+          MAJOR_ABBREV[m] || m.split(" ")[0].toUpperCase().slice(0, 3)
+      )
+      .join("/") + " Req."
+  );
 }
 
 interface LiveCourse {
@@ -89,7 +95,9 @@ export default function ExplorePage() {
   const [step, setStep] = useState<Step>("interests");
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
+  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
   const [liveCourses, setLiveCourses] = useState<LiveCourse[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
@@ -132,9 +140,9 @@ export default function ExplorePage() {
     );
   };
 
-  const selectedDepartments: string[] = SUBJECT_AREAS
-    .filter((a) => selectedAreas.includes(a.id))
-    .flatMap((a) => [...a.departments]);
+  const selectedDepartments: string[] = SUBJECT_AREAS.filter((a) =>
+    selectedAreas.includes(a.id)
+  ).flatMap((a) => [...a.departments]);
 
   // Build a set of static course codes for quick lookup
   const staticCodes = new Set(DAVIDSON_COURSES.map((c) => c.code));
@@ -143,7 +151,6 @@ export default function ExplorePage() {
   const liveOnlyCourses = liveCourses.filter((c) => !staticCodes.has(c.code));
 
   // Combined courses: static (rich data with RMP) first, then live-only extras
-  // Static courses are ALWAYS primary — they have RMP, topics, skills, career relevance
   const allCourses: (SeedCourse | LiveCourse)[] = [
     ...DAVIDSON_COURSES,
     ...liveOnlyCourses,
@@ -153,28 +160,30 @@ export default function ExplorePage() {
     const matchesDept = selectedDepartment
       ? c.department === selectedDepartment
       : selectedDepartments.length > 0
-      ? selectedDepartments.includes(c.department)
-      : true;
+        ? selectedDepartments.includes(c.department)
+        : true;
     const q = searchQuery.toLowerCase();
     const matchesSearch = searchQuery
       ? c.code.toLowerCase().includes(q) ||
         c.name.toLowerCase().includes(q) ||
         c.department.toLowerCase().includes(q) ||
-        ("professor" in c && c.professor ? c.professor.toLowerCase().includes(q) : false)
+        ("professor" in c && c.professor
+          ? c.professor.toLowerCase().includes(q)
+          : false)
       : true;
     return matchesDept && matchesSearch;
   });
 
-  const departments = Array.from(new Set(
-    allCourses.map((c) => c.department)
-  )).sort();
+  const departments = Array.from(
+    new Set(allCourses.map((c) => c.department))
+  ).sort();
 
   async function getRecommendations() {
     setLoading(true);
     try {
-      const interests = SUBJECT_AREAS
-        .filter((a) => selectedAreas.includes(a.id))
-        .map((a) => a.label);
+      const interests = SUBJECT_AREAS.filter((a) =>
+        selectedAreas.includes(a.id)
+      ).map((a) => a.label);
 
       const res = await fetch("/api/ai/recommendations", {
         method: "POST",
@@ -199,208 +208,227 @@ export default function ExplorePage() {
     }
   }
 
-  const areaColors: Record<string, string> = {
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
-    blue: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
-    purple: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100",
-    rose: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
-    amber: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
-  };
-
-  const areaColorsSelected: Record<string, string> = {
-    emerald: "bg-emerald-600 text-white border-emerald-600",
-    blue: "bg-blue-600 text-white border-blue-600",
-    purple: "bg-purple-600 text-white border-purple-600",
-    rose: "bg-rose-600 text-white border-rose-600",
-    amber: "bg-amber-600 text-white border-amber-600",
-  };
-
   return (
     <motion.div
-      className="max-w-5xl mx-auto space-y-6"
+      className="max-w-4xl mx-auto space-y-8"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Compass className="h-5 w-5 text-white" />
-            </div>
-            Explore Courses
-            {liveLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-            {liveCourses.length > 0 && (
-              <span className="text-xs font-normal text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                Live · {liveCourses.length} courses
-              </span>
-            )}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Discover courses based on your interests and see how they connect to careers.
-          </p>
-        </div>
+      <div>
+        <h1 className="font-serif text-3xl font-bold tracking-tight text-gray-900">
+          Explore Courses
+        </h1>
+        <p className="text-sm text-gray-500 mt-1.5 max-w-xl">
+          Discover Davidson&apos;s course catalog and see how courses connect to
+          your career goals.
+          {liveCourses.length > 0 && (
+            <span className="text-gray-400 ml-1">
+              · {liveCourses.length} live courses loaded
+            </span>
+          )}
+          {liveLoading && (
+            <Loader2 className="inline h-3 w-3 animate-spin text-gray-400 ml-1" />
+          )}
+        </p>
       </div>
 
       {/* Step indicator */}
-      <div className="flex items-center gap-2 text-sm">
-        <button
-          onClick={() => setStep("interests")}
-          className={`px-3 py-1.5 rounded-full font-medium transition-all ${
-            step === "interests" ? "bg-[#0f1117] text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          1. Select Interests
-        </button>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        <button
-          onClick={() => selectedAreas.length > 0 && setStep("browse")}
-          className={`px-3 py-1.5 rounded-full font-medium transition-all ${
-            step === "browse" ? "bg-[#0f1117] text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          2. Browse Courses
-        </button>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        <button
-          onClick={() => recommendations && setStep("recommendations")}
-          className={`px-3 py-1.5 rounded-full font-medium transition-all ${
-            step === "recommendations" ? "bg-[#0f1117] text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          3. AI Recommendations
-        </button>
+      <div className="flex items-center gap-1 text-sm border-b border-gray-100 pb-0">
+        {[
+          { key: "interests" as Step, label: "Select Interests", num: "1" },
+          { key: "browse" as Step, label: "Browse Courses", num: "2" },
+          {
+            key: "recommendations" as Step,
+            label: "AI Recommendations",
+            num: "3",
+          },
+        ].map((s) => (
+          <button
+            key={s.key}
+            onClick={() => {
+              if (s.key === "interests") setStep("interests");
+              else if (s.key === "browse" && selectedAreas.length > 0)
+                setStep("browse");
+              else if (s.key === "recommendations" && recommendations)
+                setStep("recommendations");
+            }}
+            className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
+              step === s.key
+                ? "text-gray-900"
+                : "text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            {s.num}. {s.label}
+            {step === s.key && (
+              <motion.div
+                layoutId="explore-tab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 rounded-full"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+              />
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Step 1: Interest Selection */}
       {step === "interests" && (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">What areas interest you?</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Select one or more subject areas to filter Davidson&apos;s course catalog.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {SUBJECT_AREAS.map((area) => (
-                  <button
-                    key={area.id}
-                    onClick={() => toggleArea(area.id)}
-                    className={`p-4 rounded-xl border-2 text-left transition-all duration-200 ${
-                      selectedAreas.includes(area.id)
-                        ? areaColorsSelected[area.color]
-                        : areaColors[area.color]
-                    }`}
-                  >
-                    <div className="font-semibold mb-1">{area.label}</div>
-                    <div className={`text-xs ${selectedAreas.includes(area.id) ? "text-white/80" : "opacity-70"}`}>
-                      {area.departments.slice(0, 3).join(", ")}
-                      {area.departments.length > 3 && ` +${area.departments.length - 3} more`}
-                    </div>
-                  </button>
-                ))}
-              </div>
+          <div>
+            <h2 className="font-serif text-lg font-semibold text-gray-900 mb-1">
+              What areas interest you?
+            </h2>
+            <p className="text-sm text-gray-500">
+              Select one or more subject areas to filter the catalog.
+            </p>
+          </div>
 
-              {selectedAreas.length > 0 && (
-                <div className="flex gap-3 mt-6">
-                  <Button
-                    onClick={() => setStep("browse")}
-                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
-                  >
-                    Browse Courses
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={getRecommendations}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Get AI Recommendations
-                      </>
-                    )}
-                  </Button>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {SUBJECT_AREAS.map((area) => (
+              <button
+                key={area.id}
+                onClick={() => toggleArea(area.id)}
+                className={`p-3.5 rounded-lg border text-left transition-all duration-150 ${
+                  selectedAreas.includes(area.id)
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <div className="font-medium text-sm">{area.label}</div>
+                <div
+                  className={`text-xs mt-0.5 ${
+                    selectedAreas.includes(area.id)
+                      ? "text-gray-400"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {area.departments.slice(0, 3).join(", ")}
+                  {area.departments.length > 3 &&
+                    ` +${area.departments.length - 3}`}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </button>
+            ))}
+          </div>
+
+          {selectedAreas.length > 0 && (
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={() => setStep("browse")}
+                className="bg-gray-900 hover:bg-gray-800 text-white"
+              >
+                Browse Courses
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={getRecommendations}
+                disabled={loading}
+                className="border-gray-200"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Get AI Recommendations
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
       {/* Step 2: Browse Courses */}
       {step === "browse" && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {/* Search and filter bar */}
           <div className="flex gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search by name, code, department, or professor..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 border-gray-200 focus:ring-gray-300 focus:border-gray-400"
               />
+            </div>
+            <div className="relative">
+              <select
+                value={selectedDepartment || ""}
+                onChange={(e) =>
+                  setSelectedDepartment(e.target.value || null)
+                }
+                className="appearance-none h-10 rounded-lg border border-gray-200 bg-white pl-3 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-400 cursor-pointer"
+              >
+                <option value="">All Departments</option>
+                {departments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             </div>
             <Button
               variant="outline"
               onClick={getRecommendations}
               disabled={loading}
-              className="shrink-0"
+              className="shrink-0 border-gray-200"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-              AI Picks
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  AI Picks
+                </>
+              )}
             </Button>
           </div>
 
-          {/* Department filter chips */}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedDepartment(null)}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                !selectedDepartment ? "bg-[#0f1117] text-white border-[#0f1117]" : "text-muted-foreground hover:text-foreground border-gray-200/60 bg-white"
-              }`}
-            >
-              All ({filteredCourses.length})
-            </button>
-            {departments.map((dept) => {
-              const count = (liveCourses.length > 0
-                ? liveCourses.filter((c) => c.department === dept)
-                : DAVIDSON_COURSES.filter((c) => c.department === dept)
-              ).length;
-              return (
+          {/* Results count */}
+          <p className="text-xs text-gray-400">
+            {filteredCourses.length} course
+            {filteredCourses.length !== 1 ? "s" : ""}
+            {selectedDepartment && (
+              <>
+                {" "}
+                in{" "}
+                <span className="text-gray-600">{selectedDepartment}</span>
                 <button
-                  key={dept}
-                  onClick={() => setSelectedDepartment(selectedDepartment === dept ? null : dept)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    selectedDepartment === dept ? "bg-[#0f1117] text-white border-[#0f1117]" : "text-muted-foreground hover:text-foreground border-gray-200/60 bg-white"
-                  }`}
+                  onClick={() => setSelectedDepartment(null)}
+                  className="ml-1 text-gray-400 hover:text-gray-600 underline"
                 >
-                  {dept} ({count})
+                  clear
                 </button>
-              );
-            })}
-          </div>
+              </>
+            )}
+          </p>
 
           {/* Course list */}
-          <div className="grid gap-3">
-            {filteredCourses.slice(0, 50).map((course) => (
-              "careerRelevance" in course
-                ? <StaticCourseCard key={course.code} course={course as SeedCourse} />
-                : <LiveCourseCard key={course.code} course={course as LiveCourse} />
-            ))}
+          <div className="space-y-2">
+            {filteredCourses.slice(0, 50).map((course) =>
+              "careerRelevance" in course ? (
+                <StaticCourseCard
+                  key={course.code}
+                  course={course as SeedCourse}
+                />
+              ) : (
+                <LiveCourseCard
+                  key={course.code}
+                  course={course as LiveCourse}
+                />
+              )
+            )}
             {filteredCourses.length > 50 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Showing 50 of {filteredCourses.length} courses. Use search to narrow results.
+              <p className="text-sm text-gray-400 text-center py-6">
+                Showing 50 of {filteredCourses.length} courses. Use search to
+                narrow results.
               </p>
             )}
           </div>
@@ -409,64 +437,91 @@ export default function ExplorePage() {
 
       {/* Step 3: AI Recommendations */}
       {step === "recommendations" && recommendations && (
-        <div className="space-y-4">
-          <Card className="border-emerald-100 bg-emerald-50/30">
-            <CardContent className="p-5 flex items-start gap-4">
-              <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">AI-Powered Recommendations</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Based on your selected interests: {SUBJECT_AREAS.filter((a) => selectedAreas.includes(a.id)).map((a) => a.label).join(", ")}
-                </p>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => setStep("browse")} className="ml-auto shrink-0">
-                Browse All
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-serif text-lg font-semibold text-gray-900">
+                AI-Powered Recommendations
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Based on:{" "}
+                {SUBJECT_AREAS.filter((a) => selectedAreas.includes(a.id))
+                  .map((a) => a.label)
+                  .join(", ")}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setStep("browse")}
+              className="border-gray-200"
+            >
+              Browse All
+            </Button>
+          </div>
 
-          <div className="grid gap-3">
+          <div className="space-y-2">
             {recommendations.recommendations.map((rec, i) => (
-              <Card key={i} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-sm font-semibold text-red-800">{rec.code}</span>
-                        <Badge variant="outline" className="text-[10px]">
-                          {rec.priority === "high" ? "Must Take" : rec.priority === "medium" ? "Recommended" : "Optional"}
-                        </Badge>
-                      </div>
-                      <h3 className="font-semibold mb-1">{rec.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-3">{rec.reason}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {rec.careerImpact?.map((career) => (
-                          <span key={career} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-800">
-                            <Briefcase className="h-3 w-3" />
-                            {career}
-                          </span>
-                        ))}
-                      </div>
+              <div
+                key={i}
+                className="bg-white rounded-lg border border-gray-100 p-5 hover:border-gray-200 transition-all"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-sm font-semibold text-gray-900">
+                        {rec.code}
+                      </span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          rec.priority === "high"
+                            ? "bg-gray-900 text-white"
+                            : rec.priority === "medium"
+                              ? "bg-gray-100 text-gray-600"
+                              : "bg-gray-50 text-gray-400"
+                        }`}
+                      >
+                        {rec.priority === "high"
+                          ? "Must Take"
+                          : rec.priority === "medium"
+                            ? "Recommended"
+                            : "Optional"}
+                      </span>
                     </div>
-                    <div className="text-right shrink-0">
-                      {rec.difficulty && (
-                        <div className="flex items-center gap-0.5 mt-1 justify-end">
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <div
-                              key={n}
-                              className={`h-1.5 w-3 rounded-full ${
-                                n <= rec.difficulty ? "bg-amber-400" : "bg-gray-200"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      )}
+                    <h3 className="font-medium text-sm text-gray-900 mb-1">
+                      {rec.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-3">{rec.reason}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {rec.careerImpact?.map((career) => (
+                        <span
+                          key={career}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-gray-50 text-gray-600"
+                        >
+                          <Briefcase className="h-3 w-3 text-gray-400" />
+                          {career}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="text-right shrink-0">
+                    {rec.difficulty && (
+                      <div className="flex items-center gap-0.5 mt-1 justify-end">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <div
+                            key={n}
+                            className={`h-1.5 w-3 rounded-full ${
+                              n <= rec.difficulty
+                                ? "bg-gray-400"
+                                : "bg-gray-100"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -478,7 +533,15 @@ export default function ExplorePage() {
   );
 }
 
-function RatingBar({ value, max, color }: { value: number; max: number; color: string }) {
+function RatingBar({
+  value,
+  max,
+  color,
+}: {
+  value: number;
+  max: number;
+  color: string;
+}) {
   return (
     <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
       <div
@@ -492,87 +555,100 @@ function RatingBar({ value, max, color }: { value: number; max: number; color: s
 /* ===== Live course card (courses from Davidson API without static RMP data) ===== */
 function LiveCourseCard({ course }: { course: LiveCourse }) {
   const [expanded, setExpanded] = useState(false);
-  const realProfessor = course.professor && course.professor !== "Staff" ? course.professor : null;
-  const realInstructors = course.instructors.filter(i => i !== "Staff");
-  // Truncate description to first sentence
+  const realProfessor =
+    course.professor && course.professor !== "Staff"
+      ? course.professor
+      : null;
+  const realInstructors = course.instructors.filter((i) => i !== "Staff");
   const shortDesc = course.description
-    ? course.description.split(/\.\s/)[0] + (course.description.includes(". ") ? "." : "")
+    ? course.description.split(/\.\s/)[0] +
+      (course.description.includes(". ") ? "." : "")
     : "";
 
   return (
-    <Card className="hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-200 border-gray-200/60">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-sm font-semibold text-emerald-600">{course.code}</span>
-              {course.gradRequirements.length > 0 && (
-                <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50/80">
-                  {course.gradRequirements.join(", ")}
-                </Badge>
-              )}
-              {course.sections > 1 && (
-                <span className="text-xs text-muted-foreground">{course.sections} sections</span>
-              )}
-            </div>
-            <h3 className="font-semibold mb-0.5">{course.name}</h3>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{course.department}</span>
-              {realProfessor && <span>· {realProfessor}</span>}
-              {course.schedule && course.schedule !== "TBA" && <span>· {course.schedule}</span>}
-            </div>
-
-            {expanded && (
-              <div className="mt-3 space-y-4 animate-fade-in">
-                {shortDesc && (
-                  <p className="text-sm text-muted-foreground">{shortDesc}</p>
-                )}
-
-                {/* Professor Section */}
-                {realProfessor && (
-                  <div className="rounded-lg border bg-slate-50/50 p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="h-4 w-4 text-slate-500" />
-                      <span className="text-sm font-medium">{realProfessor}</span>
-                    </div>
-                    {realInstructors.length > 1 && (
-                      <p className="text-xs text-muted-foreground ml-6">
-                        All instructors: {realInstructors.join(", ")}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Schedule & Location */}
-                <div className="flex flex-wrap gap-4">
-                  {course.schedule && course.schedule !== "TBA" && (
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs">{course.schedule}</span>
-                    </div>
-                  )}
-                  {course.location && course.location !== "TBA" && (
-                    <div className="flex items-center gap-2">
-                      <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs">{course.location}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+    <div className="bg-white rounded-lg border border-gray-100 p-5 hover:border-gray-200 transition-all">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-mono text-sm font-semibold text-gray-900">
+              {course.code}
+            </span>
+            {course.gradRequirements.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
+                {course.gradRequirements.join(", ")}
+              </span>
+            )}
+            {course.sections > 1 && (
+              <span className="text-xs text-gray-400">
+                {course.sections} sections
+              </span>
+            )}
+          </div>
+          <h3 className="font-medium text-sm text-gray-900 mb-0.5">
+            {course.name}
+          </h3>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span>{course.department}</span>
+            {realProfessor && <span>· {realProfessor}</span>}
+            {course.schedule && course.schedule !== "TBA" && (
+              <span>· {course.schedule}</span>
             )}
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setExpanded(!expanded)}
-            className="shrink-0"
-          >
-            {expanded ? "Less" : "Details"}
-          </Button>
+          {expanded && (
+            <div className="mt-4 space-y-4 animate-fade-in">
+              {shortDesc && (
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  {shortDesc}
+                </p>
+              )}
+
+              {realProfessor && (
+                <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700">
+                      {realProfessor}
+                    </span>
+                  </div>
+                  {realInstructors.length > 1 && (
+                    <p className="text-xs text-gray-400 ml-6">
+                      All instructors: {realInstructors.join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-4">
+                {course.schedule && course.schedule !== "TBA" && (
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-gray-500">
+                      {course.schedule}
+                    </span>
+                  </div>
+                )}
+                {course.location && course.location !== "TBA" && (
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-gray-500">
+                      {course.location}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </CardContent>
-    </Card>
+
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="shrink-0 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors px-2 py-1"
+        >
+          {expanded ? "Less" : "Details"}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -626,118 +702,146 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
   }
 
   return (
-    <Card className="hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-200 border-gray-200/60">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-sm font-semibold text-emerald-600">{course.code}</span>
-              {course.majorRequirements && course.majorRequirements.length > 0 && (
-                <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50/80">
-                  {formatMajorReq(course.majorRequirements)}
-                </Badge>
-              )}
-            </div>
-            <h3 className="font-semibold mb-0.5">{course.name}</h3>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{course.department}</span>
-              {course.professor && <span>· {course.professor}</span>}
-              <span>· {course.offered.join(", ")}</span>
-            </div>
+    <div className="bg-white rounded-lg border border-gray-100 p-5 hover:border-gray-200 transition-all">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-mono text-sm font-semibold text-gray-900">
+              {course.code}
+            </span>
+            {course.majorRequirements && course.majorRequirements.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
+                {formatMajorReq(course.majorRequirements)}
+              </span>
+            )}
+          </div>
+          <h3 className="font-medium text-sm text-gray-900 mb-0.5">
+            {course.name}
+          </h3>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span>{course.department}</span>
+            {course.professor && <span>· {course.professor}</span>}
+            <span>· {course.offered.join(", ")}</span>
+          </div>
 
-            {expanded && (
-              <div className="mt-3 space-y-4 animate-fade-in">
-                <p className="text-sm text-muted-foreground">{course.description}</p>
+          {expanded && (
+            <div className="mt-4 space-y-4 animate-fade-in">
+              <p className="text-sm text-gray-500 leading-relaxed">
+                {course.description}
+              </p>
 
-                {/* Professor Section with RMP Data */}
-                {course.professor && (
-                  <div className="rounded-lg border bg-slate-50/50 p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="h-4 w-4 text-slate-500" />
-                      <span className="text-sm font-medium">{course.professor}</span>
-                    </div>
-                    {prof?.title && (
-                      <p className="text-xs text-muted-foreground ml-6">{prof.title}</p>
-                    )}
-                    {prof?.rmpRating != null && (
-                      <div className="ml-6 space-y-2">
-                        {/* Rating overview row */}
-                        <div className="flex flex-wrap items-center gap-3 text-xs">
-                          <span className="flex items-center gap-1">
-                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                            <span className="font-semibold text-sm">{prof.rmpRating}</span>
-                            <span className="text-muted-foreground">/5</span>
+              {/* Professor Section with RMP Data */}
+              {course.professor && (
+                <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700">
+                      {course.professor}
+                    </span>
+                  </div>
+                  {prof?.title && (
+                    <p className="text-xs text-gray-400 ml-6">{prof.title}</p>
+                  )}
+                  {prof?.rmpRating != null && (
+                    <div className="ml-6 space-y-2">
+                      <div className="flex flex-wrap items-center gap-3 text-xs">
+                        <span className="flex items-center gap-1">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          <span className="font-semibold text-sm text-gray-900">
+                            {prof.rmpRating}
                           </span>
-                          {prof.rmpWouldTakeAgain != null && (
-                            <span className="flex items-center gap-1 text-emerald-600">
-                              <ThumbsUp className="h-3 w-3" />
-                              {prof.rmpWouldTakeAgain}% would take again
-                            </span>
-                          )}
-                          {prof.rmpDifficulty != null && (
-                            <span className="flex items-center gap-1 text-orange-600">
-                              <Zap className="h-3 w-3" />
-                              {prof.rmpDifficulty} difficulty
-                            </span>
-                          )}
-                          {prof.rmpNumRatings != null && (
-                            <span className="flex items-center gap-1 text-muted-foreground">
-                              <Users className="h-3 w-3" />
-                              {prof.rmpNumRatings} ratings
-                            </span>
-                          )}
-                        </div>
+                          <span className="text-gray-400">/5</span>
+                        </span>
+                        {prof.rmpWouldTakeAgain != null && (
+                          <span className="flex items-center gap-1 text-gray-500">
+                            <ThumbsUp className="h-3 w-3" />
+                            {prof.rmpWouldTakeAgain}% would take again
+                          </span>
+                        )}
+                        {prof.rmpDifficulty != null && (
+                          <span className="flex items-center gap-1 text-gray-500">
+                            <Zap className="h-3 w-3" />
+                            {prof.rmpDifficulty} difficulty
+                          </span>
+                        )}
+                        {prof.rmpNumRatings != null && (
+                          <span className="flex items-center gap-1 text-gray-400">
+                            <Users className="h-3 w-3" />
+                            {prof.rmpNumRatings} ratings
+                          </span>
+                        )}
+                      </div>
 
-                        {/* Rating bars */}
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-400 w-14">
+                            Quality
+                          </span>
+                          <RatingBar
+                            value={prof.rmpRating}
+                            max={5}
+                            color={
+                              prof.rmpRating >= 4
+                                ? "bg-emerald-500"
+                                : prof.rmpRating >= 3
+                                  ? "bg-amber-400"
+                                  : "bg-red-400"
+                            }
+                          />
+                        </div>
+                        {prof.rmpDifficulty != null && (
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-muted-foreground w-14">Quality</span>
+                            <span className="text-[10px] text-gray-400 w-14">
+                              Difficulty
+                            </span>
                             <RatingBar
-                              value={prof.rmpRating}
+                              value={prof.rmpDifficulty}
                               max={5}
-                              color={prof.rmpRating >= 4 ? "bg-emerald-500" : prof.rmpRating >= 3 ? "bg-amber-400" : "bg-red-400"}
+                              color={
+                                prof.rmpDifficulty <= 2.5
+                                  ? "bg-emerald-500"
+                                  : prof.rmpDifficulty <= 3.5
+                                    ? "bg-amber-400"
+                                    : "bg-orange-500"
+                              }
                             />
-                          </div>
-                          {prof.rmpDifficulty != null && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-muted-foreground w-14">Difficulty</span>
-                              <RatingBar
-                                value={prof.rmpDifficulty}
-                                max={5}
-                                color={prof.rmpDifficulty <= 2.5 ? "bg-emerald-500" : prof.rmpDifficulty <= 3.5 ? "bg-amber-400" : "bg-orange-500"}
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* RMP Tags */}
-                        {prof.rmpTags && prof.rmpTags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {prof.rmpTags.slice(0, 5).map((tag) => (
-                              <span key={tag} className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-100">
-                                <MessageSquare className="h-2.5 w-2.5" />
-                                {tag}
-                              </span>
-                            ))}
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                )}
 
-                {/* Course Insights - Static data */}
-                {course.courseInsights && (
-                  <div className="space-y-3">
-                    {/* Key Topics */}
-                    {course.courseInsights.keyTopics && course.courseInsights.keyTopics.length > 0 && (
+                      {prof.rmpTags && prof.rmpTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {prof.rmpTags.slice(0, 5).map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500"
+                            >
+                              <MessageSquare className="h-2.5 w-2.5" />
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Course Insights - Static data */}
+              {course.courseInsights && (
+                <div className="space-y-3">
+                  {course.courseInsights.keyTopics &&
+                    course.courseInsights.keyTopics.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                          <BookOpen className="h-3 w-3" /> Key Topics
+                        <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
+                          <BookOpen className="h-3 w-3" /> Topics
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {course.courseInsights.keyTopics.map((topic) => (
-                            <span key={topic} className="text-[11px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+                            <span
+                              key={topic}
+                              className="text-[11px] px-2 py-0.5 rounded bg-gray-50 text-gray-600 border border-gray-100"
+                            >
                               {topic}
                             </span>
                           ))}
@@ -745,122 +849,144 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                       </div>
                     )}
 
-                    {/* Skills Gained */}
-                    {course.courseInsights.skillsGained && course.courseInsights.skillsGained.length > 0 && (
+                  {course.courseInsights.skillsGained &&
+                    course.courseInsights.skillsGained.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                          <Lightbulb className="h-3 w-3" /> Skills You&apos;ll Gain
+                        <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
+                          <Lightbulb className="h-3 w-3" /> Skills
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {course.courseInsights.skillsGained.map((skill) => (
-                            <span key={skill} className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            <span
+                              key={skill}
+                              className="text-[11px] px-2 py-0.5 rounded bg-gray-50 text-gray-600 border border-gray-100"
+                            >
                               {skill}
                             </span>
                           ))}
                         </div>
                       </div>
                     )}
+                </div>
+              )}
+
+              {/* Prerequisites and offering info */}
+              <div className="flex flex-wrap gap-4">
+                {course.prerequisites.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-gray-500">
+                      Prerequisites: {course.prerequisites.join(", ")}
+                    </span>
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  <Filter className="h-3.5 w-3.5 text-gray-400" />
+                  <span className="text-xs text-gray-500">
+                    Offered: {course.offered.join(", ")}
+                  </span>
+                </div>
+              </div>
 
-                {/* Prerequisites and offering info */}
-                <div className="flex flex-wrap gap-4">
-                  {course.prerequisites.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs">Prerequisites: {course.prerequisites.join(", ")}</span>
+              {/* Career Relevance */}
+              {course.careerRelevance.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
+                    <TrendingUp className="h-3 w-3" /> Career Relevance
+                  </p>
+                  <div className="space-y-1.5">
+                    {course.careerRelevance.map(({ field, relevance }) => (
+                      <div key={field} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600 w-40 truncate">
+                          {field}
+                        </span>
+                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gray-400"
+                            style={{ width: `${relevance * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-400 w-8 text-right">
+                          {Math.round(relevance * 100)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Deep Dive Button */}
+              <div className="pt-1">
+                <button
+                  onClick={fetchAiInsights}
+                  disabled={loadingInsights || !!aiInsights}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 disabled:text-gray-300 transition-colors"
+                >
+                  {loadingInsights ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : aiInsights ? (
+                    <>
+                      <Brain className="h-3 w-3" />
+                      AI Insights Loaded
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-3 w-3" />
+                      Get AI Deep Dive
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* AI-Generated Insights */}
+              {aiInsights && (
+                <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4 space-y-3">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      AI Analysis
+                    </span>
+                  </div>
+
+                  {aiInsights.courseHighlights && (
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      {aiInsights.courseHighlights}
+                    </p>
+                  )}
+
+                  {aiInsights.keyTopics && aiInsights.keyTopics.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
+                        Deep Dive Topics
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {aiInsights.keyTopics.map((topic) => (
+                          <span
+                            key={topic}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-white text-gray-600 border border-gray-200"
+                          >
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs">Offered: {course.offered.join(", ")}</span>
-                  </div>
-                </div>
 
-                {/* Career Relevance */}
-                {course.careerRelevance.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" /> Career Relevance
-                    </p>
-                    <div className="space-y-1.5">
-                      {course.careerRelevance.map(({ field, relevance }) => (
-                        <div key={field} className="flex items-center gap-2">
-                          <span className="text-xs w-40 truncate">{field}</span>
-                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-red-700 to-red-500"
-                              style={{ width: `${relevance * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-muted-foreground w-8 text-right">
-                            {Math.round(relevance * 100)}%
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* AI Deep Dive Button */}
-                <div className="pt-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchAiInsights}
-                    disabled={loadingInsights || !!aiInsights}
-                    className="text-xs"
-                  >
-                    {loadingInsights ? (
-                      <>
-                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : aiInsights ? (
-                      <>
-                        <Brain className="mr-1.5 h-3 w-3" />
-                        AI Insights Loaded
-                      </>
-                    ) : (
-                      <>
-                        <Brain className="mr-1.5 h-3 w-3" />
-                        Get AI Deep Dive
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* AI-Generated Insights */}
-                {aiInsights && (
-                  <div className="rounded-lg border border-red-200 bg-red-50/30 p-3 space-y-3">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-red-800" />
-                      <span className="text-xs font-semibold text-red-800">AI Course Analysis</span>
-                    </div>
-
-                    {aiInsights.courseHighlights && (
-                      <p className="text-xs text-muted-foreground">{aiInsights.courseHighlights}</p>
-                    )}
-
-                    {aiInsights.keyTopics && aiInsights.keyTopics.length > 0 && (
+                  {aiInsights.skillsGained &&
+                    aiInsights.skillsGained.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-medium text-red-800 mb-1">Deep Dive Topics</p>
-                        <div className="flex flex-wrap gap-1">
-                          {aiInsights.keyTopics.map((topic) => (
-                            <span key={topic} className="text-[10px] px-1.5 py-0.5 rounded-md bg-red-100 text-red-800">
-                              {topic}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {aiInsights.skillsGained && aiInsights.skillsGained.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-medium text-red-800 mb-1">Additional Skills</p>
+                        <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
+                          Additional Skills
+                        </p>
                         <div className="flex flex-wrap gap-1">
                           {aiInsights.skillsGained.map((skill) => (
-                            <span key={skill} className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700">
+                            <span
+                              key={skill}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-white text-gray-600 border border-gray-200"
+                            >
                               {skill}
                             </span>
                           ))}
@@ -868,35 +994,38 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                       </div>
                     )}
 
-                    {aiInsights.careerApplications && aiInsights.careerApplications.length > 0 && (
+                  {aiInsights.careerApplications &&
+                    aiInsights.careerApplications.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-medium text-red-800 mb-1">Career Applications</p>
+                        <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
+                          Career Applications
+                        </p>
                         <ul className="space-y-0.5">
                           {aiInsights.careerApplications.map((app) => (
-                            <li key={app} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
-                              <Briefcase className="h-3 w-3 mt-0.5 shrink-0 text-red-400" />
+                            <li
+                              key={app}
+                              className="text-[11px] text-gray-500 flex items-start gap-1.5"
+                            >
+                              <Briefcase className="h-3 w-3 mt-0.5 shrink-0 text-gray-300" />
                               {app}
                             </li>
                           ))}
                         </ul>
                       </div>
                     )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setExpanded(!expanded)}
-            className="shrink-0"
-          >
-            {expanded ? "Less" : "Details"}
-          </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </CardContent>
-    </Card>
+
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="shrink-0 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors px-2 py-1"
+        >
+          {expanded ? "Less" : "Details"}
+        </button>
+      </div>
+    </div>
   );
 }

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { major, completedCourses, classYear, interests } = await req.json();
+    const { major, completedCourses, classYear, interests, specificity } = await req.json();
 
     if (!major) {
       return NextResponse.json({ error: "major is required" }, { status: 400 });
@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
       major,
       completedCourses || [],
       classYear || "Freshman",
-      interests || []
+      interests || [],
+      specificity ?? 3
     );
 
     if (!roadmap) {

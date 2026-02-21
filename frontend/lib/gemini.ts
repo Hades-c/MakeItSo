@@ -119,11 +119,30 @@ export async function generateMajorRoadmap(
   major: string,
   completedCourses: string[],
   classYear: string,
-  interests: string[]
+  interests: string[],
+  specificity: number = 3
 ) {
+  // specificity: 1 = very general ("Elective", "Science Elective"), 5 = very specific (exact course codes)
+  let specificityInstruction = "";
+  if (specificity <= 1) {
+    specificityInstruction = `\n\nIMPORTANT: Keep course suggestions VERY GENERAL. For electives and distribution courses, do NOT name specific courses. Instead use generic placeholders like:
+- code: "ELEC ---", name: "Free Elective" for free electives
+- code: "DIST ---", name: "Distribution: Social Science" for distribution requirements
+- code: "DEPT ---", name: "${major} Elective" for major electives
+Only name specific courses for absolute core requirements (e.g. the intro sequence for the major).`;
+  } else if (specificity === 2) {
+    specificityInstruction = `\n\nKeep course suggestions MOSTLY GENERAL. Name specific courses only for core major requirements. For electives and distributions, use category placeholders like "Social Science Elective", "Humanities Elective", "${major} Elective", etc. Use generic codes like "DIST ---" or "ELEC ---" for these.`;
+  } else if (specificity === 3) {
+    specificityInstruction = `\n\nUse a MIX of specific and general suggestions. Name specific courses for major requirements and key electives that align with the student's interests. For other slots, you may use general placeholders like "Free Elective" or "Distribution Elective".`;
+  } else if (specificity === 4) {
+    specificityInstruction = `\n\nBe MOSTLY SPECIFIC. Suggest specific Davidson courses with real course codes for most slots. You may use a few general placeholders for free electives where the student has maximum flexibility.`;
+  } else {
+    specificityInstruction = `\n\nBe VERY SPECIFIC. Suggest exact Davidson College courses with real course codes and names for every single slot. Use your best judgment to pick the best courses based on the student's major, interests, and career trajectory. No generic placeholders.`;
+  }
+
   const prompt = `You are an academic advisor at Davidson College. Create a semester-by-semester course roadmap for a ${classYear} student majoring in ${major} who has completed: ${completedCourses.join(", ") || "no courses yet"}.
 
-Their interests include: ${interests.join(", ") || "undecided"}.
+Their interests include: ${interests.join(", ") || "undecided"}.${specificityInstruction}
 
 Generate a JSON response:
 {
