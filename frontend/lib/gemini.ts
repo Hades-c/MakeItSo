@@ -123,7 +123,8 @@ export async function generateProfessorSummary(
   rmpDifficulty?: number,
   rmpNumRatings?: number,
   rmpWouldTakeAgain?: number,
-  rmpTags?: string[]
+  rmpTags?: string[],
+  reviewTexts?: string[]
 ) {
   const parts: string[] = [];
   if (rmpRating != null) parts.push(`Overall quality rating: ${rmpRating}/5`);
@@ -132,20 +133,27 @@ export async function generateProfessorSummary(
   if (rmpWouldTakeAgain != null) parts.push(`${rmpWouldTakeAgain}% of students would take this professor again`);
   if (rmpTags?.length) parts.push(`Student feedback tags: ${rmpTags.join(", ")}`);
 
+  let reviewsBlock = "";
+  if (reviewTexts && reviewTexts.length > 0) {
+    reviewsBlock = `\n\nActual student reviews from RateMyProfessors:\n${reviewTexts.map((r, i) => `${i + 1}. "${r}"`).join("\n")}`;
+  }
+
+  const hasReviews = reviewTexts && reviewTexts.length > 0;
+
   const prompt = `You are summarizing student reviews for Professor ${professorName} who teaches ${courseCode}: ${courseName} at Davidson College.
 
 Based on the following RateMyProfessors data:
-${parts.join("\n")}
+${parts.join("\n")}${reviewsBlock}
 
 Generate a JSON response:
 {
-  "summary": "A 3-4 sentence summary of what students can expect from this professor. Cover teaching style, workload expectations, and overall student sentiment. Be balanced and helpful.",
+  "summary": "A 3-4 sentence summary of what students can expect from this professor. Cover teaching style, workload expectations, and overall student sentiment. Be balanced and helpful.${hasReviews ? " Reference specific patterns and themes from the actual reviews." : ""}",
   "strengths": ["strength 1", "strength 2", "strength 3"],
   "considerations": ["thing to be aware of 1", "thing to be aware of 2"],
   "tipForSuccess": "One practical tip for succeeding in this professor's class"
 }
 
-Be honest but constructive. Derive insights from the rating numbers and student tags. If the rating is high, reflect that positively. If difficulty is high, frame it as rigorous but rewarding. Return ONLY the JSON.`;
+Be honest but constructive.${hasReviews ? " Use the actual student reviews as your primary source - synthesize the common themes, specific praise, and concerns mentioned across multiple reviews." : " Derive insights from the rating numbers and student tags."} If the rating is high, reflect that positively. If difficulty is high, frame it as rigorous but rewarding. Return ONLY the JSON.`;
 
   const result = await geminiModel.generateContent(prompt);
   const text = result.response.text();

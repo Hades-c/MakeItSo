@@ -35,7 +35,7 @@ export default function DashboardPage() {
 
   return (
     <motion.div
-      className="max-w-5xl mx-auto space-y-8"
+      className="max-w-5xl mx-auto flex flex-col gap-6 min-h-[calc(100vh-6rem)]"
       initial="initial"
       animate="animate"
       variants={stagger}
@@ -56,33 +56,33 @@ export default function DashboardPage() {
         {[
           { label: "Live Courses", value: "699", icon: BookOpen, color: "text-davidson", bg: "bg-davidson-light" },
           { label: "Career Paths", value: "16", icon: Briefcase, color: "text-davidson", bg: "bg-davidson-light" },
-          { label: "AI Powered", value: "Gemini", icon: Zap, color: "text-navy", bg: "bg-navy/5" },
-          { label: "Alumni Network", value: "30+", icon: Users, color: "text-navy", bg: "bg-navy/5" },
+          { label: "AI Powered", value: "Gemini", icon: Zap, color: "text-davidson", bg: "bg-davidson-light" },
+          { label: "Alumni Network", value: "30+", icon: Users, color: "text-davidson", bg: "bg-davidson-light" },
         ].map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition-all group">
-            <div className={`h-8 w-8 rounded-lg ${bg} flex items-center justify-center mb-3`}>
-              <Icon className={`h-4 w-4 ${color}`} />
+          <div key={label} className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-sm transition-all group">
+            <div className={`h-9 w-9 rounded-lg ${bg} flex items-center justify-center mb-3`}>
+              <Icon className={`h-4.5 w-4.5 ${color}`} />
             </div>
-            <p className="text-xl font-bold font-serif tracking-tight text-[#111111]">{value}</p>
+            <p className="text-2xl font-bold font-serif tracking-tight text-[#111111]">{value}</p>
             <p className="text-xs text-gray-400 mt-0.5">{label}</p>
           </div>
         ))}
       </motion.div>
 
       {/* Primary CTAs */}
-      <motion.div variants={fadeIn} className="grid sm:grid-cols-2 gap-4">
-        <Link href="/explore" className="group">
-          <div className="h-full rounded-xl border border-gray-100 bg-white p-6 hover:shadow-md hover:border-davidson/20 transition-all duration-200 overflow-hidden relative">
-            <div className="flex items-start gap-4">
-              <div className="h-11 w-11 rounded-xl bg-davidson-light flex items-center justify-center shrink-0 group-hover:bg-davidson-light transition-colors">
-                <Compass className="h-5 w-5 text-davidson" />
+      <motion.div variants={fadeIn} className="grid sm:grid-cols-2 gap-4 flex-1">
+        <Link href="/explore" className="group flex">
+          <div className="flex-1 rounded-xl border border-gray-100 bg-white p-7 hover:shadow-md hover:border-davidson/20 transition-all duration-200 overflow-hidden relative flex flex-col">
+            <div className="flex items-start gap-4 flex-1">
+              <div className="h-12 w-12 rounded-xl bg-davidson-light flex items-center justify-center shrink-0 group-hover:bg-davidson-light transition-colors">
+                <Compass className="h-6 w-6 text-davidson" />
               </div>
-              <div className="min-w-0">
-                <h3 className="font-semibold font-serif text-[#111111] mb-1 flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold font-serif text-lg text-[#111111] mb-2 flex items-center gap-2">
                   Explore Courses
                   <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-davidson group-hover:translate-x-0.5 transition-all" />
                 </h3>
-                <p className="text-sm text-[#555555]">
+                <p className="text-sm text-[#555555] leading-relaxed">
                   Browse all 699 Davidson courses with live enrollment data, professor ratings, and AI insights.
                 </p>
               </div>
@@ -90,18 +90,18 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        <Link href="/career" className="group">
-          <div className="h-full rounded-xl border border-gray-100 bg-white p-6 hover:shadow-md hover:border-navy/20 transition-all duration-200 overflow-hidden relative">
-            <div className="flex items-start gap-4">
-              <div className="h-11 w-11 rounded-xl bg-navy/5 flex items-center justify-center shrink-0 group-hover:bg-navy/10 transition-colors">
-                <Briefcase className="h-5 w-5 text-navy" />
+        <Link href="/career" className="group flex">
+          <div className="flex-1 rounded-xl border border-gray-100 bg-white p-7 hover:shadow-md hover:border-davidson/20 transition-all duration-200 overflow-hidden relative flex flex-col">
+            <div className="flex items-start gap-4 flex-1">
+              <div className="h-12 w-12 rounded-xl bg-davidson-light flex items-center justify-center shrink-0 group-hover:bg-davidson-light transition-colors">
+                <Briefcase className="h-6 w-6 text-davidson" />
               </div>
-              <div className="min-w-0">
-                <h3 className="font-semibold font-serif text-[#111111] mb-1 flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold font-serif text-lg text-[#111111] mb-2 flex items-center gap-2">
                   Career Paths
-                  <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-navy group-hover:translate-x-0.5 transition-all" />
+                  <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-davidson group-hover:translate-x-0.5 transition-all" />
                 </h3>
-                <p className="text-sm text-[#555555]">
+                <p className="text-sm text-[#555555] leading-relaxed">
                   Explore 16 career paths with alumni connections, AI roadmaps, and cold email generator.
                 </p>
               </div>
@@ -117,13 +117,13 @@ export default function DashboardPage() {
           { href: "/courses", icon: GraduationCap, label: "Course Plan", desc: "Track your 4-year degree progress" },
           { href: "/profile", icon: TrendingUp, label: "Profile", desc: "Set your major, minor, and interests" },
         ].map(({ href, icon: Icon, label, desc }) => (
-          <Link key={href} href={href} className="group">
-            <div className="h-full rounded-xl border border-gray-100 bg-white p-5 hover:shadow-sm hover:border-gray-200 transition-all duration-200">
-              <div className="h-9 w-9 rounded-lg bg-navy/5 flex items-center justify-center mb-3 group-hover:bg-navy/10 transition-colors">
-                <Icon className="h-4 w-4 text-navy" />
+          <Link key={href} href={href} className="group flex">
+            <div className="flex-1 rounded-xl border border-gray-100 bg-white p-6 hover:shadow-sm hover:border-davidson/10 transition-all duration-200">
+              <div className="h-10 w-10 rounded-lg bg-davidson-light flex items-center justify-center mb-3 group-hover:bg-davidson-light/80 transition-colors">
+                <Icon className="h-5 w-5 text-davidson" />
               </div>
-              <h3 className="font-medium font-serif text-sm text-[#111111] mb-0.5">{label}</h3>
-              <p className="text-xs text-gray-400">{desc}</p>
+              <h3 className="font-medium font-serif text-sm text-[#111111] mb-1">{label}</h3>
+              <p className="text-xs text-gray-400 leading-relaxed">{desc}</p>
             </div>
           </Link>
         ))}
@@ -131,14 +131,14 @@ export default function DashboardPage() {
 
       {/* AI banner */}
       <motion.div variants={fadeIn}>
-        <div className="rounded-xl border border-davidson/10 bg-gradient-to-r from-davidson-light to-white p-6">
+        <div className="rounded-xl border border-davidson/10 bg-gradient-to-r from-davidson-light to-white p-7">
           <div className="flex items-start gap-4">
-            <div className="h-10 w-10 rounded-xl bg-davidson flex items-center justify-center shrink-0 shadow-sm">
+            <div className="h-11 w-11 rounded-xl bg-davidson flex items-center justify-center shrink-0 shadow-sm">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold font-serif text-[#111111] mb-1">Powered by Gemini AI</h3>
-              <p className="text-sm text-[#555555] mb-4">
+              <h3 className="font-semibold font-serif text-lg text-[#111111] mb-1">Powered by Gemini AI</h3>
+              <p className="text-sm text-[#555555] mb-4 leading-relaxed">
                 Get personalized course recommendations, career roadmaps, and networking emails — all tailored to your Davidson experience.
               </p>
               <div className="flex gap-2">

@@ -28,6 +28,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Fetch real reviews from RateMyProfessors
+    let reviewTexts: string[] = [];
+    try {
+      const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+      const rmpRes = await fetch(`${baseUrl}/api/rmp/reviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          cookie: req.headers.get("cookie") || "",
+        },
+        body: JSON.stringify({ professorName }),
+      });
+      if (rmpRes.ok) {
+        const rmpData = await rmpRes.json();
+        if (rmpData.found && rmpData.reviews) {
+          reviewTexts = rmpData.reviews
+            .filter((r: { comment: string }) => r.comment && r.comment.trim())
+            .map(
+              (r: {
+                comment: string;
+                class: string;
+                grade: string;
+                clarityRating: number;
+                difficultyRating: number;
+              }) => {
+                const parts = [r.comment];
+                if (r.class) parts.push(`(Course: ${r.class})`);
+                if (r.grade) parts.push(`(Grade: ${r.grade})`);
+                return parts.join(" ");
+              }
+            )
+            .slice(0, 15); // Cap at 15 reviews for context window
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch RMP reviews:", err);
+      // Continue without reviews - will use static data only
+    }
+
     const summary = await generateProfessorSummary(
       professorName,
       courseCode,
@@ -36,7 +75,8 @@ export async function POST(req: NextRequest) {
       rmpDifficulty,
       rmpNumRatings,
       rmpWouldTakeAgain,
-      rmpTags
+      rmpTags,
+      reviewTexts
     );
 
     if (!summary) {
