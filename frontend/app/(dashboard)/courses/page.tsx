@@ -657,6 +657,12 @@ export default function CoursesPage() {
                             <span className="text-sm text-[#555555] truncate">
                               {pc.courseName}
                             </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100">
+                              {pc.credits} cr
+                            </span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${semColors.bg} ${semColors.text} border ${semColors.border}`}>
+                              {semName}
+                            </span>
                           </div>
                         </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import {
   ThumbsUp,
   TrendingUp,
   Users,
+  X,
   Zap,
 } from "lucide-react";
 import { SUBJECT_AREAS } from "@/lib/utils";
@@ -92,6 +93,8 @@ type Step = "interests" | "browse" | "recommendations";
 export default function ExplorePage() {
   const [step, setStep] = useState<Step>("interests");
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [expandedAreas, setExpandedAreas] = useState<string[]>([]);
+  const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(
     null
@@ -133,14 +136,37 @@ export default function ExplorePage() {
   }, []);
 
   const toggleArea = (id: string) => {
-    setSelectedAreas((prev) =>
+    setSelectedAreas((prev) => {
+      const next = prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id];
+      // When selecting an area, also add all its departments; when deselecting, remove them
+      const area = SUBJECT_AREAS.find((a) => a.id === id);
+      if (area) {
+        const areaDepts: string[] = [...area.departments];
+        if (next.includes(id)) {
+          setSelectedDepts((d) => Array.from(new Set([...d, ...areaDepts])));
+        } else {
+          setSelectedDepts((d) => d.filter((dept) => !areaDepts.includes(dept)));
+        }
+      }
+      return next;
+    });
+  };
+
+  const toggleExpandArea = (id: string) => {
+    setExpandedAreas((prev) =>
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
     );
   };
 
-  const selectedDepartments: string[] = SUBJECT_AREAS.filter((a) =>
-    selectedAreas.includes(a.id)
-  ).flatMap((a) => [...a.departments]);
+  const toggleDept = (dept: string) => {
+    setSelectedDepts((prev) =>
+      prev.includes(dept) ? prev.filter((d) => d !== dept) : [...prev, dept]
+    );
+  };
+
+  const selectedDepartments: string[] = selectedDepts.length > 0
+    ? selectedDepts
+    : SUBJECT_AREAS.filter((a) => selectedAreas.includes(a.id)).flatMap((a) => [...a.departments]);
 
   // Build a set of static course codes for quick lookup
   const staticCodes = new Set(DAVIDSON_COURSES.map((c) => c.code));
@@ -208,7 +234,7 @@ export default function ExplorePage() {
 
   return (
     <motion.div
-      className="max-w-4xl mx-auto space-y-8"
+      className="max-w-4xl mx-auto space-y-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -272,45 +298,90 @@ export default function ExplorePage() {
 
       {/* Step 1: Interest Selection */}
       {step === "interests" && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div>
             <h2 className="font-serif text-lg font-semibold text-[#111111] mb-1">
               What areas interest you?
             </h2>
             <p className="text-sm text-[#555555]">
-              Select one or more subject areas to filter the catalog.
+              Select subject areas or expand to pick individual departments.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {SUBJECT_AREAS.map((area) => (
-              <button
-                key={area.id}
-                onClick={() => toggleArea(area.id)}
-                className={`p-3.5 rounded-lg border text-left transition-all duration-150 ${
-                  selectedAreas.includes(area.id)
-                    ? "bg-davidson text-white border-davidson"
-                    : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <div className="font-medium text-sm">{area.label}</div>
-                <div
-                  className={`text-xs mt-0.5 ${
-                    selectedAreas.includes(area.id)
-                      ? "text-gray-400"
-                      : "text-gray-400"
-                  }`}
-                >
-                  {area.departments.slice(0, 3).join(", ")}
-                  {area.departments.length > 3 &&
-                    ` +${area.departments.length - 3}`}
+          {/* Subject areas as horizontal expandable boxes */}
+          <div className="flex flex-wrap gap-2">
+            {SUBJECT_AREAS.map((area) => {
+              const isSelected = selectedAreas.includes(area.id);
+              const isExpanded = expandedAreas.includes(area.id);
+              const selectedCount = area.departments.filter((d) => selectedDepts.includes(d)).length;
+              return (
+                <div key={area.id} className="flex flex-col">
+                  <div className="flex items-center gap-0">
+                    <button
+                      onClick={() => toggleArea(area.id)}
+                      className={`px-3.5 py-2 rounded-l-lg border text-left transition-all duration-150 ${
+                        isSelected
+                          ? "bg-davidson text-white border-davidson"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <span className="font-medium text-sm">{area.label}</span>
+                      {selectedCount > 0 && !isSelected && (
+                        <span className="ml-1.5 text-[10px] bg-davidson/10 text-davidson px-1.5 py-0.5 rounded-full">
+                          {selectedCount}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => toggleExpandArea(area.id)}
+                      className={`px-2 py-2 border border-l-0 rounded-r-lg transition-all duration-150 ${
+                        isSelected
+                          ? "bg-davidson/90 text-white border-davidson"
+                          : "bg-white text-gray-400 border-gray-200 hover:text-gray-600"
+                      }`}
+                    >
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                    </button>
+                  </div>
+
+                  {/* Expanded departments dropdown */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-1 bg-white border border-gray-200 rounded-lg p-2 shadow-sm space-y-0.5">
+                          {area.departments.map((dept) => {
+                            const isDeptSelected = selectedDepts.includes(dept);
+                            return (
+                              <button
+                                key={dept}
+                                onClick={() => toggleDept(dept)}
+                                className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition-colors ${
+                                  isDeptSelected
+                                    ? "bg-davidson-light text-davidson font-medium"
+                                    : "text-gray-600 hover:bg-gray-50"
+                                }`}
+                              >
+                                {dept}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
 
-          {selectedAreas.length > 0 && (
-            <div className="flex gap-3 pt-2">
+          {(selectedAreas.length > 0 || selectedDepts.length > 0) && (
+            <div className="flex gap-3 pt-1">
               <Button
                 onClick={() => setStep("browse")}
                 className="bg-davidson hover:bg-davidson-dark text-white"
@@ -658,6 +729,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
     careerApplications?: string[];
   } | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
   const [profSummary, setProfSummary] = useState<{
     summary?: string;
     strengths?: string[];
@@ -1028,103 +1100,187 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
               {/* AI Deep Dive Button */}
               <div className="pt-1">
                 <button
-                  onClick={fetchAiInsights}
-                  disabled={loadingInsights || !!aiInsights}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-navy hover:text-davidson disabled:text-gray-300 transition-colors"
+                  onClick={() => {
+                    if (!aiInsights && !loadingInsights) fetchAiInsights();
+                    setShowAiModal(true);
+                  }}
+                  disabled={loadingInsights}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-navy/5 text-navy hover:bg-navy/10 hover:text-davidson disabled:text-gray-300 transition-colors"
                 >
                   {loadingInsights ? (
                     <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       Analyzing...
-                    </>
-                  ) : aiInsights ? (
-                    <>
-                      <Brain className="h-3 w-3" />
-                      AI Insights Loaded
                     </>
                   ) : (
                     <>
-                      <Brain className="h-3 w-3" />
-                      Get AI Deep Dive
+                      <Brain className="h-3.5 w-3.5" />
+                      AI Deep Dive
                     </>
                   )}
                 </button>
               </div>
 
-              {/* AI-Generated Insights */}
-              {aiInsights && (
-                <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4 space-y-3">
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-davidson" />
-                    <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      AI Analysis
-                    </span>
-                  </div>
-
-                  {aiInsights.courseHighlights && (
-                    <p className="text-sm text-[#555555] leading-relaxed">
-                      {aiInsights.courseHighlights}
-                    </p>
-                  )}
-
-                  {aiInsights.keyTopics && aiInsights.keyTopics.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
-                        Deep Dive Topics
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {aiInsights.keyTopics.map((topic) => (
-                          <span
-                            key={topic}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-white text-gray-600 border border-gray-200"
-                          >
-                            {topic}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {aiInsights.skillsGained &&
-                    aiInsights.skillsGained.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
-                          Additional Skills
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {aiInsights.skillsGained.map((skill) => (
-                            <span
-                              key={skill}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-white text-gray-600 border border-gray-200"
-                            >
-                              {skill}
-                            </span>
-                          ))}
+              {/* AI Deep Dive Modal */}
+              <AnimatePresence>
+                {showAiModal && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-start justify-center pt-[8vh] px-4"
+                    onClick={(e) => { if (e.target === e.currentTarget) setShowAiModal(false); }}
+                  >
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowAiModal(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 12 }}
+                      className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[80vh] overflow-y-auto z-10"
+                    >
+                      {/* Modal header */}
+                      <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
+                        <div>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <Sparkles className="h-4 w-4 text-davidson" />
+                            <h2 className="font-serif font-semibold text-lg text-[#111111]">AI Deep Dive</h2>
+                          </div>
+                          <p className="text-sm text-[#555555]">{course.code} · {course.name}</p>
                         </div>
+                        <button onClick={() => setShowAiModal(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                          <X className="h-5 w-5" />
+                        </button>
                       </div>
-                    )}
 
-                  {aiInsights.careerApplications &&
-                    aiInsights.careerApplications.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
-                          Career Applications
-                        </p>
-                        <ul className="space-y-0.5">
-                          {aiInsights.careerApplications.map((app) => (
-                            <li
-                              key={app}
-                              className="text-[11px] text-[#555555] flex items-start gap-1.5"
-                            >
-                              <Briefcase className="h-3 w-3 mt-0.5 shrink-0 text-gray-300" />
-                              {app}
-                            </li>
-                          ))}
-                        </ul>
+                      {/* Modal content */}
+                      <div className="px-6 py-5 space-y-6">
+                        {loadingInsights ? (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-davidson mb-3" />
+                            <p className="text-sm text-[#555555]">Analyzing course with AI...</p>
+                          </div>
+                        ) : aiInsights ? (
+                          <>
+                            {aiInsights.courseHighlights && (
+                              <div>
+                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                                  <Sparkles className="h-4 w-4 text-davidson" />
+                                  Course Highlights
+                                </h3>
+                                <p className="text-base text-[#555555] leading-relaxed">
+                                  {aiInsights.courseHighlights}
+                                </p>
+                              </div>
+                            )}
+
+                            {aiInsights.keyTopics && aiInsights.keyTopics.length > 0 && (
+                              <div>
+                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                                  <BookOpen className="h-4 w-4 text-navy" />
+                                  Deep Dive Topics
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                  {aiInsights.keyTopics.map((topic) => (
+                                    <span key={topic} className="text-sm px-3 py-1 rounded-lg bg-gray-50 text-gray-700 border border-gray-200">
+                                      {topic}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {aiInsights.skillsGained && aiInsights.skillsGained.length > 0 && (
+                              <div>
+                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                                  Skills You&apos;ll Gain
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                  {aiInsights.skillsGained.map((skill) => (
+                                    <span key={skill} className="text-sm px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {aiInsights.careerApplications && aiInsights.careerApplications.length > 0 && (
+                              <div>
+                                <h3 className="text-sm font-semibold text-[#111111] mb-2 flex items-center gap-2">
+                                  <Briefcase className="h-4 w-4 text-davidson" />
+                                  Career Applications
+                                </h3>
+                                <ul className="space-y-2">
+                                  {aiInsights.careerApplications.map((app) => (
+                                    <li key={app} className="text-sm text-[#555555] flex items-start gap-2">
+                                      <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-davidson/50" />
+                                      {app}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* Professor summary in modal too */}
+                            {profSummary && (
+                              <div className="rounded-xl border border-davidson/10 bg-davidson-light/30 p-5 space-y-4">
+                                <h3 className="text-sm font-semibold text-davidson flex items-center gap-2">
+                                  <GraduationCap className="h-4 w-4" />
+                                  Professor Summary — {course.professor}
+                                </h3>
+                                {profSummary.summary && (
+                                  <p className="text-sm text-gray-700 leading-relaxed">{profSummary.summary}</p>
+                                )}
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                  {profSummary.strengths && profSummary.strengths.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-emerald-600 mb-1.5">Strengths</p>
+                                      <ul className="space-y-1">
+                                        {profSummary.strengths.map((s, i) => (
+                                          <li key={i} className="text-sm text-gray-600 flex items-start gap-1.5">
+                                            <span className="text-emerald-500 mt-0.5 shrink-0">+</span> {s}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  {profSummary.considerations && profSummary.considerations.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-amber-600 mb-1.5">Considerations</p>
+                                      <ul className="space-y-1">
+                                        {profSummary.considerations.map((c, i) => (
+                                          <li key={i} className="text-sm text-gray-600 flex items-start gap-1.5">
+                                            <span className="text-amber-500 mt-0.5 shrink-0">!</span> {c}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                                {profSummary.tipForSuccess && (
+                                  <div className="flex items-start gap-2 bg-white/60 rounded-lg p-3">
+                                    <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                                    <p className="text-sm text-gray-600">
+                                      <span className="font-medium text-gray-700">Tip: </span>
+                                      {profSummary.tipForSuccess}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <Brain className="h-8 w-8 text-gray-300 mb-3" />
+                            <p className="text-sm text-gray-400">No insights available yet</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                </div>
-              )}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </div>
