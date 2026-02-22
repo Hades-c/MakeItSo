@@ -692,7 +692,7 @@ export default function RoadmapPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-sm text-[#555555]">
-                    <span>{roadmap.roadmap.length} semesters</span>
+                    <span>{roadmap.roadmap.filter((s) => !s.isSummer).length} semesters</span>
                     <span className="text-gray-300">|</span>
                     <span>{totalCourses} courses</span>
                     {savedMeta?.generatedAt && (
@@ -813,7 +813,7 @@ export default function RoadmapPage() {
                         </div>
                         {!sem.isSummer && (
                           <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-navy text-white text-[10px] font-bold flex items-center justify-center">
-                            {i + 1}
+                            {roadmap!.roadmap.slice(0, i + 1).filter((s) => !s.isSummer).length}
                           </span>
                         )}
                       </div>
@@ -965,7 +965,7 @@ export default function RoadmapPage() {
               <div>
                 <p className="text-sm font-medium text-gray-700">
                   Roadmap complete -- {totalCourses} courses across{" "}
-                  {roadmap.roadmap.length} semesters
+                  {roadmap.roadmap.filter((s) => !s.isSummer).length} semesters
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   This plan is AI-generated. Always verify requirements with your academic advisor.
