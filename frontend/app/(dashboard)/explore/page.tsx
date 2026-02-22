@@ -28,7 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import { SUBJECT_AREAS } from "@/lib/utils";
-import { DAVIDSON_COURSES, type SeedCourse } from "@/lib/davidson-courses";
+import { DAVIDSON_COURSES, type SeedCourse, type ProfessorRMPData } from "@/lib/davidson-courses";
 // Major name -> abbreviation map
 const MAJOR_ABBREV: Record<string, string> = {
   "Computer Science": "CSC",
@@ -118,6 +118,24 @@ const GRAD_REQ_LABELS: Record<string, string> = {
   JSRQ: "Justice, Equality & Community",
   QRRQ: "Quantitative Reasoning",
 };
+
+// Build a professor RMP lookup by last name for live courses
+const PROF_RMP_BY_LAST_NAME: Record<string, ProfessorRMPData> = {};
+for (const c of DAVIDSON_COURSES) {
+  if (c.professorInfo?.rmpRating != null) {
+    const parts = c.professorInfo.name.replace(/^Dr\.\s*/i, "").trim().split(/\s+/);
+    const lastName = parts[parts.length - 1].toLowerCase();
+    if (lastName && !PROF_RMP_BY_LAST_NAME[lastName]) {
+      PROF_RMP_BY_LAST_NAME[lastName] = c.professorInfo;
+    }
+  }
+}
+
+function lookupProfRMP(professorName: string): ProfessorRMPData | undefined {
+  const parts = professorName.replace(/^Dr\.\s*/i, "").trim().split(/\s+/);
+  const lastName = parts[parts.length - 1].toLowerCase();
+  return lastName ? PROF_RMP_BY_LAST_NAME[lastName] : undefined;
+}
 
 // Find a static course by code, with fuzzy fallback (same dept prefix, closest number)
 function findStaticCourse(code: string): SeedCourse | undefined {
@@ -665,12 +683,7 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
       ? course.professor
       : null;
   const realInstructors = course.instructors.filter((i) => i !== "Staff");
-  // Better description truncation: use full description if short, otherwise first sentence
-  const shortDesc = course.description
-    ? course.description.length <= 120
-      ? course.description
-      : (course.description.match(/^[^.!?]+[.!?]/)?.[0] || course.description.slice(0, 120) + "...")
-    : "";
+  const prof = realProfessor ? lookupProfRMP(realProfessor) : undefined;
   const deptColor = getDeptColor(course.department);
   // Filter out meaningless grad requirements and map to readable labels
   const gradReqs = course.gradRequirements
@@ -692,6 +705,12 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
               {gradReqs.length > 0 && (
                 <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
                   {gradReqs.join(", ")}
+                </span>
+              )}
+              {prof?.rmpRating != null && (
+                <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  {prof.rmpRating}
                 </span>
               )}
               {course.sections > 1 && (
@@ -739,6 +758,91 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
                     {realProfessor}
                   </span>
                 </div>
+                {prof?.title && (
+                  <p className="text-xs text-gray-400 ml-6">{prof.title}</p>
+                )}
+                {prof?.rmpRating != null && (
+                  <div className="ml-6 space-y-2">
+                    <div className="flex flex-wrap items-center gap-3 text-xs">
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        <span className="font-semibold text-sm text-[#111111]">
+                          {prof.rmpRating}
+                        </span>
+                        <span className="text-gray-400">/5</span>
+                      </span>
+                      {prof.rmpWouldTakeAgain != null && (
+                        <span className="flex items-center gap-1 text-[#555555]">
+                          <ThumbsUp className="h-3 w-3" />
+                          {prof.rmpWouldTakeAgain}% would take again
+                        </span>
+                      )}
+                      {prof.rmpDifficulty != null && (
+                        <span className="flex items-center gap-1 text-[#555555]">
+                          <Zap className="h-3 w-3" />
+                          {prof.rmpDifficulty} difficulty
+                        </span>
+                      )}
+                      {prof.rmpNumRatings != null && (
+                        <span className="flex items-center gap-1 text-gray-400">
+                          <Users className="h-3 w-3" />
+                          {prof.rmpNumRatings} ratings
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-400 w-14">
+                          Quality
+                        </span>
+                        <RatingBar
+                          value={prof.rmpRating}
+                          max={5}
+                          color={
+                            prof.rmpRating >= 4
+                              ? "bg-emerald-500"
+                              : prof.rmpRating >= 3
+                                ? "bg-amber-400"
+                                : "bg-red-400"
+                          }
+                        />
+                      </div>
+                      {prof.rmpDifficulty != null && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-400 w-14">
+                            Difficulty
+                          </span>
+                          <RatingBar
+                            value={prof.rmpDifficulty}
+                            max={5}
+                            color={
+                              prof.rmpDifficulty <= 2.5
+                                ? "bg-emerald-500"
+                                : prof.rmpDifficulty <= 3.5
+                                  ? "bg-amber-400"
+                                  : "bg-orange-500"
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {prof.rmpTags && prof.rmpTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {prof.rmpTags.slice(0, 5).map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-600 border-gray-200"
+                          >
+                            <MessageSquare className="h-2.5 w-2.5" />
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {realInstructors.length > 1 && (
                   <p className="text-xs text-gray-400 ml-6">
                     All instructors: {realInstructors.join(", ")}
