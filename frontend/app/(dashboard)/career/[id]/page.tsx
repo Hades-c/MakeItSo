@@ -150,22 +150,16 @@ export default function CareerDetailPage() {
 
   const planCourseCodes = new Set(userPlanCourses.map((c) => c.courseCode));
 
-  async function addCourseToPlan(courseCode: string) {
+  async function addCourseToPlan(courseCode: string, courseName: string) {
     setAddingToPlan(courseCode);
     try {
-      // Look up the course by code to get its _id
-      const searchRes = await fetch(`/api/courses?search=${encodeURIComponent(courseCode)}&limit=5`);
-      if (!searchRes.ok) return;
-      const searchData = await searchRes.json();
-      const match = (searchData.courses ?? []).find((c: { code: string }) => c.code.toUpperCase() === courseCode.toUpperCase());
-      if (!match) return;
-
       const currentYear = new Date().getFullYear();
       const res = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          courseId: match._id,
+          courseCode,
+          courseName,
           semester: "Fall",
           year: currentYear,
           status: "planned",
@@ -438,7 +432,7 @@ export default function CareerDetailPage() {
                       ) : (
                         <button
                           disabled={courseIsAdding}
-                          onClick={() => addCourseToPlan(course.code)}
+                          onClick={() => addCourseToPlan(course.code, course.name)}
                           className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
                         >
                           {courseIsAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
@@ -768,7 +762,7 @@ export default function CareerDetailPage() {
                             ) : (
                               <button
                                 disabled={isAdding}
-                                onClick={() => addCourseToPlan(course.code)}
+                                onClick={() => addCourseToPlan(course.code, course.name)}
                                 className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
                               >
                                 {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import {
   BookOpen,
   Brain,
   Briefcase,
+  Check,
   ChevronDown,
   ChevronRight,
   Filter,
@@ -18,6 +19,7 @@ import {
   Lightbulb,
   Loader2,
   MessageSquare,
+  Plus,
   Search,
   Sparkles,
   Star,
@@ -243,6 +245,53 @@ export default function ExplorePage() {
       prerequisites: string[];
     }>;
   } | null>(null);
+
+  // Plan state for "Add to Plan" buttons
+  const [userPlanCourses, setUserPlanCourses] = useState<{ courseCode: string; courseName: string; status: string; semester: string; year: number }[]>([]);
+  const [addingToPlan, setAddingToPlan] = useState<string | null>(null);
+  const planCourseCodes = new Set(userPlanCourses.map((c) => c.courseCode));
+
+  const fetchUserPlan = useCallback(async () => {
+    try {
+      const res = await fetch("/api/plans");
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserPlan();
+  }, [fetchUserPlan]);
+
+  async function addCourseToPlan(courseCode: string, courseName: string) {
+    setAddingToPlan(courseCode);
+    try {
+      const currentYear = new Date().getFullYear();
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseCode,
+          courseName,
+          semester: "Fall",
+          year: currentYear,
+          status: "planned",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setAddingToPlan(null);
+    }
+  }
 
   // Fetch live courses from Davidson API
   useEffect(() => {
@@ -609,7 +658,7 @@ export default function ExplorePage() {
           {/* Course list */}
           <div className="space-y-2">
             {filteredCourses.slice(0, 50).map((course) => (
-              <CourseCard key={course.code} course={course} />
+              <CourseCard key={course.code} course={course} planCourseCodes={planCourseCodes} addingToPlan={addingToPlan} onAddToPlan={addCourseToPlan} />
             ))}
             {filteredCourses.length > 50 && (
               <p className="text-sm text-gray-400 text-center py-6">
@@ -682,6 +731,9 @@ export default function ExplorePage() {
                       course={match}
                       aiReason={rec.reason}
                       aiCareerImpact={rec.careerImpact}
+                      planCourseCodes={planCourseCodes}
+                      addingToPlan={addingToPlan}
+                      onAddToPlan={addCourseToPlan}
                     />
                   ) : (
                     /* Fallback for courses not in our data */
@@ -739,7 +791,7 @@ function RatingBar({
 }
 
 /* ===== Unified course card (live-first with static enrichment) ===== */
-function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCourse; aiReason?: string; aiCareerImpact?: string[] }) {
+function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingToPlan, onAddToPlan }: { course: EnrichedCourse; aiReason?: string; aiCareerImpact?: string[]; planCourseCodes?: Set<string>; addingToPlan?: string | null; onAddToPlan?: (code: string, name: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [aiInsights, setAiInsights] = useState<{
     courseHighlights?: string;
@@ -1338,8 +1390,8 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                     className="fixed inset-0 z-[100]"
                   >
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
-                    <div className="fixed inset-0 md:left-[240px] z-[101] overflow-y-auto p-4 md:p-8 py-[6vh]">
-                    <div className="max-w-5xl mx-auto">
+                    <div className="fixed inset-0 md:left-[240px] z-[101] overflow-y-auto px-6 md:px-12 py-[6vh]">
+                    <div className="max-w-3xl mx-auto">
                     <motion.div
                       initial={{ opacity: 0, scale: 0.98, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1355,9 +1407,27 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                           </div>
                           <p className="text-sm text-[#555555]">{course.code} · {course.name}</p>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                          <X className="h-5 w-5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {onAddToPlan && (
+                            planCourseCodes?.has(course.code) ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
+                                <Check className="h-3.5 w-3.5" /> In Plan
+                              </span>
+                            ) : (
+                              <button
+                                disabled={addingToPlan === course.code}
+                                onClick={(e) => { e.stopPropagation(); onAddToPlan(course.code, course.name); }}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                {addingToPlan === course.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                                Add to Plan
+                              </button>
+                            )
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Modal content */}
