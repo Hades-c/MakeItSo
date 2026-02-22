@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -25,6 +25,7 @@ import {
   Sun,
   Users,
   X,
+  Plus,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,58 @@ export default function CareerDetailPage() {
   const [roadmapLoading, setRoadmapLoading] = useState(false);
   const [roadmapError, setRoadmapError] = useState(false);
   const [expandedCourseIdx, setExpandedCourseIdx] = useState<number | null>(null);
+  const [userPlanCourses, setUserPlanCourses] = useState<{ courseCode: string; courseName: string; status: string; semester: string; year: number }[]>([]);
+  const [addingToPlan, setAddingToPlan] = useState<string | null>(null);
+
+  const fetchUserPlan = useCallback(async () => {
+    try {
+      const res = await fetch("/api/plans");
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent — plan fetch is supplementary
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserPlan();
+  }, [fetchUserPlan]);
+
+  const planCourseCodes = new Set(userPlanCourses.map((c) => c.courseCode));
+
+  async function addCourseToPlan(courseCode: string) {
+    setAddingToPlan(courseCode);
+    try {
+      // Look up the course by code to get its _id
+      const searchRes = await fetch(`/api/courses?search=${encodeURIComponent(courseCode)}&limit=5`);
+      if (!searchRes.ok) return;
+      const searchData = await searchRes.json();
+      const match = (searchData.courses ?? []).find((c: { code: string }) => c.code.toUpperCase() === courseCode.toUpperCase());
+      if (!match) return;
+
+      const currentYear = new Date().getFullYear();
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId: match._id,
+          semester: "Fall",
+          year: currentYear,
+          status: "planned",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setAddingToPlan(null);
+    }
+  }
 
   const careerPath = CAREER_PATHS.find((c) => c.id === params.id);
   if (!careerPath) {
@@ -146,6 +199,9 @@ export default function CareerDetailPage() {
     setRoadmapError(false);
     setCareerPlan(null);
     try {
+      const completedCourses = userPlanCourses
+        .filter((c) => c.status === "completed")
+        .map((c) => c.courseCode);
       const res = await fetch("/api/ai/career-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -153,6 +209,7 @@ export default function CareerDetailPage() {
           career: careerPath!.title,
           major: "Undecided",
           classYear: "Freshman",
+          completedCourses,
         }),
       });
       if (res.ok) {
@@ -648,6 +705,8 @@ export default function CareerDetailPage() {
                     const pColor = PRIORITY_COLORS[course.priority] || PRIORITY_COLORS.helpful;
                     const yColor = YEAR_COLORS[course.typicalYear] || { bg: "bg-gray-50", text: "text-gray-600" };
                     const deptColor = getDeptColor(course.code);
+                    const inPlan = planCourseCodes.has(course.code);
+                    const isAdding = addingToPlan === course.code;
                     return (
                       <div key={i} className="bg-white border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
                         <div className="flex items-start justify-between gap-3">
@@ -665,6 +724,22 @@ export default function CareerDetailPage() {
                             </div>
                             <h4 className="font-medium text-sm text-[#111111]">{course.name}</h4>
                             <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.reason}</p>
+                          </div>
+                          <div className="shrink-0">
+                            {inPlan ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                                <Check className="h-3 w-3" /> In Plan
+                              </span>
+                            ) : (
+                              <button
+                                disabled={isAdding}
+                                onClick={() => addCourseToPlan(course.code)}
+                                className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                              >
+                                {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                                Add to Plan
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

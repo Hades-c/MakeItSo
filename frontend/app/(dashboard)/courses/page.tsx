@@ -136,7 +136,7 @@ const SEMESTER_COLORS: Record<string, { accent: string; bg: string; text: string
 const SEMESTER_ORDER: Record<string, number> = { Spring: 0, Summer: 1, Fall: 2 };
 
 const GRADE_OPTIONS = [
-  "A+", "A", "A-",
+  "A", "A-",
   "B+", "B", "B-",
   "C+", "C", "C-",
   "D+", "D", "D-",
@@ -222,7 +222,7 @@ export default function CoursesPage() {
   const searchCourses = useCallback(async (query: string) => {
     setCatalogLoading(true);
     try {
-      const params = new URLSearchParams({ limit: "30" });
+      const params = new URLSearchParams({ limit: "200" });
       if (query.trim()) params.set("search", query.trim());
       const res = await fetch(`/api/courses?${params}`);
       if (!res.ok) throw new Error("Failed to search courses");
@@ -588,7 +588,7 @@ export default function CoursesPage() {
           const semColors = SEMESTER_COLORS[semName] || { accent: "border-l-gray-300", bg: "bg-gray-50", text: "text-gray-600", icon: "text-gray-400", border: "border-gray-200" };
           return (
           <motion.div key={semKey} variants={fadeIn}>
-            <div className={`bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden border-l-4 ${semColors.accent}`}>
+            <div className={`bg-white border border-gray-100 rounded-xl shadow-sm border-l-4 ${semColors.accent}`}>
               {/* Semester header */}
               <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -666,7 +666,7 @@ export default function CoursesPage() {
                         </Badge>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                           {/* Status cycle dropdown */}
                           <StatusDropdown
                             current={pc.status}

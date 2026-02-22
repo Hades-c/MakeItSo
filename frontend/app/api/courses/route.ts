@@ -25,7 +25,12 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: Record<string, any> = {};
     if (search) {
-      query.$text = { $search: search };
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      query.$or = [
+        { code: { $regex: escaped, $options: "i" } },
+        { name: { $regex: escaped, $options: "i" } },
+        { department: { $regex: escaped, $options: "i" } },
+      ];
     }
     if (department) {
       query.department = department;

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { career, major, classYear } = await req.json();
+    const { career, major, classYear, completedCourses } = await req.json();
 
     if (!career) {
       return NextResponse.json({ error: "career field is required" }, { status: 400 });
@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
     const plan = await generateCareerPlan(
       career,
       major || "Undecided",
-      classYear || "Freshman"
+      classYear || "Freshman",
+      completedCourses || []
     );
 
     if (!plan) {
