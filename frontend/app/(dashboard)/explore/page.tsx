@@ -89,6 +89,36 @@ interface LiveCourse {
   location: string;
 }
 
+// Enriched course: live data as primary, optionally enriched with static metadata
+interface EnrichedCourse {
+  // Core fields (from live API, or static fallback)
+  code: string;
+  name: string;
+  description: string;
+  department: string;
+  deptCode?: string;
+  professor: string;
+  instructors: string[];
+  sections: number;
+  enrollment?: { current: number; max: number };
+  gradRequirements: string[];
+  schedule?: string;
+  location?: string;
+  // Static enrichment (from DAVIDSON_COURSES fuzzy match)
+  credits?: number;
+  prerequisites: string[];
+  offered: ("Fall" | "Spring" | "Summer")[];
+  tags?: string[];
+  majorRequirements?: string[];
+  difficulty?: number;
+  professorInfo?: ProfessorRMPData;
+  courseInsights?: { keyTopics?: string[]; skillsGained?: string[] };
+  careerRelevance: { field: string; relevance: number }[];
+  // Source tracking
+  isLive: boolean;        // true if from live API
+  hasStaticMatch: boolean; // true if enriched with static data
+}
+
 const AREA_TAG_COLORS: Record<string, string> = {
   "natural-sciences": "bg-emerald-50 text-emerald-700 border-emerald-200",
   "math-computing": "bg-blue-50 text-blue-700 border-blue-200",
@@ -239,53 +269,79 @@ export default function ExplorePage() {
     );
   };
 
-  // Build a set of static course codes for quick lookup
-  const staticCodes = new Set(DAVIDSON_COURSES.map((c) => c.code));
+  // Build enriched courses: live-first with static metadata enrichment
+  const allCourses: EnrichedCourse[] = (() => {
+    // Track which static courses got matched so we can append unmatched ones
+    const matchedStaticCodes = new Set<string>();
 
-  // Parse dept prefix and number from a course code like "ECO 202"
-  function parseCourseCode(code: string): { dept: string; num: number } | null {
-    const m = code.match(/^([A-Z]{2,4})\s*(\d+)/);
-    return m ? { dept: m[1], num: parseInt(m[2], 10) } : null;
-  }
+    // Enrich each live course with the closest static match
+    const enrichedLive: EnrichedCourse[] = liveCourses.map((lc) => {
+      const staticMatch = findStaticCourse(lc.code);
+      if (staticMatch) matchedStaticCodes.add(staticMatch.code);
 
-  // Build a map of static course numbers by dept for fuzzy dedup
-  const staticByDept = new Map<string, number[]>();
-  for (const c of DAVIDSON_COURSES) {
-    const parsed = parseCourseCode(c.code);
-    if (parsed) {
-      if (!staticByDept.has(parsed.dept)) staticByDept.set(parsed.dept, []);
-      staticByDept.get(parsed.dept)!.push(parsed.num);
-    }
-  }
+      // Resolve professor: prefer live non-Staff, then static
+      const prof = lc.professor && lc.professor !== "Staff"
+        ? lc.professor
+        : staticMatch?.professor || lc.professor;
 
-  // Live-only courses: exclude exact matches AND near-matches (same dept, number within ±3)
-  const liveOnlyCourses = liveCourses.filter((c) => {
-    if (staticCodes.has(c.code)) return false;
-    const parsed = parseCourseCode(c.code);
-    if (!parsed) return true;
-    const staticNums = staticByDept.get(parsed.dept);
-    if (!staticNums) return true;
-    return !staticNums.some((sn) => Math.abs(sn - parsed.num) <= 3);
-  });
+      // Resolve professor RMP info
+      const profInfo = staticMatch?.professorInfo
+        ?? (prof && prof !== "Staff" ? lookupProfRMP(prof) : undefined);
 
-  // Find the closest live course for a static course code (fuzzy by dept + number ±3)
-  function findLiveProfessor(code: string): string | undefined {
-    const exact = liveCourses.find((lc) => lc.code === code);
-    if (exact && exact.professor !== "Staff") return exact.professor;
-    const parsed = parseCourseCode(code);
-    if (!parsed) return undefined;
-    const match = liveCourses.find((lc) => {
-      const lp = parseCourseCode(lc.code);
-      return lp && lp.dept === parsed.dept && Math.abs(lp.num - parsed.num) <= 3;
+      return {
+        code: lc.code,
+        name: lc.name,
+        description: staticMatch?.description || lc.description,
+        department: lc.department,
+        deptCode: lc.deptCode,
+        professor: prof,
+        instructors: lc.instructors,
+        sections: lc.sections,
+        enrollment: lc.enrollment,
+        gradRequirements: lc.gradRequirements,
+        schedule: lc.schedule,
+        location: lc.location,
+        credits: staticMatch?.credits,
+        prerequisites: staticMatch?.prerequisites ?? [],
+        offered: staticMatch?.offered ?? [],
+        tags: staticMatch?.tags,
+        majorRequirements: staticMatch?.majorRequirements,
+        difficulty: staticMatch?.difficulty,
+        professorInfo: profInfo,
+        courseInsights: staticMatch?.courseInsights,
+        careerRelevance: staticMatch?.careerRelevance ?? [],
+        isLive: true,
+        hasStaticMatch: !!staticMatch,
+      };
     });
-    return match && match.professor !== "Staff" ? match.professor : undefined;
-  }
 
-  // Combined courses: static (rich data with RMP) first, then live-only extras
-  const allCourses: (SeedCourse | LiveCourse)[] = [
-    ...DAVIDSON_COURSES,
-    ...liveOnlyCourses,
-  ];
+    // Append static-only courses (not offered this semester but still useful to browse)
+    const staticOnly: EnrichedCourse[] = DAVIDSON_COURSES
+      .filter((sc) => !matchedStaticCodes.has(sc.code))
+      .map((sc) => ({
+        code: sc.code,
+        name: sc.name,
+        description: sc.description,
+        department: sc.department,
+        professor: sc.professor || "Staff",
+        instructors: sc.professor ? [sc.professor] : [],
+        sections: 0,
+        gradRequirements: [],
+        prerequisites: sc.prerequisites,
+        offered: sc.offered,
+        tags: sc.tags,
+        majorRequirements: sc.majorRequirements,
+        difficulty: sc.difficulty,
+        credits: sc.credits,
+        professorInfo: sc.professorInfo,
+        courseInsights: sc.courseInsights,
+        careerRelevance: sc.careerRelevance,
+        isLive: false,
+        hasStaticMatch: true,
+      }));
+
+    return [...enrichedLive, ...staticOnly];
+  })();
 
   // Departments available from selected areas
   const areaDepartments: string[] = SUBJECT_AREAS.filter((a) =>
@@ -303,16 +359,15 @@ export default function ExplorePage() {
       ? c.code.toLowerCase().includes(q) ||
         c.name.toLowerCase().includes(q) ||
         c.department.toLowerCase().includes(q) ||
-        ("professor" in c && c.professor
-          ? c.professor.toLowerCase().includes(q)
-          : false)
+        (c.professor ? c.professor.toLowerCase().includes(q) : false)
       : true;
     return matchesDept && matchesSearch;
   }).sort((a, b) => {
-    // Major requirements first, then others; within each group ascending by course number
-    const aIsMajorReq = "majorRequirements" in a && (a as SeedCourse).majorRequirements && (a as SeedCourse).majorRequirements!.length > 0 ? 1 : 0;
-    const bIsMajorReq = "majorRequirements" in b && (b as SeedCourse).majorRequirements && (b as SeedCourse).majorRequirements!.length > 0 ? 1 : 0;
-    if (aIsMajorReq !== bIsMajorReq) return bIsMajorReq - aIsMajorReq; // major reqs first
+    // Live courses first, then static-only; within each group: major reqs first, then by number
+    if (a.isLive !== b.isLive) return a.isLive ? -1 : 1;
+    const aIsMajorReq = a.majorRequirements && a.majorRequirements.length > 0 ? 1 : 0;
+    const bIsMajorReq = b.majorRequirements && b.majorRequirements.length > 0 ? 1 : 0;
+    if (aIsMajorReq !== bIsMajorReq) return bIsMajorReq - aIsMajorReq;
     const aNum = parseInt(a.code.replace(/\D+/g, ""), 10) || 0;
     const bNum = parseInt(b.code.replace(/\D+/g, ""), 10) || 0;
     return aNum - bNum;
@@ -581,20 +636,9 @@ export default function ExplorePage() {
 
           {/* Course list */}
           <div className="space-y-2">
-            {filteredCourses.slice(0, 50).map((course) =>
-              "careerRelevance" in course ? (
-                <StaticCourseCard
-                  key={course.code}
-                  course={course as SeedCourse}
-                  liveProfessor={!(course as SeedCourse).professor ? findLiveProfessor(course.code) : undefined}
-                />
-              ) : (
-                <LiveCourseCard
-                  key={course.code}
-                  course={course as LiveCourse}
-                />
-              )
-            )}
+            {filteredCourses.slice(0, 50).map((course) => (
+              <CourseCard key={course.code} course={course} />
+            ))}
             {filteredCourses.length > 50 && (
               <p className="text-sm text-gray-400 text-center py-6">
                 Showing 50 of {filteredCourses.length} courses. Use search to
@@ -632,9 +676,13 @@ export default function ExplorePage() {
 
           <div className="space-y-2">
             {recommendations.recommendations.map((rec, i) => {
-              // Look up full course data — fuzzy match static, then live
-              const staticCourse = findStaticCourse(rec.code);
-              const liveCourse = liveCourses.find((c) => c.code === rec.code);
+              // Find matching enriched course by exact code or fuzzy match
+              const match = allCourses.find((c) => c.code === rec.code)
+                || allCourses.find((c) => {
+                  const rm = rec.code.match(/^([A-Z]{2,4})\s*(\d+)/);
+                  const cm = c.code.match(/^([A-Z]{2,4})\s*(\d+)/);
+                  return rm && cm && rm[1] === cm[1] && Math.abs(parseInt(rm[2]) - parseInt(cm[2])) <= 5;
+                });
 
               return (
                 <div key={i} className="relative">
@@ -657,15 +705,12 @@ export default function ExplorePage() {
                     </span>
                   </div>
 
-                  {staticCourse ? (
-                    <StaticCourseCard
-                      course={staticCourse}
+                  {match ? (
+                    <CourseCard
+                      course={match}
                       aiReason={rec.reason}
                       aiCareerImpact={rec.careerImpact}
-                      liveProfessor={!staticCourse.professor ? findLiveProfessor(staticCourse.code) : undefined}
                     />
-                  ) : liveCourse ? (
-                    <LiveCourseCard course={liveCourse} aiReason={rec.reason} />
                   ) : (
                     /* Fallback for courses not in our data */
                     <div className="bg-white rounded-lg border border-gray-100 p-5 hover:border-gray-200 transition-all">
@@ -721,281 +766,8 @@ function RatingBar({
   );
 }
 
-/* ===== Live course card (courses from Davidson API without static RMP data) ===== */
-function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const realProfessor =
-    course.professor && course.professor !== "Staff"
-      ? course.professor
-      : null;
-  const realInstructors = course.instructors.filter((i) => i !== "Staff");
-  const prof = realProfessor ? lookupProfRMP(realProfessor) : undefined;
-  const staticMatch = findStaticCourse(course.code);
-  const careerRelevance = staticMatch?.careerRelevance ?? [];
-  const deptColor = getDeptColor(course.department);
-  // Filter out meaningless grad requirements and map to readable labels
-  const gradReqs = course.gradRequirements
-    .filter((r) => r !== "NONE" && r !== "" && GRAD_REQ_LABELS[r])
-    .map((r) => GRAD_REQ_LABELS[r] || r);
-
-  return (
-    <div
-      onClick={() => { if (!expanded) setExpanded(true); }}
-      className={`bg-white rounded-lg border-l-[3px] border border-gray-100 transition-all ${expanded ? "shadow-sm border-gray-200" : "cursor-pointer hover:border-gray-200"} ${deptColor.border.replace("border-", "border-l-")}`}
-    >
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className={`font-mono text-xs font-semibold px-2.5 py-1 rounded ${deptColor.bg} ${deptColor.text}`}>
-                {course.code}
-              </span>
-              {gradReqs.length > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
-                  {gradReqs.join(", ")}
-                </span>
-              )}
-              {prof?.rmpRating != null && (
-                <span className="flex items-center gap-0.5 text-xs text-gray-500">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                  {prof.rmpRating}
-                </span>
-              )}
-              {course.sections > 1 && (
-                <span className="text-xs text-gray-400">
-                  {course.sections} sections
-                </span>
-              )}
-            </div>
-            <h3 className="font-medium text-[15px] text-[#111111] mb-1">
-              {course.name}
-            </h3>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <span>{course.department}</span>
-              {realProfessor && <span>· {realProfessor}</span>}
-            </div>
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            className="shrink-0 p-1 rounded hover:bg-gray-100 transition-colors"
-          >
-            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
-          </button>
-        </div>
-
-        {expanded && (
-          <div className="mt-4 space-y-4 animate-fade-in border-t border-gray-100 pt-4">
-            {aiReason && (
-              <div className="flex items-start gap-2 rounded-lg bg-davidson-light/50 border border-davidson/10 p-3">
-                <Sparkles className="h-4 w-4 text-davidson shrink-0 mt-0.5" />
-                <p className="text-sm text-[#555555] leading-relaxed">{aiReason}</p>
-              </div>
-            )}
-
-            {course.description && (
-              <p className="text-sm text-[#555555] leading-relaxed">
-                {course.description}
-              </p>
-            )}
-
-            {realProfessor && (
-              <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm font-medium text-gray-700">
-                    {realProfessor}
-                  </span>
-                </div>
-                {prof?.title && (
-                  <p className="text-xs text-gray-400 ml-6">{prof.title}</p>
-                )}
-                {prof?.rmpRating != null && (
-                  <div className="ml-6 space-y-2">
-                    <div className="flex flex-wrap items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                        <span className="font-semibold text-sm text-[#111111]">
-                          {prof.rmpRating}
-                        </span>
-                        <span className="text-gray-400">/5</span>
-                      </span>
-                      {prof.rmpWouldTakeAgain != null && (
-                        <span className="flex items-center gap-1 text-[#555555]">
-                          <ThumbsUp className="h-3 w-3" />
-                          {prof.rmpWouldTakeAgain}% would take again
-                        </span>
-                      )}
-                      {prof.rmpDifficulty != null && (
-                        <span className="flex items-center gap-1 text-[#555555]">
-                          <Zap className="h-3 w-3" />
-                          {prof.rmpDifficulty} difficulty
-                        </span>
-                      )}
-                      {prof.rmpNumRatings != null && (
-                        <span className="flex items-center gap-1 text-gray-400">
-                          <Users className="h-3 w-3" />
-                          {prof.rmpNumRatings} ratings
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-gray-400 w-14">
-                          Quality
-                        </span>
-                        <RatingBar
-                          value={prof.rmpRating}
-                          max={5}
-                          color={
-                            prof.rmpRating >= 4
-                              ? "bg-emerald-500"
-                              : prof.rmpRating >= 3
-                                ? "bg-amber-400"
-                                : "bg-red-400"
-                          }
-                        />
-                      </div>
-                      {prof.rmpDifficulty != null && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400 w-14">
-                            Difficulty
-                          </span>
-                          <RatingBar
-                            value={prof.rmpDifficulty}
-                            max={5}
-                            color={
-                              prof.rmpDifficulty <= 2.5
-                                ? "bg-emerald-500"
-                                : prof.rmpDifficulty <= 3.5
-                                  ? "bg-amber-400"
-                                  : "bg-orange-500"
-                            }
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {prof.rmpTags && prof.rmpTags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {prof.rmpTags.slice(0, 5).map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-600 border-gray-200"
-                          >
-                            <MessageSquare className="h-2.5 w-2.5" />
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {realInstructors.length > 1 && (
-                  <p className="text-xs text-gray-400 ml-6">
-                    All instructors: {realInstructors.join(", ")}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Course Insights (from static data match) */}
-            {staticMatch?.courseInsights && (
-              <div className="space-y-3">
-                {staticMatch.courseInsights.keyTopics &&
-                  staticMatch.courseInsights.keyTopics.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
-                        <BookOpen className="h-3 w-3" /> Topics
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {staticMatch.courseInsights.keyTopics.map((topic) => (
-                          <span
-                            key={topic}
-                            className="text-[11px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
-                          >
-                            {topic}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                {staticMatch.courseInsights.skillsGained &&
-                  staticMatch.courseInsights.skillsGained.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
-                        <Lightbulb className="h-3 w-3" /> Skills
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {staticMatch.courseInsights.skillsGained.map((skill) => (
-                          <span
-                            key={skill}
-                            className="text-[11px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-              </div>
-            )}
-
-            {/* Career Relevance (from static data match) */}
-            {careerRelevance.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
-                  <TrendingUp className="h-3 w-3" /> Career Relevance
-                </p>
-                <div className="space-y-1.5">
-                  {careerRelevance.map(({ field, relevance }) => (
-                    <div key={field} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600 w-40 truncate">
-                        {field}
-                      </span>
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-davidson"
-                          style={{ width: `${relevance * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-400 w-8 text-right">
-                        {Math.round(relevance * 100)}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-4">
-              {course.schedule && course.schedule !== "TBA" && (
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="text-xs text-[#555555]">
-                    {course.schedule}
-                  </span>
-                </div>
-              )}
-              {course.location && course.location !== "TBA" && (
-                <div className="flex items-center gap-2">
-                  <Filter className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="text-xs text-[#555555]">
-                    {course.location}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ===== Static course card (from davidson-courses.ts) ===== */
-function StaticCourseCard({ course, aiReason, aiCareerImpact, liveProfessor }: { course: SeedCourse; aiReason?: string; aiCareerImpact?: string[]; liveProfessor?: string }) {
+/* ===== Unified course card (live-first with static enrichment) ===== */
+function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCourse; aiReason?: string; aiCareerImpact?: string[] }) {
   const [expanded, setExpanded] = useState(false);
   const [aiInsights, setAiInsights] = useState<{
     courseHighlights?: string;
@@ -1014,10 +786,14 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact, liveProfessor }: {
   } | null>(null);
   const [loadingProfSummary, setLoadingProfSummary] = useState(false);
 
-  // Use static professorInfo if available, otherwise look up from live professor name
-  const resolvedLiveProf = liveProfessor && liveProfessor !== "Staff" ? liveProfessor : undefined;
-  const professorName = course.professor || resolvedLiveProf;
-  const prof = course.professorInfo ?? (resolvedLiveProf ? lookupProfRMP(resolvedLiveProf) : undefined);
+  // Professor resolution: already merged in EnrichedCourse
+  const professorName = course.professor && course.professor !== "Staff" ? course.professor : null;
+  const prof = course.professorInfo ?? (professorName ? lookupProfRMP(professorName) : undefined);
+  const realInstructors = course.instructors.filter((i) => i !== "Staff");
+  // Grad requirements (from live API)
+  const gradReqs = course.gradRequirements
+    .filter((r) => r !== "NONE" && r !== "" && GRAD_REQ_LABELS[r])
+    .map((r) => GRAD_REQ_LABELS[r] || r);
 
   async function fetchAiInsights() {
     if (aiInsights || loadingInsights) return;
@@ -1094,7 +870,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact, liveProfessor }: {
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className={`font-mono text-xs font-semibold px-2.5 py-1 rounded ${deptColor.bg} ${deptColor.text}`}>
                 {course.code}
               </span>
@@ -1103,10 +879,20 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact, liveProfessor }: {
                   {formatMajorReq(course.majorRequirements)}
                 </span>
               )}
+              {gradReqs.length > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
+                  {gradReqs.join(", ")}
+                </span>
+              )}
               {prof?.rmpRating != null && (
                 <span className="flex items-center gap-0.5 text-xs text-gray-500">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                   {prof.rmpRating}
+                </span>
+              )}
+              {course.sections > 1 && (
+                <span className="text-xs text-gray-400">
+                  {course.sections} sections
                 </span>
               )}
             </div>
@@ -1116,7 +902,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact, liveProfessor }: {
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <span>{course.department}</span>
               {professorName && <span>· {professorName}</span>}
-              <span>· {course.offered.join(", ")}</span>
+              {course.offered.length > 0 && <span>· {course.offered.join(", ")}</span>}
             </div>
           </div>
           <button
@@ -1246,6 +1032,12 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact, liveProfessor }: {
                               </span>
                             ))}
                         </div>
+                      )}
+
+                      {realInstructors.length > 1 && (
+                        <p className="text-xs text-gray-400">
+                          All instructors: {realInstructors.join(", ")}
+                        </p>
                       )}
 
                       {/* AI Professor Summary Button */}
@@ -1463,7 +1255,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact, liveProfessor }: {
                 </div>
               )}
 
-              {/* Prerequisites and offering info */}
+              {/* Prerequisites, schedule, and offering info */}
               <div className="flex flex-wrap gap-4">
                 {course.prerequisites.length > 0 && (
                   <div className="flex items-center gap-2">
@@ -1473,12 +1265,30 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact, liveProfessor }: {
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <Filter className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="text-xs text-[#555555]">
-                    Offered: {course.offered.join(", ")}
-                  </span>
-                </div>
+                {course.offered.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-[#555555]">
+                      Offered: {course.offered.join(", ")}
+                    </span>
+                  </div>
+                )}
+                {course.schedule && course.schedule !== "TBA" && (
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-[#555555]">
+                      {course.schedule}
+                    </span>
+                  </div>
+                )}
+                {course.location && course.location !== "TBA" && (
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-[#555555]">
+                      {course.location}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Career Relevance */}
