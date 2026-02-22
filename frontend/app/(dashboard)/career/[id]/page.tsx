@@ -853,15 +853,18 @@ export default function CareerDetailPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md p-4"
-            onClick={() => { setSelectedAlumni(null); setColdEmail(null); }}
+            className="fixed inset-0 z-50"
           >
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-md z-50"
+              onClick={() => { setSelectedAlumni(null); setColdEmail(null); }}
+            />
+            <div className="fixed inset-0 z-[51] flex items-center justify-center p-4 pointer-events-none">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
-              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6 pointer-events-auto"
             >
               <div className="flex items-start justify-between mb-5">
                 <div>
@@ -932,6 +935,7 @@ export default function CareerDetailPage() {
                 </div>
               )}
             </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
