@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -847,6 +848,7 @@ export default function CareerDetailPage() {
       )}
 
       {/* Cold Email Modal */}
+      {createPortal(
       <AnimatePresence>
         {selectedAlumni && (
           <motion.div
@@ -938,7 +940,9 @@ export default function CareerDetailPage() {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
 
     </motion.div>
   );
