@@ -40,30 +40,12 @@ Choose a target career. MakeItSo maps out a complete action plan: the courses, t
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14 (App Router) + TypeScript |
-| Styling | Tailwind CSS + shadcn/ui |
-| AI | Google Gemini (gemini-3-flash-preview) |
-| Auth | NextAuth.js |
+| Frontend | Next.js 14 (App Router) + TypeScript |
+| UI Components | Tailwind CSS + shadcn/ui |
+| Auth | NextAuth.js (credentials) |
 | Database | MongoDB Atlas + Mongoose |
 | External Data | Davidson College course API, RateMyProfessors API |
 | Deployment | Vercel |
-
----
-
-## AI Architecture
-
-All AI features use structured JSON responses with MongoDB-backed caching to reduce latency and API costs.
-
-| Endpoint | What It Does |
-|---|---|
-| `/api/ai/career-plan` | Generates personalized career roadmaps with courses, people, and activities |
-| `/api/ai/course-insights` | Deep analysis of any course — topics, skills, career applications |
-| `/api/ai/professor-summary` | Synthesizes RateMyProfessors reviews into actionable summaries |
-| `/api/ai/roadmap` | Builds semester-by-semester academic plans |
-| `/api/ai/recommendations` | Suggests 10-15 courses based on interests with difficulty ratings |
-| `/api/ai/cold-email` | Drafts personalized alumni networking emails |
-
----
 
 ## Project Structure
 
@@ -101,9 +83,26 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
----
-
 ## Deploying to Vercel
+
+1. Push this repo to GitHub
+2. Import the repo at [vercel.com/new](https://vercel.com/new)
+3. Set the **Root Directory** to `frontend`
+4. Add environment variables in Vercel dashboard:
+   - `MONGODB_URI`
+   - `NEXTAUTH_SECRET`
+   - `NEXTAUTH_URL` (set to your Vercel domain, e.g. `https://makeitso.vercel.app`)
+5. Deploy
+
+
+## Data Models
+
+- **User** — name, email, major, minor, graduation year, career interests
+- **Course** — code, name, credits, department, prerequisites, tags, difficulty
+- **CoursePlan** — per-user list of planned courses with status/grade per entry
+- **CareerGoal** — target role, field, companies, skills with proficiency, milestones
+
+## API Reference
 
 1. Import the repo at [vercel.com/new](https://vercel.com/new)
 2. Set **Root Directory** to `frontend`
