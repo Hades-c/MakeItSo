@@ -14,12 +14,10 @@ A course and career planner for Davidson College students. Built for hack@DAVIDS
 | Layer | Technology |
 |---|---|
 | Frontend | Next.js 14 (App Router) + TypeScript |
-| UI Components | Tailwind CSS + shadcn/ui (Lovable-compatible) |
+| UI Components | Tailwind CSS + shadcn/ui |
 | Auth | NextAuth.js (credentials) |
 | Database | MongoDB Atlas + Mongoose |
 | Deployment | Vercel |
-
-> **Lovable compatible** — Components use the same Tailwind + shadcn/ui primitives that Lovable exports. You can drop Lovable-generated components directly into `frontend/components/`.
 
 ## Project Structure
 
@@ -97,20 +95,6 @@ Open [http://localhost:3000](http://localhost:3000).
    - `NEXTAUTH_URL` (set to your Vercel domain, e.g. `https://makeitso.vercel.app`)
 5. Deploy
 
-## MongoDB Atlas Setup
-
-1. Create a free cluster at [cloud.mongodb.com](https://cloud.mongodb.com)
-2. Create a database user with read/write access
-3. Whitelist `0.0.0.0/0` (all IPs) for Vercel serverless compatibility
-4. Copy the connection string into `MONGODB_URI`
-
-## Using Lovable
-
-This project is designed to be Lovable-compatible. To use Lovable-generated UI:
-
-1. Generate components in Lovable (it outputs React + Tailwind + shadcn/ui)
-2. Copy components into `frontend/components/`
-3. Import and use them in your pages — the design tokens in `globals.css` and `tailwind.config.ts` are already configured to match
 
 ## Data Models
 
