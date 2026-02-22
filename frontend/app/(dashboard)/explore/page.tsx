@@ -399,7 +399,7 @@ export default function ExplorePage() {
       <div className="flex items-center gap-1 text-sm border-b border-gray-100 pb-0">
         {[
           { key: "interests" as Step, label: "Select Interests", num: "1", visible: true },
-          { key: "browse" as Step, label: "Browse Courses", num: "2", visible: selectedAreas.length > 0 || step === "browse" },
+          { key: "browse" as Step, label: "Browse Courses", num: "2", visible: selectedAreas.length > 0 || selectedDepartments.length > 0 || step === "browse" },
           { key: "recommendations" as Step, label: "AI Recommendations", num: "3", visible: !!recommendations || step === "recommendations" },
         ].filter((s) => s.visible).map((s) => (
           <button
@@ -458,7 +458,7 @@ export default function ExplorePage() {
                   }`}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-serif font-semibold text-lg">{area.label}</h3>
+                    <h3 className={`font-serif font-semibold text-lg ${isSelected ? "" : "text-davidson"}`}>{area.label}</h3>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       isSelected ? "bg-white/20 text-white" : "bg-gray-50 text-gray-500"
                     }`}>
@@ -479,7 +479,6 @@ export default function ExplorePage() {
                             setSelectedDepartments((prev) =>
                               prev.includes(dept) ? prev.filter((d) => d !== dept) : [...prev, dept]
                             );
-                            if (!selectedAreas.includes(area.id)) toggleArea(area.id);
                           }}
                           className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
                             isSelected
@@ -501,7 +500,7 @@ export default function ExplorePage() {
             })}
           </div>
 
-          {selectedAreas.length > 0 && (
+          {(selectedAreas.length > 0 || selectedDepartments.length > 0) && (
             <div className="flex gap-3 pt-1">
               <Button
                 onClick={() => setStep("browse")}
