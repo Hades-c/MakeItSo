@@ -115,8 +115,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Find best match (first result from Davidson)
-    const teacher = teachers[0].node;
+    // Find best match — verify last name matches to avoid wrong-professor results
+    const searchParts = professorName
+      .replace(/^Dr\.\s*/i, "")
+      .trim()
+      .split(/\s+/);
+    const searchLastName = searchParts[searchParts.length - 1]?.toLowerCase();
+    const matched = teachers.find(
+      (t: { node: { lastName: string } }) =>
+        t.node.lastName.toLowerCase() === searchLastName
+    );
+    if (!matched) {
+      return NextResponse.json({
+        found: false,
+        reviews: [],
+        message: "No matching professor found on RateMyProfessors",
+      });
+    }
+    const teacher = matched.node;
 
     // Step 2: Get their ratings/reviews
     const ratingsResult = await rmpQuery(GET_TEACHER_RATINGS_QUERY, {

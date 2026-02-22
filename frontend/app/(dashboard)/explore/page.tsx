@@ -1039,20 +1039,20 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                             exit={{ opacity: 0 }}
                             className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] px-4"
                           >
-                            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} />
+                            <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} />
                             <motion.div
                               initial={{ opacity: 0, scale: 0.95, y: 12 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[85vh] overflow-y-auto z-10"
+                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-y-auto z-[101]"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {/* Modal header */}
-                              <div className="sticky top-0 bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
+                              <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
                                 <div>
                                   <div className="flex items-center gap-2.5 mb-1">
                                     <GraduationCap className="h-5 w-5 text-davidson" />
-                                    <h2 className="font-serif font-semibold text-xl text-[#111111]">Professor Summary</h2>
+                                    <h2 className="font-serif font-semibold text-lg text-[#111111]">Professor Summary</h2>
                                   </div>
                                   <p className="text-sm text-[#555555]">{prof.name} · {course.code} {course.name}</p>
                                 </div>
@@ -1062,7 +1062,7 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                               </div>
 
                               {/* Modal content */}
-                              <div className="px-8 py-6 space-y-6">
+                              <div className="px-6 py-5 space-y-5">
                                 {/* RMP stats bar */}
                                 <div className="bg-white rounded-xl border border-gray-100 p-5">
                                   <div className="flex flex-wrap items-center gap-6 text-sm">
@@ -1317,19 +1317,19 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                     exit={{ opacity: 0 }}
                     className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] px-4"
                   >
-                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[85vh] overflow-y-auto z-10"
+                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-y-auto z-[101]"
                     >
                       {/* Modal header */}
-                      <div className="sticky top-0 bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
+                      <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
                         <div>
                           <div className="flex items-center gap-2.5 mb-1">
                             <Sparkles className="h-5 w-5 text-davidson" />
-                            <h2 className="font-serif font-semibold text-xl text-[#111111]">AI Deep Dive</h2>
+                            <h2 className="font-serif font-semibold text-lg text-[#111111]">AI Deep Dive</h2>
                           </div>
                           <p className="text-sm text-[#555555]">{course.code} · {course.name}</p>
                         </div>
@@ -1339,7 +1339,7 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                       </div>
 
                       {/* Modal content */}
-                      <div className="px-8 py-6 space-y-5">
+                      <div className="px-6 py-5 space-y-5">
                         {loadingInsights ? (
                           <div className="flex flex-col items-center justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin text-davidson mb-3" />
