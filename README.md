@@ -83,16 +83,9 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Deploying to Vercel
+## Vercel
 
-1. Push this repo to GitHub
-2. Import the repo at [vercel.com/new](https://vercel.com/new)
-3. Set the **Root Directory** to `frontend`
-4. Add environment variables in Vercel dashboard:
-   - `MONGODB_URI`
-   - `NEXTAUTH_SECRET`
-   - `NEXTAUTH_URL` (set to your Vercel domain, e.g. `https://makeitso.vercel.app`)
-5. Deploy
+Available at https://make-it-so.vercel.app
 
 
 ## Data Models
