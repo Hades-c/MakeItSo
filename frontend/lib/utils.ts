@@ -112,9 +112,10 @@ export const DEPARTMENTS = [
 
 // Subject area groupings for interest selection
 export const SUBJECT_AREAS = [
-  { id: "stem", label: "STEM", departments: ["Biology", "Chemistry", "Computer Science", "Mathematics", "Physics", "Environmental Studies"], color: "emerald" },
+  { id: "natural-sciences", label: "Natural Sciences", departments: ["Biology", "Chemistry", "Physics", "Environmental Studies"], color: "emerald" },
+  { id: "math-computing", label: "Math & Computing", departments: ["Computer Science", "Mathematics", "Digital Studies"], color: "cyan" },
   { id: "social-sciences", label: "Social Sciences", departments: ["Anthropology", "Economics", "Educational Studies", "Political Science", "Psychology", "Sociology", "Public Health"], color: "blue" },
   { id: "humanities", label: "Humanities", departments: ["Classics", "English", "History", "Philosophy", "Religious Studies"], color: "purple" },
-  { id: "arts", label: "Arts & Media", departments: ["Art", "Dance", "Film & Media Studies", "Music", "Theatre", "Digital Studies", "Communication Studies"], color: "rose" },
+  { id: "arts", label: "Arts & Performance", departments: ["Art", "Dance", "Film & Media Studies", "Music", "Theatre", "Communication Studies"], color: "rose" },
   { id: "languages", label: "Languages & Culture", departments: ["Chinese", "French", "German", "Hispanic Studies", "Africana Studies", "Gender & Sexuality Studies"], color: "amber" },
 ] as const;

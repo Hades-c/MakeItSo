@@ -88,20 +88,13 @@ interface LiveCourse {
   location: string;
 }
 
-const AREA_ICONS: Record<string, string> = {
-  stem: "emerald",
-  "social-sciences": "blue",
-  humanities: "purple",
-  arts: "rose",
-  languages: "amber",
-};
-
 const AREA_DESCRIPTIONS: Record<string, string> = {
-  stem: "Explore the natural world through experimentation, computation, and mathematical reasoning.",
-  "social-sciences": "Understand human behavior, institutions, and societies through analytical frameworks.",
-  humanities: "Engage with literature, history, philosophy, and the human experience across cultures.",
-  arts: "Create, perform, and analyze art, music, theatre, film, and digital media.",
-  languages: "Study world languages, cultural perspectives, and cross-cultural communication.",
+  "natural-sciences": "Investigate the natural world through laboratory experimentation, field research, and scientific inquiry.",
+  "math-computing": "Build computational systems and explore abstract structures through logic, algorithms, and mathematical proof.",
+  "social-sciences": "Understand human behavior, institutions, and societies through analytical frameworks and empirical research.",
+  humanities: "Engage with literature, history, philosophy, and the human experience across cultures and centuries.",
+  arts: "Create, perform, and analyze art, music, theatre, film, and digital media in studio and stage settings.",
+  languages: "Study world languages, cultural perspectives, and cross-cultural communication across global traditions.",
 };
 
 function getDeptColor(dept: string): { bg: string; text: string; border: string } {
@@ -265,17 +258,16 @@ export default function ExplorePage() {
           Explore Courses
         </h1>
         <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
-          Discover Davidson&apos;s course catalog and see how courses connect to
-          your career goals.
-          {liveCourses.length > 0 && (
-            <span className="text-gray-400 ml-1">
-              · {liveCourses.length} live courses loaded
-            </span>
-          )}
-          {liveLoading && (
-            <Loader2 className="inline h-3 w-3 animate-spin text-gray-400 ml-1" />
-          )}
+          Discover Davidson&apos;s course catalog and see how courses connect to your career goals.
         </p>
+        {(liveCourses.length > 0 || liveLoading) && (
+          <p className="text-sm text-gray-400 mt-1">
+            {liveCourses.length > 0 && <>· {liveCourses.length} live courses loaded</>}
+            {liveLoading && (
+              <Loader2 className="inline h-3 w-3 animate-spin text-gray-400 ml-1" />
+            )}
+          </p>
+        )}
       </div>
 
       {/* Step indicator */}
@@ -328,17 +320,16 @@ export default function ExplorePage() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {SUBJECT_AREAS.map((area) => {
               const isSelected = selectedAreas.includes(area.id);
-              const areaColor = AREA_ICONS[area.id] || "gray";
               const depts: string[] = [...area.departments];
               const courseCount = allCourses.filter((c) => depts.includes(c.department)).length;
               return (
-                <button
+                <div
                   key={area.id}
                   onClick={() => toggleArea(area.id)}
-                  className={`p-5 rounded-xl border text-left transition-all duration-200 ${
+                  className={`p-5 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
                     isSelected
                       ? "bg-davidson text-white border-davidson shadow-sm"
                       : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm"
@@ -357,19 +348,25 @@ export default function ExplorePage() {
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {area.departments.map((dept) => (
-                      <span
+                      <button
                         key={dept}
-                        className={`text-[11px] px-2 py-0.5 rounded-full ${
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!selectedAreas.includes(area.id)) toggleArea(area.id);
+                          setSelectedDepartment(dept);
+                          setStep("browse");
+                        }}
+                        className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${
                           isSelected
-                            ? "bg-white/15 text-white/90"
-                            : "bg-gray-100 text-gray-600"
+                            ? "bg-white/15 text-white/90 hover:bg-white/30"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                         }`}
                       >
                         {dept}
-                      </span>
+                      </button>
                     ))}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
