@@ -52,9 +52,7 @@ interface CatalogCourse {
 // Constants
 // ---------------------------------------------------------------------------
 
-const REQUIRED_CREDITS = 128;
-const CREDITS_PER_COURSE = 4;
-const REQUIRED_COURSES = REQUIRED_CREDITS / CREDITS_PER_COURSE; // 32
+const REQUIRED_COURSES = 32;
 
 const STATUS_CONFIG: Record<
   PlannedCourse["status"],
@@ -376,23 +374,14 @@ export default function CoursesPage() {
     const planned = plannedCourses.filter((c) => c.status === "planned");
     const active = plannedCourses.filter((c) => c.status !== "dropped");
 
-    const completedCredits = completed.length * CREDITS_PER_COURSE;
-    const inProgressCredits = inProgress.length * CREDITS_PER_COURSE;
-    const plannedCredits = planned.length * CREDITS_PER_COURSE;
-    const activeCredits = active.length * CREDITS_PER_COURSE;
-
     return {
       completedCount: completed.length,
       inProgressCount: inProgress.length,
       plannedCount: planned.length,
       activeCount: active.length,
-      completedCredits,
-      inProgressCredits,
-      plannedCredits,
-      activeCredits,
       progressPercent: Math.min(
         100,
-        Math.round((completedCredits / REQUIRED_CREDITS) * 100)
+        Math.round((completed.length / REQUIRED_COURSES) * 100)
       ),
     };
   }, [plannedCourses]);
@@ -508,7 +497,7 @@ export default function CoursesPage() {
                 Graduation Progress
               </h2>
               <span className="text-xs text-[#555555]">
-                {REQUIRED_CREDITS} credits required ({REQUIRED_COURSES} courses)
+                {REQUIRED_COURSES} courses required
               </span>
             </div>
 
@@ -517,19 +506,19 @@ export default function CoursesPage() {
               <motion.div
                 className="bg-green-500 h-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, (stats.completedCredits / REQUIRED_CREDITS) * 100)}%` }}
+                animate={{ width: `${Math.min(100, (stats.completedCount / REQUIRED_COURSES) * 100)}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
               />
               <motion.div
                 className="bg-blue-400 h-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, (stats.inProgressCredits / REQUIRED_CREDITS) * 100)}%` }}
+                animate={{ width: `${Math.min(100, (stats.inProgressCount / REQUIRED_COURSES) * 100)}%` }}
                 transition={{ duration: 0.8, ease: "easeOut", delay: 0.15 }}
               />
               <motion.div
                 className="bg-gray-300 h-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, (stats.plannedCredits / REQUIRED_CREDITS) * 100)}%` }}
+                animate={{ width: `${Math.min(100, (stats.plannedCount / REQUIRED_COURSES) * 100)}%` }}
                 transition={{ duration: 0.8, ease: "easeOut", delay: 0.3 }}
               />
             </div>
@@ -539,7 +528,6 @@ export default function CoursesPage() {
               <StatBlock
                 label="Completed"
                 courses={stats.completedCount}
-                credits={stats.completedCredits}
                 accent="text-green-600"
                 bg="bg-green-50"
                 icon={<CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
@@ -547,7 +535,6 @@ export default function CoursesPage() {
               <StatBlock
                 label="In Progress"
                 courses={stats.inProgressCount}
-                credits={stats.inProgressCredits}
                 accent="text-blue-600"
                 bg="bg-blue-50"
                 icon={<PlayCircle className="h-3.5 w-3.5 text-blue-500" />}
@@ -555,7 +542,6 @@ export default function CoursesPage() {
               <StatBlock
                 label="Planned"
                 courses={stats.plannedCount}
-                credits={stats.plannedCredits}
                 accent="text-gray-600"
                 bg="bg-gray-50"
                 icon={<Circle className="h-3.5 w-3.5 text-gray-400" />}
@@ -563,7 +549,6 @@ export default function CoursesPage() {
               <StatBlock
                 label="Remaining"
                 courses={Math.max(0, REQUIRED_COURSES - stats.activeCount)}
-                credits={Math.max(0, REQUIRED_CREDITS - stats.activeCredits)}
                 accent="text-davidson"
                 bg="bg-davidson-light"
                 icon={<BookOpen className="h-3.5 w-3.5 text-davidson/60" />}
@@ -614,7 +599,7 @@ export default function CoursesPage() {
                   </Badge>
                 </div>
                 <span className="text-xs text-gray-400">
-                  {courses.filter((c) => c.status !== "dropped").length * CREDITS_PER_COURSE} credits
+                  {courses.filter((c) => c.status !== "dropped").length} {courses.filter((c) => c.status !== "dropped").length === 1 ? "course" : "courses"}
                 </span>
               </div>
 
@@ -656,9 +641,6 @@ export default function CoursesPage() {
                             </span>
                             <span className="text-sm text-[#555555] truncate">
                               {pc.courseName}
-                            </span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100">
-                              {pc.credits} cr
                             </span>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${semColors.bg} ${semColors.text} border ${semColors.border}`}>
                               {semName}
@@ -970,14 +952,12 @@ export default function CoursesPage() {
 function StatBlock({
   label,
   courses,
-  credits,
   accent,
   bg,
   icon,
 }: {
   label: string;
   courses: number;
-  credits: number;
   accent: string;
   bg: string;
   icon?: React.ReactNode;
@@ -989,7 +969,7 @@ function StatBlock({
         {icon}
       </div>
       <p className="text-xs font-medium text-gray-700">{label}</p>
-      <p className="text-[10px] text-gray-400">{credits} credits</p>
+      <p className="text-[10px] text-gray-400">{courses === 1 ? "course" : "courses"}</p>
     </div>
   );
 }
