@@ -53,7 +53,7 @@ export default function DashboardPage() {
       {/* Quick stats */}
       <motion.div variants={fadeIn} className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Live Courses", value: "166", icon: BookOpen, color: "text-davidson", bg: "bg-davidson-light" },
+          { label: "Live Courses", value: "463", icon: BookOpen, color: "text-davidson", bg: "bg-davidson-light" },
           { label: "Career Paths", value: "24", icon: Briefcase, color: "text-davidson", bg: "bg-davidson-light" },
           { label: "AI Powered", value: "Gemini", icon: Zap, color: "text-davidson", bg: "bg-davidson-light" },
           { label: "Alumni Network", value: "38", icon: Users, color: "text-davidson", bg: "bg-davidson-light" },
@@ -80,7 +80,7 @@ export default function DashboardPage() {
               <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-davidson group-hover:translate-x-0.5 transition-all" />
             </h3>
             <p className="text-sm text-[#555555] leading-relaxed">
-              Browse all 166 Davidson courses with live enrollment data, professor ratings, and AI insights.
+              Browse all 463 Davidson courses with live enrollment data, professor ratings, and AI insights.
             </p>
           </div>
         </Link>
