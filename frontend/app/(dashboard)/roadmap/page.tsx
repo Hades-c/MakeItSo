@@ -474,7 +474,7 @@ export default function RoadmapPage() {
           <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
             My Roadmap
           </h1>
-          <p className="text-sm text-[#555555] mt-1.5">
+          <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
             AI-generated semester-by-semester course plan tailored to your major and interests.
           </p>
         </div>

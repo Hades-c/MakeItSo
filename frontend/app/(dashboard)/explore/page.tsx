@@ -265,7 +265,7 @@ export default function ExplorePage() {
         <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
           Explore Courses
         </h1>
-        <p className="text-sm text-[#555555] mt-1.5">
+        <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
           Discover Davidson&apos;s course catalog and see how courses connect to your career goals.{" "}
           {liveCourses.length > 0 && (
             <span className="text-gray-400">· {liveCourses.length} live courses loaded</span>
