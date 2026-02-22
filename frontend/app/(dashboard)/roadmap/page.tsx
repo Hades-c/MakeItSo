@@ -282,6 +282,7 @@ export default function RoadmapPage() {
   const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
   const [savedMeta, setSavedMeta] = useState<{ major: string; classYear: string; interests: string; generatedAt: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [expandedSemesters, setExpandedSemesters] = useState<Set<number>>(new Set());
   const [hydrated, setHydrated] = useState(false);
@@ -319,6 +320,7 @@ export default function RoadmapPage() {
     setError(null);
     setRoadmap(null);
     setSavedMeta(null);
+    setStreamingText("");
 
     try {
       const interestList = interests
@@ -338,10 +340,23 @@ export default function RoadmapPage() {
         }),
       });
 
-      if (res.ok) {
-        const json = await res.json();
-        const data: RoadmapData = json.roadmap;
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          accumulated += decoder.decode(value, { stream: true });
+          setStreamingText(accumulated);
+        }
+
+        // Parse the complete JSON
+        const cleaned = accumulated.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const data: RoadmapData = JSON.parse(cleaned);
         setRoadmap(data);
+        setStreamingText("");
 
         const meta = {
           major: selectedMajor,
@@ -365,6 +380,7 @@ export default function RoadmapPage() {
       setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
+      setStreamingText("");
     }
   }, [selectedMajor, classYear, interests, specificity]);
 
@@ -644,23 +660,25 @@ export default function RoadmapPage() {
         {/* ----------------------------------------------------------------- */}
         {loading && (
           <div className="space-y-5">
-            <div className="rounded-xl border border-gray-100 bg-white p-10 text-center">
-              <motion.div
-                className="h-16 w-16 rounded-2xl bg-gradient-to-br from-davidson-light to-white flex items-center justify-center mx-auto mb-4"
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-              >
-                <Loader2 className="h-8 w-8 text-davidson animate-spin" />
-              </motion.div>
-              <h3 className="text-lg font-semibold text-[#111111] mb-1">
-                Building Your Roadmap
-              </h3>
-              <p className="text-sm text-[#555555] max-w-md mx-auto">
-                Our AI is analyzing {selectedMajor} requirements and crafting your
-                personalized semester-by-semester plan...
+            <div className="rounded-xl border border-gray-100 bg-white p-6 text-center">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Loader2 className="h-5 w-5 text-davidson animate-spin" />
+                <h3 className="text-lg font-semibold text-[#111111]">
+                  Building Your Roadmap
+                </h3>
+              </div>
+              <p className="text-sm text-[#555555] max-w-md mx-auto mb-4">
+                Analyzing {selectedMajor} requirements and crafting your plan...
               </p>
+              {streamingText && (
+                <div className="mt-4 text-left bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">
+                    {streamingText}
+                  </pre>
+                </div>
+              )}
             </div>
-            <LoadingSkeleton />
+            {!streamingText && <LoadingSkeleton />}
           </div>
         )}
 

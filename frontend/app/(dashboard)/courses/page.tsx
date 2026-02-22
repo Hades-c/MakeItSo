@@ -50,7 +50,6 @@ interface SummerActivity {
 }
 
 interface CatalogCourse {
-  _id: string;
   code: string;
   name: string;
   description?: string;
@@ -239,15 +238,41 @@ export default function CoursesPage() {
   // ---- Search catalog courses (debounced) ----
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // All Davidson courses (fetched once from live API)
+  const allDavidsonCourses = useRef<CatalogCourse[]>([]);
+
   const searchCourses = useCallback(async (query: string) => {
     setCatalogLoading(true);
     try {
-      const params = new URLSearchParams({ limit: "200" });
-      if (query.trim()) params.set("search", query.trim());
-      const res = await fetch(`/api/courses?${params}`);
-      if (!res.ok) throw new Error("Failed to search courses");
-      const data = await res.json();
-      setCatalogCourses(data.courses ?? []);
+      // Fetch from live Davidson API on first call, then filter locally
+      if (allDavidsonCourses.current.length === 0) {
+        const res = await fetch("/api/courses/davidson");
+        if (!res.ok) throw new Error("Failed to fetch courses");
+        const data = await res.json();
+        allDavidsonCourses.current = (data.courses ?? []).map(
+          (c: { code: string; name: string; description?: string; department: string }) => ({
+            code: c.code,
+            name: c.name,
+            description: c.description,
+            credits: 4,
+            department: c.department,
+          })
+        );
+      }
+
+      if (!query.trim()) {
+        setCatalogCourses(allDavidsonCourses.current);
+      } else {
+        const q = query.toLowerCase();
+        setCatalogCourses(
+          allDavidsonCourses.current.filter(
+            (c) =>
+              c.code.toLowerCase().includes(q) ||
+              c.name.toLowerCase().includes(q) ||
+              c.department.toLowerCase().includes(q)
+          )
+        );
+      }
     } catch {
       setCatalogCourses([]);
     } finally {
@@ -273,15 +298,17 @@ export default function CoursesPage() {
 
   const clearActionError = () => setActionError(null);
 
-  const addCourse = async (courseId: string) => {
-    setAdding(courseId);
+  const addCourse = async (course: CatalogCourse) => {
+    setAdding(course.code);
     clearActionError();
     try {
       const res = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          courseId,
+          courseCode: course.code,
+          courseName: course.name,
+          credits: course.credits,
           semester: addSemester,
           year: addYear,
           status: "planned",
@@ -453,9 +480,9 @@ export default function CoursesPage() {
     };
   }, [plannedCourses]);
 
-  // IDs of courses already in the plan (for filtering catalog)
-  const plannedCourseIds = useMemo(
-    () => new Set(plannedCourses.map((c) => c.courseId)),
+  // Codes of courses already in the plan (for filtering catalog)
+  const plannedCourseCodes = useMemo(
+    () => new Set(plannedCourses.map((c) => c.courseCode)),
     [plannedCourses]
   );
 
@@ -1027,12 +1054,12 @@ export default function CoursesPage() {
                 ) : (
                   <div className="divide-y divide-gray-50">
                     {catalogCourses.map((c) => {
-                      const alreadyAdded = plannedCourseIds.has(c._id);
-                      const isAdding = adding === c._id;
+                      const alreadyAdded = plannedCourseCodes.has(c.code);
+                      const isAdding = adding === c.code;
 
                       return (
                         <div
-                          key={c._id}
+                          key={c.code}
                           className="px-5 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
@@ -1063,7 +1090,7 @@ export default function CoursesPage() {
                                 size="sm"
                                 variant="outline"
                                 disabled={isAdding}
-                                onClick={() => addCourse(c._id)}
+                                onClick={() => addCourse(c)}
                                 className="h-7 text-xs px-2.5 border-gray-200 hover:bg-davidson-light hover:text-davidson hover:border-davidson/20"
                               >
                                 {isAdding ? (
