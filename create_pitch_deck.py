@@ -536,8 +536,8 @@ add_circle(slide, Inches(10.5), Inches(0.5), Inches(3), SUBTLE_NAVY)
 add_circle(slide, Inches(-1), Inches(5), Inches(2.5), SUBTLE_NAVY)
 
 icon = add_rounded_rect(slide, Inches(5.9), Inches(1.3), Inches(1.5), Inches(1.5), DAVIDSON_RED)
-add_text(slide, Inches(5.9), Inches(1.45), Inches(1.5), Inches(1.2),
-         "MIS", size=36, color=WHITE, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
+add_text(slide, Inches(5.9), Inches(1.4), Inches(1.5), Inches(1.3),
+         "\u2728", size=48, color=WHITE, bold=False, align=PP_ALIGN.CENTER, font="Segoe UI Emoji")
 
 add_text(slide, Inches(1.5), Inches(3.0), Inches(10.3), Inches(1.4),
          "Your degree. Your career. One plan.",
