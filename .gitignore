@@ -36,3 +36,11 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Pitch deck
+*.pptx
+create_pitch_deck.py
+
+# Placeholder files
+backend/thing
+frontend/placeholder
