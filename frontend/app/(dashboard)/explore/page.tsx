@@ -272,6 +272,14 @@ export default function ExplorePage() {
           : false)
       : true;
     return matchesDept && matchesSearch;
+  }).sort((a, b) => {
+    // Major requirements first, then others; within each group ascending by course number
+    const aIsMajorReq = "majorRequirements" in a && (a as SeedCourse).majorRequirements && (a as SeedCourse).majorRequirements!.length > 0 ? 1 : 0;
+    const bIsMajorReq = "majorRequirements" in b && (b as SeedCourse).majorRequirements && (b as SeedCourse).majorRequirements!.length > 0 ? 1 : 0;
+    if (aIsMajorReq !== bIsMajorReq) return bIsMajorReq - aIsMajorReq; // major reqs first
+    const aNum = parseInt(a.code.replace(/\D+/g, ""), 10) || 0;
+    const bNum = parseInt(b.code.replace(/\D+/g, ""), 10) || 0;
+    return aNum - bNum;
   });
 
   const departments = Array.from(
@@ -542,6 +550,7 @@ export default function ExplorePage() {
                 <StaticCourseCard
                   key={course.code}
                   course={course as SeedCourse}
+                  liveProfessor={!(course as SeedCourse).professor ? liveCourses.find((lc) => lc.code === course.code)?.professor : undefined}
                 />
               ) : (
                 <LiveCourseCard
@@ -617,6 +626,7 @@ export default function ExplorePage() {
                       course={staticCourse}
                       aiReason={rec.reason}
                       aiCareerImpact={rec.careerImpact}
+                      liveProfessor={!staticCourse.professor ? liveCourse?.professor : undefined}
                     />
                   ) : liveCourse ? (
                     <LiveCourseCard course={liveCourse} aiReason={rec.reason} />
@@ -853,6 +863,49 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
               </div>
             )}
 
+            {/* Course Insights (from static data match) */}
+            {staticMatch?.courseInsights && (
+              <div className="space-y-3">
+                {staticMatch.courseInsights.keyTopics &&
+                  staticMatch.courseInsights.keyTopics.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
+                        <BookOpen className="h-3 w-3" /> Topics
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {staticMatch.courseInsights.keyTopics.map((topic) => (
+                          <span
+                            key={topic}
+                            className="text-[11px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
+                          >
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {staticMatch.courseInsights.skillsGained &&
+                  staticMatch.courseInsights.skillsGained.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
+                        <Lightbulb className="h-3 w-3" /> Skills
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {staticMatch.courseInsights.skillsGained.map((skill) => (
+                          <span
+                            key={skill}
+                            className="text-[11px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            )}
+
             {/* Career Relevance (from static data match) */}
             {careerRelevance.length > 0 && (
               <div>
@@ -906,7 +959,7 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
 }
 
 /* ===== Static course card (from davidson-courses.ts) ===== */
-function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCourse; aiReason?: string; aiCareerImpact?: string[] }) {
+function StaticCourseCard({ course, aiReason, aiCareerImpact, liveProfessor }: { course: SeedCourse; aiReason?: string; aiCareerImpact?: string[]; liveProfessor?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [aiInsights, setAiInsights] = useState<{
     courseHighlights?: string;
@@ -925,7 +978,10 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
   } | null>(null);
   const [loadingProfSummary, setLoadingProfSummary] = useState(false);
 
-  const prof = course.professorInfo;
+  // Use static professorInfo if available, otherwise look up from live professor name
+  const resolvedLiveProf = liveProfessor && liveProfessor !== "Staff" ? liveProfessor : undefined;
+  const professorName = course.professor || resolvedLiveProf;
+  const prof = course.professorInfo ?? (resolvedLiveProf ? lookupProfRMP(resolvedLiveProf) : undefined);
 
   async function fetchAiInsights() {
     if (aiInsights || loadingInsights) return;
@@ -1023,7 +1079,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
             </h3>
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <span>{course.department}</span>
-              {course.professor && <span>· {course.professor}</span>}
+              {professorName && <span>· {professorName}</span>}
               <span>· {course.offered.join(", ")}</span>
             </div>
           </div>
@@ -1064,12 +1120,12 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
               </p>
 
               {/* Professor Section with RMP Data */}
-              {course.professor && (
+              {professorName && (
                 <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <GraduationCap className="h-4 w-4 text-gray-400" />
                     <span className="text-sm font-medium text-gray-700">
-                      {course.professor}
+                      {professorName}
                     </span>
                   </div>
                   {prof?.title && (
