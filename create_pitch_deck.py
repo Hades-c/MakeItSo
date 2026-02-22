@@ -4,7 +4,7 @@
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
 from pptx.enum.shapes import MSO_SHAPE
 
 # Brand colors
@@ -61,13 +61,18 @@ def add_circle(slide, left, top, size, color):
     return shape
 
 
-def add_text(slide, left, top, width, height, text, size=18,
-             color=DARK_TEXT, bold=False, align=PP_ALIGN.LEFT, font="Calibri"):
-    """Add a single text box. Line spacing is handled automatically by PowerPoint."""
-    txBox = slide.shapes.add_textbox(left, top, width, height)
-    tf = txBox.text_frame
+def _setup_tf(tf):
+    """Apply consistent text frame settings to prevent overflow."""
     tf.word_wrap = True
-    p = tf.paragraphs[0]
+    tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+    tf.margin_left = Inches(0.04)
+    tf.margin_right = Inches(0.04)
+    tf.margin_top = Inches(0.02)
+    tf.margin_bottom = Inches(0.02)
+
+
+def _setup_p(p, text, size, color, bold, font, align):
+    """Apply consistent paragraph settings."""
     p.text = text
     p.font.size = Pt(size)
     p.font.color.rgb = color
@@ -76,6 +81,15 @@ def add_text(slide, left, top, width, height, text, size=18,
     p.alignment = align
     p.space_after = Pt(0)
     p.space_before = Pt(0)
+    p.line_spacing = Pt(int(size * 1.25))
+
+
+def add_text(slide, left, top, width, height, text, size=18,
+             color=DARK_TEXT, bold=False, align=PP_ALIGN.LEFT, font="Calibri"):
+    """Add a single text box with auto-shrink."""
+    txBox = slide.shapes.add_textbox(left, top, width, height)
+    _setup_tf(txBox.text_frame)
+    _setup_p(txBox.text_frame.paragraphs[0], text, size, color, bold, font, align)
     return txBox
 
 
@@ -85,20 +99,15 @@ def add_para_text(slide, left, top, width, height, lines, align=PP_ALIGN.LEFT, f
     """
     txBox = slide.shapes.add_textbox(left, top, width, height)
     tf = txBox.text_frame
-    tf.word_wrap = True
+    _setup_tf(tf)
     for i, item in enumerate(lines):
         text = item[0]
         size = item[1] if len(item) > 1 else 14
         color = item[2] if len(item) > 2 else DARK_TEXT
         bold = item[3] if len(item) > 3 else False
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.text = text
-        p.font.size = Pt(size)
-        p.font.color.rgb = color
-        p.font.bold = bold
-        p.font.name = font
-        p.alignment = align
-        p.space_after = Pt(size * 0.4)
+        _setup_p(p, text, size, color, bold, font, align)
+        p.space_after = Pt(int(size * 0.35))
     return txBox
 
 
