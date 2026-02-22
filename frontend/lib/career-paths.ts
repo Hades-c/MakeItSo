@@ -94,7 +94,7 @@ export const CAREER_PATHS: CareerPath[] = [
     dayInLife: "Your morning starts with a standup where your team syncs on priorities. You spend the first half of the day deep in code — maybe building a new API endpoint or refactoring a data pipeline. After lunch, you pair-program with a teammate to work through a tricky bug. You end the day reviewing pull requests and sketching out the architecture for next sprint's feature.",
     courses: [
       { code: "CSC 121", name: "Programming & Problem Solving", description: "Introduction to programming using Python. Covers variables, control flow, functions, and basic data structures.", bestProfessor: "Dr. Ramanujan", difficulty: 2 },
-      { code: "CSC 221", name: "Data Structures", description: "Study of fundamental data structures: arrays, linked lists, trees, graphs, hash tables, and their applications.", bestProfessor: "Dr. Ramanujan", difficulty: 3 },
+      { code: "CSC 222", name: "Data Structures", description: "Study of fundamental data structures: arrays, linked lists, trees, graphs, hash tables, and their applications.", bestProfessor: "Dr. Ramanujan", difficulty: 3 },
       { code: "CSC 231", name: "Computer Organization", description: "How computers work at the hardware level — digital logic, assembly, memory hierarchy.", bestProfessor: "Dr. Tabor", difficulty: 4 },
       { code: "CSC 321", name: "Analysis of Algorithms", description: "Algorithm design techniques and complexity analysis. Covers sorting, graph algorithms, dynamic programming.", bestProfessor: "Dr. Ramanujan", difficulty: 4 },
       { code: "MAT 150", name: "Discrete Mathematics", description: "Mathematical foundations for CS: logic, sets, combinatorics, graph theory, proof techniques.", bestProfessor: "Dr. Hossain", difficulty: 3 },
@@ -635,7 +635,7 @@ export const CAREER_PATHS: CareerPath[] = [
     courses: [
       { code: "CSC 121", name: "Programming & Problem Solving", description: "Python fundamentals for writing security scripts and automation tools.", bestProfessor: "Dr. Ramanujan", difficulty: 2 },
       { code: "CSC 231", name: "Computer Organization", description: "Understanding hardware, memory, and low-level systems — critical for exploit analysis.", bestProfessor: "Dr. Tabor", difficulty: 4 },
-      { code: "CSC 221", name: "Data Structures", description: "Algorithmic thinking for analyzing and building secure systems.", bestProfessor: "Dr. Ramanujan", difficulty: 3 },
+      { code: "CSC 222", name: "Data Structures", description: "Algorithmic thinking for analyzing and building secure systems.", bestProfessor: "Dr. Ramanujan", difficulty: 3 },
       { code: "MAT 150", name: "Discrete Mathematics", description: "Logic, number theory, and cryptographic foundations.", bestProfessor: "Dr. Hossain", difficulty: 3 },
       { code: "PHI 220", name: "Ethics", description: "Ethical frameworks for responsible security research and disclosure.", bestProfessor: "Dr. Martin", difficulty: 3 },
     ],

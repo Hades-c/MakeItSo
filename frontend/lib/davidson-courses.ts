@@ -1880,4 +1880,324 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     tags: ["elective"], difficulty: 4,
     careerRelevance: [{ field: "Data Science & Analytics", relevance: 0.9 }, { field: "Software Engineering", relevance: 0.7 }],
   },
+
+  // ===== ADDITIONAL COURSES (career-paths referenced) =====
+
+  // Accounting / Economics cross-listed
+  {
+    code: "ACC 215", name: "Financial Accounting",
+    description: "Introduction to financial accounting principles including the preparation and interpretation of financial statements — balance sheets, income statements, and cash flow statements.",
+    credits: 4, department: "Economics", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["elective"], difficulty: 3,
+    professor: "Dr. David Palmer", professorRating: 3.8,
+    professorInfo: {
+      name: "Dr. David Palmer",
+      title: "Visiting Assistant Professor of Economics",
+      rmpRating: 3.8, rmpDifficulty: 3.2, rmpNumRatings: 14, rmpWouldTakeAgain: 72,
+      rmpTags: ["Clear grading criteria", "Gives good feedback", "Accessible outside class"],
+    },
+    courseInsights: {
+      keyTopics: ["Balance sheets", "Income statements", "Cash flow analysis", "Accrual accounting", "Financial ratios", "Revenue recognition"],
+      skillsGained: ["Financial statement analysis", "Accounting principles", "Business valuation basics", "Financial literacy", "Spreadsheet modeling"],
+    },
+    careerRelevance: [{ field: "Investment Banking", relevance: 0.9 }, { field: "Entrepreneurship", relevance: 0.8 }, { field: "Financial Planning", relevance: 0.85 }],
+  },
+
+  // Anthropology (additional)
+  {
+    code: "ANT 200", name: "Ethnographic Methods",
+    description: "Introduction to qualitative research methods used in anthropology, including participant observation, interviewing, and field note analysis. Students conduct original ethnographic fieldwork.",
+    credits: 4, department: "Anthropology", prerequisites: ["ANT 101"], offered: ["Spring"],
+    tags: ["elective", "methods"], difficulty: 3,
+    professor: "Dr. Joanna Park", professorRating: 4.1,
+    professorInfo: {
+      name: "Dr. Joanna Park",
+      title: "Associate Professor of Anthropology",
+      rmpRating: 4.1, rmpDifficulty: 3.3, rmpNumRatings: 16, rmpWouldTakeAgain: 80,
+      rmpTags: ["Caring", "Inspirational", "Gives good feedback", "Accessible outside class"],
+    },
+    courseInsights: {
+      keyTopics: ["Participant observation", "Semi-structured interviews", "Field notes", "Coding & thematic analysis", "Research ethics", "Reflexivity"],
+      skillsGained: ["Qualitative research design", "Interviewing techniques", "Ethnographic writing", "Cross-cultural analysis", "Research ethics"],
+    },
+    careerRelevance: [{ field: "UX Design", relevance: 0.85 }, { field: "International Development", relevance: 0.8 }, { field: "Research & Academia", relevance: 0.75 }],
+  },
+
+  // Art (additional)
+  {
+    code: "ART 120", name: "Visual Design",
+    description: "Foundational principles of visual communication including color theory, typography, layout, composition, and design thinking. Studio projects explore 2D and digital design.",
+    credits: 4, department: "Art", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "introductory"], difficulty: 2,
+    professor: "Dr. Maria Torres", professorRating: 4.3,
+    professorInfo: {
+      name: "Dr. Maria Torres",
+      title: "Associate Professor of Art",
+      rmpRating: 4.3, rmpDifficulty: 2.8, rmpNumRatings: 19, rmpWouldTakeAgain: 88,
+      rmpTags: ["Amazing lectures", "Inspirational", "Caring", "Clear grading criteria", "Gives good feedback"],
+    },
+    courseInsights: {
+      keyTopics: ["Color theory", "Typography", "Layout & composition", "Visual hierarchy", "Design critique", "Digital tools"],
+      skillsGained: ["Visual communication", "Design thinking", "Creative problem solving", "Critique and feedback", "Adobe Creative Suite basics"],
+    },
+    careerRelevance: [{ field: "UX Design", relevance: 0.9 }, { field: "Marketing & Communications", relevance: 0.8 }, { field: "Arts & Museum Curation", relevance: 0.7 }],
+  },
+
+  // Chemistry (alternate numbering)
+  {
+    code: "CHE 240", name: "Organic Chemistry I",
+    description: "Structure, bonding, stereochemistry, and reactivity of carbon-containing compounds. Reaction mechanisms including substitution, elimination, and addition reactions.",
+    credits: 4, department: "Chemistry", prerequisites: ["CHE 115"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Chemistry", "Biology"], difficulty: 5,
+    professor: "Dr. Felix Lee", professorRating: 3.6,
+    professorInfo: {
+      name: "Dr. Felix Lee",
+      title: "Professor of Chemistry",
+      rmpRating: 3.6, rmpDifficulty: 4.5, rmpNumRatings: 32, rmpWouldTakeAgain: 52,
+      rmpTags: ["Tough grader", "Lots of homework", "Test heavy", "Clear grading criteria"],
+    },
+    courseInsights: {
+      keyTopics: ["Molecular structure", "Stereochemistry", "Reaction mechanisms", "Substitution reactions", "Elimination reactions", "Spectroscopy"],
+      skillsGained: ["Organic reaction prediction", "Mechanism drawing", "Spectral interpretation", "3D molecular visualization", "Lab technique"],
+    },
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.95 }, { field: "Research & Academia", relevance: 0.8 }],
+  },
+
+  // Classics (additional)
+  {
+    code: "CLA 200", name: "Classical Archaeology",
+    description: "Introduction to the material culture of ancient Greece and Rome through archaeological evidence. Topics include architecture, pottery, sculpture, and excavation methods.",
+    credits: 4, department: "Classics", prerequisites: ["CLA 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    professor: "Dr. Sarah Mitchell", professorRating: 4.0,
+    professorInfo: {
+      name: "Dr. Sarah Mitchell",
+      title: "Associate Professor of Classics",
+      rmpRating: 4.0, rmpDifficulty: 3.1, rmpNumRatings: 12, rmpWouldTakeAgain: 78,
+      rmpTags: ["Respected", "Gives good feedback", "Amazing lectures", "Caring"],
+    },
+    courseInsights: {
+      keyTopics: ["Excavation methods", "Greek architecture", "Roman material culture", "Pottery analysis", "Sculpture & iconography", "Archaeological theory"],
+      skillsGained: ["Material culture analysis", "Archaeological method", "Visual analysis", "Research writing", "Artifact interpretation"],
+    },
+    careerRelevance: [{ field: "Arts & Museum Curation", relevance: 0.9 }, { field: "Research & Academia", relevance: 0.75 }],
+  },
+
+  // Communication Studies (additional)
+  {
+    code: "COM 210", name: "Public Speaking",
+    description: "Theory and practice of public speaking. Students develop skills in speech organization, delivery, audience analysis, and persuasive argumentation through frequent speaking exercises.",
+    credits: 4, department: "Communication Studies", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "introductory"], difficulty: 2,
+    professor: "Dr. Rachel Williams", professorRating: 4.4,
+    professorInfo: {
+      name: "Dr. Rachel Williams",
+      title: "Associate Professor of Communication Studies",
+      rmpRating: 4.4, rmpDifficulty: 2.5, rmpNumRatings: 22, rmpWouldTakeAgain: 90,
+      rmpTags: ["Amazing lectures", "Caring", "Inspirational", "Clear grading criteria", "Accessible outside class"],
+    },
+    courseInsights: {
+      keyTopics: ["Speech organization", "Audience analysis", "Persuasive techniques", "Delivery & presence", "Visual aids", "Impromptu speaking"],
+      skillsGained: ["Public speaking confidence", "Persuasive communication", "Presentation design", "Audience engagement", "Constructive feedback"],
+    },
+    careerRelevance: [{ field: "Marketing & Communications", relevance: 0.9 }, { field: "Law", relevance: 0.85 }, { field: "Management Consulting", relevance: 0.8 }, { field: "Product Management", relevance: 0.75 }],
+  },
+
+  // Digital Studies
+  {
+    code: "DIG 200", name: "Digital Media Production",
+    description: "Hands-on introduction to digital media creation including video production, audio recording, web design, and multimedia storytelling using industry-standard tools.",
+    credits: 4, department: "Digital Studies", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["elective", "introductory"], difficulty: 2,
+    professor: "Dr. Kevin Foster", professorRating: 4.2,
+    professorInfo: {
+      name: "Dr. Kevin Foster",
+      title: "Assistant Professor of Digital Studies",
+      rmpRating: 4.2, rmpDifficulty: 2.6, rmpNumRatings: 11, rmpWouldTakeAgain: 85,
+      rmpTags: ["Amazing lectures", "Inspirational", "Gives good feedback", "Caring"],
+    },
+    courseInsights: {
+      keyTopics: ["Video production", "Audio recording & editing", "Web design basics", "Multimedia storytelling", "Digital photography", "Post-production"],
+      skillsGained: ["Video editing (Premiere Pro)", "Audio production", "Web design", "Multimedia storytelling", "Project management"],
+    },
+    careerRelevance: [{ field: "Media & Journalism", relevance: 0.9 }, { field: "Marketing & Communications", relevance: 0.8 }, { field: "UX Design", relevance: 0.6 }],
+  },
+
+  // Economics (additional)
+  {
+    code: "ECO 255", name: "Econometrics",
+    description: "Statistical methods applied to economic data. Topics include regression analysis, hypothesis testing, causal inference, and panel data methods. Extensive use of R/Stata.",
+    credits: 4, department: "Economics", prerequisites: ["ECO 101", "MAT 230"], offered: ["Fall", "Spring"],
+    tags: ["major-requirement", "methods"], majorRequirements: ["Economics"], difficulty: 4,
+    professor: "Dr. James Smith", professorRating: 3.9,
+    professorInfo: {
+      name: "Dr. James Smith",
+      title: "Associate Professor of Economics",
+      rmpRating: 3.9, rmpDifficulty: 4.0, rmpNumRatings: 18, rmpWouldTakeAgain: 65,
+      rmpTags: ["Tough grader", "Lots of homework", "Respected", "Clear grading criteria"],
+    },
+    courseInsights: {
+      keyTopics: ["Linear regression", "Hypothesis testing", "Instrumental variables", "Panel data", "Causal inference", "Time series"],
+      skillsGained: ["Econometric modeling", "Statistical software (R/Stata)", "Causal reasoning", "Data analysis", "Research design"],
+    },
+    careerRelevance: [{ field: "Data Science & Analytics", relevance: 0.9 }, { field: "Management Consulting", relevance: 0.8 }, { field: "Investment Banking", relevance: 0.75 }],
+  },
+  {
+    code: "ECO 315", name: "Financial Economics",
+    description: "Theory and practice of financial markets. Topics include asset pricing, portfolio theory, risk management, derivatives, and capital market efficiency.",
+    credits: 4, department: "Economics", prerequisites: ["ECO 201", "MAT 230"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 4,
+    professor: "Dr. Mark Anderson", professorRating: 4.1,
+    professorInfo: {
+      name: "Dr. Mark Anderson",
+      title: "Associate Professor of Economics",
+      rmpRating: 4.1, rmpDifficulty: 3.8, rmpNumRatings: 15, rmpWouldTakeAgain: 74,
+      rmpTags: ["Respected", "Amazing lectures", "Tough grader", "Clear grading criteria"],
+    },
+    courseInsights: {
+      keyTopics: ["Asset pricing models", "Portfolio theory", "CAPM & APT", "Options & derivatives", "Market efficiency", "Risk management"],
+      skillsGained: ["Financial modeling", "Valuation techniques", "Risk assessment", "Portfolio construction", "Financial data analysis"],
+    },
+    careerRelevance: [{ field: "Investment Banking", relevance: 0.95 }, { field: "Financial Planning", relevance: 0.9 }, { field: "Management Consulting", relevance: 0.6 }],
+  },
+
+  // English (additional)
+  {
+    code: "ENG 270", name: "Expository Writing",
+    description: "Advanced writing course focused on clear, persuasive nonfiction prose. Students develop skills in argumentation, evidence-based writing, and revision through workshop-style feedback.",
+    credits: 4, department: "English", prerequisites: ["ENG 101"], offered: ["Fall", "Spring"],
+    tags: ["elective", "writing-intensive"], difficulty: 3,
+    professor: "Dr. Michael Harris", professorRating: 4.2,
+    professorInfo: {
+      name: "Dr. Michael Harris",
+      title: "Professor of English",
+      rmpRating: 4.2, rmpDifficulty: 3.3, rmpNumRatings: 25, rmpWouldTakeAgain: 82,
+      rmpTags: ["Amazing lectures", "Gives good feedback", "Caring", "Inspirational", "Clear grading criteria"],
+    },
+    courseInsights: {
+      keyTopics: ["Argumentative writing", "Evidence and analysis", "Revision process", "Research writing", "Rhetorical strategies", "Workshop critique"],
+      skillsGained: ["Persuasive writing", "Critical editing", "Research synthesis", "Clear communication", "Workshop participation"],
+    },
+    careerRelevance: [{ field: "Law", relevance: 0.9 }, { field: "Research & Academia", relevance: 0.85 }, { field: "Media & Journalism", relevance: 0.8 }, { field: "Nonprofit & Social Impact", relevance: 0.75 }],
+  },
+
+  // History (additional)
+  {
+    code: "HIS 200", name: "American History",
+    description: "Survey of American history from the colonial era through the present, examining political, social, cultural, and economic developments that shaped the nation.",
+    credits: 4, department: "History", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "introductory"], difficulty: 2,
+    professor: "Dr. Katherine Price", professorRating: 4.3,
+    professorInfo: {
+      name: "Dr. Katherine Price",
+      title: "Associate Professor of History",
+      rmpRating: 4.3, rmpDifficulty: 2.9, rmpNumRatings: 20, rmpWouldTakeAgain: 85,
+      rmpTags: ["Amazing lectures", "Inspirational", "Caring", "Gives good feedback", "Respected"],
+    },
+    courseInsights: {
+      keyTopics: ["Colonial America", "American Revolution", "Civil War & Reconstruction", "Progressive Era", "Civil Rights Movement", "Contemporary America"],
+      skillsGained: ["Historical analysis", "Primary source interpretation", "Research writing", "Critical thinking", "Contextual reasoning"],
+    },
+    careerRelevance: [{ field: "Law", relevance: 0.7 }, { field: "Government & Public Policy", relevance: 0.7 }, { field: "Arts & Museum Curation", relevance: 0.8 }],
+  },
+
+  // Mathematics (alternate numbering)
+  {
+    code: "MAT 110", name: "Calculus I",
+    description: "Introduction to differential and integral calculus. Topics include limits, derivatives, applications of differentiation, definite and indefinite integrals.",
+    credits: 4, department: "Mathematics", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "major-requirement"], majorRequirements: ["Mathematics"], difficulty: 3,
+    professor: "Dr. Donna Bowen", professorRating: 4.0,
+    professorInfo: {
+      name: "Dr. Donna Bowen",
+      title: "Professor of Mathematics",
+      rmpRating: 4.0, rmpDifficulty: 3.5, rmpNumRatings: 28, rmpWouldTakeAgain: 70,
+      rmpTags: ["Respected", "Clear grading criteria", "Accessible outside class", "Lots of homework"],
+    },
+    courseInsights: {
+      keyTopics: ["Limits & continuity", "Derivatives", "Applications of derivatives", "Integration", "Fundamental Theorem of Calculus", "Applications of integrals"],
+      skillsGained: ["Mathematical reasoning", "Problem solving", "Quantitative analysis", "Abstract thinking", "Proof basics"],
+    },
+    careerRelevance: [{ field: "Investment Banking", relevance: 0.7 }, { field: "Data Science & Analytics", relevance: 0.7 }, { field: "Software Engineering", relevance: 0.5 }],
+  },
+
+  // Public Health (alternate prefix)
+  {
+    code: "PBH 200", name: "Global Public Health",
+    description: "Introduction to global health challenges including infectious disease, maternal and child health, health systems, and the social determinants of health across different populations.",
+    credits: 4, department: "Public Health", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["elective", "introductory"], difficulty: 3,
+    professor: "Dr. Angela Wilson", professorRating: 4.1,
+    professorInfo: {
+      name: "Dr. Angela Wilson",
+      title: "Associate Professor of Public Health",
+      rmpRating: 4.1, rmpDifficulty: 3.0, rmpNumRatings: 17, rmpWouldTakeAgain: 82,
+      rmpTags: ["Caring", "Inspirational", "Amazing lectures", "Gives good feedback"],
+    },
+    courseInsights: {
+      keyTopics: ["Global disease burden", "Health systems", "Epidemiology basics", "Social determinants of health", "Health equity", "International health policy"],
+      skillsGained: ["Public health analysis", "Epidemiological thinking", "Global health literacy", "Policy evaluation", "Cross-cultural health awareness"],
+    },
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.8 }, { field: "International Development", relevance: 0.85 }, { field: "Healthcare Administration", relevance: 0.8 }],
+  },
+
+  // Philosophy (alternate numbering)
+  {
+    code: "PHI 220", name: "Ethics",
+    description: "Systematic study of moral theories and their application to contemporary ethical issues. Covers utilitarianism, deontology, virtue ethics, and applied ethics across professional domains.",
+    credits: 4, department: "Philosophy", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "introductory"], difficulty: 3,
+    professor: "Dr. Robert Martin", professorRating: 4.2,
+    professorInfo: {
+      name: "Dr. Robert Martin",
+      title: "Professor of Philosophy",
+      rmpRating: 4.2, rmpDifficulty: 3.2, rmpNumRatings: 21, rmpWouldTakeAgain: 83,
+      rmpTags: ["Amazing lectures", "Respected", "Inspirational", "Gives good feedback", "Hilarious"],
+    },
+    courseInsights: {
+      keyTopics: ["Utilitarianism", "Kantian ethics", "Virtue ethics", "Applied ethics", "Moral reasoning", "Ethical dilemmas"],
+      skillsGained: ["Ethical analysis", "Moral reasoning", "Argumentation", "Critical thinking", "Philosophical writing"],
+    },
+    careerRelevance: [{ field: "Law", relevance: 0.8 }, { field: "Research & Academia", relevance: 0.7 }, { field: "Healthcare & Medicine", relevance: 0.65 }, { field: "Media & Journalism", relevance: 0.6 }],
+  },
+
+  // Political Science (alternate numbering)
+  {
+    code: "POL 315", name: "Constitutional Law",
+    description: "In-depth study of constitutional interpretation, judicial review, and landmark Supreme Court decisions. Covers separation of powers, federalism, individual rights, and equal protection.",
+    credits: 4, department: "Political Science", prerequisites: ["POL 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 4,
+    professor: "Dr. William Chen", professorRating: 4.3,
+    professorInfo: {
+      name: "Dr. William Chen",
+      title: "Professor of Political Science",
+      rmpRating: 4.3, rmpDifficulty: 3.6, rmpNumRatings: 24, rmpWouldTakeAgain: 84,
+      rmpTags: ["Amazing lectures", "Respected", "Inspirational", "Tough grader", "Gives good feedback"],
+    },
+    courseInsights: {
+      keyTopics: ["Judicial review", "Separation of powers", "First Amendment", "Due process", "Equal protection", "Landmark cases"],
+      skillsGained: ["Legal analysis", "Constitutional interpretation", "Case briefing", "Legal writing", "Oral argumentation"],
+    },
+    careerRelevance: [{ field: "Law", relevance: 0.95 }, { field: "Government & Public Policy", relevance: 0.8 }],
+  },
+
+  // Psychology (alternate numbering)
+  {
+    code: "PSY 230", name: "Developmental Psychology",
+    description: "Study of human cognitive, social, and emotional development across the lifespan, from infancy through late adulthood. Emphasis on theories, research methods, and applied contexts.",
+    credits: 4, department: "Psychology", prerequisites: ["PSY 100"], offered: ["Fall", "Spring"],
+    tags: ["elective"], difficulty: 3,
+    professor: "Dr. Lisa Thompson", professorRating: 4.1,
+    professorInfo: {
+      name: "Dr. Lisa Thompson",
+      title: "Associate Professor of Psychology",
+      rmpRating: 4.1, rmpDifficulty: 3.0, rmpNumRatings: 20, rmpWouldTakeAgain: 81,
+      rmpTags: ["Caring", "Amazing lectures", "Accessible outside class", "Gives good feedback", "Inspirational"],
+    },
+    courseInsights: {
+      keyTopics: ["Cognitive development", "Social-emotional development", "Attachment theory", "Adolescent development", "Aging", "Nature vs. nurture"],
+      skillsGained: ["Developmental assessment", "Research methods", "Lifespan perspective", "Child behavior analysis", "Applied developmental science"],
+    },
+    careerRelevance: [{ field: "Education", relevance: 0.9 }, { field: "Psychology & Counseling", relevance: 0.85 }, { field: "Healthcare & Medicine", relevance: 0.5 }],
+  },
 ];

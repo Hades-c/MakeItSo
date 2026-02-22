@@ -107,6 +107,42 @@ const AREA_DESCRIPTIONS: Record<string, string> = {
   languages: "Study world languages, cultural perspectives, and cross-cultural communication across global traditions.",
 };
 
+// Map Davidson grad requirement codes to readable labels
+const GRAD_REQ_LABELS: Record<string, string> = {
+  NSRQ: "Natural Science",
+  SSRQ: "Social Science",
+  HURQ: "Humanities",
+  LTRQ: "Literary Studies",
+  HARQ: "Historical Analysis",
+  CPRQ: "Cultural Pluralism",
+  JSRQ: "Justice, Equality & Community",
+  QRRQ: "Quantitative Reasoning",
+};
+
+// Find a static course by code, with fuzzy fallback (same dept prefix, closest number)
+function findStaticCourse(code: string): SeedCourse | undefined {
+  // Exact match first
+  const exact = DAVIDSON_COURSES.find((c) => c.code === code);
+  if (exact) return exact;
+  // Fuzzy: match dept prefix + closest course number
+  const match = code.match(/^([A-Z]{2,4})\s*(\d+)/);
+  if (!match) return undefined;
+  const [, prefix, numStr] = match;
+  const num = parseInt(numStr, 10);
+  const sameDept = DAVIDSON_COURSES.filter((c) => c.code.startsWith(prefix + " "));
+  if (sameDept.length === 0) return undefined;
+  // Find closest by course number
+  let best = sameDept[0];
+  let bestDist = Infinity;
+  for (const c of sameDept) {
+    const cNum = parseInt(c.code.replace(/\D+/g, ""), 10);
+    const dist = Math.abs(cNum - num);
+    if (dist < bestDist) { bestDist = dist; best = c; }
+  }
+  // Only match if within 15 of the requested number (e.g. 111 matches 112 but not 220)
+  return bestDist <= 15 ? best : undefined;
+}
+
 function getDeptColor(dept: string): { bg: string; text: string; border: string } {
   const colors: Record<string, { bg: string; text: string; border: string }> = {
     "Computer Science": { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
@@ -533,8 +569,8 @@ export default function ExplorePage() {
 
           <div className="space-y-2">
             {recommendations.recommendations.map((rec, i) => {
-              // Look up full course data from static courses
-              const staticCourse = DAVIDSON_COURSES.find((c) => c.code === rec.code);
+              // Look up full course data — fuzzy match static, then live
+              const staticCourse = findStaticCourse(rec.code);
               const liveCourse = liveCourses.find((c) => c.code === rec.code);
 
               return (
@@ -629,11 +665,17 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
       ? course.professor
       : null;
   const realInstructors = course.instructors.filter((i) => i !== "Staff");
+  // Better description truncation: use full description if short, otherwise first sentence
   const shortDesc = course.description
-    ? course.description.split(/\.\s/)[0] +
-      (course.description.includes(". ") ? "." : "")
+    ? course.description.length <= 120
+      ? course.description
+      : (course.description.match(/^[^.!?]+[.!?]/)?.[0] || course.description.slice(0, 120) + "...")
     : "";
   const deptColor = getDeptColor(course.department);
+  // Filter out meaningless grad requirements and map to readable labels
+  const gradReqs = course.gradRequirements
+    .filter((r) => r !== "NONE" && r !== "" && GRAD_REQ_LABELS[r])
+    .map((r) => GRAD_REQ_LABELS[r] || r);
 
   return (
     <div
@@ -647,9 +689,9 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
               <span className={`font-mono text-xs font-semibold px-2.5 py-1 rounded ${deptColor.bg} ${deptColor.text}`}>
                 {course.code}
               </span>
-              {course.gradRequirements.length > 0 && (
+              {gradReqs.length > 0 && (
                 <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
-                  {course.gradRequirements.join(", ")}
+                  {gradReqs.join(", ")}
                 </span>
               )}
               {course.sections > 1 && (
@@ -664,9 +706,6 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <span>{course.department}</span>
               {realProfessor && <span>· {realProfessor}</span>}
-              {course.schedule && course.schedule !== "TBA" && (
-                <span>· {course.schedule}</span>
-              )}
             </div>
           </div>
           <button
@@ -686,9 +725,9 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
               </div>
             )}
 
-            {shortDesc && (
+            {course.description && (
               <p className="text-sm text-[#555555] leading-relaxed">
-                {shortDesc}
+                {course.description}
               </p>
             )}
 
