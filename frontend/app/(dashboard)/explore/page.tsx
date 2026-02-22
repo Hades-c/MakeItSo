@@ -88,13 +88,13 @@ interface LiveCourse {
   location: string;
 }
 
-const AREA_COLORS: Record<string, { bg: string; border: string; text: string; tag: string; tagText: string }> = {
-  "natural-sciences": { bg: "bg-emerald-50/50", border: "border-emerald-200", text: "text-emerald-700", tag: "bg-emerald-100", tagText: "text-emerald-700" },
-  "math-computing": { bg: "bg-cyan-50/50", border: "border-cyan-200", text: "text-cyan-700", tag: "bg-cyan-100", tagText: "text-cyan-700" },
-  "social-sciences": { bg: "bg-blue-50/50", border: "border-blue-200", text: "text-blue-700", tag: "bg-blue-100", tagText: "text-blue-700" },
-  humanities: { bg: "bg-purple-50/50", border: "border-purple-200", text: "text-purple-700", tag: "bg-purple-100", tagText: "text-purple-700" },
-  arts: { bg: "bg-rose-50/50", border: "border-rose-200", text: "text-rose-700", tag: "bg-rose-100", tagText: "text-rose-700" },
-  languages: { bg: "bg-amber-50/50", border: "border-amber-200", text: "text-amber-700", tag: "bg-amber-100", tagText: "text-amber-700" },
+const AREA_TAG_COLORS: Record<string, string> = {
+  "natural-sciences": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "math-computing": "bg-blue-50 text-blue-700 border-blue-200",
+  "social-sciences": "bg-purple-50 text-purple-700 border-purple-200",
+  humanities: "bg-amber-50 text-amber-700 border-amber-200",
+  arts: "bg-pink-50 text-pink-700 border-pink-200",
+  languages: "bg-teal-50 text-teal-700 border-teal-200",
 };
 
 const AREA_DESCRIPTIONS: Record<string, string> = {
@@ -141,9 +141,7 @@ export default function ExplorePage() {
   const [step, setStep] = useState<Step>("interests");
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(
-    null
-  );
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [liveCourses, setLiveCourses] = useState<LiveCourse[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
@@ -186,10 +184,6 @@ export default function ExplorePage() {
     );
   };
 
-  const selectedDepartments: string[] = SUBJECT_AREAS.filter((a) =>
-    selectedAreas.includes(a.id)
-  ).flatMap((a) => [...a.departments]);
-
   // Build a set of static course codes for quick lookup
   const staticCodes = new Set(DAVIDSON_COURSES.map((c) => c.code));
 
@@ -202,11 +196,16 @@ export default function ExplorePage() {
     ...liveOnlyCourses,
   ];
 
+  // Departments available from selected areas
+  const areaDepartments: string[] = SUBJECT_AREAS.filter((a) =>
+    selectedAreas.includes(a.id)
+  ).flatMap((a) => [...a.departments]);
+
   const filteredCourses = allCourses.filter((c) => {
-    const matchesDept = selectedDepartment
-      ? c.department === selectedDepartment
-      : selectedDepartments.length > 0
-        ? selectedDepartments.includes(c.department)
+    const matchesDept = selectedDepartments.length > 0
+      ? selectedDepartments.includes(c.department)
+      : areaDepartments.length > 0
+        ? areaDepartments.includes(c.department)
         : true;
     const q = searchQuery.toLowerCase();
     const matchesSearch = searchQuery
@@ -266,17 +265,15 @@ export default function ExplorePage() {
         <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
           Explore Courses
         </h1>
-        <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
-          Discover Davidson&apos;s course catalog and see how courses connect to your career goals.
+        <p className="text-sm text-[#555555] mt-1.5">
+          Discover Davidson&apos;s course catalog and see how courses connect to your career goals.{" "}
+          {liveCourses.length > 0 && (
+            <span className="text-gray-400">· {liveCourses.length} live courses loaded</span>
+          )}
+          {liveLoading && (
+            <Loader2 className="inline h-3 w-3 animate-spin text-gray-400 ml-1" />
+          )}
         </p>
-        {(liveCourses.length > 0 || liveLoading) && (
-          <p className="text-sm text-gray-400 mt-1">
-            {liveCourses.length > 0 && <>· {liveCourses.length} live courses loaded</>}
-            {liveLoading && (
-              <Loader2 className="inline h-3 w-3 animate-spin text-gray-400 ml-1" />
-            )}
-          </p>
-        )}
       </div>
 
       {/* Step indicator — tabs appear progressively */}
@@ -330,7 +327,7 @@ export default function ExplorePage() {
               const isSelected = selectedAreas.includes(area.id);
               const depts: string[] = [...area.departments];
               const courseCount = allCourses.filter((c) => depts.includes(c.department)).length;
-              const ac = AREA_COLORS[area.id];
+              const tagColor = AREA_TAG_COLORS[area.id] || "bg-gray-50 text-gray-600 border-gray-200";
               return (
                 <div
                   key={area.id}
@@ -338,39 +335,47 @@ export default function ExplorePage() {
                   className={`p-5 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
                     isSelected
                       ? "bg-davidson text-white border-davidson shadow-sm"
-                      : `${ac?.bg || "bg-white"} text-gray-700 ${ac?.border || "border-gray-200"} hover:shadow-sm`
+                      : "bg-white text-gray-700 border-gray-100 hover:border-gray-200 hover:shadow-md"
                   }`}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className={`font-serif font-semibold text-lg ${!isSelected && ac ? ac.text : ""}`}>{area.label}</h3>
+                    <h3 className="font-serif font-semibold text-lg">{area.label}</h3>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      isSelected ? "bg-white/20 text-white" : `${ac?.tag || "bg-gray-100"} ${ac?.tagText || "text-gray-500"}`
+                      isSelected ? "bg-white/20 text-white" : "bg-gray-50 text-gray-500"
                     }`}>
                       {courseCount} courses
                     </span>
                   </div>
-                  <p className={`text-sm leading-relaxed mb-3 ${isSelected ? "text-white/80" : "text-gray-500"}`}>
+                  <p className={`text-sm leading-relaxed mb-3 ${isSelected ? "text-white/80" : "text-[#555555]"}`}>
                     {AREA_DESCRIPTIONS[area.id]}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {area.departments.map((dept) => (
-                      <button
-                        key={dept}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!selectedAreas.includes(area.id)) toggleArea(area.id);
-                          setSelectedDepartment(dept);
-                          setStep("browse");
-                        }}
-                        className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${
-                          isSelected
-                            ? "bg-white/15 text-white/90 hover:bg-white/30"
-                            : `${ac?.tag || "bg-gray-100"} ${ac?.tagText || "text-gray-600"} hover:opacity-80`
-                        }`}
-                      >
-                        {dept}
-                      </button>
-                    ))}
+                    {area.departments.map((dept) => {
+                      const isDeptSelected = selectedDepartments.includes(dept);
+                      return (
+                        <button
+                          key={dept}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDepartments((prev) =>
+                              prev.includes(dept) ? prev.filter((d) => d !== dept) : [...prev, dept]
+                            );
+                            if (!selectedAreas.includes(area.id)) toggleArea(area.id);
+                          }}
+                          className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+                            isSelected
+                              ? isDeptSelected
+                                ? "bg-white text-davidson border-white"
+                                : "bg-white/15 text-white/90 border-white/20 hover:bg-white/30"
+                              : isDeptSelected
+                                ? `${tagColor} border`
+                                : "bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          {dept}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -425,9 +430,9 @@ export default function ExplorePage() {
             </div>
             <div className="relative">
               <select
-                value={selectedDepartment || ""}
+                value={selectedDepartments.length === 1 ? selectedDepartments[0] : ""}
                 onChange={(e) =>
-                  setSelectedDepartment(e.target.value || null)
+                  setSelectedDepartments(e.target.value ? [e.target.value] : [])
                 }
                 className="appearance-none h-10 rounded-lg border border-gray-200 bg-white pl-3 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-400 cursor-pointer"
               >
@@ -461,13 +466,12 @@ export default function ExplorePage() {
           <p className="text-xs text-gray-400">
             {filteredCourses.length} course
             {filteredCourses.length !== 1 ? "s" : ""}
-            {selectedDepartment && (
+            {selectedDepartments.length > 0 && (
               <>
-                {" "}
-                in{" "}
-                <span className="text-gray-600">{selectedDepartment}</span>
+                {" "}in{" "}
+                <span className="text-gray-600">{selectedDepartments.join(", ")}</span>
                 <button
-                  onClick={() => setSelectedDepartment(null)}
+                  onClick={() => setSelectedDepartments([])}
                   className="ml-1 text-gray-400 hover:text-gray-600 underline"
                 >
                   clear
@@ -527,68 +531,68 @@ export default function ExplorePage() {
           </div>
 
           <div className="space-y-2">
-            {recommendations.recommendations.map((rec, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-lg border border-gray-100 p-5 hover:border-gray-200 transition-all"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-sm font-semibold text-[#111111]">
-                        {rec.code}
-                      </span>
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                          rec.priority === "high"
-                            ? "bg-davidson text-white"
-                            : rec.priority === "medium"
-                              ? "bg-gray-100 text-gray-600"
-                              : "bg-gray-50 text-gray-400"
-                        }`}
-                      >
-                        {rec.priority === "high"
-                          ? "Must Take"
+            {recommendations.recommendations.map((rec, i) => {
+              // Look up full course data from static courses
+              const staticCourse = DAVIDSON_COURSES.find((c) => c.code === rec.code);
+              const liveCourse = liveCourses.find((c) => c.code === rec.code);
+
+              return (
+                <div key={i} className="relative">
+                  {/* Priority badge */}
+                  <div className="absolute -top-2 left-4 z-10">
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-medium shadow-sm ${
+                        rec.priority === "high"
+                          ? "bg-davidson text-white"
                           : rec.priority === "medium"
-                            ? "Recommended"
-                            : "Optional"}
-                      </span>
-                    </div>
-                    <h3 className="font-medium text-sm text-[#111111] mb-1">
-                      {rec.name}
-                    </h3>
-                    <p className="text-sm text-[#555555] mb-3">{rec.reason}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {rec.careerImpact?.map((career) => (
-                        <span
-                          key={career}
-                          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-gray-50 text-gray-600"
-                        >
-                          <Briefcase className="h-3 w-3 text-gray-400" />
-                          {career}
+                            ? "bg-white text-gray-600 border border-gray-200"
+                            : "bg-gray-50 text-gray-400 border border-gray-100"
+                      }`}
+                    >
+                      {rec.priority === "high"
+                        ? "Must Take"
+                        : rec.priority === "medium"
+                          ? "Recommended"
+                          : "Optional"}
+                    </span>
+                  </div>
+
+                  {staticCourse ? (
+                    <StaticCourseCard
+                      course={staticCourse}
+                      aiReason={rec.reason}
+                      aiCareerImpact={rec.careerImpact}
+                    />
+                  ) : liveCourse ? (
+                    <LiveCourseCard course={liveCourse} aiReason={rec.reason} />
+                  ) : (
+                    /* Fallback for courses not in our data */
+                    <div className="bg-white rounded-lg border border-gray-100 p-5 hover:border-gray-200 transition-all">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-gray-50 text-gray-600">
+                          {rec.code}
                         </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    {rec.difficulty && (
-                      <div className="flex items-center gap-0.5 mt-1 justify-end">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <div
-                            key={n}
-                            className={`h-1.5 w-3 rounded-full ${
-                              n <= rec.difficulty
-                                ? "bg-navy"
-                                : "bg-gray-100"
-                            }`}
-                          />
-                        ))}
                       </div>
-                    )}
-                  </div>
+                      <h3 className="font-medium text-[15px] text-[#111111] mb-1">{rec.name}</h3>
+                      <p className="text-sm text-[#555555] mb-2">{rec.reason}</p>
+                      {rec.careerImpact?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {rec.careerImpact.map((career) => (
+                            <span
+                              key={career}
+                              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-gray-50 text-gray-600"
+                            >
+                              <Briefcase className="h-3 w-3 text-gray-400" />
+                              {career}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -617,7 +621,7 @@ function RatingBar({
 }
 
 /* ===== Live course card (courses from Davidson API without static RMP data) ===== */
-function LiveCourseCard({ course }: { course: LiveCourse }) {
+function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: string }) {
   const [expanded, setExpanded] = useState(false);
   const realProfessor =
     course.professor && course.professor !== "Staff"
@@ -674,6 +678,13 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
 
         {expanded && (
           <div className="mt-4 space-y-4 animate-fade-in border-t border-gray-100 pt-4">
+            {aiReason && (
+              <div className="flex items-start gap-2 rounded-lg bg-davidson-light/50 border border-davidson/10 p-3">
+                <Sparkles className="h-4 w-4 text-davidson shrink-0 mt-0.5" />
+                <p className="text-sm text-[#555555] leading-relaxed">{aiReason}</p>
+              </div>
+            )}
+
             {shortDesc && (
               <p className="text-sm text-[#555555] leading-relaxed">
                 {shortDesc}
@@ -722,7 +733,7 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
 }
 
 /* ===== Static course card (from davidson-courses.ts) ===== */
-function StaticCourseCard({ course }: { course: SeedCourse }) {
+function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCourse; aiReason?: string; aiCareerImpact?: string[] }) {
   const [expanded, setExpanded] = useState(false);
   const [aiInsights, setAiInsights] = useState<{
     courseHighlights?: string;
@@ -853,6 +864,28 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
 
         {expanded && (
             <div className="mt-4 space-y-4 animate-fade-in border-t border-gray-100 pt-4">
+              {aiReason && (
+                <div className="flex items-start gap-2 rounded-lg bg-davidson-light/50 border border-davidson/10 p-3">
+                  <Sparkles className="h-4 w-4 text-davidson shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-[#555555] leading-relaxed">{aiReason}</p>
+                    {aiCareerImpact && aiCareerImpact.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {aiCareerImpact.map((career) => (
+                          <span
+                            key={career}
+                            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-white/80 text-gray-600 border border-gray-200"
+                          >
+                            <Briefcase className="h-3 w-3 text-gray-400" />
+                            {career}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <p className="text-sm text-[#555555] leading-relaxed">
                 {course.description}
               </p>
@@ -982,7 +1015,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 md:left-[240px] z-50 flex items-start justify-center pt-[6vh] px-4"
+                            className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4"
                           >
                             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} />
                             <motion.div
@@ -1241,7 +1274,7 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 md:left-[240px] z-50 flex items-start justify-center pt-[6vh] px-4"
+                    className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4"
                   >
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
                     <motion.div
