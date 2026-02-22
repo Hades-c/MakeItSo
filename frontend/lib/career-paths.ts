@@ -129,7 +129,7 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "You start your day reviewing overnight model performance metrics and checking data pipelines. Mid-morning, you dive into exploratory data analysis on a new customer dataset, building visualizations to spot trends. After lunch, you present findings to the product team and discuss experiment design. The afternoon is spent refining a classification model and writing documentation for your analysis.",
     courses: [
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Introduction to probability theory, random variables, distributions, and statistical inference.", bestProfessor: "Dr. Bowen", difficulty: 3 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Introduction to probability theory, random variables, distributions, and statistical inference.", bestProfessor: "Dr. Blake", difficulty: 3 },
       { code: "CSC 121", name: "Programming & Problem Solving", description: "Learn Python programming fundamentals — the primary language for data science.", bestProfessor: "Dr. Ramanujan", difficulty: 2 },
       { code: "MAT 150", name: "Discrete Mathematics", description: "Logic, combinatorics, and graph theory — mathematical foundations for data analysis.", bestProfessor: "Dr. Hossain", difficulty: 3 },
       { code: "ECO 255", name: "Econometrics", description: "Statistical methods applied to economic data. Regression analysis, hypothesis testing, causal inference.", bestProfessor: "Dr. Smith", difficulty: 4 },
@@ -165,10 +165,10 @@ export const CAREER_PATHS: CareerPath[] = [
     courses: [
       { code: "ECO 101", name: "Principles of Economics", description: "Foundation in micro and macroeconomic theory — supply/demand, market structures, GDP.", bestProfessor: "Dr. Griffith", difficulty: 2 },
       { code: "ECO 255", name: "Econometrics", description: "Statistical methods for economic data analysis — regression, hypothesis testing.", bestProfessor: "Dr. Smith", difficulty: 4 },
-      { code: "ECO 315", name: "Financial Economics", description: "Asset pricing, portfolio theory, risk management, and capital markets.", bestProfessor: "Dr. Anderson", difficulty: 4 },
-      { code: "MAT 110", name: "Calculus I", description: "Limits, derivatives, integrals — the mathematical language of finance.", bestProfessor: "Dr. Bowen", difficulty: 3 },
+      { code: "ECO 315", name: "Financial Economics", description: "Asset pricing, portfolio theory, risk management, and capital markets.", bestProfessor: "Dr. Stroup", difficulty: 4 },
+      { code: "MAT 110", name: "Calculus I", description: "Limits, derivatives, integrals — the mathematical language of finance.", bestProfessor: "Dr. Blake", difficulty: 3 },
       { code: "ACC 215", name: "Financial Accounting", description: "Understanding financial statements — balance sheets, income statements, cash flow.", bestProfessor: "Dr. Palmer", difficulty: 3 },
-      { code: "ECO 360", name: "Corporate Finance", description: "Capital budgeting, cost of capital, capital structure, and dividend policy.", bestProfessor: "Dr. Anderson", difficulty: 4 },
+      { code: "ECO 360", name: "Corporate Finance", description: "Capital budgeting, cost of capital, capital structure, and dividend policy.", bestProfessor: "Dr. Stroup", difficulty: 4 },
     ],
     summerOpportunities: [
       { title: "IB Summer Analyst Program", type: "Internship", description: "10-week programs at bulge bracket banks (Goldman Sachs, Morgan Stanley, JPMorgan) or boutiques (Evercore, Lazard).", timing: "Summer after Junior year (apply fall of Junior year)" },
@@ -199,10 +199,10 @@ export const CAREER_PATHS: CareerPath[] = [
     dayInLife: "Your week alternates between client site (Mon-Thu) and your home office (Fri). On-site days start with a team check-in, then you spend the morning analyzing customer survey data. After lunch with the client's VP of Strategy, you build slides synthesizing your findings. The afternoon is a workshop with client stakeholders to pressure-test your recommendations.",
     courses: [
       { code: "ECO 101", name: "Principles of Economics", description: "Microeconomic and macroeconomic fundamentals for business analysis.", bestProfessor: "Dr. Griffith", difficulty: 2 },
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Statistical analysis skills essential for data-driven consulting.", bestProfessor: "Dr. Bowen", difficulty: 3 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding human behavior and decision-making — key for organizational consulting.", bestProfessor: "Dr. Thompson", difficulty: 2 },
-      { code: "COM 210", name: "Public Speaking", description: "Develop clear, persuasive communication skills for client presentations.", bestProfessor: "Dr. Williams", difficulty: 2 },
-      { code: "PHI 220", name: "Ethics", description: "Frameworks for ethical reasoning — critical for advising organizations responsibly.", bestProfessor: "Dr. Martin", difficulty: 3 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Statistical analysis skills essential for data-driven consulting.", bestProfessor: "Dr. Blake", difficulty: 3 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding human behavior and decision-making — key for organizational consulting.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
+      { code: "COM 210", name: "Public Speaking", description: "Develop clear, persuasive communication skills for client presentations.", bestProfessor: "Dr. Martinez", difficulty: 2 },
+      { code: "PHI 220", name: "Ethics", description: "Frameworks for ethical reasoning — critical for advising organizations responsibly.", bestProfessor: "Dr. McKeever", difficulty: 3 },
       { code: "ECO 255", name: "Econometrics", description: "Quantitative analysis and regression modeling for business insights.", bestProfessor: "Dr. Smith", difficulty: 4 },
     ],
     summerOpportunities: [
@@ -234,9 +234,9 @@ export const CAREER_PATHS: CareerPath[] = [
     courses: [
       { code: "CSC 121", name: "Programming & Problem Solving", description: "Enough technical depth to collaborate effectively with engineers.", bestProfessor: "Dr. Ramanujan", difficulty: 2 },
       { code: "ECO 101", name: "Principles of Economics", description: "Business fundamentals and market dynamics for product strategy.", bestProfessor: "Dr. Griffith", difficulty: 2 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Understand user behavior and cognitive biases for better product design.", bestProfessor: "Dr. Thompson", difficulty: 2 },
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Data analysis skills for metrics-driven product decisions.", bestProfessor: "Dr. Bowen", difficulty: 3 },
-      { code: "COM 210", name: "Public Speaking", description: "Present product vision clearly to stakeholders and executives.", bestProfessor: "Dr. Williams", difficulty: 2 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Understand user behavior and cognitive biases for better product design.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Data analysis skills for metrics-driven product decisions.", bestProfessor: "Dr. Blake", difficulty: 3 },
+      { code: "COM 210", name: "Public Speaking", description: "Present product vision clearly to stakeholders and executives.", bestProfessor: "Dr. Martinez", difficulty: 2 },
     ],
     summerOpportunities: [
       { title: "APM Program", type: "Internship", description: "Associate Product Manager internships at Google, Meta, Microsoft, or Uber.", timing: "Summer after Junior year" },
@@ -267,10 +267,10 @@ export const CAREER_PATHS: CareerPath[] = [
     courses: [
       { code: "BIO 111", name: "Introductory Biology I", description: "Cell biology, genetics, and molecular biology — the foundation of medical science.", bestProfessor: "Dr. Johnson", difficulty: 3 },
       { code: "BIO 112", name: "Introductory Biology II", description: "Ecology, evolution, and organismal biology.", bestProfessor: "Dr. Johnson", difficulty: 3 },
-      { code: "CHE 115", name: "General Chemistry I", description: "Atomic structure, bonding, stoichiometry — essential for understanding pharmacology.", bestProfessor: "Dr. Lee", difficulty: 3 },
-      { code: "CHE 240", name: "Organic Chemistry I", description: "Carbon chemistry and reaction mechanisms — the gateway to biochemistry.", bestProfessor: "Dr. Lee", difficulty: 5 },
+      { code: "CHE 115", name: "General Chemistry I", description: "Atomic structure, bonding, stoichiometry — essential for understanding pharmacology.", bestProfessor: "Dr. Snyder", difficulty: 3 },
+      { code: "CHE 240", name: "Organic Chemistry I", description: "Carbon chemistry and reaction mechanisms — the gateway to biochemistry.", bestProfessor: "Dr. Snyder", difficulty: 5 },
       { code: "BIO 306", name: "Biochemistry", description: "Protein structure, enzyme kinetics, metabolic pathways.", bestProfessor: "Dr. Rodriguez", difficulty: 4 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding the psychological dimensions of patient care.", bestProfessor: "Dr. Thompson", difficulty: 2 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding the psychological dimensions of patient care.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
     ],
     summerOpportunities: [
       { title: "Clinical Shadowing", type: "Experience", description: "Shadow physicians in various specialties to explore interests and build clinical exposure.", timing: "Summer after Freshman year" },
@@ -301,12 +301,12 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning begins with reviewing case files and drafting a motion. You spend mid-morning in a client meeting discussing litigation strategy. After lunch, you research precedent cases in Westlaw for a brief due next week. The afternoon includes a deposition and a call with opposing counsel to discuss settlement terms. You end the day reviewing contracts for a corporate client.",
     courses: [
-      { code: "POL 101", name: "American Government", description: "The structure and function of U.S. government — constitutional law foundations.", bestProfessor: "Dr. Chen", difficulty: 2 },
-      { code: "PHI 220", name: "Ethics", description: "Moral reasoning frameworks essential for legal practice.", bestProfessor: "Dr. Martin", difficulty: 3 },
-      { code: "ENG 270", name: "Legal Writing", description: "Persuasive writing and argumentation — the core skill of legal practice.", bestProfessor: "Dr. Harris", difficulty: 3 },
-      { code: "POL 315", name: "Constitutional Law", description: "Deep dive into constitutional interpretation and landmark Supreme Court cases.", bestProfessor: "Dr. Chen", difficulty: 4 },
-      { code: "HIS 200", name: "American History", description: "Historical context for understanding legal evolution and social justice.", bestProfessor: "Dr. Price", difficulty: 2 },
-      { code: "COM 210", name: "Public Speaking", description: "Oral advocacy skills for courtroom and client presentations.", bestProfessor: "Dr. Williams", difficulty: 2 },
+      { code: "POL 101", name: "American Government", description: "The structure and function of U.S. government — constitutional law foundations.", bestProfessor: "Dr. Roberts", difficulty: 2 },
+      { code: "PHI 220", name: "Ethics", description: "Moral reasoning frameworks essential for legal practice.", bestProfessor: "Dr. McKeever", difficulty: 3 },
+      { code: "ENG 270", name: "Expository Writing", description: "Persuasive writing and argumentation — the core skill of legal practice.", bestProfessor: "Dr. Rippeon", difficulty: 3 },
+      { code: "POL 315", name: "Constitutional Law", description: "Deep dive into constitutional interpretation and landmark Supreme Court cases.", bestProfessor: "Dr. Roberts", difficulty: 4 },
+      { code: "HIS 200", name: "American History", description: "Historical context for understanding legal evolution and social justice.", bestProfessor: "Dr. Aldridge", difficulty: 2 },
+      { code: "COM 210", name: "Public Speaking", description: "Oral advocacy skills for courtroom and client presentations.", bestProfessor: "Dr. Martinez", difficulty: 2 },
     ],
     summerOpportunities: [
       { title: "Law Firm Internship", type: "Internship", description: "Work at a law firm to experience legal practice firsthand.", timing: "Summer after Sophomore or Junior year" },
@@ -337,12 +337,12 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning starts with checking campaign analytics and social media engagement. You join a creative brainstorm for an upcoming product launch. Mid-morning, you review copy and design assets for a digital ad campaign. After lunch, you analyze A/B test results and adjust targeting. The afternoon is spent planning content for next month and meeting with an influencer partner.",
     courses: [
-      { code: "COM 210", name: "Public Speaking", description: "Clear, persuasive communication — the foundation of marketing.", bestProfessor: "Dr. Williams", difficulty: 2 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Consumer behavior and decision-making psychology.", bestProfessor: "Dr. Thompson", difficulty: 2 },
+      { code: "COM 210", name: "Public Speaking", description: "Clear, persuasive communication — the foundation of marketing.", bestProfessor: "Dr. Martinez", difficulty: 2 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Consumer behavior and decision-making psychology.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
       { code: "ECO 101", name: "Principles of Economics", description: "Market dynamics and consumer theory.", bestProfessor: "Dr. Griffith", difficulty: 2 },
-      { code: "ENG 220", name: "Creative Writing", description: "Storytelling and narrative skills for compelling brand content.", bestProfessor: "Dr. Harris", difficulty: 2 },
-      { code: "ART 120", name: "Visual Design", description: "Principles of visual communication and design thinking.", bestProfessor: "Dr. Torres", difficulty: 2 },
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Data literacy for measuring marketing effectiveness.", bestProfessor: "Dr. Bowen", difficulty: 3 },
+      { code: "ENG 220", name: "Creative Writing", description: "Storytelling and narrative skills for compelling brand content.", bestProfessor: "Dr. Rippeon", difficulty: 2 },
+      { code: "ART 120", name: "Visual Design", description: "Principles of visual communication and design thinking.", bestProfessor: "Prof. St. Clair", difficulty: 2 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Data literacy for measuring marketing effectiveness.", bestProfessor: "Dr. Blake", difficulty: 3 },
     ],
     summerOpportunities: [
       { title: "Marketing Internship", type: "Internship", description: "Work at an agency, brand, or tech company marketing team.", timing: "Summer after Sophomore or Junior year" },
@@ -371,9 +371,9 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning starts with writing — working on a journal article or grant proposal. Late morning, you teach an undergraduate seminar. After lunch, you meet with graduate students to discuss their research progress. The afternoon is spent in the lab or analyzing data. You end with reviewing a paper for a journal and preparing for tomorrow's lecture.",
     courses: [
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Research methodology and statistical analysis fundamentals.", bestProfessor: "Dr. Bowen", difficulty: 3 },
-      { code: "PHI 220", name: "Ethics", description: "Research ethics and responsible scholarship.", bestProfessor: "Dr. Martin", difficulty: 3 },
-      { code: "ENG 270", name: "Expository Writing", description: "Academic writing skills for publications and grant proposals.", bestProfessor: "Dr. Harris", difficulty: 3 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Research methodology and statistical analysis fundamentals.", bestProfessor: "Dr. Blake", difficulty: 3 },
+      { code: "PHI 220", name: "Ethics", description: "Research ethics and responsible scholarship.", bestProfessor: "Dr. McKeever", difficulty: 3 },
+      { code: "ENG 270", name: "Expository Writing", description: "Academic writing skills for publications and grant proposals.", bestProfessor: "Dr. Rippeon", difficulty: 3 },
     ],
     summerOpportunities: [
       { title: "Faculty Research Assistant", type: "Research", description: "Work directly with Davidson faculty on publishable research.", timing: "Summer after Freshman or Sophomore year" },
@@ -402,11 +402,11 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning starts with a briefing on the latest policy developments. You spend the first half reviewing a draft regulation and preparing talking points for your director. After lunch, you attend a committee hearing and take notes on stakeholder testimony. The afternoon is spent analyzing the budgetary impact of a proposed amendment. You end with a call to a state agency partner.",
     courses: [
-      { code: "POL 101", name: "American Government", description: "How U.S. government works — the foundation of policy work.", bestProfessor: "Dr. Chen", difficulty: 2 },
+      { code: "POL 101", name: "American Government", description: "How U.S. government works — the foundation of policy work.", bestProfessor: "Dr. Roberts", difficulty: 2 },
       { code: "ECO 101", name: "Principles of Economics", description: "Economic analysis for policy evaluation.", bestProfessor: "Dr. Griffith", difficulty: 2 },
-      { code: "POL 250", name: "International Relations", description: "Global politics and international policy frameworks.", bestProfessor: "Dr. Chen", difficulty: 3 },
+      { code: "POL 250", name: "International Relations", description: "Global politics and international policy frameworks.", bestProfessor: "Dr. Roberts", difficulty: 3 },
       { code: "SOC 101", name: "Introduction to Sociology", description: "Understanding social structures that policy aims to address.", bestProfessor: "Dr. Rivera", difficulty: 2 },
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Data analysis for evidence-based policymaking.", bestProfessor: "Dr. Bowen", difficulty: 3 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Data analysis for evidence-based policymaking.", bestProfessor: "Dr. Blake", difficulty: 3 },
     ],
     summerOpportunities: [
       { title: "Congressional Internship", type: "Internship", description: "Work in a congressional office on Capitol Hill.", timing: "Summer after Sophomore or Junior year" },
@@ -437,8 +437,8 @@ export const CAREER_PATHS: CareerPath[] = [
     courses: [
       { code: "ECO 101", name: "Principles of Economics", description: "Market fundamentals and business economics.", bestProfessor: "Dr. Griffith", difficulty: 2 },
       { code: "CSC 121", name: "Programming & Problem Solving", description: "Technical literacy to build or manage technical products.", bestProfessor: "Dr. Ramanujan", difficulty: 2 },
-      { code: "COM 210", name: "Public Speaking", description: "Pitching and presenting to investors and customers.", bestProfessor: "Dr. Williams", difficulty: 2 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding customers, team dynamics, and negotiation.", bestProfessor: "Dr. Thompson", difficulty: 2 },
+      { code: "COM 210", name: "Public Speaking", description: "Pitching and presenting to investors and customers.", bestProfessor: "Dr. Martinez", difficulty: 2 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding customers, team dynamics, and negotiation.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
       { code: "ACC 215", name: "Financial Accounting", description: "Reading financial statements and managing company finances.", bestProfessor: "Dr. Palmer", difficulty: 3 },
     ],
     summerOpportunities: [
@@ -468,11 +468,11 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning starts with a user interview — observing how someone interacts with your product prototype. You spend mid-morning synthesizing research notes and updating your findings deck. After lunch, you iterate on wireframes in Figma based on feedback. The afternoon involves a design critique with your team and a handoff meeting with engineers. You end the day exploring design inspiration.",
     courses: [
-      { code: "ART 120", name: "Visual Design", description: "Foundational design principles — color, typography, layout, composition.", bestProfessor: "Dr. Torres", difficulty: 2 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Cognitive psychology and human behavior for user-centered design.", bestProfessor: "Dr. Thompson", difficulty: 2 },
+      { code: "ART 120", name: "Visual Design", description: "Foundational design principles — color, typography, layout, composition.", bestProfessor: "Prof. St. Clair", difficulty: 2 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Cognitive psychology and human behavior for user-centered design.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
       { code: "CSC 121", name: "Programming & Problem Solving", description: "Enough code to prototype and communicate with engineers.", bestProfessor: "Dr. Ramanujan", difficulty: 2 },
-      { code: "COM 210", name: "Public Speaking", description: "Presenting and defending design decisions to stakeholders.", bestProfessor: "Dr. Williams", difficulty: 2 },
-      { code: "ANT 200", name: "Ethnographic Methods", description: "Qualitative research methods for understanding users in context.", bestProfessor: "Dr. Park", difficulty: 3 },
+      { code: "COM 210", name: "Public Speaking", description: "Presenting and defending design decisions to stakeholders.", bestProfessor: "Dr. Martinez", difficulty: 2 },
+      { code: "ANT 200", name: "Ethnographic Methods", description: "Qualitative research methods for understanding users in context.", bestProfessor: "Dr. Bowles", difficulty: 3 },
     ],
     summerOpportunities: [
       { title: "UX Design Internship", type: "Internship", description: "Design intern at a tech company, agency, or startup.", timing: "Summer after Sophomore or Junior year" },
@@ -503,9 +503,9 @@ export const CAREER_PATHS: CareerPath[] = [
     courses: [
       { code: "SOC 101", name: "Introduction to Sociology", description: "Understanding social structures, inequality, and community dynamics.", bestProfessor: "Dr. Rivera", difficulty: 2 },
       { code: "ECO 101", name: "Principles of Economics", description: "Economic analysis for nonprofit sustainability.", bestProfessor: "Dr. Griffith", difficulty: 2 },
-      { code: "ENG 270", name: "Expository Writing", description: "Clear writing for grants, reports, and communications.", bestProfessor: "Dr. Harris", difficulty: 3 },
-      { code: "POL 101", name: "American Government", description: "Government structures and how nonprofits influence policy.", bestProfessor: "Dr. Chen", difficulty: 2 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding human motivation and community behavior.", bestProfessor: "Dr. Thompson", difficulty: 2 },
+      { code: "ENG 270", name: "Expository Writing", description: "Clear writing for grants, reports, and communications.", bestProfessor: "Dr. Rippeon", difficulty: 3 },
+      { code: "POL 101", name: "American Government", description: "Government structures and how nonprofits influence policy.", bestProfessor: "Dr. Roberts", difficulty: 2 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding human motivation and community behavior.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
     ],
     summerOpportunities: [
       { title: "Nonprofit Internship", type: "Internship", description: "Work at organizations like Teach for America, Habitat for Humanity, or local nonprofits.", timing: "Any summer" },
@@ -535,9 +535,9 @@ export const CAREER_PATHS: CareerPath[] = [
     dayInLife: "Your day starts early preparing materials for your first class. You teach three classes in the morning, each with different activities and discussion formats. Lunch is spent tutoring a struggling student. The afternoon includes a faculty meeting, grading, and planning tomorrow's lessons. You end the day coaching the debate team.",
     courses: [
       { code: "EDU 200", name: "Foundations of Education", description: "History, philosophy, and sociology of education in America.", bestProfessor: "Dr. Nelson", difficulty: 2 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Child development and learning psychology.", bestProfessor: "Dr. Thompson", difficulty: 2 },
-      { code: "PSY 230", name: "Developmental Psychology", description: "How children and adolescents develop cognitively and socially.", bestProfessor: "Dr. Thompson", difficulty: 3 },
-      { code: "COM 210", name: "Public Speaking", description: "Classroom communication and presentation skills.", bestProfessor: "Dr. Williams", difficulty: 2 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Child development and learning psychology.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
+      { code: "PSY 230", name: "Developmental Psychology", description: "How children and adolescents develop cognitively and socially.", bestProfessor: "Dr. Bagwell", difficulty: 3 },
+      { code: "COM 210", name: "Public Speaking", description: "Classroom communication and presentation skills.", bestProfessor: "Dr. Martinez", difficulty: 2 },
       { code: "SOC 101", name: "Introduction to Sociology", description: "Understanding educational equity and social context.", bestProfessor: "Dr. Rivera", difficulty: 2 },
     ],
     summerOpportunities: [
@@ -567,11 +567,11 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning starts with a news meeting where editors discuss the day's stories. You spend mid-morning making calls to sources and reviewing documents for an investigative piece. After lunch, you conduct an interview and begin drafting your article. The afternoon is a race to file before deadline — writing, editing, and adding multimedia. You end with a quick social media post to promote the story.",
     courses: [
-      { code: "ENG 220", name: "Creative Writing", description: "Narrative storytelling and developing your writing voice.", bestProfessor: "Dr. Harris", difficulty: 2 },
-      { code: "COM 210", name: "Public Speaking", description: "Interview techniques and on-camera communication.", bestProfessor: "Dr. Williams", difficulty: 2 },
-      { code: "POL 101", name: "American Government", description: "Understanding government for political reporting.", bestProfessor: "Dr. Chen", difficulty: 2 },
-      { code: "PHI 220", name: "Ethics", description: "Media ethics and responsible journalism.", bestProfessor: "Dr. Martin", difficulty: 3 },
-      { code: "DIG 200", name: "Digital Media Production", description: "Video, audio, and multimedia production skills.", bestProfessor: "Dr. Foster", difficulty: 2 },
+      { code: "ENG 220", name: "Creative Writing", description: "Narrative storytelling and developing your writing voice.", bestProfessor: "Dr. Rippeon", difficulty: 2 },
+      { code: "COM 210", name: "Public Speaking", description: "Interview techniques and on-camera communication.", bestProfessor: "Dr. Martinez", difficulty: 2 },
+      { code: "POL 101", name: "American Government", description: "Understanding government for political reporting.", bestProfessor: "Dr. Roberts", difficulty: 2 },
+      { code: "PHI 220", name: "Ethics", description: "Media ethics and responsible journalism.", bestProfessor: "Dr. McKeever", difficulty: 3 },
+      { code: "DIG 200", name: "Digital Media Production", description: "Video, audio, and multimedia production skills.", bestProfessor: "Prof. Mundy", difficulty: 2 },
     ],
     summerOpportunities: [
       { title: "Newsroom Internship", type: "Internship", description: "Work at a newspaper, magazine, or digital media outlet.", timing: "Summer after Sophomore or Junior year" },
@@ -600,11 +600,11 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning starts with a field visit to a wetland restoration site, collecting water samples and monitoring species. Back at the office, you input data and update your GIS maps. After lunch, you analyze soil contamination data for an environmental impact assessment. The afternoon involves a meeting with a state agency on new regulations. You end the day drafting a section of an environmental report.",
     courses: [
-      { code: "ENV 101", name: "Environmental Science", description: "Interdisciplinary introduction to environmental systems and challenges.", bestProfessor: "Dr. Wilson", difficulty: 2 },
+      { code: "ENV 101", name: "Environmental Science", description: "Interdisciplinary introduction to environmental systems and challenges.", bestProfessor: "Dr. Chillag", difficulty: 2 },
       { code: "BIO 111", name: "Introductory Biology I", description: "Ecological foundations and biodiversity.", bestProfessor: "Dr. Johnson", difficulty: 3 },
-      { code: "CHE 115", name: "General Chemistry I", description: "Chemical processes in environmental systems.", bestProfessor: "Dr. Lee", difficulty: 3 },
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Statistical methods for environmental data analysis.", bestProfessor: "Dr. Bowen", difficulty: 3 },
-      { code: "POL 250", name: "International Relations", description: "Global environmental policy and climate agreements.", bestProfessor: "Dr. Chen", difficulty: 3 },
+      { code: "CHE 115", name: "General Chemistry I", description: "Chemical processes in environmental systems.", bestProfessor: "Dr. Snyder", difficulty: 3 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Statistical methods for environmental data analysis.", bestProfessor: "Dr. Blake", difficulty: 3 },
+      { code: "POL 250", name: "International Relations", description: "Global environmental policy and climate agreements.", bestProfessor: "Dr. Roberts", difficulty: 3 },
     ],
     summerOpportunities: [
       { title: "Environmental Research", type: "Research", description: "Field research with Davidson faculty or at an environmental research station.", timing: "Summer after Sophomore year" },
@@ -637,7 +637,7 @@ export const CAREER_PATHS: CareerPath[] = [
       { code: "CSC 231", name: "Computer Organization", description: "Understanding hardware, memory, and low-level systems — critical for exploit analysis.", bestProfessor: "Dr. Tabor", difficulty: 4 },
       { code: "CSC 222", name: "Data Structures", description: "Algorithmic thinking for analyzing and building secure systems.", bestProfessor: "Dr. Ramanujan", difficulty: 3 },
       { code: "MAT 150", name: "Discrete Mathematics", description: "Logic, number theory, and cryptographic foundations.", bestProfessor: "Dr. Hossain", difficulty: 3 },
-      { code: "PHI 220", name: "Ethics", description: "Ethical frameworks for responsible security research and disclosure.", bestProfessor: "Dr. Martin", difficulty: 3 },
+      { code: "PHI 220", name: "Ethics", description: "Ethical frameworks for responsible security research and disclosure.", bestProfessor: "Dr. McKeever", difficulty: 3 },
     ],
     summerOpportunities: [
       { title: "Security Internship", type: "Internship", description: "Work on security teams at companies like CrowdStrike, Palo Alto Networks, or major banks.", timing: "Summer after Sophomore or Junior year" },
@@ -667,10 +667,10 @@ export const CAREER_PATHS: CareerPath[] = [
     dayInLife: "Your morning starts with reviewing market updates and portfolio performance for today's client meetings. You meet with a young couple to discuss their retirement savings strategy and college planning. After lunch, you analyze a client's tax situation to optimize their year-end strategy. The afternoon involves preparing a financial plan presentation and making follow-up calls. You end the day attending a networking dinner with prospective clients.",
     courses: [
       { code: "ECO 101", name: "Principles of Economics", description: "Foundational understanding of markets, interest rates, and fiscal policy.", bestProfessor: "Dr. Griffith", difficulty: 2 },
-      { code: "ECO 315", name: "Financial Economics", description: "Asset pricing, portfolio theory, and capital market dynamics.", bestProfessor: "Dr. Anderson", difficulty: 4 },
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Risk assessment and quantitative analysis for financial planning.", bestProfessor: "Dr. Bowen", difficulty: 3 },
+      { code: "ECO 315", name: "Financial Economics", description: "Asset pricing, portfolio theory, and capital market dynamics.", bestProfessor: "Dr. Stroup", difficulty: 4 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Risk assessment and quantitative analysis for financial planning.", bestProfessor: "Dr. Blake", difficulty: 3 },
       { code: "ACC 215", name: "Financial Accounting", description: "Reading and interpreting financial statements.", bestProfessor: "Dr. Palmer", difficulty: 3 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding client behavior, risk tolerance, and decision-making.", bestProfessor: "Dr. Thompson", difficulty: 2 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Understanding client behavior, risk tolerance, and decision-making.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
     ],
     summerOpportunities: [
       { title: "Wealth Management Internship", type: "Internship", description: "Intern at firms like Edward Jones, Merrill Lynch, or RBC Wealth Management.", timing: "Summer after Sophomore or Junior year" },
@@ -699,10 +699,10 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning begins with reviewing notes from yesterday's sessions and preparing for today's clients. You see three individual therapy clients in the morning, using CBT and mindfulness techniques. After lunch, you lead a group therapy session for anxiety management. The afternoon includes a case consultation with colleagues, writing session notes, and reviewing research literature on a new treatment modality.",
     courses: [
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Survey of major psychological theories and research methods.", bestProfessor: "Dr. Thompson", difficulty: 2 },
-      { code: "PSY 230", name: "Developmental Psychology", description: "Cognitive, social, and emotional development across the lifespan.", bestProfessor: "Dr. Thompson", difficulty: 3 },
-      { code: "PSY 250", name: "Abnormal Psychology", description: "Understanding psychological disorders, diagnosis, and treatment.", bestProfessor: "Dr. Thompson", difficulty: 3 },
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Statistical methods for psychology research.", bestProfessor: "Dr. Bowen", difficulty: 3 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Survey of major psychological theories and research methods.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
+      { code: "PSY 230", name: "Developmental Psychology", description: "Cognitive, social, and emotional development across the lifespan.", bestProfessor: "Dr. Bagwell", difficulty: 3 },
+      { code: "PSY 250", name: "Abnormal Psychology", description: "Understanding psychological disorders, diagnosis, and treatment.", bestProfessor: "Dr. Bagwell", difficulty: 3 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Statistical methods for psychology research.", bestProfessor: "Dr. Blake", difficulty: 3 },
       { code: "BIO 111", name: "Introductory Biology I", description: "Biological foundations of behavior and neuroscience.", bestProfessor: "Dr. Johnson", difficulty: 3 },
     ],
     summerOpportunities: [
@@ -732,11 +732,11 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning starts with a video call to a field office in Nairobi reviewing project milestones. You spend mid-morning editing a grant proposal for USAID. After lunch, you analyze survey data from a maternal health program to measure impact. The afternoon involves a coordination meeting with partner NGOs and drafting a briefing document for your organization's leadership on policy changes in the region.",
     courses: [
-      { code: "POL 250", name: "International Relations", description: "Global political systems and international cooperation frameworks.", bestProfessor: "Dr. Chen", difficulty: 3 },
+      { code: "POL 250", name: "International Relations", description: "Global political systems and international cooperation frameworks.", bestProfessor: "Dr. Roberts", difficulty: 3 },
       { code: "ECO 101", name: "Principles of Economics", description: "Development economics and global economic systems.", bestProfessor: "Dr. Griffith", difficulty: 2 },
-      { code: "ANT 200", name: "Ethnographic Methods", description: "Qualitative research methods for understanding communities.", bestProfessor: "Dr. Park", difficulty: 3 },
+      { code: "ANT 200", name: "Ethnographic Methods", description: "Qualitative research methods for understanding communities.", bestProfessor: "Dr. Bowles", difficulty: 3 },
       { code: "SOC 101", name: "Introduction to Sociology", description: "Social structures, inequality, and institutional analysis.", bestProfessor: "Dr. Rivera", difficulty: 2 },
-      { code: "PBH 200", name: "Global Public Health", description: "Health systems and disease prevention in developing contexts.", bestProfessor: "Dr. Wilson", difficulty: 3 },
+      { code: "PBH 200", name: "Global Public Health", description: "Health systems and disease prevention in developing contexts.", bestProfessor: "Dr. Chillag", difficulty: 3 },
     ],
     summerOpportunities: [
       { title: "NGO Internship Abroad", type: "Internship", description: "Work with organizations like the UN, World Bank, Peace Corps, or smaller NGOs.", timing: "Summer after Sophomore or Junior year" },
@@ -765,11 +765,11 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning starts with a design review meeting where the team critiques a mixed-use development concept. You spend mid-morning refining floor plans in Revit and adjusting the building's environmental performance model. After lunch, you visit a construction site to check progress against your drawings. The afternoon involves a meeting with city planners about zoning requirements and sketching alternative façade designs.",
     courses: [
-      { code: "ART 120", name: "Visual Design", description: "Foundational design principles — composition, form, and spatial awareness.", bestProfessor: "Dr. Torres", difficulty: 2 },
-      { code: "ENV 101", name: "Environmental Science", description: "Sustainable design and environmental impact of the built environment.", bestProfessor: "Dr. Wilson", difficulty: 2 },
+      { code: "ART 120", name: "Visual Design", description: "Foundational design principles — composition, form, and spatial awareness.", bestProfessor: "Prof. St. Clair", difficulty: 2 },
+      { code: "ENV 101", name: "Environmental Science", description: "Sustainable design and environmental impact of the built environment.", bestProfessor: "Dr. Chillag", difficulty: 2 },
       { code: "PHY 120", name: "General Physics I", description: "Mechanics and structural engineering fundamentals.", bestProfessor: "Dr. Barker", difficulty: 3 },
-      { code: "MAT 110", name: "Calculus I", description: "Mathematical foundations for engineering and spatial calculations.", bestProfessor: "Dr. Bowen", difficulty: 3 },
-      { code: "HIS 200", name: "American History", description: "History of urban development and architectural movements.", bestProfessor: "Dr. Price", difficulty: 2 },
+      { code: "MAT 110", name: "Calculus I", description: "Mathematical foundations for engineering and spatial calculations.", bestProfessor: "Dr. Blake", difficulty: 3 },
+      { code: "HIS 200", name: "American History", description: "History of urban development and architectural movements.", bestProfessor: "Dr. Aldridge", difficulty: 2 },
     ],
     summerOpportunities: [
       { title: "Architecture Firm Internship", type: "Internship", description: "Work at architecture or urban planning firms to build portfolio.", timing: "Summer after Sophomore or Junior year" },
@@ -799,9 +799,9 @@ export const CAREER_PATHS: CareerPath[] = [
     dayInLife: "Your morning starts with a team operations meeting to plan the upcoming home game weekend. You review ticket sales data and adjust pricing strategy. Mid-morning, you join a call with a potential corporate sponsor. After lunch, you coordinate with the events team on logistics for a community outreach program. The afternoon involves reviewing a player contract draft with legal and preparing social media content for the team's channels.",
     courses: [
       { code: "ECO 101", name: "Principles of Economics", description: "Business and market fundamentals for sports industry.", bestProfessor: "Dr. Griffith", difficulty: 2 },
-      { code: "COM 210", name: "Public Speaking", description: "Media relations and public communication skills.", bestProfessor: "Dr. Williams", difficulty: 2 },
-      { code: "PSY 100", name: "Introduction to Psychology", description: "Team dynamics, motivation, and sports psychology foundations.", bestProfessor: "Dr. Thompson", difficulty: 2 },
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Sports analytics and performance data interpretation.", bestProfessor: "Dr. Bowen", difficulty: 3 },
+      { code: "COM 210", name: "Public Speaking", description: "Media relations and public communication skills.", bestProfessor: "Dr. Martinez", difficulty: 2 },
+      { code: "PSY 100", name: "Introduction to Psychology", description: "Team dynamics, motivation, and sports psychology foundations.", bestProfessor: "Dr. Bagwell", difficulty: 2 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Sports analytics and performance data interpretation.", bestProfessor: "Dr. Blake", difficulty: 3 },
       { code: "SOC 101", name: "Introduction to Sociology", description: "Sports as a social institution — culture, race, and identity in athletics.", bestProfessor: "Dr. Rivera", difficulty: 2 },
     ],
     summerOpportunities: [
@@ -833,9 +833,9 @@ export const CAREER_PATHS: CareerPath[] = [
     courses: [
       { code: "BIO 111", name: "Introductory Biology I", description: "Understanding the science foundation of healthcare.", bestProfessor: "Dr. Johnson", difficulty: 3 },
       { code: "ECO 101", name: "Principles of Economics", description: "Healthcare economics and resource allocation.", bestProfessor: "Dr. Griffith", difficulty: 2 },
-      { code: "PBH 200", name: "Global Public Health", description: "Population health, epidemiology, and health systems.", bestProfessor: "Dr. Wilson", difficulty: 3 },
-      { code: "MAT 220", name: "Probability & Statistics I", description: "Data analysis for quality improvement and outcomes research.", bestProfessor: "Dr. Bowen", difficulty: 3 },
-      { code: "POL 101", name: "American Government", description: "Healthcare policy, regulation, and the ACA.", bestProfessor: "Dr. Chen", difficulty: 2 },
+      { code: "PBH 200", name: "Global Public Health", description: "Population health, epidemiology, and health systems.", bestProfessor: "Dr. Chillag", difficulty: 3 },
+      { code: "MAT 220", name: "Probability & Statistics I", description: "Data analysis for quality improvement and outcomes research.", bestProfessor: "Dr. Blake", difficulty: 3 },
+      { code: "POL 101", name: "American Government", description: "Healthcare policy, regulation, and the ACA.", bestProfessor: "Dr. Roberts", difficulty: 2 },
     ],
     summerOpportunities: [
       { title: "Hospital Administration Internship", type: "Internship", description: "Work in hospital operations, finance, or strategy departments.", timing: "Summer after Junior year" },
@@ -864,11 +864,11 @@ export const CAREER_PATHS: CareerPath[] = [
     ],
     dayInLife: "Your morning starts reviewing condition reports for artworks arriving on loan. You spend mid-morning in the archives researching a 19th-century textile collection for an upcoming exhibition. After lunch, you walk the galleries with the exhibition designer, discussing layout and lighting. The afternoon involves writing interpretive text for a new installation and meeting with a local school group about an educational partnership. You end the day reviewing a grant application.",
     courses: [
-      { code: "ART 120", name: "Visual Design", description: "Foundational understanding of artistic principles and visual literacy.", bestProfessor: "Dr. Torres", difficulty: 2 },
-      { code: "HIS 200", name: "American History", description: "Historical context for cultural artifacts and museum collections.", bestProfessor: "Dr. Price", difficulty: 2 },
-      { code: "ENG 270", name: "Expository Writing", description: "Clear, accessible writing for exhibition labels and catalogs.", bestProfessor: "Dr. Harris", difficulty: 3 },
-      { code: "ANT 200", name: "Ethnographic Methods", description: "Material culture analysis and community-engaged research.", bestProfessor: "Dr. Park", difficulty: 3 },
-      { code: "CLA 200", name: "Classical Archaeology", description: "Understanding archaeological methods and artifact analysis.", bestProfessor: "Dr. Mitchell", difficulty: 3 },
+      { code: "ART 120", name: "Visual Design", description: "Foundational understanding of artistic principles and visual literacy.", bestProfessor: "Prof. St. Clair", difficulty: 2 },
+      { code: "HIS 200", name: "American History", description: "Historical context for cultural artifacts and museum collections.", bestProfessor: "Dr. Aldridge", difficulty: 2 },
+      { code: "ENG 270", name: "Expository Writing", description: "Clear, accessible writing for exhibition labels and catalogs.", bestProfessor: "Dr. Rippeon", difficulty: 3 },
+      { code: "ANT 200", name: "Ethnographic Methods", description: "Material culture analysis and community-engaged research.", bestProfessor: "Dr. Bowles", difficulty: 3 },
+      { code: "CLA 200", name: "Classical Archaeology", description: "Understanding archaeological methods and artifact analysis.", bestProfessor: "Prof. Smith", difficulty: 3 },
     ],
     summerOpportunities: [
       { title: "Museum Internship", type: "Internship", description: "Work at museums like the Smithsonian, MoMA, or local galleries.", timing: "Summer after Sophomore or Junior year" },
