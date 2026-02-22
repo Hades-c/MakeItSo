@@ -629,18 +629,18 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
 
   return (
     <div
-      onClick={() => setExpanded(!expanded)}
-      className={`bg-white rounded-lg border-l-[3px] border border-gray-100 cursor-pointer transition-all ${expanded ? "shadow-sm border-gray-200" : "hover:border-gray-200"} ${deptColor.border.replace("border-", "border-l-")}`}
+      onClick={() => { if (!expanded) setExpanded(true); }}
+      className={`bg-white rounded-lg border-l-[3px] border border-gray-100 transition-all ${expanded ? "shadow-sm border-gray-200" : "cursor-pointer hover:border-gray-200"} ${deptColor.border.replace("border-", "border-l-")}`}
     >
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`font-mono text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className={`font-mono text-xs font-semibold px-2.5 py-1 rounded ${deptColor.bg} ${deptColor.text}`}>
                 {course.code}
               </span>
               {course.gradRequirements.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
+                <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
                   {course.gradRequirements.join(", ")}
                 </span>
               )}
@@ -650,10 +650,10 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
                 </span>
               )}
             </div>
-            <h3 className="font-medium text-sm text-[#111111] mb-0.5">
+            <h3 className="font-medium text-[15px] text-[#111111] mb-1">
               {course.name}
             </h3>
-            <div className="flex items-center gap-2 text-xs text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
               <span>{course.department}</span>
               {realProfessor && <span>· {realProfessor}</span>}
               {course.schedule && course.schedule !== "TBA" && (
@@ -661,7 +661,12 @@ function LiveCourseCard({ course }: { course: LiveCourse }) {
               )}
             </div>
           </div>
-          <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 mt-1 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            className="shrink-0 p-1 rounded hover:bg-gray-100 transition-colors"
+          >
+            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
         </div>
 
         {expanded && (
@@ -804,38 +809,43 @@ function StaticCourseCard({ course }: { course: SeedCourse }) {
 
   return (
     <div
-      onClick={() => setExpanded(!expanded)}
-      className={`bg-white rounded-lg border-l-[3px] border border-gray-100 cursor-pointer transition-all ${expanded ? "shadow-sm border-gray-200" : "hover:border-gray-200"} ${deptColor.border.replace("border-", "border-l-")}`}
+      onClick={() => { if (!expanded) setExpanded(true); }}
+      className={`bg-white rounded-lg border-l-[3px] border border-gray-100 transition-all ${expanded ? "shadow-sm border-gray-200" : "cursor-pointer hover:border-gray-200"} ${deptColor.border.replace("border-", "border-l-")}`}
     >
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`font-mono text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className={`font-mono text-xs font-semibold px-2.5 py-1 rounded ${deptColor.bg} ${deptColor.text}`}>
                 {course.code}
               </span>
               {course.majorRequirements && course.majorRequirements.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-davidson-light text-davidson font-medium">
+                <span className="text-xs px-2 py-0.5 rounded bg-davidson-light text-davidson font-medium">
                   {formatMajorReq(course.majorRequirements)}
                 </span>
               )}
               {prof?.rmpRating != null && (
-                <span className="flex items-center gap-0.5 text-[10px] text-gray-500">
-                  <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                   {prof.rmpRating}
                 </span>
               )}
             </div>
-            <h3 className="font-medium text-sm text-[#111111] mb-0.5">
+            <h3 className="font-medium text-[15px] text-[#111111] mb-1">
               {course.name}
             </h3>
-            <div className="flex items-center gap-2 text-xs text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
               <span>{course.department}</span>
               {course.professor && <span>· {course.professor}</span>}
               <span>· {course.offered.join(", ")}</span>
             </div>
           </div>
-          <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 mt-1 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            className="shrink-0 p-1 rounded hover:bg-gray-100 transition-colors"
+          >
+            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
         </div>
 
         {expanded && (
