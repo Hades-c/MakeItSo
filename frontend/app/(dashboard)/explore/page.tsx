@@ -88,6 +88,15 @@ interface LiveCourse {
   location: string;
 }
 
+const AREA_COLORS: Record<string, { bg: string; border: string; text: string; tag: string; tagText: string }> = {
+  "natural-sciences": { bg: "bg-emerald-50/50", border: "border-emerald-200", text: "text-emerald-700", tag: "bg-emerald-100", tagText: "text-emerald-700" },
+  "math-computing": { bg: "bg-cyan-50/50", border: "border-cyan-200", text: "text-cyan-700", tag: "bg-cyan-100", tagText: "text-cyan-700" },
+  "social-sciences": { bg: "bg-blue-50/50", border: "border-blue-200", text: "text-blue-700", tag: "bg-blue-100", tagText: "text-blue-700" },
+  humanities: { bg: "bg-purple-50/50", border: "border-purple-200", text: "text-purple-700", tag: "bg-purple-100", tagText: "text-purple-700" },
+  arts: { bg: "bg-rose-50/50", border: "border-rose-200", text: "text-rose-700", tag: "bg-rose-100", tagText: "text-rose-700" },
+  languages: { bg: "bg-amber-50/50", border: "border-amber-200", text: "text-amber-700", tag: "bg-amber-100", tagText: "text-amber-700" },
+};
+
 const AREA_DESCRIPTIONS: Record<string, string> = {
   "natural-sciences": "Investigate the natural world through laboratory experimentation, field research, and scientific inquiry.",
   "math-computing": "Build computational systems and explore abstract structures through logic, algorithms, and mathematical proof.",
@@ -270,17 +279,13 @@ export default function ExplorePage() {
         )}
       </div>
 
-      {/* Step indicator */}
+      {/* Step indicator — tabs appear progressively */}
       <div className="flex items-center gap-1 text-sm border-b border-gray-100 pb-0">
         {[
-          { key: "interests" as Step, label: "Select Interests", num: "1" },
-          { key: "browse" as Step, label: "Browse Courses", num: "2" },
-          {
-            key: "recommendations" as Step,
-            label: "AI Recommendations",
-            num: "3",
-          },
-        ].map((s) => (
+          { key: "interests" as Step, label: "Select Interests", num: "1", visible: true },
+          { key: "browse" as Step, label: "Browse Courses", num: "2", visible: selectedAreas.length > 0 || step === "browse" },
+          { key: "recommendations" as Step, label: "AI Recommendations", num: "3", visible: !!recommendations || step === "recommendations" },
+        ].filter((s) => s.visible).map((s) => (
           <button
             key={s.key}
             onClick={() => {
@@ -325,6 +330,7 @@ export default function ExplorePage() {
               const isSelected = selectedAreas.includes(area.id);
               const depts: string[] = [...area.departments];
               const courseCount = allCourses.filter((c) => depts.includes(c.department)).length;
+              const ac = AREA_COLORS[area.id];
               return (
                 <div
                   key={area.id}
@@ -332,13 +338,13 @@ export default function ExplorePage() {
                   className={`p-5 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
                     isSelected
                       ? "bg-davidson text-white border-davidson shadow-sm"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm"
+                      : `${ac?.bg || "bg-white"} text-gray-700 ${ac?.border || "border-gray-200"} hover:shadow-sm`
                   }`}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-serif font-semibold text-lg">{area.label}</h3>
+                    <h3 className={`font-serif font-semibold text-lg ${!isSelected && ac ? ac.text : ""}`}>{area.label}</h3>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                      isSelected ? "bg-white/20 text-white" : `${ac?.tag || "bg-gray-100"} ${ac?.tagText || "text-gray-500"}`
                     }`}>
                       {courseCount} courses
                     </span>
@@ -359,7 +365,7 @@ export default function ExplorePage() {
                         className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${
                           isSelected
                             ? "bg-white/15 text-white/90 hover:bg-white/30"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            : `${ac?.tag || "bg-gray-100"} ${ac?.tagText || "text-gray-600"} hover:opacity-80`
                         }`}
                       >
                         {dept}
