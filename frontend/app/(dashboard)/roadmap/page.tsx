@@ -362,7 +362,7 @@ export default function RoadmapPage() {
   // Generate roadmap
   // ---------------------------------------------------------------------------
 
-  const generateRoadmap = useCallback(async () => {
+  const generateRoadmap = useCallback(async (regenerate = false) => {
     if (!selectedMajor) return;
     setLoading(true);
     setError(null);
@@ -389,6 +389,7 @@ export default function RoadmapPage() {
           classYear,
           interests: interestList,
           specificity,
+          regenerate,
         }),
       });
 
@@ -477,9 +478,9 @@ export default function RoadmapPage() {
         setInterests(savedMeta.interests);
       }
       clearSavedRoadmap();
-      setRoadmap(null);
-      setSavedMeta(null);
       setExpandedSemesters(new Set());
+      // Directly regenerate with the same params, bypassing cache
+      generateRoadmap(true);
     } else if (confirmAction === "clear") {
       clearSavedRoadmap();
       setRoadmap(null);
@@ -703,7 +704,7 @@ export default function RoadmapPage() {
                 transition={{ duration: 0.25 }}
               >
                 <Button
-                  onClick={generateRoadmap}
+                  onClick={() => generateRoadmap()}
                   className="bg-davidson hover:bg-davidson-dark text-white shadow-sm h-11 px-6"
                 >
                   <Sparkles className="mr-2 h-4 w-4" />

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { generateColdEmail } from "@/lib/gemini";
+import { connectToDatabase } from "@/lib/mongodb";
+import AiCache from "@/models/AiCache";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,10 +22,30 @@ export async function POST(req: NextRequest) {
       careerField,
       studentMajor,
       studentClassYear,
+      regenerate,
     } = await req.json();
 
     if (!alumniName || !alumniRole || !alumniCompany) {
       return NextResponse.json({ error: "Alumni details are required" }, { status: 400 });
+    }
+
+    const studentName = session.user?.name || "";
+    const cacheKey = JSON.stringify({
+      alumniName: alumniName.toLowerCase(),
+      alumniRole,
+      alumniCompany,
+      studentName: studentName.toLowerCase(),
+      careerField: careerField || "",
+    });
+
+    await connectToDatabase();
+
+    // Check cache unless regenerating
+    if (!regenerate) {
+      const cached = await AiCache.findOne({ type: "cold-email", cacheKey });
+      if (cached) {
+        return NextResponse.json({ email: cached.data, cached: true, cachedAt: cached.updatedAt });
+      }
     }
 
     const email = await generateColdEmail(
@@ -33,7 +55,7 @@ export async function POST(req: NextRequest) {
       alumniBio || "",
       alumniMajor || "",
       alumniClassYear || 2020,
-      session.user?.name || "",
+      studentName,
       studentMajor || "Undecided",
       studentClassYear || "Freshman",
       careerField || ""
@@ -42,6 +64,13 @@ export async function POST(req: NextRequest) {
     if (!email) {
       return NextResponse.json({ error: "Failed to generate email" }, { status: 500 });
     }
+
+    // Save to cache
+    await AiCache.findOneAndUpdate(
+      { type: "cold-email", cacheKey },
+      { data: email },
+      { upsert: true, new: true }
+    );
 
     return NextResponse.json({ email });
   } catch (error) {

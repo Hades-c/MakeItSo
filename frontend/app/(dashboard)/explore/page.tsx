@@ -20,6 +20,7 @@ import {
   Loader2,
   MessageSquare,
   Plus,
+  RefreshCw,
   Search,
   Sparkles,
   Star,
@@ -827,8 +828,8 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
     .filter((r) => r !== "NONE" && r !== "" && GRAD_REQ_LABELS[r])
     .map((r) => GRAD_REQ_LABELS[r] || r);
 
-  async function fetchAiInsights() {
-    if (aiInsights || loadingInsights) return;
+  async function fetchAiInsights(regenerate = false) {
+    if ((aiInsights && !regenerate) || loadingInsights) return;
     setLoadingInsights(true);
     try {
       const res = await fetch("/api/ai/course-insights", {
@@ -850,6 +851,7 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
               relevance: cr.relevance,
             })),
           },
+          regenerate,
         }),
       });
       if (res.ok) {
@@ -863,8 +865,8 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
     }
   }
 
-  async function fetchProfSummary() {
-    if (profSummary || loadingProfSummary || !prof) return;
+  async function fetchProfSummary(regenerate = false) {
+    if ((profSummary && !regenerate) || loadingProfSummary || !prof) return;
     setLoadingProfSummary(true);
     try {
       const res = await fetch("/api/ai/professor-summary", {
@@ -879,6 +881,7 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
           rmpNumRatings: prof.rmpNumRatings,
           rmpWouldTakeAgain: prof.rmpWouldTakeAgain,
           rmpTags: prof.rmpTags,
+          regenerate,
         }),
       });
       if (res.ok) {
@@ -1126,9 +1129,20 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
                                   </div>
                                   <p className="text-sm text-[#555555]">{prof.name} · {course.code} {course.name}</p>
                                 </div>
-                                <button onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                                  <X className="h-5 w-5" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  {profSummary && !loadingProfSummary && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); fetchProfSummary(true); }}
+                                      className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-davidson px-3 py-1.5 rounded-lg border border-gray-200 hover:border-davidson/30 hover:bg-davidson-light transition-colors"
+                                    >
+                                      <RefreshCw className="h-3.5 w-3.5" />
+                                      Regenerate
+                                    </button>
+                                  )}
+                                  <button onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                                    <X className="h-5 w-5" />
+                                  </button>
+                                </div>
                               </div>
 
                               {/* Modal content */}
@@ -1423,6 +1437,15 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
                                 Add to Plan
                               </button>
                             )
+                          )}
+                          {aiInsights && !loadingInsights && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); fetchAiInsights(true); }}
+                              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-davidson px-3 py-1.5 rounded-lg border border-gray-200 hover:border-davidson/30 hover:bg-davidson-light transition-colors"
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                              Regenerate
+                            </button>
                           )}
                           <button onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                             <X className="h-5 w-5" />

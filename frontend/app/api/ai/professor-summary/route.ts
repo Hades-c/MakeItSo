@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { generateProfessorSummary } from "@/lib/gemini";
+import { connectToDatabase } from "@/lib/mongodb";
+import AiCache from "@/models/AiCache";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +21,7 @@ export async function POST(req: NextRequest) {
       rmpNumRatings,
       rmpWouldTakeAgain,
       rmpTags,
+      regenerate,
     } = await req.json();
 
     if (!professorName || !courseCode) {
@@ -26,6 +29,18 @@ export async function POST(req: NextRequest) {
         { error: "professorName and courseCode are required" },
         { status: 400 }
       );
+    }
+
+    const cacheKey = JSON.stringify({ professorName: professorName.toLowerCase(), courseCode: courseCode.toUpperCase() });
+
+    await connectToDatabase();
+
+    // Check cache unless regenerating
+    if (!regenerate) {
+      const cached = await AiCache.findOne({ type: "professor-summary", cacheKey });
+      if (cached) {
+        return NextResponse.json({ summary: cached.data, cached: true, cachedAt: cached.updatedAt });
+      }
     }
 
     // Fetch real reviews from RateMyProfessors
@@ -85,6 +100,13 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Save to cache
+    await AiCache.findOneAndUpdate(
+      { type: "professor-summary", cacheKey },
+      { data: summary },
+      { upsert: true, new: true }
+    );
 
     return NextResponse.json({ summary });
   } catch (error) {

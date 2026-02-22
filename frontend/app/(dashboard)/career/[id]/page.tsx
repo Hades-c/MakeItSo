@@ -20,6 +20,7 @@ import {
   Loader2,
   Mail,
   Map,
+  RefreshCw,
   Sparkles,
   Star,
   Sun,
@@ -200,10 +201,10 @@ export default function CareerDetailPage() {
     { id: "roadmap", label: "Roadmap" },
   ];
 
-  async function generateRoadmap() {
+  async function generateRoadmap(regenerate = false) {
     setRoadmapLoading(true);
     setRoadmapError(false);
-    setCareerPlan(null);
+    if (regenerate) setCareerPlan(null);
     try {
       const completedCourses = userPlanCourses
         .filter((c) => c.status === "completed")
@@ -216,6 +217,7 @@ export default function CareerDetailPage() {
           major: "Undecided",
           classYear: "Freshman",
           completedCourses,
+          regenerate,
         }),
       });
       if (res.ok) {
@@ -231,9 +233,9 @@ export default function CareerDetailPage() {
     }
   }
 
-  async function generateEmail(alumni: DavidsonAlumni) {
+  async function generateEmail(alumni: DavidsonAlumni, regenerate = false) {
     setSelectedAlumni(alumni);
-    setColdEmail(null);
+    if (regenerate) setColdEmail(null);
     setEmailLoading(true);
     try {
       const res = await fetch("/api/ai/cold-email", {
@@ -250,6 +252,7 @@ export default function CareerDetailPage() {
           studentMajor: "",
           studentClassYear: "Sophomore",
           careerField: careerPath?.title || "",
+          regenerate,
         }),
       });
       if (res.ok) {
@@ -658,7 +661,7 @@ export default function CareerDetailPage() {
                 Generate an AI-powered roadmap with recommended courses, activities, and networking strategies tailored to this career path.
               </p>
               <Button
-                onClick={generateRoadmap}
+                onClick={() => generateRoadmap()}
                 className="bg-davidson hover:bg-davidson-dark text-white shadow-sm"
               >
                 <Sparkles className="h-4 w-4 mr-1.5" />
@@ -689,7 +692,7 @@ export default function CareerDetailPage() {
             <div className="bg-white border border-red-200 rounded-xl p-8 text-center shadow-sm">
               <p className="text-sm text-red-600 mb-4">Failed to generate roadmap. Please try again.</p>
               <Button
-                onClick={generateRoadmap}
+                onClick={() => generateRoadmap()}
                 variant="outline"
                 className="border-davidson text-davidson hover:bg-davidson-light"
               >
@@ -841,7 +844,7 @@ export default function CareerDetailPage() {
               {/* Regenerate button */}
               <div className="text-center pt-2">
                 <Button
-                  onClick={generateRoadmap}
+                  onClick={() => generateRoadmap(true)}
                   variant="outline"
                   size="sm"
                   className="text-xs border-gray-200 text-gray-500 hover:text-davidson hover:border-davidson"
@@ -918,16 +921,26 @@ export default function CareerDetailPage() {
                       </ul>
                     </div>
                   )}
-                  <Button
-                    onClick={copyEmail}
-                    className="w-full bg-davidson hover:bg-davidson-dark text-white rounded-lg"
-                  >
-                    {emailCopied ? (
-                      <><Check className="mr-1.5 h-3.5 w-3.5" /> Copied</>
-                    ) : (
-                      <><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Email</>
-                    )}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={copyEmail}
+                      className="flex-1 bg-davidson hover:bg-davidson-dark text-white rounded-lg"
+                    >
+                      {emailCopied ? (
+                        <><Check className="mr-1.5 h-3.5 w-3.5" /> Copied</>
+                      ) : (
+                        <><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Email</>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { if (selectedAlumni) generateEmail(selectedAlumni, true); }}
+                      disabled={emailLoading}
+                      className="border-gray-200 text-gray-500 hover:text-davidson hover:border-davidson"
+                    >
+                      {emailLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
                 </div>
               )}
             </motion.div>
