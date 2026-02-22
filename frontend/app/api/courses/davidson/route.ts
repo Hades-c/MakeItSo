@@ -75,6 +75,12 @@ function cleanDescription(desc: string): string {
   cleaned = cleaned.replace(/\s*Notes?:\s.*/i, "");
   // Clean up trailing/leading whitespace
   cleaned = cleaned.trim();
+  // Truncate long descriptions at the last sentence boundary within 300 chars
+  if (cleaned.length > 300) {
+    const truncated = cleaned.slice(0, 300);
+    const lastPeriod = truncated.lastIndexOf(". ");
+    cleaned = lastPeriod > 80 ? truncated.slice(0, lastPeriod + 1) : truncated.trimEnd() + "...";
+  }
   // Capitalize first letter
   if (cleaned.length > 0) {
     cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
