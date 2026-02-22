@@ -60,7 +60,11 @@ function stripHtml(html: string): string {
 
 function cleanDescription(desc: string): string {
   // Remove instructor prefix like "Instructor B. Baker", "Instructor: J. R. Smith"
-  let cleaned = desc.replace(/^Instructor:?\s+(?:[A-Z][.\w'-]*\s+){1,3}/i, "");
+  // Only match name parts that look like initials (X.) or capitalized short words before a lowercase word begins
+  let cleaned = desc.replace(
+    /^Instructor:?\s+(?:[A-Z]\.?\s+)*[A-Z][a-z'-]+\s*/i,
+    ""
+  );
   // Remove prerequisites suffix (everything from "Prerequisites" or "Prerequisite" onward)
   cleaned = cleaned.replace(/\s*Prerequisites?[:.\s].*/i, "");
   // Remove "Corequisite" suffix
@@ -70,7 +74,12 @@ function cleanDescription(desc: string): string {
   // Remove "Note:" or "Notes:" suffix
   cleaned = cleaned.replace(/\s*Notes?:\s.*/i, "");
   // Clean up trailing/leading whitespace
-  return cleaned.trim();
+  cleaned = cleaned.trim();
+  // Capitalize first letter
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+  return cleaned;
 }
 
 function formatInstructorName(instructor: DavidsonInstructor): string {

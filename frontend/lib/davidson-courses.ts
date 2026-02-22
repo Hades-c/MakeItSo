@@ -1889,12 +1889,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Introduction to financial accounting principles including the preparation and interpretation of financial statements — balance sheets, income statements, and cash flow statements.",
     credits: 4, department: "Economics", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["elective"], difficulty: 3,
-    professor: "Dr. David Palmer", professorRating: 3.8,
+    professor: "Ben Baker", professorRating: 4.8,
     professorInfo: {
-      name: "Dr. David Palmer",
-      title: "Visiting Assistant Professor of Economics",
-      rmpRating: 3.8, rmpDifficulty: 3.2, rmpNumRatings: 14, rmpWouldTakeAgain: 72,
-      rmpTags: ["Clear grading criteria", "Gives good feedback", "Accessible outside class"],
+      name: "Ben Baker",
+      title: "Professor of Economics",
+      rmpRating: 4.8, rmpDifficulty: 2.7, rmpNumRatings: 18, rmpWouldTakeAgain: 100,
+      rmpTags: ["Hilarious", "Amazing Lectures", "Caring", "Test Heavy", "Accessible Outside Class"],
     },
     courseInsights: {
       keyTopics: ["Balance sheets", "Income statements", "Cash flow analysis", "Accrual accounting", "Financial ratios", "Revenue recognition"],
