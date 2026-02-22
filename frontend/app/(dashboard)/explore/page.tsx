@@ -272,20 +272,22 @@ export default function ExplorePage() {
   // Build enriched courses: only courses from the live schedule, enriched with static metadata
   const allCourses: EnrichedCourse[] = liveCourses.map((lc) => {
     const staticMatch = findStaticCourse(lc.code);
+    const isExactMatch = staticMatch?.code === lc.code;
 
-    // Resolve professor: prefer live non-Staff, then static
+    // Resolve professor: prefer live non-Staff, then exact static match only
+    // Fuzzy matches (e.g. ECO 211→ECO 202) have wrong professors, so skip those
     const prof = lc.professor && lc.professor !== "Staff"
       ? lc.professor
-      : staticMatch?.professor || lc.professor;
+      : (isExactMatch ? staticMatch?.professor : undefined) || lc.professor;
 
-    // Resolve professor RMP info
-    const profInfo = staticMatch?.professorInfo
+    // Resolve professor RMP info — only from exact static match or live professor lookup
+    const profInfo = (isExactMatch ? staticMatch?.professorInfo : undefined)
       ?? (prof && prof !== "Staff" ? lookupProfRMP(prof) : undefined);
 
     return {
       code: lc.code,
       name: lc.name,
-      description: staticMatch?.description || lc.description,
+      description: (isExactMatch ? staticMatch?.description : undefined) || lc.description,
       department: lc.department,
       deptCode: lc.deptCode,
       professor: prof,
@@ -302,8 +304,8 @@ export default function ExplorePage() {
       majorRequirements: CATALOG_MAJOR_REQUIREMENTS[lc.code],
       difficulty: staticMatch?.difficulty,
       professorInfo: profInfo,
-      courseInsights: staticMatch?.courseInsights,
-      careerRelevance: staticMatch?.careerRelevance ?? [],
+      courseInsights: isExactMatch ? staticMatch?.courseInsights : undefined,
+      careerRelevance: (isExactMatch ? staticMatch?.careerRelevance : undefined) ?? [],
       isLive: true,
       hasStaticMatch: !!staticMatch,
     };
@@ -750,6 +752,14 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
   } | null>(null);
   const [loadingProfSummary, setLoadingProfSummary] = useState(false);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showAiModal || showProfModal) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [showAiModal, showProfModal]);
+
   // Professor resolution: already merged in EnrichedCourse
   const professorName = course.professor && course.professor !== "Staff" ? course.professor : null;
   const prof = course.professorInfo ?? (professorName ? lookupProfRMP(professorName) : undefined);
@@ -1037,14 +1047,15 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] px-4"
+                            className="fixed inset-0 z-[100]"
                           >
                             <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} />
+                            <div className="fixed inset-0 md:left-[240px] z-[101] flex items-start justify-start pt-[6vh] px-4 md:px-8 overflow-y-auto">
                             <motion.div
-                              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                              initial={{ opacity: 0, scale: 0.98, y: 12 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-y-auto z-[101]"
+                              exit={{ opacity: 0, scale: 0.98, y: 12 }}
+                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-y-auto"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {/* Modal header */}
@@ -1168,6 +1179,7 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                                 )}
                               </div>
                             </motion.div>
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>, document.body)}
@@ -1315,14 +1327,15 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] px-4"
+                    className="fixed inset-0 z-[100]"
                   >
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
+                    <div className="fixed inset-0 md:left-[240px] z-[101] flex items-start justify-start pt-[6vh] px-4 md:px-8 overflow-y-auto">
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                      initial={{ opacity: 0, scale: 0.98, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-y-auto z-[101]"
+                      exit={{ opacity: 0, scale: 0.98, y: 12 }}
+                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-y-auto"
                     >
                       {/* Modal header */}
                       <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
@@ -1418,6 +1431,7 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                         )}
                       </div>
                     </motion.div>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>, document.body)}
