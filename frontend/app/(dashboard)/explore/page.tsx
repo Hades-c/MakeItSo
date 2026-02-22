@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -1008,21 +1009,22 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                         </button>
                       </div>
 
-                      {/* Professor Summary Modal */}
+                      {/* Professor Summary Modal — portaled to body */}
+                      {typeof document !== "undefined" && createPortal(
                       <AnimatePresence>
                         {showProfModal && (
                           <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4"
+                            className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] px-4"
                           >
                             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} />
                             <motion.div
                               initial={{ opacity: 0, scale: 0.95, y: 12 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[85vh] overflow-y-auto z-10"
+                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[85vh] overflow-y-auto z-10"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {/* Modal header */}
@@ -1148,7 +1150,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                             </motion.div>
                           </motion.div>
                         )}
-                      </AnimatePresence>
+                      </AnimatePresence>, document.body)}
                     </div>
                   )}
                 </div>
@@ -1267,21 +1269,22 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                 </button>
               </div>
 
-              {/* AI Deep Dive Modal */}
+              {/* AI Deep Dive Modal — portaled to body */}
+              {typeof document !== "undefined" && createPortal(
               <AnimatePresence>
                 {showAiModal && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 flex items-start justify-center pt-[6vh] px-4"
+                    className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] px-4"
                   >
                     <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[85vh] overflow-y-auto z-10"
+                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[85vh] overflow-y-auto z-10"
                     >
                       {/* Modal header */}
                       <div className="sticky top-0 bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
@@ -1379,7 +1382,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                     </motion.div>
                   </motion.div>
                 )}
-              </AnimatePresence>
+              </AnimatePresence>, document.body)}
             </div>
           )}
       </div>
