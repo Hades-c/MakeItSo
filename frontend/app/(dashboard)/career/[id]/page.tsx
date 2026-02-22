@@ -159,6 +159,14 @@ export default function CareerDetailPage() {
     }
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Lock body scroll when cold email modal is open
+  useEffect(() => {
+    if (selectedAlumni) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [selectedAlumni]);
+
   const planCourseCodes = new Set(userPlanCourses.map((c) => c.courseCode));
 
   async function addCourseToPlan(courseCode: string, courseName: string) {
