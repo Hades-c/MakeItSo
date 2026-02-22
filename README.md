@@ -2,7 +2,7 @@
 
 **AI-powered course and career planning for Davidson College students.**
 
-Built for hack@DAVIDSON 2025.
+Built for hack@DAVIDSON 2026.
 
 ---
 
