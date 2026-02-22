@@ -1338,7 +1338,7 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                     className="fixed inset-0 z-[100]"
                   >
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
-                    <div className="fixed inset-0 md:left-[240px] z-[101] overflow-y-auto p-4 md:p-8 pt-[6vh]">
+                    <div className="fixed inset-0 md:left-[240px] z-[101] overflow-y-auto p-4 md:p-8 py-[6vh]">
                     <div className="max-w-5xl mx-auto">
                     <motion.div
                       initial={{ opacity: 0, scale: 0.98, y: 12 }}
