@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import {
   BookOpen,
   Brain,
   Briefcase,
+  Check,
   ChevronDown,
   ChevronRight,
   Filter,
@@ -18,6 +19,8 @@ import {
   Lightbulb,
   Loader2,
   MessageSquare,
+  Plus,
+  RefreshCw,
   Search,
   Sparkles,
   Star,
@@ -28,7 +31,7 @@ import {
   Zap,
 } from "lucide-react";
 import { SUBJECT_AREAS } from "@/lib/utils";
-import { DAVIDSON_COURSES, type SeedCourse, type ProfessorRMPData } from "@/lib/davidson-courses";
+import { DAVIDSON_COURSES, CATALOG_MAJOR_REQUIREMENTS, type SeedCourse, type ProfessorRMPData } from "@/lib/davidson-courses";
 // Major name -> abbreviation map
 const MAJOR_ABBREV: Record<string, string> = {
   "Computer Science": "CSC",
@@ -87,6 +90,36 @@ interface LiveCourse {
   gradRequirements: string[];
   schedule: string;
   location: string;
+}
+
+// Enriched course: live data as primary, optionally enriched with static metadata
+interface EnrichedCourse {
+  // Core fields (from live API, or static fallback)
+  code: string;
+  name: string;
+  description: string;
+  department: string;
+  deptCode?: string;
+  professor: string;
+  instructors: string[];
+  sections: number;
+  enrollment?: { current: number; max: number };
+  gradRequirements: string[];
+  schedule?: string;
+  location?: string;
+  // Static enrichment (from DAVIDSON_COURSES fuzzy match)
+  credits?: number;
+  prerequisites: string[];
+  offered: ("Fall" | "Spring" | "Summer")[];
+  tags?: string[];
+  majorRequirements?: string[];
+  difficulty?: number;
+  professorInfo?: ProfessorRMPData;
+  courseInsights?: { keyTopics?: string[]; skillsGained?: string[] };
+  careerRelevance: { field: string; relevance: number }[];
+  // Source tracking
+  isLive: boolean;        // true if from live API
+  hasStaticMatch: boolean; // true if enriched with static data
 }
 
 const AREA_TAG_COLORS: Record<string, string> = {
@@ -214,6 +247,53 @@ export default function ExplorePage() {
     }>;
   } | null>(null);
 
+  // Plan state for "Add to Plan" buttons
+  const [userPlanCourses, setUserPlanCourses] = useState<{ courseCode: string; courseName: string; status: string; semester: string; year: number }[]>([]);
+  const [addingToPlan, setAddingToPlan] = useState<string | null>(null);
+  const planCourseCodes = new Set(userPlanCourses.map((c) => c.courseCode));
+
+  const fetchUserPlan = useCallback(async () => {
+    try {
+      const res = await fetch("/api/plans");
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserPlan();
+  }, [fetchUserPlan]);
+
+  async function addCourseToPlan(courseCode: string, courseName: string) {
+    setAddingToPlan(courseCode);
+    try {
+      const currentYear = new Date().getFullYear();
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseCode,
+          courseName,
+          semester: "Fall",
+          year: currentYear,
+          status: "planned",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setAddingToPlan(null);
+    }
+  }
+
   // Fetch live courses from Davidson API
   useEffect(() => {
     async function fetchLive() {
@@ -239,17 +319,47 @@ export default function ExplorePage() {
     );
   };
 
-  // Build a set of static course codes for quick lookup
-  const staticCodes = new Set(DAVIDSON_COURSES.map((c) => c.code));
+  // Build enriched courses: only courses from the live schedule, enriched with static metadata
+  const allCourses: EnrichedCourse[] = liveCourses.map((lc) => {
+    const staticMatch = findStaticCourse(lc.code);
+    const isExactMatch = staticMatch?.code === lc.code;
 
-  // Live-only courses: courses from the API that don't exist in our static data
-  const liveOnlyCourses = liveCourses.filter((c) => !staticCodes.has(c.code));
+    // Resolve professor: prefer live non-Staff, then exact static match only
+    // Fuzzy matches (e.g. ECO 211→ECO 202) have wrong professors, so skip those
+    const prof = lc.professor && lc.professor !== "Staff"
+      ? lc.professor
+      : (isExactMatch ? staticMatch?.professor : undefined) || lc.professor;
 
-  // Combined courses: static (rich data with RMP) first, then live-only extras
-  const allCourses: (SeedCourse | LiveCourse)[] = [
-    ...DAVIDSON_COURSES,
-    ...liveOnlyCourses,
-  ];
+    // Resolve professor RMP info — only from exact static match or live professor lookup
+    const profInfo = (isExactMatch ? staticMatch?.professorInfo : undefined)
+      ?? (prof && prof !== "Staff" ? lookupProfRMP(prof) : undefined);
+
+    return {
+      code: lc.code,
+      name: lc.name,
+      description: (isExactMatch ? staticMatch?.description : undefined) || lc.description,
+      department: lc.department,
+      deptCode: lc.deptCode,
+      professor: prof,
+      instructors: lc.instructors,
+      sections: lc.sections,
+      enrollment: lc.enrollment,
+      gradRequirements: lc.gradRequirements,
+      schedule: lc.schedule,
+      location: lc.location,
+      credits: staticMatch?.credits,
+      prerequisites: staticMatch?.prerequisites ?? [],
+      offered: staticMatch?.offered ?? [],
+      tags: staticMatch?.tags,
+      majorRequirements: CATALOG_MAJOR_REQUIREMENTS[lc.code],
+      difficulty: staticMatch?.difficulty,
+      professorInfo: profInfo,
+      courseInsights: isExactMatch ? staticMatch?.courseInsights : undefined,
+      careerRelevance: (isExactMatch ? staticMatch?.careerRelevance : undefined) ?? [],
+      isLive: true,
+      hasStaticMatch: !!staticMatch,
+    };
+  });
 
   // Departments available from selected areas
   const areaDepartments: string[] = SUBJECT_AREAS.filter((a) =>
@@ -267,11 +377,17 @@ export default function ExplorePage() {
       ? c.code.toLowerCase().includes(q) ||
         c.name.toLowerCase().includes(q) ||
         c.department.toLowerCase().includes(q) ||
-        ("professor" in c && c.professor
-          ? c.professor.toLowerCase().includes(q)
-          : false)
+        (c.professor ? c.professor.toLowerCase().includes(q) : false)
       : true;
     return matchesDept && matchesSearch;
+  }).sort((a, b) => {
+    // Major requirements first, then by course number
+    const aIsMajorReq = a.majorRequirements && a.majorRequirements.length > 0 ? 1 : 0;
+    const bIsMajorReq = b.majorRequirements && b.majorRequirements.length > 0 ? 1 : 0;
+    if (aIsMajorReq !== bIsMajorReq) return bIsMajorReq - aIsMajorReq;
+    const aNum = parseInt(a.code.replace(/\D+/g, ""), 10) || 0;
+    const bNum = parseInt(b.code.replace(/\D+/g, ""), 10) || 0;
+    return aNum - bNum;
   });
 
   const departments = Array.from(
@@ -281,9 +397,15 @@ export default function ExplorePage() {
   async function getRecommendations() {
     setLoading(true);
     try {
-      const interests = SUBJECT_AREAS.filter((a) =>
+      const areaLabels = SUBJECT_AREAS.filter((a) =>
         selectedAreas.includes(a.id)
       ).map((a) => a.label);
+      const interests = areaLabels.length > 0 ? areaLabels : [...selectedDepartments];
+
+      if (interests.length === 0) {
+        setLoading(false);
+        return;
+      }
 
       const res = await fetch("/api/ai/recommendations", {
         method: "POST",
@@ -335,7 +457,7 @@ export default function ExplorePage() {
       <div className="flex items-center gap-1 text-sm border-b border-gray-100 pb-0">
         {[
           { key: "interests" as Step, label: "Select Interests", num: "1", visible: true },
-          { key: "browse" as Step, label: "Browse Courses", num: "2", visible: selectedAreas.length > 0 || step === "browse" },
+          { key: "browse" as Step, label: "Browse Courses", num: "2", visible: selectedAreas.length > 0 || selectedDepartments.length > 0 || step === "browse" },
           { key: "recommendations" as Step, label: "AI Recommendations", num: "3", visible: !!recommendations || step === "recommendations" },
         ].filter((s) => s.visible).map((s) => (
           <button
@@ -394,7 +516,7 @@ export default function ExplorePage() {
                   }`}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-serif font-semibold text-lg">{area.label}</h3>
+                    <h3 className={`font-serif font-semibold text-lg ${isSelected ? "" : "text-davidson"}`}>{area.label}</h3>
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       isSelected ? "bg-white/20 text-white" : "bg-gray-50 text-gray-500"
                     }`}>
@@ -415,7 +537,6 @@ export default function ExplorePage() {
                             setSelectedDepartments((prev) =>
                               prev.includes(dept) ? prev.filter((d) => d !== dept) : [...prev, dept]
                             );
-                            if (!selectedAreas.includes(area.id)) toggleArea(area.id);
                           }}
                           className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
                             isSelected
@@ -437,7 +558,7 @@ export default function ExplorePage() {
             })}
           </div>
 
-          {selectedAreas.length > 0 && (
+          {(selectedAreas.length > 0 || selectedDepartments.length > 0) && (
             <div className="flex gap-3 pt-1">
               <Button
                 onClick={() => setStep("browse")}
@@ -537,19 +658,9 @@ export default function ExplorePage() {
 
           {/* Course list */}
           <div className="space-y-2">
-            {filteredCourses.slice(0, 50).map((course) =>
-              "careerRelevance" in course ? (
-                <StaticCourseCard
-                  key={course.code}
-                  course={course as SeedCourse}
-                />
-              ) : (
-                <LiveCourseCard
-                  key={course.code}
-                  course={course as LiveCourse}
-                />
-              )
-            )}
+            {filteredCourses.slice(0, 50).map((course) => (
+              <CourseCard key={course.code} course={course} planCourseCodes={planCourseCodes} addingToPlan={addingToPlan} onAddToPlan={addCourseToPlan} />
+            ))}
             {filteredCourses.length > 50 && (
               <p className="text-sm text-gray-400 text-center py-6">
                 Showing 50 of {filteredCourses.length} courses. Use search to
@@ -587,9 +698,13 @@ export default function ExplorePage() {
 
           <div className="space-y-2">
             {recommendations.recommendations.map((rec, i) => {
-              // Look up full course data — fuzzy match static, then live
-              const staticCourse = findStaticCourse(rec.code);
-              const liveCourse = liveCourses.find((c) => c.code === rec.code);
+              // Find matching enriched course by exact code or fuzzy match
+              const match = allCourses.find((c) => c.code === rec.code)
+                || allCourses.find((c) => {
+                  const rm = rec.code.match(/^([A-Z]{2,4})\s*(\d+)/);
+                  const cm = c.code.match(/^([A-Z]{2,4})\s*(\d+)/);
+                  return rm && cm && rm[1] === cm[1] && Math.abs(parseInt(rm[2]) - parseInt(cm[2])) <= 5;
+                });
 
               return (
                 <div key={i} className="relative">
@@ -612,14 +727,15 @@ export default function ExplorePage() {
                     </span>
                   </div>
 
-                  {staticCourse ? (
-                    <StaticCourseCard
-                      course={staticCourse}
+                  {match ? (
+                    <CourseCard
+                      course={match}
                       aiReason={rec.reason}
                       aiCareerImpact={rec.careerImpact}
+                      planCourseCodes={planCourseCodes}
+                      addingToPlan={addingToPlan}
+                      onAddToPlan={addCourseToPlan}
                     />
-                  ) : liveCourse ? (
-                    <LiveCourseCard course={liveCourse} aiReason={rec.reason} />
                   ) : (
                     /* Fallback for courses not in our data */
                     <div className="bg-white rounded-lg border border-gray-100 p-5 hover:border-gray-200 transition-all">
@@ -675,209 +791,8 @@ function RatingBar({
   );
 }
 
-/* ===== Live course card (courses from Davidson API without static RMP data) ===== */
-function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const realProfessor =
-    course.professor && course.professor !== "Staff"
-      ? course.professor
-      : null;
-  const realInstructors = course.instructors.filter((i) => i !== "Staff");
-  const prof = realProfessor ? lookupProfRMP(realProfessor) : undefined;
-  const deptColor = getDeptColor(course.department);
-  // Filter out meaningless grad requirements and map to readable labels
-  const gradReqs = course.gradRequirements
-    .filter((r) => r !== "NONE" && r !== "" && GRAD_REQ_LABELS[r])
-    .map((r) => GRAD_REQ_LABELS[r] || r);
-
-  return (
-    <div
-      onClick={() => { if (!expanded) setExpanded(true); }}
-      className={`bg-white rounded-lg border-l-[3px] border border-gray-100 transition-all ${expanded ? "shadow-sm border-gray-200" : "cursor-pointer hover:border-gray-200"} ${deptColor.border.replace("border-", "border-l-")}`}
-    >
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className={`font-mono text-xs font-semibold px-2.5 py-1 rounded ${deptColor.bg} ${deptColor.text}`}>
-                {course.code}
-              </span>
-              {gradReqs.length > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
-                  {gradReqs.join(", ")}
-                </span>
-              )}
-              {prof?.rmpRating != null && (
-                <span className="flex items-center gap-0.5 text-xs text-gray-500">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                  {prof.rmpRating}
-                </span>
-              )}
-              {course.sections > 1 && (
-                <span className="text-xs text-gray-400">
-                  {course.sections} sections
-                </span>
-              )}
-            </div>
-            <h3 className="font-medium text-[15px] text-[#111111] mb-1">
-              {course.name}
-            </h3>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <span>{course.department}</span>
-              {realProfessor && <span>· {realProfessor}</span>}
-            </div>
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            className="shrink-0 p-1 rounded hover:bg-gray-100 transition-colors"
-          >
-            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
-          </button>
-        </div>
-
-        {expanded && (
-          <div className="mt-4 space-y-4 animate-fade-in border-t border-gray-100 pt-4">
-            {aiReason && (
-              <div className="flex items-start gap-2 rounded-lg bg-davidson-light/50 border border-davidson/10 p-3">
-                <Sparkles className="h-4 w-4 text-davidson shrink-0 mt-0.5" />
-                <p className="text-sm text-[#555555] leading-relaxed">{aiReason}</p>
-              </div>
-            )}
-
-            {course.description && (
-              <p className="text-sm text-[#555555] leading-relaxed">
-                {course.description}
-              </p>
-            )}
-
-            {realProfessor && (
-              <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm font-medium text-gray-700">
-                    {realProfessor}
-                  </span>
-                </div>
-                {prof?.title && (
-                  <p className="text-xs text-gray-400 ml-6">{prof.title}</p>
-                )}
-                {prof?.rmpRating != null && (
-                  <div className="ml-6 space-y-2">
-                    <div className="flex flex-wrap items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                        <span className="font-semibold text-sm text-[#111111]">
-                          {prof.rmpRating}
-                        </span>
-                        <span className="text-gray-400">/5</span>
-                      </span>
-                      {prof.rmpWouldTakeAgain != null && (
-                        <span className="flex items-center gap-1 text-[#555555]">
-                          <ThumbsUp className="h-3 w-3" />
-                          {prof.rmpWouldTakeAgain}% would take again
-                        </span>
-                      )}
-                      {prof.rmpDifficulty != null && (
-                        <span className="flex items-center gap-1 text-[#555555]">
-                          <Zap className="h-3 w-3" />
-                          {prof.rmpDifficulty} difficulty
-                        </span>
-                      )}
-                      {prof.rmpNumRatings != null && (
-                        <span className="flex items-center gap-1 text-gray-400">
-                          <Users className="h-3 w-3" />
-                          {prof.rmpNumRatings} ratings
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-gray-400 w-14">
-                          Quality
-                        </span>
-                        <RatingBar
-                          value={prof.rmpRating}
-                          max={5}
-                          color={
-                            prof.rmpRating >= 4
-                              ? "bg-emerald-500"
-                              : prof.rmpRating >= 3
-                                ? "bg-amber-400"
-                                : "bg-red-400"
-                          }
-                        />
-                      </div>
-                      {prof.rmpDifficulty != null && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400 w-14">
-                            Difficulty
-                          </span>
-                          <RatingBar
-                            value={prof.rmpDifficulty}
-                            max={5}
-                            color={
-                              prof.rmpDifficulty <= 2.5
-                                ? "bg-emerald-500"
-                                : prof.rmpDifficulty <= 3.5
-                                  ? "bg-amber-400"
-                                  : "bg-orange-500"
-                            }
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {prof.rmpTags && prof.rmpTags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {prof.rmpTags.slice(0, 5).map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-600 border-gray-200"
-                          >
-                            <MessageSquare className="h-2.5 w-2.5" />
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {realInstructors.length > 1 && (
-                  <p className="text-xs text-gray-400 ml-6">
-                    All instructors: {realInstructors.join(", ")}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-4">
-              {course.schedule && course.schedule !== "TBA" && (
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="text-xs text-[#555555]">
-                    {course.schedule}
-                  </span>
-                </div>
-              )}
-              {course.location && course.location !== "TBA" && (
-                <div className="flex items-center gap-2">
-                  <Filter className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="text-xs text-[#555555]">
-                    {course.location}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ===== Static course card (from davidson-courses.ts) ===== */
-function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCourse; aiReason?: string; aiCareerImpact?: string[] }) {
+/* ===== Unified course card (live-first with static enrichment) ===== */
+function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingToPlan, onAddToPlan }: { course: EnrichedCourse; aiReason?: string; aiCareerImpact?: string[]; planCourseCodes?: Set<string>; addingToPlan?: string | null; onAddToPlan?: (code: string, name: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [aiInsights, setAiInsights] = useState<{
     courseHighlights?: string;
@@ -896,10 +811,25 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
   } | null>(null);
   const [loadingProfSummary, setLoadingProfSummary] = useState(false);
 
-  const prof = course.professorInfo;
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showAiModal || showProfModal) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [showAiModal, showProfModal]);
 
-  async function fetchAiInsights() {
-    if (aiInsights || loadingInsights) return;
+  // Professor resolution: already merged in EnrichedCourse
+  const professorName = course.professor && course.professor !== "Staff" ? course.professor : null;
+  const prof = course.professorInfo ?? (professorName ? lookupProfRMP(professorName) : undefined);
+  const realInstructors = course.instructors.filter((i) => i !== "Staff");
+  // Grad requirements (from live API)
+  const gradReqs = course.gradRequirements
+    .filter((r) => r !== "NONE" && r !== "" && GRAD_REQ_LABELS[r])
+    .map((r) => GRAD_REQ_LABELS[r] || r);
+
+  async function fetchAiInsights(regenerate = false) {
+    if ((aiInsights && !regenerate) || loadingInsights) return;
     setLoadingInsights(true);
     try {
       const res = await fetch("/api/ai/course-insights", {
@@ -921,6 +851,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
               relevance: cr.relevance,
             })),
           },
+          regenerate,
         }),
       });
       if (res.ok) {
@@ -934,8 +865,8 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
     }
   }
 
-  async function fetchProfSummary() {
-    if (profSummary || loadingProfSummary || !prof) return;
+  async function fetchProfSummary(regenerate = false) {
+    if ((profSummary && !regenerate) || loadingProfSummary || !prof) return;
     setLoadingProfSummary(true);
     try {
       const res = await fetch("/api/ai/professor-summary", {
@@ -950,6 +881,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
           rmpNumRatings: prof.rmpNumRatings,
           rmpWouldTakeAgain: prof.rmpWouldTakeAgain,
           rmpTags: prof.rmpTags,
+          regenerate,
         }),
       });
       if (res.ok) {
@@ -973,7 +905,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className={`font-mono text-xs font-semibold px-2.5 py-1 rounded ${deptColor.bg} ${deptColor.text}`}>
                 {course.code}
               </span>
@@ -982,10 +914,20 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                   {formatMajorReq(course.majorRequirements)}
                 </span>
               )}
+              {gradReqs.length > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
+                  {gradReqs.join(", ")}
+                </span>
+              )}
               {prof?.rmpRating != null && (
                 <span className="flex items-center gap-0.5 text-xs text-gray-500">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                   {prof.rmpRating}
+                </span>
+              )}
+              {course.sections > 1 && (
+                <span className="text-xs text-gray-400">
+                  {course.sections} sections
                 </span>
               )}
             </div>
@@ -994,8 +936,8 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
             </h3>
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <span>{course.department}</span>
-              {course.professor && <span>· {course.professor}</span>}
-              <span>· {course.offered.join(", ")}</span>
+              {professorName && <span>· {professorName}</span>}
+              {course.offered.length > 0 && <span>· {course.offered.join(", ")}</span>}
             </div>
           </div>
           <button
@@ -1035,12 +977,12 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
               </p>
 
               {/* Professor Section with RMP Data */}
-              {course.professor && (
+              {professorName && (
                 <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <GraduationCap className="h-4 w-4 text-gray-400" />
                     <span className="text-sm font-medium text-gray-700">
-                      {course.professor}
+                      {professorName}
                     </span>
                   </div>
                   {prof?.title && (
@@ -1127,6 +1069,12 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                         </div>
                       )}
 
+                      {realInstructors.length > 1 && (
+                        <p className="text-xs text-gray-400">
+                          All instructors: {realInstructors.join(", ")}
+                        </p>
+                      )}
+
                       {/* AI Professor Summary Button */}
                       <div className="pt-1">
                         <button
@@ -1160,32 +1108,45 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] px-4"
+                            className="fixed inset-0 z-[100]"
                           >
-                            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} />
+                            <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} />
+                            <div className="fixed inset-0 md:left-[240px] z-[101] overflow-y-auto p-4 md:p-8 py-[6vh]">
+                            <div className="max-w-5xl mx-auto">
                             <motion.div
-                              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                              initial={{ opacity: 0, scale: 0.98, y: 12 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[85vh] overflow-y-auto z-10"
+                              exit={{ opacity: 0, scale: 0.98, y: 12 }}
+                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-h-[85vh] overflow-y-auto"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {/* Modal header */}
-                              <div className="sticky top-0 bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
+                              <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
                                 <div>
                                   <div className="flex items-center gap-2.5 mb-1">
                                     <GraduationCap className="h-5 w-5 text-davidson" />
-                                    <h2 className="font-serif font-semibold text-xl text-[#111111]">Professor Summary</h2>
+                                    <h2 className="font-serif font-semibold text-lg text-[#111111]">Professor Summary</h2>
                                   </div>
                                   <p className="text-sm text-[#555555]">{prof.name} · {course.code} {course.name}</p>
                                 </div>
-                                <button onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                                  <X className="h-5 w-5" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  {profSummary && !loadingProfSummary && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); fetchProfSummary(true); }}
+                                      className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-davidson px-3 py-1.5 rounded-lg border border-gray-200 hover:border-davidson/30 hover:bg-davidson-light transition-colors"
+                                    >
+                                      <RefreshCw className="h-3.5 w-3.5" />
+                                      Regenerate
+                                    </button>
+                                  )}
+                                  <button onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                                    <X className="h-5 w-5" />
+                                  </button>
+                                </div>
                               </div>
 
                               {/* Modal content */}
-                              <div className="px-8 py-6 space-y-6">
+                              <div className="px-6 py-5 space-y-5">
                                 {/* RMP stats bar */}
                                 <div className="bg-white rounded-xl border border-gray-100 p-5">
                                   <div className="flex flex-wrap items-center gap-6 text-sm">
@@ -1291,6 +1252,8 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                                 )}
                               </div>
                             </motion.div>
+                            </div>
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>, document.body)}
@@ -1342,7 +1305,7 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                 </div>
               )}
 
-              {/* Prerequisites and offering info */}
+              {/* Prerequisites, schedule, and offering info */}
               <div className="flex flex-wrap gap-4">
                 {course.prerequisites.length > 0 && (
                   <div className="flex items-center gap-2">
@@ -1352,12 +1315,30 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <Filter className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="text-xs text-[#555555]">
-                    Offered: {course.offered.join(", ")}
-                  </span>
-                </div>
+                {course.offered.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-[#555555]">
+                      Offered: {course.offered.join(", ")}
+                    </span>
+                  </div>
+                )}
+                {course.schedule && course.schedule !== "TBA" && (
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-[#555555]">
+                      {course.schedule}
+                    </span>
+                  </div>
+                )}
+                {course.location && course.location !== "TBA" && (
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-[#555555]">
+                      {course.location}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Career Relevance */}
@@ -1420,31 +1401,60 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] px-4"
+                    className="fixed inset-0 z-[100]"
                   >
-                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
+                    <div className="fixed inset-0 md:left-[240px] z-[101] overflow-y-auto p-4 md:p-8 py-[6vh]">
+                    <div className="max-w-5xl mx-auto">
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                      initial={{ opacity: 0, scale: 0.98, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[85vh] overflow-y-auto z-10"
+                      exit={{ opacity: 0, scale: 0.98, y: 12 }}
+                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-h-[85vh] overflow-y-auto"
                     >
                       {/* Modal header */}
-                      <div className="sticky top-0 bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
+                      <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
                         <div>
                           <div className="flex items-center gap-2.5 mb-1">
                             <Sparkles className="h-5 w-5 text-davidson" />
-                            <h2 className="font-serif font-semibold text-xl text-[#111111]">AI Deep Dive</h2>
+                            <h2 className="font-serif font-semibold text-lg text-[#111111]">AI Deep Dive</h2>
                           </div>
                           <p className="text-sm text-[#555555]">{course.code} · {course.name}</p>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                          <X className="h-5 w-5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {onAddToPlan && (
+                            planCourseCodes?.has(course.code) ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
+                                <Check className="h-3.5 w-3.5" /> In Plan
+                              </span>
+                            ) : (
+                              <button
+                                disabled={addingToPlan === course.code}
+                                onClick={(e) => { e.stopPropagation(); onAddToPlan(course.code, course.name); }}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                {addingToPlan === course.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                                Add to Plan
+                              </button>
+                            )
+                          )}
+                          {aiInsights && !loadingInsights && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); fetchAiInsights(true); }}
+                              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-davidson px-3 py-1.5 rounded-lg border border-gray-200 hover:border-davidson/30 hover:bg-davidson-light transition-colors"
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                              Regenerate
+                            </button>
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Modal content */}
-                      <div className="px-8 py-6 space-y-5">
+                      <div className="px-6 py-5 space-y-5">
                         {loadingInsights ? (
                           <div className="flex flex-col items-center justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin text-davidson mb-3" />
@@ -1523,6 +1533,8 @@ function StaticCourseCard({ course, aiReason, aiCareerImpact }: { course: SeedCo
                         )}
                       </div>
                     </motion.div>
+                    </div>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>, document.body)}

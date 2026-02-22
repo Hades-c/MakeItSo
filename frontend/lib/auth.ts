@@ -41,15 +41,28 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+      }
+      // Re-read from DB when client calls update() after profile changes
+      if (trigger === "update" && token.id) {
+        await connectToDatabase();
+        const dbUser = await User.findById(token.id).lean();
+        if (dbUser) {
+          token.name = (dbUser as { name?: string }).name ?? token.name;
+          token.email = (dbUser as { email?: string }).email ?? token.email;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as { id?: string }).id = token.id as string;
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
       }
       return session;
     },

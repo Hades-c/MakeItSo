@@ -17,6 +17,7 @@ import {
   PlayCircle,
   Plus,
   Search,
+  Sun,
   Trash2,
   X,
   XCircle,
@@ -40,10 +41,18 @@ interface PlannedCourse {
   notes?: string;
 }
 
-interface CatalogCourse {
+interface SummerActivity {
   _id: string;
+  title: string;
+  description?: string;
+  summer: string;
+  year: number;
+}
+
+interface CatalogCourse {
   code: string;
   name: string;
+  description?: string;
   credits: number;
   department: string;
 }
@@ -52,9 +61,7 @@ interface CatalogCourse {
 // Constants
 // ---------------------------------------------------------------------------
 
-const REQUIRED_CREDITS = 128;
-const CREDITS_PER_COURSE = 4;
-const REQUIRED_COURSES = REQUIRED_CREDITS / CREDITS_PER_COURSE; // 32
+const REQUIRED_COURSES = 32;
 
 const STATUS_CONFIG: Record<
   PlannedCourse["status"],
@@ -138,7 +145,7 @@ const SEMESTER_COLORS: Record<string, { accent: string; bg: string; text: string
 const SEMESTER_ORDER: Record<string, number> = { Spring: 0, Summer: 1, Fall: 2 };
 
 const GRADE_OPTIONS = [
-  "A+", "A", "A-",
+  "A", "A-",
   "B+", "B", "B-",
   "C+", "C", "C-",
   "D+", "D", "D-",
@@ -191,6 +198,15 @@ export default function CoursesPage() {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
 
+  // Summer activities
+  const [summerActivities, setSummerActivities] = useState<SummerActivity[]>([]);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [activityTitle, setActivityTitle] = useState("");
+  const [activityDesc, setActivityDesc] = useState("");
+  const [activityYear, setActivityYear] = useState(new Date().getFullYear());
+  const [addingActivity, setAddingActivity] = useState(false);
+  const [deletingActivityId, setDeletingActivityId] = useState<string | null>(null);
+
   // Grade modal
   const [gradeModal, setGradeModal] = useState<PlannedCourse | null>(null);
   const [selectedGrade, setSelectedGrade] = useState("");
@@ -207,6 +223,7 @@ export default function CoursesPage() {
       if (!res.ok) throw new Error("Failed to load course plan");
       const data = await res.json();
       setPlannedCourses(data.plan?.plannedCourses ?? []);
+      setSummerActivities(data.plan?.summerActivities ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -221,15 +238,41 @@ export default function CoursesPage() {
   // ---- Search catalog courses (debounced) ----
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // All Davidson courses (fetched once from live API)
+  const allDavidsonCourses = useRef<CatalogCourse[]>([]);
+
   const searchCourses = useCallback(async (query: string) => {
     setCatalogLoading(true);
     try {
-      const params = new URLSearchParams({ limit: "30" });
-      if (query.trim()) params.set("search", query.trim());
-      const res = await fetch(`/api/courses?${params}`);
-      if (!res.ok) throw new Error("Failed to search courses");
-      const data = await res.json();
-      setCatalogCourses(data.courses ?? []);
+      // Fetch from live Davidson API on first call, then filter locally
+      if (allDavidsonCourses.current.length === 0) {
+        const res = await fetch("/api/courses/davidson");
+        if (!res.ok) throw new Error("Failed to fetch courses");
+        const data = await res.json();
+        allDavidsonCourses.current = (data.courses ?? []).map(
+          (c: { code: string; name: string; description?: string; department: string }) => ({
+            code: c.code,
+            name: c.name,
+            description: c.description,
+            credits: 4,
+            department: c.department,
+          })
+        );
+      }
+
+      if (!query.trim()) {
+        setCatalogCourses(allDavidsonCourses.current);
+      } else {
+        const q = query.toLowerCase();
+        setCatalogCourses(
+          allDavidsonCourses.current.filter(
+            (c) =>
+              c.code.toLowerCase().includes(q) ||
+              c.name.toLowerCase().includes(q) ||
+              c.department.toLowerCase().includes(q)
+          )
+        );
+      }
     } catch {
       setCatalogCourses([]);
     } finally {
@@ -255,15 +298,17 @@ export default function CoursesPage() {
 
   const clearActionError = () => setActionError(null);
 
-  const addCourse = async (courseId: string) => {
-    setAdding(courseId);
+  const addCourse = async (course: CatalogCourse) => {
+    setAdding(course.code);
     clearActionError();
     try {
       const res = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          courseId,
+          courseCode: course.code,
+          courseName: course.name,
+          credits: course.credits,
           semester: addSemester,
           year: addYear,
           status: "planned",
@@ -343,10 +388,57 @@ export default function CoursesPage() {
       if (!res.ok) throw new Error("Failed to remove course");
       const data = await res.json();
       setPlannedCourses(data.plan?.plannedCourses ?? []);
+      setSummerActivities(data.plan?.summerActivities ?? []);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to remove course");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const addActivity = async () => {
+    if (!activityTitle.trim()) return;
+    setAddingActivity(true);
+    clearActionError();
+    try {
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summerActivity: { title: activityTitle.trim(), description: activityDesc.trim(), year: activityYear },
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to add activity");
+      const data = await res.json();
+      setPlannedCourses(data.plan?.plannedCourses ?? []);
+      setSummerActivities(data.plan?.summerActivities ?? []);
+      setShowActivityModal(false);
+      setActivityTitle("");
+      setActivityDesc("");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to add activity");
+    } finally {
+      setAddingActivity(false);
+    }
+  };
+
+  const deleteActivity = async (activityId: string) => {
+    setDeletingActivityId(activityId);
+    clearActionError();
+    try {
+      const res = await fetch("/api/plans", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summerActivityId: activityId }),
+      });
+      if (!res.ok) throw new Error("Failed to remove activity");
+      const data = await res.json();
+      setPlannedCourses(data.plan?.plannedCourses ?? []);
+      setSummerActivities(data.plan?.summerActivities ?? []);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to remove activity");
+    } finally {
+      setDeletingActivityId(null);
     }
   };
 
@@ -376,30 +468,21 @@ export default function CoursesPage() {
     const planned = plannedCourses.filter((c) => c.status === "planned");
     const active = plannedCourses.filter((c) => c.status !== "dropped");
 
-    const completedCredits = completed.length * CREDITS_PER_COURSE;
-    const inProgressCredits = inProgress.length * CREDITS_PER_COURSE;
-    const plannedCredits = planned.length * CREDITS_PER_COURSE;
-    const activeCredits = active.length * CREDITS_PER_COURSE;
-
     return {
       completedCount: completed.length,
       inProgressCount: inProgress.length,
       plannedCount: planned.length,
       activeCount: active.length,
-      completedCredits,
-      inProgressCredits,
-      plannedCredits,
-      activeCredits,
       progressPercent: Math.min(
         100,
-        Math.round((completedCredits / REQUIRED_CREDITS) * 100)
+        Math.round((completed.length / REQUIRED_COURSES) * 100)
       ),
     };
   }, [plannedCourses]);
 
-  // IDs of courses already in the plan (for filtering catalog)
-  const plannedCourseIds = useMemo(
-    () => new Set(plannedCourses.map((c) => c.courseId)),
+  // Codes of courses already in the plan (for filtering catalog)
+  const plannedCourseCodes = useMemo(
+    () => new Set(plannedCourses.map((c) => c.courseCode)),
     [plannedCourses]
   );
 
@@ -470,13 +553,23 @@ export default function CoursesPage() {
               Plan your path to graduation at Davidson.
             </p>
           </div>
-          <Button
-            onClick={() => setShowAddModal(true)}
-            className="bg-davidson hover:bg-davidson-dark text-white shadow-sm"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Course
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowAddModal(true)}
+              className="bg-davidson hover:bg-davidson-dark text-white shadow-sm"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add Course
+            </Button>
+            <Button
+              onClick={() => setShowActivityModal(true)}
+              variant="outline"
+              className="border-sky-300 text-sky-700 hover:bg-sky-50"
+            >
+              <Sun className="h-4 w-4 mr-1.5" />
+              Add Summer Activity
+            </Button>
+          </div>
         </motion.div>
 
         {/* ---- Action error toast ---- */}
@@ -508,7 +601,7 @@ export default function CoursesPage() {
                 Graduation Progress
               </h2>
               <span className="text-xs text-[#555555]">
-                {REQUIRED_CREDITS} credits required ({REQUIRED_COURSES} courses)
+                {REQUIRED_COURSES} courses required
               </span>
             </div>
 
@@ -517,19 +610,19 @@ export default function CoursesPage() {
               <motion.div
                 className="bg-green-500 h-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, (stats.completedCredits / REQUIRED_CREDITS) * 100)}%` }}
+                animate={{ width: `${Math.min(100, (stats.completedCount / REQUIRED_COURSES) * 100)}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
               />
               <motion.div
                 className="bg-blue-400 h-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, (stats.inProgressCredits / REQUIRED_CREDITS) * 100)}%` }}
+                animate={{ width: `${Math.min(100, (stats.inProgressCount / REQUIRED_COURSES) * 100)}%` }}
                 transition={{ duration: 0.8, ease: "easeOut", delay: 0.15 }}
               />
               <motion.div
                 className="bg-gray-300 h-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, (stats.plannedCredits / REQUIRED_CREDITS) * 100)}%` }}
+                animate={{ width: `${Math.min(100, (stats.plannedCount / REQUIRED_COURSES) * 100)}%` }}
                 transition={{ duration: 0.8, ease: "easeOut", delay: 0.3 }}
               />
             </div>
@@ -539,7 +632,6 @@ export default function CoursesPage() {
               <StatBlock
                 label="Completed"
                 courses={stats.completedCount}
-                credits={stats.completedCredits}
                 accent="text-green-600"
                 bg="bg-green-50"
                 icon={<CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
@@ -547,7 +639,6 @@ export default function CoursesPage() {
               <StatBlock
                 label="In Progress"
                 courses={stats.inProgressCount}
-                credits={stats.inProgressCredits}
                 accent="text-blue-600"
                 bg="bg-blue-50"
                 icon={<PlayCircle className="h-3.5 w-3.5 text-blue-500" />}
@@ -555,7 +646,6 @@ export default function CoursesPage() {
               <StatBlock
                 label="Planned"
                 courses={stats.plannedCount}
-                credits={stats.plannedCredits}
                 accent="text-gray-600"
                 bg="bg-gray-50"
                 icon={<Circle className="h-3.5 w-3.5 text-gray-400" />}
@@ -563,7 +653,6 @@ export default function CoursesPage() {
               <StatBlock
                 label="Remaining"
                 courses={Math.max(0, REQUIRED_COURSES - stats.activeCount)}
-                credits={Math.max(0, REQUIRED_CREDITS - stats.activeCredits)}
                 accent="text-davidson"
                 bg="bg-davidson-light"
                 icon={<BookOpen className="h-3.5 w-3.5 text-davidson/60" />}
@@ -603,7 +692,7 @@ export default function CoursesPage() {
           const semColors = SEMESTER_COLORS[semName] || { accent: "border-l-gray-300", bg: "bg-gray-50", text: "text-gray-600", icon: "text-gray-400", border: "border-gray-200" };
           return (
           <motion.div key={semKey} variants={fadeIn}>
-            <div className={`bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden border-l-4 ${semColors.accent}`}>
+            <div className={`bg-white border border-gray-100 rounded-xl shadow-sm border-l-4 ${semColors.accent}`}>
               {/* Semester header */}
               <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -614,7 +703,7 @@ export default function CoursesPage() {
                   </Badge>
                 </div>
                 <span className="text-xs text-gray-400">
-                  {courses.filter((c) => c.status !== "dropped").length * CREDITS_PER_COURSE} credits
+                  {courses.filter((c) => c.status !== "dropped").length} {courses.filter((c) => c.status !== "dropped").length === 1 ? "course" : "courses"}
                 </span>
               </div>
 
@@ -657,9 +746,6 @@ export default function CoursesPage() {
                             <span className="text-sm text-[#555555] truncate">
                               {pc.courseName}
                             </span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100">
-                              {pc.credits} cr
-                            </span>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${semColors.bg} ${semColors.text} border ${semColors.border}`}>
                               {semName}
                             </span>
@@ -684,7 +770,7 @@ export default function CoursesPage() {
                         </Badge>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                           {/* Status cycle dropdown */}
                           <StatusDropdown
                             current={pc.status}
@@ -722,7 +808,151 @@ export default function CoursesPage() {
           </motion.div>
           );
         })}
+
+        {/* ---- Summer Activities ---- */}
+        {summerActivities.length > 0 && (
+          <motion.div variants={fadeIn}>
+            <div className="bg-white border border-gray-100 rounded-xl shadow-sm border-l-4 border-l-sky-400">
+              <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sun className="h-4 w-4 text-sky-500" />
+                  <h3 className="font-semibold font-serif text-sm text-[#111111]">Summer Activities</h3>
+                  <Badge className="text-[10px] px-1.5 py-0 border-0 bg-sky-50 text-sky-700">
+                    {summerActivities.length} {summerActivities.length === 1 ? "activity" : "activities"}
+                  </Badge>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {[...summerActivities].sort((a, b) => a.year - b.year).map((act) => (
+                  <div key={act._id} className="px-5 py-3 flex items-start gap-3 group">
+                    <Sun className="h-4 w-4 shrink-0 text-sky-400 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-[#111111]">{act.title}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                          Summer {act.year}
+                        </span>
+                      </div>
+                      {act.description && (
+                        <p className="text-xs text-gray-500 mt-0.5">{act.description}</p>
+                      )}
+                    </div>
+                    <button
+                      disabled={deletingActivityId === act._id}
+                      onClick={() => deleteActivity(act._id)}
+                      className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40 opacity-0 group-hover:opacity-100"
+                      title="Remove activity"
+                    >
+                      {deletingActivityId === act._id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
       </motion.div>
+
+      {/* ================================================================= */}
+      {/* Add Summer Activity Modal */}
+      {/* ================================================================= */}
+      <AnimatePresence>
+        {showActivityModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            variants={modalOverlay}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <div
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+              onClick={() => {
+                setShowActivityModal(false);
+                setActivityTitle("");
+                setActivityDesc("");
+              }}
+            />
+            <motion.div
+              variants={modalContent}
+              className="relative bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-5 z-10"
+            >
+              <h2 className="text-base font-semibold font-serif text-[#111111] mb-1">
+                Add Summer Activity
+              </h2>
+              <p className="text-sm text-[#555555] mb-4">
+                Plan an internship, research, or other summer experience.
+              </p>
+              <div className="space-y-3 mb-5">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Year</label>
+                  <select
+                    value={activityYear}
+                    onChange={(e) => setActivityYear(Number(e.target.value))}
+                    className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson"
+                  >
+                    {yearOptions.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Activity</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Software engineering internship at Google"
+                    value={activityTitle}
+                    onChange={(e) => setActivityTitle(e.target.value)}
+                    autoFocus
+                    className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Description <span className="text-gray-400">(optional)</span></label>
+                  <textarea
+                    placeholder="More details about this activity..."
+                    value={activityDesc}
+                    onChange={(e) => setActivityDesc(e.target.value)}
+                    rows={2}
+                    className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson resize-none"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowActivityModal(false);
+                    setActivityTitle("");
+                    setActivityDesc("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-davidson hover:bg-davidson-dark text-white"
+                  disabled={!activityTitle.trim() || addingActivity}
+                  onClick={addActivity}
+                >
+                  {addingActivity ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ================================================================= */}
       {/* Add Course Modal */}
@@ -824,50 +1054,56 @@ export default function CoursesPage() {
                 ) : (
                   <div className="divide-y divide-gray-50">
                     {catalogCourses.map((c) => {
-                      const alreadyAdded = plannedCourseIds.has(c._id);
-                      const isAdding = adding === c._id;
+                      const alreadyAdded = plannedCourseCodes.has(c.code);
+                      const isAdding = adding === c.code;
 
                       return (
                         <div
-                          key={c._id}
-                          className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+                          key={c.code}
+                          className="px-5 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 mb-0.5">
                               <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${getDeptColor(c.code).bg} ${getDeptColor(c.code).text}`}>
                                 {c.code}
                               </span>
                               <span className="text-xs text-gray-400">{c.department}</span>
+                              <span className="text-[10px] text-gray-400">{c.credits} cr</span>
                             </div>
-                            <p className="text-xs text-[#555555] truncate">{c.name}</p>
+                            <p className="text-sm font-medium text-[#111111]">{c.name}</p>
+                            {c.description && (
+                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{c.description}</p>
+                            )}
                           </div>
 
-                          {alreadyAdded ? (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] px-2 py-0.5 text-gray-400"
-                            >
-                              <Check className="h-3 w-3 mr-0.5" />
-                              Added
-                            </Badge>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={isAdding}
-                              onClick={() => addCourse(c._id)}
-                              className="h-7 text-xs px-2.5 border-gray-200 hover:bg-davidson-light hover:text-davidson hover:border-davidson/20"
-                            >
-                              {isAdding ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <>
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Add
-                                </>
-                              )}
-                            </Button>
-                          )}
+                          <div className="shrink-0 mt-1">
+                            {alreadyAdded ? (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-2 py-0.5 text-gray-400"
+                              >
+                                <Check className="h-3 w-3 mr-0.5" />
+                                Added
+                              </Badge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isAdding}
+                                onClick={() => addCourse(c)}
+                                className="h-7 text-xs px-2.5 border-gray-200 hover:bg-davidson-light hover:text-davidson hover:border-davidson/20"
+                              >
+                                {isAdding ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Add
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -970,14 +1206,12 @@ export default function CoursesPage() {
 function StatBlock({
   label,
   courses,
-  credits,
   accent,
   bg,
   icon,
 }: {
   label: string;
   courses: number;
-  credits: number;
   accent: string;
   bg: string;
   icon?: React.ReactNode;
@@ -989,7 +1223,7 @@ function StatBlock({
         {icon}
       </div>
       <p className="text-xs font-medium text-gray-700">{label}</p>
-      <p className="text-[10px] text-gray-400">{credits} credits</p>
+      <p className="text-[10px] text-gray-400">{courses === 1 ? "course" : "courses"}</p>
     </div>
   );
 }

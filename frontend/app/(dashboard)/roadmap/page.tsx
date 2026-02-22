@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,13 +11,14 @@ import {
   BookOpen,
   Briefcase,
   Calendar,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   GraduationCap,
   Lightbulb,
   Loader2,
-  Map,
+  Plus,
   RefreshCw,
   Sparkles,
   Sun,
@@ -269,6 +270,14 @@ function TypeBadge({ type }: { type: string }) {
 // Main component
 // ---------------------------------------------------------------------------
 
+interface PlannedCourse {
+  courseCode: string;
+  courseName: string;
+  semester: string;
+  year: number;
+  status: string;
+}
+
 export default function RoadmapPage() {
   const { data: session } = useSession();
 
@@ -289,6 +298,46 @@ export default function RoadmapPage() {
   // Confirmation state
   const [confirmAction, setConfirmAction] = useState<"regenerate" | "clear" | null>(null);
 
+  // Plan state (for filtering & "Add to Plan" button)
+  const [userPlanCourses, setUserPlanCourses] = useState<PlannedCourse[]>([]);
+  const [addingToPlan, setAddingToPlan] = useState<string | null>(null);
+
+  const planCourseCodes = useMemo(
+    () => new Set(userPlanCourses.map((c) => c.courseCode)),
+    [userPlanCourses]
+  );
+
+  // Semesters that have completed or in-progress courses on the plan tab
+  const activePlanSemesters = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of userPlanCourses) {
+      if (c.status === "completed" || c.status === "in-progress") {
+        set.add(`${c.semester} ${c.year}`);
+      }
+    }
+    return set;
+  }, [userPlanCourses]);
+
+  // ---------------------------------------------------------------------------
+  // Fetch user plan on mount
+  // ---------------------------------------------------------------------------
+
+  const fetchUserPlan = useCallback(async () => {
+    try {
+      const res = await fetch("/api/plans");
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent — plan fetch is supplementary
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserPlan();
+  }, [fetchUserPlan]);
+
   // ---------------------------------------------------------------------------
   // Load saved roadmap on mount
   // ---------------------------------------------------------------------------
@@ -303,8 +352,8 @@ export default function RoadmapPage() {
         interests: saved.interests,
         generatedAt: saved.generatedAt,
       });
-      // Expand first two semesters by default
-      setExpandedSemesters(new Set([0, 1]));
+      // Start with all tabs collapsed
+      setExpandedSemesters(new Set());
     }
     setHydrated(true);
   }, []);
@@ -313,7 +362,7 @@ export default function RoadmapPage() {
   // Generate roadmap
   // ---------------------------------------------------------------------------
 
-  const generateRoadmap = useCallback(async () => {
+  const generateRoadmap = useCallback(async (regenerate = false) => {
     if (!selectedMajor) return;
     setLoading(true);
     setError(null);
@@ -326,21 +375,26 @@ export default function RoadmapPage() {
         .map((s) => s.trim())
         .filter(Boolean);
 
+      // Pass completed/in-progress course codes so the AI knows what's done
+      const completedCodes = userPlanCourses
+        .filter((c) => c.status === "completed" || c.status === "in-progress")
+        .map((c) => c.courseCode);
+
       const res = await fetch("/api/ai/roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           major: selectedMajor,
-          completedCourses: [],
+          completedCourses: completedCodes,
           classYear,
           interests: interestList,
           specificity,
+          regenerate,
         }),
       });
 
       if (res.ok) {
-        const json = await res.json();
-        const data: RoadmapData = json.roadmap;
+        const data: RoadmapData = await res.json();
         setRoadmap(data);
 
         const meta = {
@@ -352,8 +406,8 @@ export default function RoadmapPage() {
         setSavedMeta(meta);
         saveRoadmap({ data, ...meta });
 
-        // Expand all semesters for the freshly generated roadmap
-        setExpandedSemesters(new Set(data.roadmap.map((_, i) => i)));
+        // Start with all tabs collapsed
+        setExpandedSemesters(new Set());
       } else if (res.status === 401) {
         setError("You need to sign in before generating a roadmap.");
       } else {
@@ -366,7 +420,47 @@ export default function RoadmapPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedMajor, classYear, interests, specificity]);
+  }, [selectedMajor, classYear, interests, specificity, userPlanCourses]);
+
+  // ---------------------------------------------------------------------------
+  // Add course to plan (same pattern as career roadmaps)
+  // ---------------------------------------------------------------------------
+
+  async function addCourseToPlan(courseCode: string, semesterLabel: string) {
+    setAddingToPlan(courseCode);
+    try {
+      // Look up the course by code to get its _id
+      const searchRes = await fetch(`/api/courses?search=${encodeURIComponent(courseCode)}&limit=5`);
+      if (!searchRes.ok) return;
+      const searchData = await searchRes.json();
+      const match = (searchData.courses ?? []).find((c: { code: string }) => c.code.toUpperCase() === courseCode.toUpperCase());
+      if (!match) return;
+
+      // Parse semester and year from the roadmap label (e.g. "Fall 2026")
+      const parts = semesterLabel.split(" ");
+      const semName = parts[0] as "Fall" | "Spring" | "Summer";
+      const semYear = parseInt(parts[1]) || new Date().getFullYear();
+
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId: match._id,
+          semester: semName,
+          year: semYear,
+          status: "planned",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setAddingToPlan(null);
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -384,9 +478,9 @@ export default function RoadmapPage() {
         setInterests(savedMeta.interests);
       }
       clearSavedRoadmap();
-      setRoadmap(null);
-      setSavedMeta(null);
       setExpandedSemesters(new Set());
+      // Directly regenerate with the same params, bypassing cache
+      generateRoadmap(true);
     } else if (confirmAction === "clear") {
       clearSavedRoadmap();
       setRoadmap(null);
@@ -409,8 +503,8 @@ export default function RoadmapPage() {
   };
 
   const expandAll = () => {
-    if (roadmap) {
-      setExpandedSemesters(new Set(roadmap.roadmap.map((_, i) => i)));
+    if (filteredRoadmap) {
+      setExpandedSemesters(new Set(filteredRoadmap.roadmap.map((_, i) => i)));
     }
   };
 
@@ -420,18 +514,24 @@ export default function RoadmapPage() {
   // Derived
   // ---------------------------------------------------------------------------
 
-  const totalCourses = roadmap
-    ? roadmap.roadmap.reduce((sum, sem) => sum + (sem.isSummer ? 0 : (sem.courses?.length || 0)), 0)
-    : 0;
+  // Filter roadmap semesters: hide semesters where user has completed/in-progress courses
+  const filteredRoadmap = useMemo(() => {
+    if (!roadmap) return null;
 
-  const SUMMER_ACTIVITY_STYLES: Record<string, { icon: string; bg: string }> = {
-    internship: { icon: "briefcase", bg: "bg-blue-50" },
-    research: { icon: "microscope", bg: "bg-purple-50" },
-    "study-abroad": { icon: "globe", bg: "bg-emerald-50" },
-    fellowship: { icon: "award", bg: "bg-amber-50" },
-    "personal-project": { icon: "code", bg: "bg-gray-50" },
-    networking: { icon: "users", bg: "bg-rose-50" },
-  };
+    // Parse semester labels like "Fall 2025" or "Summer 2026" to match plan format
+    const filtered = roadmap.roadmap.filter((sem) => {
+      // Keep summer semesters (they're activities, not courses)
+      if (sem.isSummer) return true;
+      // Parse "Fall 2025" → "Fall 2025" and check against activePlanSemesters
+      return !activePlanSemesters.has(sem.semester);
+    });
+
+    return { ...roadmap, roadmap: filtered };
+  }, [roadmap, activePlanSemesters]);
+
+  const totalCourses = filteredRoadmap
+    ? filteredRoadmap.roadmap.reduce((sum, sem) => sum + (sem.isSummer ? 0 : (sem.courses?.length || 0)), 0)
+    : 0;
 
   const showForm = !roadmap && !loading;
 
@@ -604,7 +704,7 @@ export default function RoadmapPage() {
                 transition={{ duration: 0.25 }}
               >
                 <Button
-                  onClick={generateRoadmap}
+                  onClick={() => generateRoadmap()}
                   className="bg-davidson hover:bg-davidson-dark text-white shadow-sm h-11 px-6"
                 >
                   <Sparkles className="mr-2 h-4 w-4" />
@@ -644,20 +744,15 @@ export default function RoadmapPage() {
         {/* ----------------------------------------------------------------- */}
         {loading && (
           <div className="space-y-5">
-            <div className="rounded-xl border border-gray-100 bg-white p-10 text-center">
-              <motion.div
-                className="h-16 w-16 rounded-2xl bg-gradient-to-br from-davidson-light to-white flex items-center justify-center mx-auto mb-4"
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-              >
-                <Loader2 className="h-8 w-8 text-davidson animate-spin" />
-              </motion.div>
-              <h3 className="text-lg font-semibold text-[#111111] mb-1">
-                Building Your Roadmap
-              </h3>
+            <div className="rounded-xl border border-gray-100 bg-white p-6 text-center">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Loader2 className="h-5 w-5 text-davidson animate-spin" />
+                <h3 className="text-lg font-semibold text-[#111111]">
+                  Building Your Roadmap
+                </h3>
+              </div>
               <p className="text-sm text-[#555555] max-w-md mx-auto">
-                Our AI is analyzing {selectedMajor} requirements and crafting your
-                personalized semester-by-semester plan...
+                Analyzing {selectedMajor} requirements and crafting your plan...
               </p>
             </div>
             <LoadingSkeleton />
@@ -667,7 +762,7 @@ export default function RoadmapPage() {
         {/* ----------------------------------------------------------------- */}
         {/* Roadmap display                                                   */}
         {/* ----------------------------------------------------------------- */}
-        {roadmap && !loading && (
+        {filteredRoadmap && !loading && (
           <motion.div
             className="space-y-5"
             initial={{ opacity: 0 }}
@@ -682,17 +777,17 @@ export default function RoadmapPage() {
                     <h2 className="font-serif text-lg font-bold text-[#111111]">
                       {savedMeta?.major} Roadmap
                     </h2>
-                    {roadmap.estimatedGraduation && (
+                    {filteredRoadmap.estimatedGraduation && (
                       <Badge
                         variant="outline"
                         className="bg-gray-50 text-gray-600 border-gray-200 text-xs"
                       >
-                        Est. Graduation: {roadmap.estimatedGraduation}
+                        Est. Graduation: {filteredRoadmap.estimatedGraduation}
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-sm text-[#555555]">
-                    <span>{roadmap.roadmap.length} semesters</span>
+                    <span>{filteredRoadmap.roadmap.filter((s) => !s.isSummer).length} semesters</span>
                     <span className="text-gray-300">|</span>
                     <span>{totalCourses} courses</span>
                     {savedMeta?.generatedAt && (
@@ -750,7 +845,7 @@ export default function RoadmapPage() {
             </div>
 
             {/* AI Advice */}
-            {roadmap.advice && (
+            {filteredRoadmap.advice && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -763,7 +858,7 @@ export default function RoadmapPage() {
                 <div>
                   <h3 className="font-semibold text-amber-900 text-sm">AI Advisor Note</h3>
                   <p className="text-sm text-amber-800 mt-0.5 leading-relaxed">
-                    {roadmap.advice}
+                    {filteredRoadmap.advice}
                   </p>
                 </div>
               </motion.div>
@@ -781,7 +876,7 @@ export default function RoadmapPage() {
 
             {/* Semester timeline */}
             <div className="space-y-3">
-              {roadmap.roadmap.map((sem, i) => (
+              {filteredRoadmap.roadmap.map((sem, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 12 }}
@@ -794,9 +889,7 @@ export default function RoadmapPage() {
                   {/* Semester header (clickable) */}
                   <button
                     onClick={() => toggleSemester(i)}
-                    className={`w-full p-4 flex items-center justify-between hover:bg-gray-50/60 transition-colors rounded-xl ${
-                      sem.isSummer ? "" : ""
-                    }`}
+                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50/60 transition-colors rounded-xl"
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative">
@@ -813,7 +906,7 @@ export default function RoadmapPage() {
                         </div>
                         {!sem.isSummer && (
                           <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-navy text-white text-[10px] font-bold flex items-center justify-center">
-                            {i + 1}
+                            {filteredRoadmap.roadmap.slice(0, i + 1).filter((s) => !s.isSummer).length}
                           </span>
                         )}
                       </div>
@@ -872,6 +965,8 @@ export default function RoadmapPage() {
                             {/* Regular courses */}
                             {!sem.isSummer && sem.courses?.map((course, j) => {
                               const style = TYPE_STYLES[course.type] || DEFAULT_TYPE_STYLE;
+                              const inPlan = planCourseCodes.has(course.code);
+                              const isAdding = addingToPlan === course.code;
                               return (
                                 <motion.div
                                   key={j}
@@ -897,6 +992,22 @@ export default function RoadmapPage() {
                                       <p className="text-xs text-[#555555] mt-1 leading-relaxed">
                                         {course.reason}
                                       </p>
+                                    )}
+                                  </div>
+                                  <div className="shrink-0">
+                                    {inPlan ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                                        <Check className="h-3 w-3" /> In Plan
+                                      </span>
+                                    ) : (
+                                      <button
+                                        disabled={isAdding}
+                                        onClick={() => addCourseToPlan(course.code, sem.semester)}
+                                        className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                      >
+                                        {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                                        Add to Plan
+                                      </button>
                                     )}
                                   </div>
                                 </motion.div>
@@ -965,7 +1076,7 @@ export default function RoadmapPage() {
               <div>
                 <p className="text-sm font-medium text-gray-700">
                   Roadmap complete -- {totalCourses} courses across{" "}
-                  {roadmap.roadmap.length} semesters
+                  {filteredRoadmap.roadmap.filter((s) => !s.isSummer).length} semesters
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   This plan is AI-generated. Always verify requirements with your academic advisor.

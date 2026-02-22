@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -20,11 +21,13 @@ import {
   Loader2,
   Mail,
   Map,
+  RefreshCw,
   Sparkles,
   Star,
   Sun,
   Users,
   X,
+  Plus,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,7 +39,7 @@ type Tab = "overview" | "courses" | "summer" | "networking" | "roadmap";
 
 interface CareerPlan {
   recommendedMajor: string;
-  coursesToTake: { code: string; name: string; reason: string; priority: string; typicalYear: string }[];
+  coursesToTake: { code: string; name: string; reason: string; priority: string; typicalYear: string; courseType?: string }[];
   peopleToMeet: { role: string; type: string; reason: string; suggestedTiming: string; howToFind: string }[];
   thingsToDo: { activity: string; type: string; reason: string; timing: string; classYear: string }[];
   careerInsights: string;
@@ -61,6 +64,25 @@ const YEAR_COLORS: Record<string, { bg: string; text: string }> = {
   Sophomore: { bg: "bg-blue-50", text: "text-blue-700" },
   Junior: { bg: "bg-amber-50", text: "text-amber-700" },
   Senior: { bg: "bg-davidson-light", text: "text-davidson" },
+};
+
+const YEAR_ORDER: Record<string, number> = {
+  Freshman: 0,
+  Sophomore: 1,
+  Junior: 2,
+  Senior: 3,
+};
+
+const COURSE_TYPE_ORDER: Record<string, number> = {
+  "major-requirement": 0,
+  distribution: 1,
+  elective: 2,
+};
+
+const COURSE_TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  "major-requirement": { bg: "bg-davidson-light", text: "text-davidson", border: "border-davidson/20" },
+  distribution: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  elective: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
 };
 
 const TAG_COLORS: Record<string, string> = {
@@ -109,6 +131,69 @@ export default function CareerDetailPage() {
   const [roadmapLoading, setRoadmapLoading] = useState(false);
   const [roadmapError, setRoadmapError] = useState(false);
   const [expandedCourseIdx, setExpandedCourseIdx] = useState<number | null>(null);
+  const [userPlanCourses, setUserPlanCourses] = useState<{ courseCode: string; courseName: string; status: string; semester: string; year: number }[]>([]);
+  const [addingToPlan, setAddingToPlan] = useState<string | null>(null);
+
+  const fetchUserPlan = useCallback(async () => {
+    try {
+      const res = await fetch("/api/plans");
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent — plan fetch is supplementary
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserPlan();
+  }, [fetchUserPlan]);
+
+  // Auto-load cached career plan when switching to the roadmap tab
+  const roadmapFetched = useRef(false);
+  useEffect(() => {
+    if (activeTab === "roadmap" && !careerPlan && !roadmapLoading && !roadmapFetched.current) {
+      roadmapFetched.current = true;
+      generateRoadmap();
+    }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Lock body scroll when cold email modal is open
+  useEffect(() => {
+    if (selectedAlumni) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [selectedAlumni]);
+
+  const planCourseCodes = new Set(userPlanCourses.map((c) => c.courseCode));
+
+  async function addCourseToPlan(courseCode: string, courseName: string) {
+    setAddingToPlan(courseCode);
+    try {
+      const currentYear = new Date().getFullYear();
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseCode,
+          courseName,
+          semester: "Fall",
+          year: currentYear,
+          status: "planned",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setAddingToPlan(null);
+    }
+  }
 
   const careerPath = CAREER_PATHS.find((c) => c.id === params.id);
   if (!careerPath) {
@@ -134,11 +219,14 @@ export default function CareerDetailPage() {
     { id: "roadmap", label: "Roadmap" },
   ];
 
-  async function generateRoadmap() {
+  async function generateRoadmap(regenerate = false) {
     setRoadmapLoading(true);
     setRoadmapError(false);
-    setCareerPlan(null);
+    if (regenerate) setCareerPlan(null);
     try {
+      const completedCourses = userPlanCourses
+        .filter((c) => c.status === "completed")
+        .map((c) => c.courseCode);
       const res = await fetch("/api/ai/career-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -146,6 +234,8 @@ export default function CareerDetailPage() {
           career: careerPath!.title,
           major: "Undecided",
           classYear: "Freshman",
+          completedCourses,
+          regenerate,
         }),
       });
       if (res.ok) {
@@ -161,9 +251,9 @@ export default function CareerDetailPage() {
     }
   }
 
-  async function generateEmail(alumni: DavidsonAlumni) {
+  async function generateEmail(alumni: DavidsonAlumni, regenerate = false) {
     setSelectedAlumni(alumni);
-    setColdEmail(null);
+    if (regenerate) setColdEmail(null);
     setEmailLoading(true);
     try {
       const res = await fetch("/api/ai/cold-email", {
@@ -180,6 +270,7 @@ export default function CareerDetailPage() {
           studentMajor: "",
           studentClassYear: "Sophomore",
           careerField: careerPath?.title || "",
+          regenerate,
         }),
       });
       if (res.ok) {
@@ -321,41 +412,57 @@ export default function CareerDetailPage() {
               const deptColor = getDeptColor(course.code);
               const isExpanded = expandedCourseIdx === i;
               const richCourse = DAVIDSON_COURSES.find((c) => c.code === course.code);
+              const courseInPlan = planCourseCodes.has(course.code);
+              const courseIsAdding = addingToPlan === course.code;
               return (
                 <div key={i} className={`bg-white rounded-lg border transition-all ${isExpanded ? "border-gray-200 shadow-sm" : "border-gray-100 hover:border-gray-200"}`}>
-                  <button
-                    onClick={() => setExpandedCourseIdx(isExpanded ? null : i)}
-                    className="w-full text-left p-4"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-3 mb-1.5">
-                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
-                            {course.code}
-                          </span>
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <Star
-                                key={n}
-                                className={`h-3 w-3 ${
-                                  n <= course.difficulty
-                                    ? "text-amber-400 fill-amber-400"
-                                    : "text-gray-200"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          {course.bestProfessor && (
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-navy/5 text-navy font-medium">
-                              {course.bestProfessor}
-                            </span>
-                          )}
+                  <div className="flex items-start p-4 gap-3">
+                    <button
+                      onClick={() => setExpandedCourseIdx(isExpanded ? null : i)}
+                      className="flex-1 text-left min-w-0"
+                    >
+                      <div className="flex items-center gap-3 mb-1.5">
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
+                          {course.code}
+                        </span>
+                        <div className="flex gap-0.5">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star
+                              key={n}
+                              className={`h-3 w-3 ${
+                                n <= course.difficulty
+                                  ? "text-amber-400 fill-amber-400"
+                                  : "text-gray-200"
+                              }`}
+                            />
+                          ))}
                         </div>
-                        <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
+                        {course.bestProfessor && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-navy/5 text-navy font-medium">
+                            {course.bestProfessor}
+                          </span>
+                        )}
                       </div>
-                      <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 mt-1 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
+                    </button>
+                    <div className="flex items-center gap-2 shrink-0 mt-1">
+                      {courseInPlan ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                          <Check className="h-3 w-3" /> In Plan
+                        </span>
+                      ) : (
+                        <button
+                          disabled={courseIsAdding}
+                          onClick={() => addCourseToPlan(course.code, course.name)}
+                          className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                        >
+                          {courseIsAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                          Add to Plan
+                        </button>
+                      )}
+                      <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                     </div>
-                  </button>
+                  </div>
 
                   <AnimatePresence>
                     {isExpanded && (
@@ -560,32 +667,11 @@ export default function CareerDetailPage() {
       {/* Roadmap Tab */}
       {activeTab === "roadmap" && (
         <div className="space-y-6">
-          {!careerPlan && !roadmapLoading && !roadmapError && (
-            <div className="bg-white border border-gray-100 rounded-xl p-10 text-center shadow-sm">
-              <div className="h-14 w-14 rounded-2xl bg-davidson-light border border-davidson/10 flex items-center justify-center mx-auto mb-4">
-                <Map className="h-7 w-7 text-davidson/60" />
-              </div>
-              <h2 className="font-serif text-lg font-semibold text-navy mb-2">
-                Career Roadmap for {careerPath.title}
-              </h2>
-              <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto leading-relaxed">
-                Generate an AI-powered roadmap with recommended courses, activities, and networking strategies tailored to this career path.
-              </p>
-              <Button
-                onClick={generateRoadmap}
-                className="bg-davidson hover:bg-davidson-dark text-white shadow-sm"
-              >
-                <Sparkles className="h-4 w-4 mr-1.5" />
-                Generate Roadmap
-              </Button>
-            </div>
-          )}
-
           {roadmapLoading && (
             <div className="space-y-4">
               <div className="bg-white border border-gray-100 rounded-xl p-8 text-center shadow-sm">
                 <Loader2 className="h-6 w-6 animate-spin text-davidson mx-auto mb-3" />
-                <p className="text-sm text-gray-500">Generating your personalized career roadmap...</p>
+                <p className="text-sm text-gray-500">Loading your career roadmap...</p>
               </div>
               {[0, 1, 2].map((i) => (
                 <div key={i} className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
@@ -603,7 +689,7 @@ export default function CareerDetailPage() {
             <div className="bg-white border border-red-200 rounded-xl p-8 text-center shadow-sm">
               <p className="text-sm text-red-600 mb-4">Failed to generate roadmap. Please try again.</p>
               <Button
-                onClick={generateRoadmap}
+                onClick={() => generateRoadmap()}
                 variant="outline"
                 className="border-davidson text-davidson hover:bg-davidson-light"
               >
@@ -637,10 +723,19 @@ export default function CareerDetailPage() {
                   Recommended Courses
                 </h2>
                 <div className="grid gap-2">
-                  {careerPlan.coursesToTake.map((course, i) => {
-                    const pColor = PRIORITY_COLORS[course.priority] || PRIORITY_COLORS.helpful;
+                  {[...careerPlan.coursesToTake].sort((a, b) => {
+                    const typeA = COURSE_TYPE_ORDER[a.courseType ?? "elective"] ?? 99;
+                    const typeB = COURSE_TYPE_ORDER[b.courseType ?? "elective"] ?? 99;
+                    if (typeA !== typeB) return typeA - typeB;
+                    const numA = parseInt(a.code.replace(/\D/g, "")) || 0;
+                    const numB = parseInt(b.code.replace(/\D/g, "")) || 0;
+                    return numA - numB;
+                  }).map((course, i) => {
+                    const ctColor = COURSE_TYPE_COLORS[course.courseType ?? "elective"] || COURSE_TYPE_COLORS.elective;
                     const yColor = YEAR_COLORS[course.typicalYear] || { bg: "bg-gray-50", text: "text-gray-600" };
                     const deptColor = getDeptColor(course.code);
+                    const inPlan = planCourseCodes.has(course.code);
+                    const isAdding = addingToPlan === course.code;
                     return (
                       <div key={i} className="bg-white border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
                         <div className="flex items-start justify-between gap-3">
@@ -649,8 +744,8 @@ export default function CareerDetailPage() {
                               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
                                 {course.code}
                               </span>
-                              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${pColor.bg} ${pColor.text} ${pColor.border}`}>
-                                {course.priority}
+                              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${ctColor.bg} ${ctColor.text} ${ctColor.border}`}>
+                                {(course.courseType ?? "elective").replace("-", " ")}
                               </span>
                               <span className={`text-[10px] px-2 py-0.5 rounded ${yColor.bg} ${yColor.text}`}>
                                 {course.typicalYear}
@@ -658,6 +753,22 @@ export default function CareerDetailPage() {
                             </div>
                             <h4 className="font-medium text-sm text-[#111111]">{course.name}</h4>
                             <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.reason}</p>
+                          </div>
+                          <div className="shrink-0">
+                            {inPlan ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                                <Check className="h-3 w-3" /> In Plan
+                              </span>
+                            ) : (
+                              <button
+                                disabled={isAdding}
+                                onClick={() => addCourseToPlan(course.code, course.name)}
+                                className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                              >
+                                {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                                Add to Plan
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -673,7 +784,7 @@ export default function CareerDetailPage() {
                   Activities & Experiences
                 </h2>
                 <div className="grid gap-2">
-                  {careerPlan.thingsToDo.map((item, i) => {
+                  {[...careerPlan.thingsToDo].sort((a, b) => (YEAR_ORDER[a.classYear] ?? 99) - (YEAR_ORDER[b.classYear] ?? 99)).map((item, i) => {
                     const aColor = ACTIVITY_COLORS[item.type] || { bg: "bg-gray-50", text: "text-gray-600" };
                     const yColor = YEAR_COLORS[item.classYear] || { bg: "bg-gray-50", text: "text-gray-600" };
                     return (
@@ -702,20 +813,21 @@ export default function CareerDetailPage() {
                   People to Connect With
                 </h2>
                 <div className="grid gap-2">
-                  {careerPlan.peopleToMeet.map((person, i) => {
+                  {[...careerPlan.peopleToMeet].sort((a, b) => (YEAR_ORDER[a.suggestedTiming] ?? 99) - (YEAR_ORDER[b.suggestedTiming] ?? 99)).map((person, i) => {
                     const typeColor: Record<string, string> = {
                       alumni: "bg-davidson-light text-davidson",
                       faculty: "bg-navy/5 text-navy",
                       advisor: "bg-purple-50 text-purple-700",
                       professional: "bg-emerald-50 text-emerald-700",
                     };
+                    const yColor = YEAR_COLORS[person.suggestedTiming] || { bg: "bg-gray-50", text: "text-gray-600" };
                     return (
                       <div key={i} className="bg-white border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${typeColor[person.type] || "bg-gray-50 text-gray-600"}`}>
                             {person.type}
                           </span>
-                          <span className="text-[10px] text-gray-400">{person.suggestedTiming}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded ${yColor.bg} ${yColor.text}`}>{person.suggestedTiming}</span>
                         </div>
                         <h4 className="font-medium text-sm text-[#111111]">{person.role}</h4>
                         <p className="text-xs text-gray-500 mt-1 leading-relaxed">{person.reason}</p>
@@ -729,7 +841,7 @@ export default function CareerDetailPage() {
               {/* Regenerate button */}
               <div className="text-center pt-2">
                 <Button
-                  onClick={generateRoadmap}
+                  onClick={() => generateRoadmap(true)}
                   variant="outline"
                   size="sm"
                   className="text-xs border-gray-200 text-gray-500 hover:text-davidson hover:border-davidson"
@@ -744,20 +856,25 @@ export default function CareerDetailPage() {
       )}
 
       {/* Cold Email Modal */}
+      {typeof document !== "undefined" && createPortal(
       <AnimatePresence>
         {selectedAlumni && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => { setSelectedAlumni(null); setColdEmail(null); }}
+            className="fixed inset-0 z-[100]"
           >
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]"
+              onClick={(e) => { e.stopPropagation(); setSelectedAlumni(null); setColdEmail(null); }}
+            />
+            <div className="fixed inset-0 z-[101] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
+              className="relative bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between mb-5">
@@ -806,22 +923,35 @@ export default function CareerDetailPage() {
                       </ul>
                     </div>
                   )}
-                  <Button
-                    onClick={copyEmail}
-                    className="w-full bg-davidson hover:bg-davidson-dark text-white rounded-lg"
-                  >
-                    {emailCopied ? (
-                      <><Check className="mr-1.5 h-3.5 w-3.5" /> Copied</>
-                    ) : (
-                      <><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Email</>
-                    )}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={copyEmail}
+                      className="flex-1 bg-davidson hover:bg-davidson-dark text-white rounded-lg"
+                    >
+                      {emailCopied ? (
+                        <><Check className="mr-1.5 h-3.5 w-3.5" /> Copied</>
+                      ) : (
+                        <><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Email</>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { if (selectedAlumni) generateEmail(selectedAlumni, true); }}
+                      disabled={emailLoading}
+                      className="border-gray-200 text-gray-500 hover:text-davidson hover:border-davidson"
+                    >
+                      {emailLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
                 </div>
               )}
             </motion.div>
+            </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
 
     </motion.div>
   );

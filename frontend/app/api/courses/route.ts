@@ -19,13 +19,18 @@ export async function GET(req: NextRequest) {
     const department = searchParams.get("department");
     const tag = searchParams.get("tag");
     const page = parseInt(searchParams.get("page") ?? "1");
-    const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 100);
+    const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 200);
     const skip = (page - 1) * limit;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: Record<string, any> = {};
     if (search) {
-      query.$text = { $search: search };
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      query.$or = [
+        { code: { $regex: escaped, $options: "i" } },
+        { name: { $regex: escaped, $options: "i" } },
+        { department: { $regex: escaped, $options: "i" } },
+      ];
     }
     if (department) {
       query.department = department;

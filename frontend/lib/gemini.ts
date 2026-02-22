@@ -2,16 +2,26 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-export const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+export const geminiModel = genAI.getGenerativeModel({
+  model: "gemini-3-flash-preview",
+  generationConfig: {
+    responseMimeType: "application/json",
+    temperature: 0,
+  },
+});
 
-export async function generateCareerPlan(career: string, major: string, classYear: string) {
-  const prompt = `You are a career advisor for Davidson College students. A ${classYear} student majoring in ${major} wants to pursue a career in ${career}.
+export async function generateCareerPlan(career: string, major: string, classYear: string, completedCourses: string[] = []) {
+  const completedBlock = completedCourses.length > 0
+    ? `\n\nThe student has already completed these courses: ${completedCourses.join(", ")}. Do NOT include any of these in your recommendations. Build upon the knowledge from these courses and suggest more advanced or complementary courses instead.`
+    : "";
+
+  const prompt = `You are a career advisor for Davidson College students. A ${classYear} student majoring in ${major} wants to pursue a career in ${career}.${completedBlock}
 
 Generate a JSON response with this exact structure:
 {
   "recommendedMajor": "the best major at Davidson for this career",
   "coursesToTake": [
-    {"code": "DEPT 101", "name": "Course Name", "reason": "Why this course helps", "priority": "required|recommended|helpful", "typicalYear": "Freshman|Sophomore|Junior|Senior"}
+    {"code": "DEPT 101", "name": "Course Name", "reason": "Why this course helps", "priority": "required|recommended|helpful", "typicalYear": "Freshman|Sophomore|Junior|Senior", "courseType": "major-requirement|distribution|elective"}
   ],
   "peopleToMeet": [
     {"role": "Title/Role", "type": "alumni|faculty|advisor|professional", "reason": "Why meet them", "suggestedTiming": "Freshman|Sophomore|Junior|Senior", "howToFind": "Where to find them"}

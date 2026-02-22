@@ -75,6 +75,12 @@ function cleanDescription(desc: string): string {
   cleaned = cleaned.replace(/\s*Notes?:\s.*/i, "");
   // Clean up trailing/leading whitespace
   cleaned = cleaned.trim();
+  // Truncate long descriptions at the last sentence boundary within 300 chars
+  if (cleaned.length > 300) {
+    const truncated = cleaned.slice(0, 300);
+    const lastPeriod = truncated.lastIndexOf(". ");
+    cleaned = lastPeriod > 80 ? truncated.slice(0, lastPeriod + 1) : truncated.trimEnd() + "...";
+  }
   // Capitalize first letter
   if (cleaned.length > 0) {
     cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
@@ -157,8 +163,8 @@ function transformCourses(raw: DavidsonCourse[]): TransformedCourse[] {
       code,
       name: course.course_title,
       description: cleanDescription(stripHtml(course.course_description || "")),
-      department: course.departments?.[0]?.description ?? course.subject.description,
-      deptCode: course.departments?.[0]?.code ?? course.subject.code,
+      department: course.subject.description,
+      deptCode: course.subject.code,
       professor: instructorList.length > 0 ? instructorList[0] : "Staff",
       instructors: instructorList.length > 0 ? instructorList : ["Staff"],
       sections,
@@ -176,11 +182,19 @@ function transformCourses(raw: DavidsonCourse[]): TransformedCourse[] {
   return results;
 }
 
+// Simple in-memory cache (Next.js fetch cache can't handle responses >2MB)
+let cachedResult: { data: unknown; expiry: number } | null = null;
+const CACHE_TTL = 3600 * 1000; // 1 hour
+
 // GET /api/courses/davidson - fetch courses from Davidson College API
 export async function GET() {
   try {
+    if (cachedResult && Date.now() < cachedResult.expiry) {
+      return NextResponse.json(cachedResult.data);
+    }
+
     const response = await fetch(DAVIDSON_API_URL, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      cache: "no-store", // Response exceeds Next.js 2MB cache limit
     });
 
     if (!response.ok) {
@@ -205,12 +219,16 @@ export async function GET() {
 
     const courses = transformCourses(rawCourses);
 
-    return NextResponse.json({
+    const data = {
       courses,
       total: courses.length,
       term: "Spring 2026",
       fetchedAt: new Date().toISOString(),
-    });
+    };
+
+    cachedResult = { data, expiry: Date.now() + CACHE_TTL };
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("GET /api/courses/davidson error:", error);
     return NextResponse.json(

@@ -14,9 +14,17 @@ export interface IPlannedCourse {
   notes?: string;
 }
 
+export interface ISummerActivity {
+  title: string;
+  description?: string;
+  summer: string;       // e.g. "Summer 2026"
+  year: number;
+}
+
 export interface ICoursePlan extends Document {
   userId: mongoose.Types.ObjectId;
   plannedCourses: IPlannedCourse[];
+  summerActivities: ISummerActivity[];
   totalCreditsCompleted: number;
   totalCreditsPlanned: number;
   createdAt: Date;
@@ -39,10 +47,18 @@ const PlannedCourseSchema = new Schema<IPlannedCourse>({
   notes: { type: String },
 });
 
+const SummerActivitySchema = new Schema<ISummerActivity>({
+  title: { type: String, required: true },
+  description: { type: String },
+  summer: { type: String, required: true },
+  year: { type: Number, required: true },
+});
+
 const CoursePlanSchema = new Schema<ICoursePlan>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     plannedCourses: [PlannedCourseSchema],
+    summerActivities: { type: [SummerActivitySchema], default: [] },
     totalCreditsCompleted: { type: Number, default: 0 },
     totalCreditsPlanned: { type: Number, default: 0 },
   },

@@ -71,7 +71,7 @@ const stagger = {
 /* ------------------------------------------------------------------ */
 
 export default function ProfilePage() {
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
 
   // --------------- state ---------------
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -184,6 +184,8 @@ export default function ProfilePage() {
       const data = await res.json();
       setProfile(data.user as ProfileData);
       setEditing(false);
+      // Refresh the next-auth session so the updated name propagates everywhere
+      await updateSession();
       showToast("Profile updated successfully.", "success");
     } catch {
       showToast("Failed to save changes. Please try again.", "error");
