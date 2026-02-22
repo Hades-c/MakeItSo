@@ -28,7 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import { SUBJECT_AREAS } from "@/lib/utils";
-import { DAVIDSON_COURSES, type SeedCourse, type ProfessorRMPData } from "@/lib/davidson-courses";
+import { DAVIDSON_COURSES, CATALOG_MAJOR_REQUIREMENTS, type SeedCourse, type ProfessorRMPData } from "@/lib/davidson-courses";
 // Major name -> abbreviation map
 const MAJOR_ABBREV: Record<string, string> = {
   "Computer Science": "CSC",
@@ -269,79 +269,45 @@ export default function ExplorePage() {
     );
   };
 
-  // Build enriched courses: live-first with static metadata enrichment
-  const allCourses: EnrichedCourse[] = (() => {
-    // Track which static courses got matched so we can append unmatched ones
-    const matchedStaticCodes = new Set<string>();
+  // Build enriched courses: only courses from the live schedule, enriched with static metadata
+  const allCourses: EnrichedCourse[] = liveCourses.map((lc) => {
+    const staticMatch = findStaticCourse(lc.code);
 
-    // Enrich each live course with the closest static match
-    const enrichedLive: EnrichedCourse[] = liveCourses.map((lc) => {
-      const staticMatch = findStaticCourse(lc.code);
-      if (staticMatch) matchedStaticCodes.add(staticMatch.code);
+    // Resolve professor: prefer live non-Staff, then static
+    const prof = lc.professor && lc.professor !== "Staff"
+      ? lc.professor
+      : staticMatch?.professor || lc.professor;
 
-      // Resolve professor: prefer live non-Staff, then static
-      const prof = lc.professor && lc.professor !== "Staff"
-        ? lc.professor
-        : staticMatch?.professor || lc.professor;
+    // Resolve professor RMP info
+    const profInfo = staticMatch?.professorInfo
+      ?? (prof && prof !== "Staff" ? lookupProfRMP(prof) : undefined);
 
-      // Resolve professor RMP info
-      const profInfo = staticMatch?.professorInfo
-        ?? (prof && prof !== "Staff" ? lookupProfRMP(prof) : undefined);
-
-      return {
-        code: lc.code,
-        name: lc.name,
-        description: staticMatch?.description || lc.description,
-        department: lc.department,
-        deptCode: lc.deptCode,
-        professor: prof,
-        instructors: lc.instructors,
-        sections: lc.sections,
-        enrollment: lc.enrollment,
-        gradRequirements: lc.gradRequirements,
-        schedule: lc.schedule,
-        location: lc.location,
-        credits: staticMatch?.credits,
-        prerequisites: staticMatch?.prerequisites ?? [],
-        offered: staticMatch?.offered ?? [],
-        tags: staticMatch?.tags,
-        majorRequirements: staticMatch?.majorRequirements,
-        difficulty: staticMatch?.difficulty,
-        professorInfo: profInfo,
-        courseInsights: staticMatch?.courseInsights,
-        careerRelevance: staticMatch?.careerRelevance ?? [],
-        isLive: true,
-        hasStaticMatch: !!staticMatch,
-      };
-    });
-
-    // Append static-only courses (not offered this semester but still useful to browse)
-    const staticOnly: EnrichedCourse[] = DAVIDSON_COURSES
-      .filter((sc) => !matchedStaticCodes.has(sc.code))
-      .map((sc) => ({
-        code: sc.code,
-        name: sc.name,
-        description: sc.description,
-        department: sc.department,
-        professor: sc.professor || "Staff",
-        instructors: sc.professor ? [sc.professor] : [],
-        sections: 0,
-        gradRequirements: [],
-        prerequisites: sc.prerequisites,
-        offered: sc.offered,
-        tags: sc.tags,
-        majorRequirements: sc.majorRequirements,
-        difficulty: sc.difficulty,
-        credits: sc.credits,
-        professorInfo: sc.professorInfo,
-        courseInsights: sc.courseInsights,
-        careerRelevance: sc.careerRelevance,
-        isLive: false,
-        hasStaticMatch: true,
-      }));
-
-    return [...enrichedLive, ...staticOnly];
-  })();
+    return {
+      code: lc.code,
+      name: lc.name,
+      description: staticMatch?.description || lc.description,
+      department: lc.department,
+      deptCode: lc.deptCode,
+      professor: prof,
+      instructors: lc.instructors,
+      sections: lc.sections,
+      enrollment: lc.enrollment,
+      gradRequirements: lc.gradRequirements,
+      schedule: lc.schedule,
+      location: lc.location,
+      credits: staticMatch?.credits,
+      prerequisites: staticMatch?.prerequisites ?? [],
+      offered: staticMatch?.offered ?? [],
+      tags: staticMatch?.tags,
+      majorRequirements: CATALOG_MAJOR_REQUIREMENTS[lc.code],
+      difficulty: staticMatch?.difficulty,
+      professorInfo: profInfo,
+      courseInsights: staticMatch?.courseInsights,
+      careerRelevance: staticMatch?.careerRelevance ?? [],
+      isLive: true,
+      hasStaticMatch: !!staticMatch,
+    };
+  });
 
   // Departments available from selected areas
   const areaDepartments: string[] = SUBJECT_AREAS.filter((a) =>
@@ -363,8 +329,7 @@ export default function ExplorePage() {
       : true;
     return matchesDept && matchesSearch;
   }).sort((a, b) => {
-    // Live courses first, then static-only; within each group: major reqs first, then by number
-    if (a.isLive !== b.isLive) return a.isLive ? -1 : 1;
+    // Major requirements first, then by course number
     const aIsMajorReq = a.majorRequirements && a.majorRequirements.length > 0 ? 1 : 0;
     const bIsMajorReq = b.majorRequirements && b.majorRequirements.length > 0 ? 1 : 0;
     if (aIsMajorReq !== bIsMajorReq) return bIsMajorReq - aIsMajorReq;

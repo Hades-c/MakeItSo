@@ -2240,3 +2240,108 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     careerRelevance: [{ field: "Education", relevance: 0.9 }, { field: "Psychology & Counseling", relevance: 0.85 }, { field: "Healthcare & Medicine", relevance: 0.5 }],
   },
 ];
+
+// ============================================================================
+// Official major requirements sourced from Davidson College catalog (2025-2026)
+// https://catalog.davidson.edu/content.php?catoid=27&navoid=1287
+// ============================================================================
+// Maps course code → array of major names this course is required/core for.
+// Only includes courses that are explicitly required (not electives chosen from
+// a broad list). "Required" means every student in the major must take it.
+// ============================================================================
+export const CATALOG_MAJOR_REQUIREMENTS: Record<string, string[]> = {
+  // === Computer Science (poid=1745) ===
+  // Core: CSC 220, 221, 250, 321 + one of MAT 140/150/160
+  "CSC 220": ["Computer Science"],
+  "CSC 221": ["Computer Science"],
+  "CSC 250": ["Computer Science"],
+  "CSC 321": ["Computer Science"],
+
+  // === Economics (poid=1747) ===
+  // Core: ECO 101, 202, 203, 204, 205, 495
+  "ECO 101": ["Economics"],
+  "ECO 202": ["Economics"],
+  "ECO 203": ["Economics"],
+  "ECO 204": ["Economics"],
+  "ECO 205": ["Economics"],
+  "ECO 495": ["Economics"],
+
+  // === Mathematics (poid=1761) ===
+  // Core: MAT 113, 150, and one of 140/160
+  "MAT 113": ["Mathematics"],
+  "MAT 150": ["Mathematics", "Computer Science"],
+
+  // === Biology (poid=1739) ===
+  // Core: BIO 115, 116, CHE 115
+  "BIO 115": ["Biology"],
+  "BIO 116": ["Biology"],
+  "CHE 115": ["Biology", "Chemistry"],
+
+  // === Chemistry (poid=1741) ===
+  // Foundation: CHE 220, 230, 240, 250, 260
+  "CHE 220": ["Chemistry"],
+  "CHE 230": ["Chemistry"],
+  "CHE 240": ["Chemistry"],
+  "CHE 250": ["Chemistry"],
+  "CHE 260": ["Chemistry"],
+
+  // === Physics (poid=1768) ===
+  // Core: PHY 305, 315, 330, 335, 350, 360
+  "PHY 305": ["Physics"],
+  "PHY 315": ["Physics"],
+  "PHY 330": ["Physics"],
+  "PHY 335": ["Physics"],
+  "PHY 350": ["Physics"],
+  "PHY 360": ["Physics"],
+
+  // === Psychology (poid=1770) ===
+  // Core: PSY 101, 200, 300
+  "PSY 101": ["Psychology"],
+  "PSY 200": ["Psychology"],
+  "PSY 300": ["Psychology"],
+
+  // === Political Science (poid=1769) ===
+  // Core: POL 182
+  "POL 182": ["Political Science"],
+
+  // === English (poid=1749) ===
+  // Gateway: ENG 220
+  "ENG 220": ["English"],
+
+  // === Sociology (poid=1774) ===
+  // Core: SOC 201
+  "SOC 201": ["Sociology"],
+
+  // === Environmental Studies (poid=1750) ===
+  // Core: ENV 201, 202, 203, 401, 498
+  "ENV 201": ["Environmental Studies"],
+  "ENV 202": ["Environmental Studies"],
+  "ENV 203": ["Environmental Studies"],
+  "ENV 401": ["Environmental Studies"],
+  "ENV 498": ["Environmental Studies"],
+
+  // === Public Health (poid=1762) ===
+  // Foundations: PBH 110, 250, 280, 292
+  "PBH 110": ["Public Health"],
+  "PBH 250": ["Public Health"],
+  "PBH 280": ["Public Health"],
+  "PBH 292": ["Public Health"],
+
+  // === Anthropology (poid=1735) ===
+  // Core: ANT 101, 490
+  "ANT 101": ["Anthropology"],
+  "ANT 490": ["Anthropology"],
+
+  // === Philosophy (poid=1766) ===
+  // Required: PHI 215, 451
+  "PHI 215": ["Philosophy"],
+  "PHI 451": ["Philosophy"],
+
+  // === History (poid=1756) ===
+  // Core: HIS 480
+  "HIS 480": ["History"],
+
+  // === Music (poid=1764) ===
+  // Core: MUS 401
+  "MUS 401": ["Music"],
+};
