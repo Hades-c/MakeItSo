@@ -47,7 +47,7 @@ interface TransformedCourse {
 
 function stripHtml(html: string): string {
   return html
-    .replace(/<[^>]*>/g, "")
+    .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -56,6 +56,21 @@ function stripHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function cleanDescription(desc: string): string {
+  // Remove instructor prefix like "Instructor B. Baker", "Instructor: J. R. Smith"
+  let cleaned = desc.replace(/^Instructor:?\s+(?:[A-Z][.\w'-]*\s+){1,3}/i, "");
+  // Remove prerequisites suffix (everything from "Prerequisites" or "Prerequisite" onward)
+  cleaned = cleaned.replace(/\s*Prerequisites?[:.\s].*/i, "");
+  // Remove "Corequisite" suffix
+  cleaned = cleaned.replace(/\s*Corequisites?[:.\s].*/i, "");
+  // Remove "Cross-listed" suffix
+  cleaned = cleaned.replace(/\s*Cross-?listed.*/i, "");
+  // Remove "Note:" or "Notes:" suffix
+  cleaned = cleaned.replace(/\s*Notes?:\s.*/i, "");
+  // Clean up trailing/leading whitespace
+  return cleaned.trim();
 }
 
 function formatInstructorName(instructor: DavidsonInstructor): string {
@@ -132,7 +147,7 @@ function transformCourses(raw: DavidsonCourse[]): TransformedCourse[] {
     results.push({
       code,
       name: course.course_title,
-      description: stripHtml(course.course_description || ""),
+      description: cleanDescription(stripHtml(course.course_description || "")),
       department: course.departments?.[0]?.description ?? course.subject.description,
       deptCode: course.departments?.[0]?.code ?? course.subject.code,
       professor: instructorList.length > 0 ? instructorList[0] : "Staff",
