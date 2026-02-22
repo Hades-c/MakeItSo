@@ -684,6 +684,8 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
       : null;
   const realInstructors = course.instructors.filter((i) => i !== "Staff");
   const prof = realProfessor ? lookupProfRMP(realProfessor) : undefined;
+  const staticMatch = findStaticCourse(course.code);
+  const careerRelevance = staticMatch?.careerRelevance ?? [];
   const deptColor = getDeptColor(course.department);
   // Filter out meaningless grad requirements and map to readable labels
   const gradReqs = course.gradRequirements
@@ -848,6 +850,33 @@ function LiveCourseCard({ course, aiReason }: { course: LiveCourse; aiReason?: s
                     All instructors: {realInstructors.join(", ")}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Career Relevance (from static data match) */}
+            {careerRelevance.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
+                  <TrendingUp className="h-3 w-3" /> Career Relevance
+                </p>
+                <div className="space-y-1.5">
+                  {careerRelevance.map(({ field, relevance }) => (
+                    <div key={field} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-600 w-40 truncate">
+                        {field}
+                      </span>
+                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-davidson"
+                          style={{ width: `${relevance * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-400 w-8 text-right">
+                        {Math.round(relevance * 100)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
