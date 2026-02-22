@@ -182,11 +182,19 @@ function transformCourses(raw: DavidsonCourse[]): TransformedCourse[] {
   return results;
 }
 
+// Simple in-memory cache (Next.js fetch cache can't handle responses >2MB)
+let cachedResult: { data: unknown; expiry: number } | null = null;
+const CACHE_TTL = 3600 * 1000; // 1 hour
+
 // GET /api/courses/davidson - fetch courses from Davidson College API
 export async function GET() {
   try {
+    if (cachedResult && Date.now() < cachedResult.expiry) {
+      return NextResponse.json(cachedResult.data);
+    }
+
     const response = await fetch(DAVIDSON_API_URL, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      cache: "no-store", // Response exceeds Next.js 2MB cache limit
     });
 
     if (!response.ok) {
@@ -211,12 +219,16 @@ export async function GET() {
 
     const courses = transformCourses(rawCourses);
 
-    return NextResponse.json({
+    const data = {
       courses,
       total: courses.length,
       term: "Spring 2026",
       fetchedAt: new Date().toISOString(),
-    });
+    };
+
+    cachedResult = { data, expiry: Date.now() + CACHE_TTL };
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("GET /api/courses/davidson error:", error);
     return NextResponse.json(
