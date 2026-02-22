@@ -9,7 +9,6 @@ from pptx.enum.shapes import MSO_SHAPE
 
 # Brand colors
 DAVIDSON_RED = RGBColor(0x8C, 0x1D, 0x1D)
-DAVIDSON_DARK = RGBColor(0x7A, 0x19, 0x19)
 NAVY = RGBColor(0x1E, 0x2A, 0x38)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 LIGHT_GRAY = RGBColor(0xF8, 0xF9, 0xFB)
@@ -19,6 +18,10 @@ ACCENT_GREEN = RGBColor(0x10, 0xB9, 0x81)
 ACCENT_BLUE = RGBColor(0x3B, 0x82, 0xF6)
 ACCENT_PURPLE = RGBColor(0x8B, 0x5C, 0xF6)
 ACCENT_AMBER = RGBColor(0xF5, 0x9E, 0x0B)
+ACCENT_PINK = RGBColor(0xEC, 0x48, 0x99)
+SUBTLE_NAVY = RGBColor(0x2A, 0x3A, 0x4E)
+DIM_BLUE = RGBColor(0xA0, 0xAE, 0xC0)
+DIMMER_BLUE = RGBColor(0x6B, 0x7B, 0x90)
 
 prs = Presentation()
 prs.slide_width = Inches(13.333)
@@ -29,25 +32,16 @@ H = prs.slide_height
 
 
 def add_bg(slide, color):
-    bg = slide.background
-    fill = bg.fill
+    fill = slide.background.fill
     fill.solid()
     fill.fore_color.rgb = color
 
 
-def add_rect(slide, left, top, width, height, color, alpha=None):
+def add_rect(slide, left, top, width, height, color):
     shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
     shape.fill.solid()
     shape.fill.fore_color.rgb = color
     shape.line.fill.background()
-    if alpha is not None:
-        from lxml import etree
-        ns = 'http://schemas.openxmlformats.org/drawingml/2006/main'
-        solidFill = shape.fill._fill
-        srgbClr = solidFill.find(f'{{{ns}}}solidFill/{{{ns}}}srgbClr')
-        if srgbClr is not None:
-            alpha_elem = etree.SubElement(srgbClr, f'{{{ns}}}alpha')
-            alpha_elem.set('val', str(int(alpha * 1000)))
     return shape
 
 
@@ -67,84 +61,71 @@ def add_circle(slide, left, top, size, color):
     return shape
 
 
-def add_text_box(slide, left, top, width, height, text, font_size=18,
-                 color=DARK_TEXT, bold=False, alignment=PP_ALIGN.LEFT,
-                 font_name="Calibri", line_spacing=1.2):
+def add_text(slide, left, top, width, height, text, size=18,
+             color=DARK_TEXT, bold=False, align=PP_ALIGN.LEFT, font="Calibri"):
+    """Add a single text box. Line spacing is handled automatically by PowerPoint."""
     txBox = slide.shapes.add_textbox(left, top, width, height)
     tf = txBox.text_frame
     tf.word_wrap = True
     p = tf.paragraphs[0]
     p.text = text
-    p.font.size = Pt(font_size)
+    p.font.size = Pt(size)
     p.font.color.rgb = color
     p.font.bold = bold
-    p.font.name = font_name
-    p.alignment = alignment
+    p.font.name = font
+    p.alignment = align
     p.space_after = Pt(0)
     p.space_before = Pt(0)
-    if line_spacing != 1.0:
-        p.line_spacing = Pt(font_size * line_spacing)
     return txBox
 
 
-def add_multiline_text(slide, left, top, width, height, lines, default_size=18,
-                       default_color=DARK_TEXT, alignment=PP_ALIGN.LEFT,
-                       font_name="Calibri"):
-    """lines = [(text, size, color, bold), ...]"""
+def add_para_text(slide, left, top, width, height, lines, align=PP_ALIGN.LEFT, font="Calibri"):
+    """Add a text box with multiple paragraphs.
+    lines = [(text, size, color, bold), ...]
+    """
     txBox = slide.shapes.add_textbox(left, top, width, height)
     tf = txBox.text_frame
     tf.word_wrap = True
-    for i, line_data in enumerate(lines):
-        text = line_data[0]
-        size = line_data[1] if len(line_data) > 1 else default_size
-        color = line_data[2] if len(line_data) > 2 else default_color
-        bold = line_data[3] if len(line_data) > 3 else False
+    for i, item in enumerate(lines):
+        text = item[0]
+        size = item[1] if len(item) > 1 else 14
+        color = item[2] if len(item) > 2 else DARK_TEXT
+        bold = item[3] if len(item) > 3 else False
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         p.text = text
         p.font.size = Pt(size)
         p.font.color.rgb = color
         p.font.bold = bold
-        p.font.name = font_name
-        p.alignment = alignment
-        p.space_after = Pt(4)
+        p.font.name = font
+        p.alignment = align
+        p.space_after = Pt(size * 0.4)
     return txBox
 
 
 # ============================================================
 # SLIDE 1: TITLE
 # ============================================================
-slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank
+slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, NAVY)
-
-# Accent bar at top
 add_rect(slide, Inches(0), Inches(0), W, Inches(0.06), DAVIDSON_RED)
+add_circle(slide, Inches(10.5), Inches(0.5), Inches(3), SUBTLE_NAVY)
+add_circle(slide, Inches(-1), Inches(5), Inches(2.5), SUBTLE_NAVY)
 
-# Decorative circles (subtle)
-add_circle(slide, Inches(10.5), Inches(0.5), Inches(3), RGBColor(0x2A, 0x3A, 0x4E))
-add_circle(slide, Inches(-1), Inches(5), Inches(2.5), RGBColor(0x2A, 0x3A, 0x4E))
+icon = add_rounded_rect(slide, Inches(5.9), Inches(1.6), Inches(1.5), Inches(1.5), DAVIDSON_RED)
+add_text(slide, Inches(5.9), Inches(1.75), Inches(1.5), Inches(1.2),
+         "MIS", size=36, color=WHITE, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
 
-# Sparkle icon placeholder - red rounded rect
-icon_shape = add_rounded_rect(slide, Inches(5.9), Inches(1.6), Inches(1.5), Inches(1.5), DAVIDSON_RED)
-add_text_box(slide, Inches(5.9), Inches(1.72), Inches(1.5), Inches(1.3),
-             "MIS", font_size=36, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER,
-             font_name="Georgia")
+add_text(slide, Inches(1.5), Inches(3.5), Inches(10.3), Inches(1),
+         "MakeItSo", size=60, color=WHITE, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
 
-# Title
-add_text_box(slide, Inches(1.5), Inches(3.4), Inches(10.3), Inches(1.2),
-             "MakeItSo", font_size=60, color=WHITE, bold=True,
-             alignment=PP_ALIGN.CENTER, font_name="Georgia")
+add_text(slide, Inches(2), Inches(4.7), Inches(9.3), Inches(0.8),
+         "AI-powered course planning that connects what you study to where you're going.",
+         size=22, color=DIM_BLUE, align=PP_ALIGN.CENTER)
 
-# Tagline
-add_text_box(slide, Inches(2), Inches(4.5), Inches(9.3), Inches(0.8),
-             "AI-powered course planning that connects what you study to where you're going.",
-             font_size=22, color=RGBColor(0xA0, 0xAE, 0xC0), bold=False,
-             alignment=PP_ALIGN.CENTER)
+add_text(slide, Inches(2), Inches(6.3), Inches(9.3), Inches(0.5),
+         "hack@DAVIDSON 2025  |  Built for Davidson College Students",
+         size=14, color=DIMMER_BLUE, align=PP_ALIGN.CENTER)
 
-# Bottom line
-add_text_box(slide, Inches(2), Inches(6.2), Inches(9.3), Inches(0.5),
-             "hack@DAVIDSON 2025  |  Built for Davidson College Students",
-             font_size=14, color=RGBColor(0x6B, 0x7B, 0x90), bold=False,
-             alignment=PP_ALIGN.CENTER)
 
 # ============================================================
 # SLIDE 2: THE PROBLEM
@@ -153,38 +134,37 @@ slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, WHITE)
 add_rect(slide, Inches(0), Inches(0), Inches(0.08), H, DAVIDSON_RED)
 
-# Section label
-add_text_box(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
-             "THE PROBLEM", font_size=13, color=DAVIDSON_RED, bold=True,
-             font_name="Calibri")
-
-# Title
-add_text_box(slide, Inches(0.8), Inches(1.0), Inches(11), Inches(1),
-             "Students pick courses blind to career outcomes.",
-             font_size=40, color=NAVY, bold=True, font_name="Georgia")
+add_text(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
+         "THE PROBLEM", size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(1.1), Inches(11), Inches(0.7),
+         "Students pick courses blind to career outcomes.",
+         size=38, color=NAVY, bold=True, font="Georgia")
 
 problems = [
-    ("No career connection", "Students choose courses with zero visibility into how they map to actual careers."),
-    ("Information overload", "463 courses across 24 departments. Generic advisor meetings aren't enough."),
-    ("Networking anxiety", "Alumni exist who can help, but students don't know what to say or who to contact."),
-    ("Professor roulette", "RateMyProfessors is noisy. There's no synthesized, actionable professor intel."),
+    ("No career connection",
+     "Students choose courses with zero visibility into how they map to actual careers."),
+    ("Information overload",
+     "463 courses, 24 departments. Generic advisor meetings aren't enough."),
+    ("Networking anxiety",
+     "Alumni can help, but students don't know what to say or who to reach."),
+    ("Professor roulette",
+     "RateMyProfessors is noisy. No synthesized, actionable professor intel."),
 ]
 
-y_start = Inches(2.5)
 for i, (title, desc) in enumerate(problems):
-    x = Inches(0.8) + Inches(3.05) * i
-    card = add_rounded_rect(slide, x, y_start, Inches(2.8), Inches(3.6), LIGHT_GRAY)
+    x = Inches(0.8) + Inches(3.1) * i
+    y = Inches(2.4)
+    add_rounded_rect(slide, x, y, Inches(2.85), Inches(4.0), LIGHT_GRAY)
 
-    # Number circle
-    num_circle = add_circle(slide, x + Inches(0.2), y_start + Inches(0.25), Inches(0.55), DAVIDSON_RED)
-    add_text_box(slide, x + Inches(0.2), y_start + Inches(0.3), Inches(0.55), Inches(0.45),
-                 str(i + 1), font_size=20, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
+    nc = add_circle(slide, x + Inches(1.05), y + Inches(0.3), Inches(0.65), DAVIDSON_RED)
+    add_text(slide, x + Inches(1.05), y + Inches(0.37), Inches(0.65), Inches(0.5),
+             str(i + 1), size=22, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
 
-    add_text_box(slide, x + Inches(0.2), y_start + Inches(1.05), Inches(2.4), Inches(0.5),
-                 title, font_size=18, color=NAVY, bold=True, font_name="Georgia")
+    add_text(slide, x + Inches(0.25), y + Inches(1.25), Inches(2.35), Inches(0.5),
+             title, size=17, color=NAVY, bold=True, font="Georgia", align=PP_ALIGN.CENTER)
 
-    add_text_box(slide, x + Inches(0.2), y_start + Inches(1.6), Inches(2.4), Inches(1.8),
-                 desc, font_size=14, color=MEDIUM_GRAY, line_spacing=1.4)
+    add_text(slide, x + Inches(0.25), y + Inches(1.9), Inches(2.35), Inches(1.8),
+             desc, size=13, color=MEDIUM_GRAY, align=PP_ALIGN.CENTER)
 
 
 # ============================================================
@@ -194,46 +174,41 @@ slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, WHITE)
 add_rect(slide, Inches(0), Inches(0), Inches(0.08), H, DAVIDSON_RED)
 
-add_text_box(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
-             "THE SOLUTION", font_size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
+         "THE SOLUTION", size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(1.1), Inches(11), Inches(0.7),
+         'Don\'t ask "what courses?" Ask "what career?"',
+         size=38, color=NAVY, bold=True, font="Georgia")
 
-add_text_box(slide, Inches(0.8), Inches(1.0), Inches(11), Inches(1),
-             'Don\'t ask "what courses?" Ask "what career?"',
-             font_size=40, color=NAVY, bold=True, font_name="Georgia")
+add_text(slide, Inches(0.8), Inches(2.0), Inches(11), Inches(0.6),
+         "MakeItSo flips planning on its head. Start with your dream career, and AI builds your entire roadmap backward\u2014courses, people, activities, timeline.",
+         size=16, color=MEDIUM_GRAY)
 
-add_text_box(slide, Inches(0.8), Inches(1.85), Inches(10), Inches(0.7),
-             "MakeItSo flips course planning on its head. Start with your dream career, and AI builds your entire academic roadmap backward\u2014courses, people, activities, and timeline.",
-             font_size=17, color=MEDIUM_GRAY, line_spacing=1.5)
-
-# Two pathways
-path_data = [
+paths = [
     ("Plan Forward", "Start with your interests", ACCENT_GREEN,
      ["Tell us what fascinates you", "Get AI course recommendations", "Explore 24 career paths", "Discover new possibilities"]),
     ("Plan Backward", "Start with your dream career", DAVIDSON_RED,
      ["Pick your target role", "AI generates full action plan", "Courses + People + Activities", "Follow your roadmap to success"]),
 ]
 
-for i, (title, subtitle, color, steps) in enumerate(path_data):
+for i, (title, subtitle, color, steps) in enumerate(paths):
     x = Inches(1.5) + Inches(5.5) * i
-    y = Inches(3.1)
-
-    card = add_rounded_rect(slide, x, y, Inches(4.8), Inches(3.8), LIGHT_GRAY)
-
-    # Color bar at top of card
+    y = Inches(3.0)
+    add_rounded_rect(slide, x, y, Inches(4.8), Inches(4.0), LIGHT_GRAY)
     add_rect(slide, x, y, Inches(4.8), Inches(0.06), color)
 
-    add_text_box(slide, x + Inches(0.4), y + Inches(0.35), Inches(4), Inches(0.45),
-                 title, font_size=24, color=NAVY, bold=True, font_name="Georgia")
-    add_text_box(slide, x + Inches(0.4), y + Inches(0.85), Inches(4), Inches(0.35),
-                 subtitle, font_size=14, color=color, bold=True)
+    add_text(slide, x + Inches(0.4), y + Inches(0.3), Inches(4), Inches(0.5),
+             title, size=24, color=NAVY, bold=True, font="Georgia")
+    add_text(slide, x + Inches(0.4), y + Inches(0.85), Inches(4), Inches(0.4),
+             subtitle, size=14, color=color, bold=True)
 
     for j, step in enumerate(steps):
-        step_y = y + Inches(1.5) + Inches(0.5) * j
-        num_c = add_circle(slide, x + Inches(0.4), step_y, Inches(0.3), color)
-        add_text_box(slide, x + Inches(0.4), step_y + Inches(0.02), Inches(0.3), Inches(0.26),
-                     str(j + 1), font_size=11, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
-        add_text_box(slide, x + Inches(0.9), step_y + Inches(0.02), Inches(3.5), Inches(0.3),
-                     step, font_size=14, color=DARK_TEXT)
+        sy = y + Inches(1.5) + Inches(0.55) * j
+        add_circle(slide, x + Inches(0.4), sy + Inches(0.03), Inches(0.3), color)
+        add_text(slide, x + Inches(0.4), sy + Inches(0.05), Inches(0.3), Inches(0.25),
+                 str(j + 1), size=11, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+        add_text(slide, x + Inches(0.9), sy + Inches(0.03), Inches(3.5), Inches(0.35),
+                 step, size=14, color=DARK_TEXT)
 
 
 # ============================================================
@@ -243,39 +218,40 @@ slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, WHITE)
 add_rect(slide, Inches(0), Inches(0), Inches(0.08), H, DAVIDSON_RED)
 
-add_text_box(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
-             "KEY FEATURES", font_size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
+         "KEY FEATURES", size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(1.1), Inches(11), Inches(0.7),
+         "Six AI-powered tools, one platform.",
+         size=38, color=NAVY, bold=True, font="Georgia")
 
-add_text_box(slide, Inches(0.8), Inches(1.0), Inches(11), Inches(0.8),
-             "Six AI-powered tools, one platform.",
-             font_size=40, color=NAVY, bold=True, font_name="Georgia")
-
-features = [
-    ("Smart Course Explorer", "463 real Davidson courses with live enrollment, RateMyProfessors ratings, and AI-generated insights showing key topics, skills gained, and career connections.",
+features1 = [
+    ("Smart Course Explorer",
+     "463 real Davidson courses with live enrollment, RateMyProfessors ratings, and AI-generated insights for key topics, skills, and career connections.",
      ACCENT_BLUE),
-    ("AI Career Planner", "Tell us your dream career. Gemini generates a complete action plan: recommended courses, people to meet, activities to do, and Davidson-specific insights.",
+    ("AI Career Planner",
+     "Tell us your dream career. Gemini generates a complete action plan: recommended courses, people to meet, activities to do, and Davidson-specific insights.",
      DAVIDSON_RED),
-    ("4-Year Roadmap Builder", "AI creates optimized semester-by-semester schedules respecting prerequisites, distribution requirements, and workload balance. Adjustable specificity levels 1\u20135.",
+    ("4-Year Roadmap Builder",
+     "AI creates optimized semester-by-semester schedules respecting prerequisites, distribution requirements, and workload balance.",
      ACCENT_GREEN),
 ]
 
-for i, (title, desc, color) in enumerate(features):
+for i, (title, desc, color) in enumerate(features1):
     x = Inches(0.8) + Inches(4.1) * i
     y = Inches(2.2)
-    card = add_rounded_rect(slide, x, y, Inches(3.8), Inches(4.5), LIGHT_GRAY)
+    add_rounded_rect(slide, x, y, Inches(3.8), Inches(4.8), LIGHT_GRAY)
     add_rect(slide, x, y, Inches(3.8), Inches(0.06), color)
 
-    # Icon circle
-    icon_c = add_circle(slide, x + Inches(0.3), y + Inches(0.4), Inches(0.6), color)
-    icons = ["\u2605", "\u25B6", "\u2726"]
-    add_text_box(slide, x + Inches(0.3), y + Inches(0.45), Inches(0.6), Inches(0.5),
-                 icons[i], font_size=22, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
+    add_circle(slide, x + Inches(1.5), y + Inches(0.4), Inches(0.7), color)
+    icons = ["1", "2", "3"]
+    add_text(slide, x + Inches(1.5), y + Inches(0.47), Inches(0.7), Inches(0.55),
+             icons[i], size=24, color=WHITE, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
 
-    add_text_box(slide, x + Inches(0.3), y + Inches(1.2), Inches(3.2), Inches(0.5),
-                 title, font_size=19, color=NAVY, bold=True, font_name="Georgia")
+    add_text(slide, x + Inches(0.3), y + Inches(1.4), Inches(3.2), Inches(0.5),
+             title, size=18, color=NAVY, bold=True, font="Georgia", align=PP_ALIGN.CENTER)
 
-    add_text_box(slide, x + Inches(0.3), y + Inches(1.8), Inches(3.2), Inches(2.5),
-                 desc, font_size=13, color=MEDIUM_GRAY, line_spacing=1.5)
+    add_text(slide, x + Inches(0.3), y + Inches(2.1), Inches(3.2), Inches(2.5),
+             desc, size=13, color=MEDIUM_GRAY, align=PP_ALIGN.CENTER)
 
 
 # ============================================================
@@ -285,81 +261,98 @@ slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, WHITE)
 add_rect(slide, Inches(0), Inches(0), Inches(0.08), H, DAVIDSON_RED)
 
-add_text_box(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
-             "KEY FEATURES", font_size=13, color=DAVIDSON_RED, bold=True)
-
-add_text_box(slide, Inches(0.8), Inches(1.0), Inches(11), Inches(0.8),
-             "Real data. Real people. Real outcomes.",
-             font_size=40, color=NAVY, bold=True, font_name="Georgia")
+add_text(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
+         "KEY FEATURES", size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(1.1), Inches(11), Inches(0.7),
+         "Real data. Real people. Real outcomes.",
+         size=38, color=NAVY, bold=True, font="Georgia")
 
 features2 = [
-    ("Professor Insights", "AI synthesizes RateMyProfessors reviews into balanced summaries with strengths, considerations, and a specific tip for success\u2014actionable, not discouraging.",
+    ("Professor Insights",
+     "AI synthesizes RateMyProfessors reviews into balanced summaries with strengths, considerations, and a specific tip for success.",
      ACCENT_PURPLE),
-    ("Alumni Network", "40+ curated Davidson alumni across McKinsey, Goldman Sachs, Google, Microsoft, and more. Browse by career field, company, and graduation year.",
+    ("Alumni Network",
+     "40+ curated Davidson alumni across McKinsey, Goldman Sachs, Google, Microsoft, and more. Browse by career field and graduation year.",
      ACCENT_AMBER),
-    ("Cold Email Generator", "Solves networking anxiety. AI writes personalized, professional outreach emails tailored to each alumnus's role and the student's interests.",
-     RGBColor(0xEC, 0x48, 0x99)),
+    ("Cold Email Generator",
+     "Solves networking anxiety. AI writes personalized, professional outreach emails tailored to each alumnus's role and your interests.",
+     ACCENT_PINK),
 ]
 
 for i, (title, desc, color) in enumerate(features2):
     x = Inches(0.8) + Inches(4.1) * i
     y = Inches(2.2)
-    card = add_rounded_rect(slide, x, y, Inches(3.8), Inches(4.5), LIGHT_GRAY)
+    add_rounded_rect(slide, x, y, Inches(3.8), Inches(4.8), LIGHT_GRAY)
     add_rect(slide, x, y, Inches(3.8), Inches(0.06), color)
 
-    icon_c = add_circle(slide, x + Inches(0.3), y + Inches(0.4), Inches(0.6), color)
-    icons2 = ["\u2606", "\u25CF", "\u2709"]
-    add_text_box(slide, x + Inches(0.3), y + Inches(0.45), Inches(0.6), Inches(0.5),
-                 icons2[i], font_size=22, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
+    add_circle(slide, x + Inches(1.5), y + Inches(0.4), Inches(0.7), color)
+    icons = ["4", "5", "6"]
+    add_text(slide, x + Inches(1.5), y + Inches(0.47), Inches(0.7), Inches(0.55),
+             icons[i], size=24, color=WHITE, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
 
-    add_text_box(slide, x + Inches(0.3), y + Inches(1.2), Inches(3.2), Inches(0.5),
-                 title, font_size=19, color=NAVY, bold=True, font_name="Georgia")
+    add_text(slide, x + Inches(0.3), y + Inches(1.4), Inches(3.2), Inches(0.5),
+             title, size=18, color=NAVY, bold=True, font="Georgia", align=PP_ALIGN.CENTER)
 
-    add_text_box(slide, x + Inches(0.3), y + Inches(1.8), Inches(3.2), Inches(2.5),
-                 desc, font_size=13, color=MEDIUM_GRAY, line_spacing=1.5)
+    add_text(slide, x + Inches(0.3), y + Inches(2.1), Inches(3.2), Inches(2.5),
+             desc, size=13, color=MEDIUM_GRAY, align=PP_ALIGN.CENTER)
 
 
 # ============================================================
-# SLIDE 6: HOW IT WORKS (Architecture)
+# SLIDE 6: TECH STACK
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, NAVY)
 add_rect(slide, Inches(0), Inches(0), W, Inches(0.06), DAVIDSON_RED)
 
-add_text_box(slide, Inches(0.8), Inches(0.5), Inches(3), Inches(0.4),
-             "UNDER THE HOOD", font_size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(0.5), Inches(3), Inches(0.4),
+         "UNDER THE HOOD", size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(1.0), Inches(11), Inches(0.7),
+         "Built with a modern, production-grade stack.",
+         size=36, color=WHITE, bold=True, font="Georgia")
 
-add_text_box(slide, Inches(0.8), Inches(0.9), Inches(11), Inches(0.8),
-             "Built with a modern, production-grade stack.",
-             font_size=36, color=WHITE, bold=True, font_name="Georgia")
-
-# Tech stack boxes
-stack_items = [
-    ("Frontend", "Next.js 14 + TypeScript\nshadcn/ui + Tailwind CSS\nFramer Motion animations\nRecharts visualizations", ACCENT_BLUE),
-    ("Backend", "Next.js API Routes (serverless)\nMongoDB Atlas + Mongoose\nNextAuth.js authentication\nbcrypt password hashing", ACCENT_GREEN),
-    ("AI Engine", "Google Gemini 3 Flash\nStructured JSON outputs\nSmart caching (80% hit rate)\n6 distinct AI features", DAVIDSON_RED),
-    ("Data Sources", "Davidson College API (live)\nRateMyProfessors GraphQL\n463 courses indexed\n40+ alumni curated", ACCENT_PURPLE),
+stack = [
+    ("Frontend", ACCENT_BLUE, [
+        "Next.js 14 + TypeScript",
+        "shadcn/ui + Tailwind CSS",
+        "Framer Motion animations",
+        "Recharts visualizations",
+    ]),
+    ("Backend", ACCENT_GREEN, [
+        "Next.js API Routes (serverless)",
+        "MongoDB Atlas + Mongoose",
+        "NextAuth.js authentication",
+        "bcrypt password hashing",
+    ]),
+    ("AI Engine", DAVIDSON_RED, [
+        "Google Gemini 3 Flash",
+        "Structured JSON outputs",
+        "Smart caching (80% hit rate)",
+        "6 distinct AI features",
+    ]),
+    ("Data Sources", ACCENT_PURPLE, [
+        "Davidson College API (live)",
+        "RateMyProfessors GraphQL",
+        "463 courses indexed",
+        "40+ alumni curated",
+    ]),
 ]
 
-for i, (title, desc, color) in enumerate(stack_items):
-    x = Inches(0.6) + Inches(3.15) * i
-    y = Inches(2.3)
-    card = add_rounded_rect(slide, x, y, Inches(2.9), Inches(3.6), RGBColor(0x2A, 0x3A, 0x4E))
-    add_rect(slide, x, y, Inches(2.9), Inches(0.06), color)
+for i, (title, color, items) in enumerate(stack):
+    x = Inches(0.5) + Inches(3.2) * i
+    y = Inches(2.2)
+    add_rounded_rect(slide, x, y, Inches(2.95), Inches(4.0), SUBTLE_NAVY)
+    add_rect(slide, x, y, Inches(2.95), Inches(0.06), color)
 
-    add_text_box(slide, x + Inches(0.3), y + Inches(0.3), Inches(2.3), Inches(0.4),
-                 title, font_size=20, color=color, bold=True, font_name="Georgia")
+    add_text(slide, x + Inches(0.3), y + Inches(0.35), Inches(2.35), Inches(0.45),
+             title, size=20, color=color, bold=True, font="Georgia")
 
-    # Description lines
-    for j, line in enumerate(desc.split("\n")):
-        add_text_box(slide, x + Inches(0.3), y + Inches(1.0) + Inches(0.5) * j,
-                     Inches(2.3), Inches(0.4),
-                     line, font_size=13, color=RGBColor(0xA0, 0xAE, 0xC0))
+    lines = [(item, 13, DIM_BLUE) for item in items]
+    add_para_text(slide, x + Inches(0.3), y + Inches(1.1), Inches(2.35), Inches(2.5),
+                  lines, font="Calibri")
 
-# Deployment note
-add_text_box(slide, Inches(0.8), Inches(6.4), Inches(11), Inches(0.5),
-             "Deployed on Vercel  |  MongoDB Atlas  |  Serverless, auto-scaling  |  <2s page loads",
-             font_size=13, color=RGBColor(0x6B, 0x7B, 0x90), alignment=PP_ALIGN.CENTER)
+add_text(slide, Inches(0.8), Inches(6.6), Inches(11.7), Inches(0.4),
+         "Deployed on Vercel  |  MongoDB Atlas  |  Serverless, auto-scaling  |  <2s page loads",
+         size=13, color=DIMMER_BLUE, align=PP_ALIGN.CENTER)
 
 
 # ============================================================
@@ -369,37 +362,34 @@ slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, WHITE)
 add_rect(slide, Inches(0), Inches(0), Inches(0.08), H, DAVIDSON_RED)
 
-add_text_box(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
-             "BY THE NUMBERS", font_size=13, color=DAVIDSON_RED, bold=True)
-
-add_text_box(slide, Inches(0.8), Inches(1.0), Inches(11), Inches(0.8),
-             "Real data, real scale, real impact.",
-             font_size=40, color=NAVY, bold=True, font_name="Georgia")
+add_text(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
+         "BY THE NUMBERS", size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(1.1), Inches(11), Inches(0.7),
+         "Real data, real scale, real impact.",
+         size=38, color=NAVY, bold=True, font="Georgia")
 
 stats = [
-    ("463", "Davidson courses\nfully indexed", ACCENT_BLUE),
-    ("24", "Career paths\nmapped", DAVIDSON_RED),
-    ("40+", "Alumni contacts\ncurated", ACCENT_GREEN),
-    ("6", "AI-powered\nfeatures", ACCENT_PURPLE),
-    ("128", "Credits tracked\nto graduation", ACCENT_AMBER),
-    ("22", "API endpoints\nbuilt", RGBColor(0xEC, 0x48, 0x99)),
+    ("463", "Davidson courses fully indexed", ACCENT_BLUE),
+    ("24", "Career paths mapped", DAVIDSON_RED),
+    ("40+", "Alumni contacts curated", ACCENT_GREEN),
+    ("6", "AI-powered features", ACCENT_PURPLE),
+    ("128", "Credits tracked to graduation", ACCENT_AMBER),
+    ("22", "API endpoints built", ACCENT_PINK),
 ]
 
 for i, (number, label, color) in enumerate(stats):
     col = i % 3
     row = i // 3
-    x = Inches(1.2) + Inches(3.8) * col
-    y = Inches(2.4) + Inches(2.5) * row
+    x = Inches(1.0) + Inches(3.9) * col
+    y = Inches(2.3) + Inches(2.6) * row
 
-    card = add_rounded_rect(slide, x, y, Inches(3.2), Inches(2.0), LIGHT_GRAY)
+    add_rounded_rect(slide, x, y, Inches(3.4), Inches(2.2), LIGHT_GRAY)
 
-    add_text_box(slide, x, y + Inches(0.25), Inches(3.2), Inches(0.8),
-                 number, font_size=48, color=color, bold=True,
-                 alignment=PP_ALIGN.CENTER, font_name="Georgia")
+    add_text(slide, x, y + Inches(0.3), Inches(3.4), Inches(0.9),
+             number, size=52, color=color, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
 
-    for j, line in enumerate(label.split("\n")):
-        add_text_box(slide, x, y + Inches(1.1) + Inches(0.3) * j, Inches(3.2), Inches(0.3),
-                     line, font_size=14, color=MEDIUM_GRAY, alignment=PP_ALIGN.CENTER)
+    add_text(slide, x, y + Inches(1.35), Inches(3.4), Inches(0.5),
+             label, size=15, color=MEDIUM_GRAY, align=PP_ALIGN.CENTER)
 
 
 # ============================================================
@@ -409,29 +399,32 @@ slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, WHITE)
 add_rect(slide, Inches(0), Inches(0), Inches(0.08), H, DAVIDSON_RED)
 
-add_text_box(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
-             "WHY WE WIN", font_size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
+         "WHY WE WIN", size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(1.1), Inches(11), Inches(0.7),
+         "This isn't another generic course planner.",
+         size=38, color=NAVY, bold=True, font="Georgia")
 
-add_text_box(slide, Inches(0.8), Inches(1.0), Inches(11), Inches(0.8),
-             "This isn't another generic course planner.",
-             font_size=40, color=NAVY, bold=True, font_name="Georgia")
-
-differentiators = [
-    ("Backward-from-career planning", "We flip the paradigm. Most tools ask \u201cwhat courses should I take?\u201d We ask \u201cwhat career do you want?\u201d and build backward."),
-    ("Davidson-native depth", "Not a generic tool. 463 real Davidson courses, real faculty, real alumni, live enrollment from Davidson\u2019s own API."),
-    ("AI-synthesized professor reviews", "Raw RMP is noisy. Our AI reads actual reviews and creates balanced, actionable summaries with tips for success."),
-    ("Career intelligence on every course", "Every course shows career relevance: \u201cCSC 121 is 90% relevant to Software Engineering, 45% to Data Science.\u201d"),
-    ("Alumni network + cold email outreach", "We don\u2019t just show alumni\u2014we generate personalized outreach emails so students actually network."),
+diffs = [
+    ("Backward-from-career planning",
+     "Most tools ask \u201cwhat courses should I take?\u201d We ask \u201cwhat career do you want?\u201d and build backward."),
+    ("Davidson-native depth",
+     "463 real courses, real faculty, real alumni, live enrollment from Davidson\u2019s own API."),
+    ("AI-synthesized professor reviews",
+     "Our AI reads actual RMP reviews and creates balanced, actionable summaries with tips for success."),
+    ("Career intelligence on every course",
+     "Every course shows relevance: \u201cCSC 121 is 90% relevant to SWE, 45% to Data Science.\u201d"),
+    ("Alumni network + cold email outreach",
+     "We don\u2019t just show alumni\u2014we generate personalized outreach emails so students actually network."),
 ]
 
-for i, (title, desc) in enumerate(differentiators):
-    y = Inches(2.2) + Inches(0.95) * i
-    # Accent dot
-    add_circle(slide, Inches(0.9), y + Inches(0.1), Inches(0.15), DAVIDSON_RED)
-    add_text_box(slide, Inches(1.3), y, Inches(3.5), Inches(0.4),
-                 title, font_size=17, color=NAVY, bold=True, font_name="Georgia")
-    add_text_box(slide, Inches(1.3), y + Inches(0.35), Inches(10.5), Inches(0.5),
-                 desc, font_size=13, color=MEDIUM_GRAY, line_spacing=1.4)
+for i, (title, desc) in enumerate(diffs):
+    y = Inches(2.2) + Inches(1.0) * i
+    add_circle(slide, Inches(1.0), y + Inches(0.12), Inches(0.18), DAVIDSON_RED)
+    add_text(slide, Inches(1.5), y, Inches(4), Inches(0.4),
+             title, size=16, color=NAVY, bold=True, font="Georgia")
+    add_text(slide, Inches(5.5), y, Inches(7), Inches(0.8),
+             desc, size=14, color=MEDIUM_GRAY)
 
 
 # ============================================================
@@ -441,53 +434,44 @@ slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, NAVY)
 add_rect(slide, Inches(0), Inches(0), W, Inches(0.06), DAVIDSON_RED)
 
-add_text_box(slide, Inches(0.8), Inches(0.5), Inches(3), Inches(0.4),
-             "DEMO WALKTHROUGH", font_size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(0.5), Inches(3), Inches(0.4),
+         "DEMO WALKTHROUGH", size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(1.0), Inches(11), Inches(0.7),
+         "From sign-up to career roadmap in 60 seconds.",
+         size=36, color=WHITE, bold=True, font="Georgia")
 
-add_text_box(slide, Inches(0.8), Inches(0.9), Inches(11), Inches(0.8),
-             "From sign-up to career roadmap in 60 seconds.",
-             font_size=36, color=WHITE, bold=True, font_name="Georgia")
-
-demo_steps = [
-    ("1", "Sign Up", "Create account,\nset major & interests", ACCENT_BLUE),
+steps = [
+    ("1", "Sign Up", "Create account, set\nmajor & interests", ACCENT_BLUE),
     ("2", "Explore Careers", "Browse 24 paths,\npick your target", DAVIDSON_RED),
     ("3", "Generate Plan", "AI builds courses,\npeople, activities", ACCENT_GREEN),
     ("4", "Build Schedule", "Drag & drop into\n4-year roadmap", ACCENT_PURPLE),
     ("5", "Network", "Find alumni, generate\ncold emails with AI", ACCENT_AMBER),
 ]
 
-for i, (num, title, desc, color) in enumerate(demo_steps):
-    x = Inches(0.65) + Inches(2.5) * i
-    y = Inches(2.3)
+for i, (num, title, desc, color) in enumerate(steps):
+    x = Inches(0.5) + Inches(2.55) * i
+    y = Inches(2.2)
+    add_rounded_rect(slide, x, y, Inches(2.3), Inches(3.8), SUBTLE_NAVY)
 
-    card = add_rounded_rect(slide, x, y, Inches(2.2), Inches(3.5), RGBColor(0x2A, 0x3A, 0x4E))
+    add_circle(slide, x + Inches(0.8), y + Inches(0.35), Inches(0.7), color)
+    add_text(slide, x + Inches(0.8), y + Inches(0.42), Inches(0.7), Inches(0.55),
+             num, size=26, color=WHITE, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
 
-    # Number circle
-    nc = add_circle(slide, x + Inches(0.75), y + Inches(0.35), Inches(0.7), color)
-    add_text_box(slide, x + Inches(0.75), y + Inches(0.42), Inches(0.7), Inches(0.55),
-                 num, font_size=28, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER,
-                 font_name="Georgia")
+    add_text(slide, x + Inches(0.15), y + Inches(1.35), Inches(2.0), Inches(0.45),
+             title, size=17, color=WHITE, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
 
-    add_text_box(slide, x + Inches(0.15), y + Inches(1.35), Inches(1.9), Inches(0.4),
-                 title, font_size=18, color=WHITE, bold=True,
-                 alignment=PP_ALIGN.CENTER, font_name="Georgia")
+    # Use add_para_text for the two-line description
+    desc_lines = [(line.strip(), 13, DIM_BLUE) for line in desc.split("\n")]
+    add_para_text(slide, x + Inches(0.15), y + Inches(2.0), Inches(2.0), Inches(1.2),
+                  desc_lines, align=PP_ALIGN.CENTER)
 
-    for j, line in enumerate(desc.split("\n")):
-        add_text_box(slide, x + Inches(0.15), y + Inches(1.9) + Inches(0.35) * j,
-                     Inches(1.9), Inches(0.3),
-                     line, font_size=13, color=RGBColor(0xA0, 0xAE, 0xC0),
-                     alignment=PP_ALIGN.CENTER)
-
-    # Arrow between steps
     if i < 4:
-        add_text_box(slide, x + Inches(2.2), y + Inches(1.3), Inches(0.3), Inches(0.4),
-                     "\u25B8", font_size=20, color=RGBColor(0x4A, 0x5A, 0x6E),
-                     alignment=PP_ALIGN.CENTER)
+        add_text(slide, x + Inches(2.3), y + Inches(1.5), Inches(0.25), Inches(0.4),
+                 "\u25B8", size=18, color=DIMMER_BLUE, align=PP_ALIGN.CENTER)
 
-# Note at bottom
-add_text_box(slide, Inches(1), Inches(6.3), Inches(11), Inches(0.4),
-             "Live demo available \u2014 try it yourself at the booth!",
-             font_size=15, color=RGBColor(0x6B, 0x7B, 0x90), alignment=PP_ALIGN.CENTER)
+add_text(slide, Inches(1), Inches(6.5), Inches(11.3), Inches(0.4),
+         "Live demo available \u2014 try it yourself at the booth!",
+         size=14, color=DIMMER_BLUE, align=PP_ALIGN.CENTER)
 
 
 # ============================================================
@@ -497,14 +481,13 @@ slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, WHITE)
 add_rect(slide, Inches(0), Inches(0), Inches(0.08), H, DAVIDSON_RED)
 
-add_text_box(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
-             "WHAT'S NEXT", font_size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(0.6), Inches(3), Inches(0.4),
+         "WHAT'S NEXT", size=13, color=DAVIDSON_RED, bold=True)
+add_text(slide, Inches(0.8), Inches(1.1), Inches(11), Inches(0.7),
+         "From Davidson prototype to institutional platform.",
+         size=38, color=NAVY, bold=True, font="Georgia")
 
-add_text_box(slide, Inches(0.8), Inches(1.0), Inches(11), Inches(0.8),
-             "From Davidson prototype to institutional platform.",
-             font_size=40, color=NAVY, bold=True, font_name="Georgia")
-
-future_items = [
+future = [
     ("NOW", "hack@DAVIDSON MVP",
      "463 courses, 24 career paths, 6 AI features, live enrollment sync, alumni network, cold email gen.",
      ACCENT_GREEN),
@@ -516,61 +499,51 @@ future_items = [
      ACCENT_PURPLE),
 ]
 
-for i, (phase, title, desc, color) in enumerate(future_items):
+for i, (phase, title, desc, color) in enumerate(future):
     x = Inches(0.8) + Inches(4.1) * i
-    y = Inches(2.3)
-    card = add_rounded_rect(slide, x, y, Inches(3.8), Inches(4.2), LIGHT_GRAY)
+    y = Inches(2.2)
+    add_rounded_rect(slide, x, y, Inches(3.8), Inches(4.5), LIGHT_GRAY)
     add_rect(slide, x, y, Inches(3.8), Inches(0.06), color)
 
-    # Phase badge
-    badge = add_rounded_rect(slide, x + Inches(0.3), y + Inches(0.4), Inches(1.2), Inches(0.4), color)
-    add_text_box(slide, x + Inches(0.3), y + Inches(0.42), Inches(1.2), Inches(0.35),
-                 phase, font_size=12, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER)
+    add_rounded_rect(slide, x + Inches(0.3), y + Inches(0.4), Inches(1.3), Inches(0.45), color)
+    add_text(slide, x + Inches(0.3), y + Inches(0.43), Inches(1.3), Inches(0.4),
+             phase, size=13, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
 
-    add_text_box(slide, x + Inches(0.3), y + Inches(1.1), Inches(3.2), Inches(0.5),
-                 title, font_size=19, color=NAVY, bold=True, font_name="Georgia")
+    add_text(slide, x + Inches(0.3), y + Inches(1.2), Inches(3.2), Inches(0.5),
+             title, size=19, color=NAVY, bold=True, font="Georgia")
 
-    add_text_box(slide, x + Inches(0.3), y + Inches(1.7), Inches(3.2), Inches(2.2),
-                 desc, font_size=13, color=MEDIUM_GRAY, line_spacing=1.5)
+    add_text(slide, x + Inches(0.3), y + Inches(1.9), Inches(3.2), Inches(2.2),
+             desc, size=14, color=MEDIUM_GRAY)
 
 
 # ============================================================
-# SLIDE 11: CLOSING / CTA
+# SLIDE 11: CLOSING
 # ============================================================
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide, NAVY)
 add_rect(slide, Inches(0), Inches(0), W, Inches(0.06), DAVIDSON_RED)
+add_circle(slide, Inches(10.5), Inches(0.5), Inches(3), SUBTLE_NAVY)
+add_circle(slide, Inches(-1), Inches(5), Inches(2.5), SUBTLE_NAVY)
 
-# Decorative circles
-add_circle(slide, Inches(10.5), Inches(0.5), Inches(3), RGBColor(0x2A, 0x3A, 0x4E))
-add_circle(slide, Inches(-1), Inches(5), Inches(2.5), RGBColor(0x2A, 0x3A, 0x4E))
+icon = add_rounded_rect(slide, Inches(5.9), Inches(1.3), Inches(1.5), Inches(1.5), DAVIDSON_RED)
+add_text(slide, Inches(5.9), Inches(1.45), Inches(1.5), Inches(1.2),
+         "MIS", size=36, color=WHITE, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
 
-# Icon
-icon_shape = add_rounded_rect(slide, Inches(5.9), Inches(1.2), Inches(1.5), Inches(1.5), DAVIDSON_RED)
-add_text_box(slide, Inches(5.9), Inches(1.32), Inches(1.5), Inches(1.3),
-             "MIS", font_size=36, color=WHITE, bold=True, alignment=PP_ALIGN.CENTER,
-             font_name="Georgia")
+add_text(slide, Inches(1.5), Inches(3.2), Inches(10.3), Inches(1),
+         "Your degree. Your career. One plan.",
+         size=44, color=WHITE, bold=True, align=PP_ALIGN.CENTER, font="Georgia")
 
-add_text_box(slide, Inches(1.5), Inches(3.0), Inches(10.3), Inches(1),
-             "Your degree. Your career. One plan.",
-             font_size=44, color=WHITE, bold=True,
-             alignment=PP_ALIGN.CENTER, font_name="Georgia")
+add_text(slide, Inches(2.5), Inches(4.4), Inches(8.3), Inches(0.7),
+         "MakeItSo gives every Davidson student an AI career advisor\u2014free, personalized, and always available.",
+         size=18, color=DIM_BLUE, align=PP_ALIGN.CENTER)
 
-add_text_box(slide, Inches(2), Inches(4.1), Inches(9.3), Inches(0.7),
-             "MakeItSo gives every Davidson student an AI career advisor\u2014free, personalized, and always available.",
-             font_size=18, color=RGBColor(0xA0, 0xAE, 0xC0),
-             alignment=PP_ALIGN.CENTER, line_spacing=1.5)
+cta = add_rounded_rect(slide, Inches(5.1), Inches(5.4), Inches(3.1), Inches(0.65), DAVIDSON_RED)
+add_text(slide, Inches(5.1), Inches(5.45), Inches(3.1), Inches(0.55),
+         "Try the Live Demo", size=18, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
 
-# CTA button shape
-cta = add_rounded_rect(slide, Inches(5.1), Inches(5.2), Inches(3.1), Inches(0.65), DAVIDSON_RED)
-add_text_box(slide, Inches(5.1), Inches(5.25), Inches(3.1), Inches(0.55),
-             "Try the Live Demo", font_size=18, color=WHITE, bold=True,
-             alignment=PP_ALIGN.CENTER)
-
-add_text_box(slide, Inches(2), Inches(6.3), Inches(9.3), Inches(0.5),
-             "hack@DAVIDSON 2025  |  Questions? Come talk to us!",
-             font_size=14, color=RGBColor(0x6B, 0x7B, 0x90),
-             alignment=PP_ALIGN.CENTER)
+add_text(slide, Inches(2), Inches(6.4), Inches(9.3), Inches(0.5),
+         "hack@DAVIDSON 2025  |  Questions? Come talk to us!",
+         size=14, color=DIMMER_BLUE, align=PP_ALIGN.CENTER)
 
 
 # Save
