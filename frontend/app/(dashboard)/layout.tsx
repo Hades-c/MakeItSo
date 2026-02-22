@@ -19,14 +19,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
       />
 
       <div className="flex flex-col flex-1 min-w-0 md:ml-[240px]">
-        <main className="flex-1 p-4 md:p-8 pb-20 md:pb-8 overflow-auto flex flex-col min-h-screen">
-          <div className="flex-1">
-            {children}
-          </div>
-          <div className="max-w-5xl mx-auto mt-8 w-full">
+        <main className="flex-1 p-4 md:p-8 pb-20 md:pb-14 overflow-auto">
+          {children}
+        </main>
+        {/* Fixed carousel bar at screen bottom */}
+        <div className="fixed bottom-0 left-0 right-0 md:left-[240px] bg-[#F8F9FB] border-t border-gray-100 px-4 md:px-8 z-30">
+          <div className="max-w-5xl mx-auto">
             <ActivitiesCarousel />
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );

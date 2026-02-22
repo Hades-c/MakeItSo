@@ -444,10 +444,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Ecology, evolution, organismal biology, and biodiversity.",
     credits: 4, department: "Biology", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Biology"], difficulty: 3,
-    professor: "Dr. Mark Barsoum", professorRating: 4.2,
+    professor: "Dr. Mark Barsoum", professorRating: 4.4,
     professorInfo: {
       name: "Dr. Mark Barsoum",
       title: "Assistant Professor of Biology; Director, John Crosland, Jr. Center for Teaching & Learning",
+      rmpRating: 4.4, rmpDifficulty: 3.3, rmpNumRatings: 23, rmpWouldTakeAgain: 89,
+      rmpTags: ["Tough grader", "Skip class? You won't pass.", "Caring", "Beware of pop quizzes", "Participation matters"],
     },
     courseInsights: {
       keyTopics: ["Ecology", "Evolution", "Biodiversity", "Organismal biology", "Population dynamics", "Conservation biology"],
@@ -574,10 +576,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Survey of major areas in psychology including cognition, development, social behavior, and psychopathology.",
     credits: 4, department: "Psychology", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Psychology"], difficulty: 2,
-    professor: "Dr. Mark Smith", professorRating: 4.4,
+    professor: "Dr. Mark Smith", professorRating: 3.6,
     professorInfo: {
       name: "Dr. Mark Smith",
       title: "Wayne M. & Carolyn A. Watson Professor of Psychology",
+      rmpRating: 3.6, rmpDifficulty: 3.4, rmpNumRatings: 32, rmpWouldTakeAgain: 20,
+      rmpTags: ["Tough grader", "Skip class? You won't pass.", "Lecture heavy", "Test heavy", "Participation matters"],
     },
     courseInsights: {
       keyTopics: ["Cognition & memory", "Developmental psychology", "Social psychology", "Psychopathology", "Biological bases of behavior", "Research methods"],
@@ -590,10 +594,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Experimental design, data analysis, and scientific writing in psychology.",
     credits: 4, department: "Psychology", prerequisites: ["PSY 100"], offered: ["Fall", "Spring"],
     tags: ["major-requirement"], majorRequirements: ["Psychology"], difficulty: 3,
-    professor: "Dr. Mark Smith", professorRating: 4.4,
+    professor: "Dr. Mark Smith", professorRating: 3.6,
     professorInfo: {
       name: "Dr. Mark Smith",
       title: "Wayne M. & Carolyn A. Watson Professor of Psychology",
+      rmpRating: 3.6, rmpDifficulty: 3.4, rmpNumRatings: 32, rmpWouldTakeAgain: 20,
+      rmpTags: ["Tough grader", "Skip class? You won't pass.", "Lecture heavy", "Test heavy", "Participation matters"],
     },
     courseInsights: {
       keyTopics: ["Experimental design", "Statistical analysis", "Scientific writing", "Ethics in research", "Data collection methods", "Literature review"],
@@ -606,10 +612,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Attention, perception, memory, language, and decision-making processes.",
     credits: 4, department: "Psychology", prerequisites: ["PSY 100"], offered: ["Fall"],
     tags: ["elective"], difficulty: 3,
-    professor: "Dr. Mark Smith", professorRating: 4.4,
+    professor: "Dr. Mark Smith", professorRating: 3.6,
     professorInfo: {
       name: "Dr. Mark Smith",
       title: "Wayne M. & Carolyn A. Watson Professor of Psychology",
+      rmpRating: 3.6, rmpDifficulty: 3.4, rmpNumRatings: 32, rmpWouldTakeAgain: 20,
+      rmpTags: ["Tough grader", "Skip class? You won't pass.", "Lecture heavy", "Test heavy", "Participation matters"],
     },
     courseInsights: {
       keyTopics: ["Attention & perception", "Memory systems", "Language processing", "Decision making", "Problem solving", "Cognitive biases"],
@@ -624,10 +632,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Institutions, processes, and politics of the American political system.",
     credits: 4, department: "Political Science", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Political Science"], difficulty: 2,
-    professor: "Dr. Susan Roberts", professorRating: 4.3,
+    professor: "Dr. Susan Roberts", professorRating: 3.9,
     professorInfo: {
       name: "Dr. Susan Roberts",
       title: "Professor of Political Science",
+      rmpRating: 3.9, rmpDifficulty: 2.5, rmpNumRatings: 24, rmpWouldTakeAgain: 67,
+      rmpTags: ["Would take again", "Hilarious", "Caring", "Participation matters", "Respected"],
     },
     courseInsights: {
       keyTopics: ["Constitutional framework", "Congress & presidency", "Judicial system", "Political parties", "Elections & voting", "Civil liberties & rights"],
@@ -640,10 +650,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Theories and practices of international politics, conflict, cooperation, and global governance.",
     credits: 4, department: "Political Science", prerequisites: [], offered: ["Fall"],
     tags: ["major-requirement"], majorRequirements: ["Political Science"], difficulty: 3,
-    professor: "Dr. Susan Roberts", professorRating: 4.3,
+    professor: "Dr. Susan Roberts", professorRating: 3.9,
     professorInfo: {
       name: "Dr. Susan Roberts",
       title: "Professor of Political Science",
+      rmpRating: 3.9, rmpDifficulty: 2.5, rmpNumRatings: 24, rmpWouldTakeAgain: 67,
+      rmpTags: ["Would take again", "Hilarious", "Caring", "Participation matters", "Respected"],
     },
     courseInsights: {
       keyTopics: ["Realism & liberalism", "International organizations", "Conflict & security", "Global governance", "Human rights", "International political economy"],
@@ -656,10 +668,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Supreme Court decisions on federalism, separation of powers, and individual rights.",
     credits: 4, department: "Political Science", prerequisites: ["POL 101"], offered: ["Spring"],
     tags: ["elective"], difficulty: 3,
-    professor: "Dr. Susan Roberts", professorRating: 4.3,
+    professor: "Dr. Susan Roberts", professorRating: 3.9,
     professorInfo: {
       name: "Dr. Susan Roberts",
       title: "Professor of Political Science",
+      rmpRating: 3.9, rmpDifficulty: 2.5, rmpNumRatings: 24, rmpWouldTakeAgain: 67,
+      rmpTags: ["Would take again", "Hilarious", "Caring", "Participation matters", "Respected"],
     },
     courseInsights: {
       keyTopics: ["Supreme Court jurisprudence", "Federalism", "Separation of powers", "Due process", "Equal protection", "First Amendment"],
@@ -826,10 +840,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Fundamental questions of philosophy including knowledge, reality, ethics, and meaning.",
     credits: 4, department: "Philosophy", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "distribution"], difficulty: 2,
-    professor: "Dr. Sean McKeever", professorRating: 4.4,
+    professor: "Dr. Sean McKeever", professorRating: 2.5,
     professorInfo: {
       name: "Dr. Sean McKeever",
       title: "Professor of Philosophy",
+      rmpRating: 2.5, rmpDifficulty: 2.9, rmpNumRatings: 41, rmpWouldTakeAgain: 55,
+      rmpTags: ["Lecture heavy", "Participation matters", "Graded by few things", "Tough grader", "Get ready to read"],
     },
     courseInsights: {
       keyTopics: ["Epistemology", "Metaphysics", "Ethics", "Logic", "Philosophy of mind", "Existentialism"],
@@ -842,10 +858,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Major ethical theories and their application to contemporary moral problems.",
     credits: 4, department: "Philosophy", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["elective"], difficulty: 2,
-    professor: "Dr. Daniel Layman", professorRating: 4.4,
+    professor: "Dr. Daniel Layman", professorRating: 4.8,
     professorInfo: {
       name: "Dr. Daniel Layman",
       title: "Associate Professor of Philosophy",
+      rmpRating: 4.8, rmpDifficulty: 3.2, rmpNumRatings: 18, rmpWouldTakeAgain: 95,
+      rmpTags: ["Get ready to read", "Gives good feedback", "Graded by few things", "Accessible outside class", "Tough grader"],
     },
     courseInsights: {
       keyTopics: ["Utilitarianism", "Deontological ethics", "Virtue ethics", "Applied ethics", "Moral reasoning", "Contemporary moral debates"],
@@ -860,10 +878,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Interdisciplinary approach to environmental issues including ecology, policy, and sustainability.",
     credits: 4, department: "Environmental Studies", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "major-requirement", "distribution"], majorRequirements: ["Environmental Studies"], difficulty: 2,
-    professor: "Dr. Chris Paradise", professorRating: 4.2,
+    professor: "Dr. Chris Paradise", professorRating: 3.1,
     professorInfo: {
       name: "Dr. Chris Paradise",
       title: "Chair of Environmental Studies; Professor of Biology and Environmental Studies",
+      rmpRating: 3.1, rmpDifficulty: 2.8, rmpNumRatings: 28, rmpWouldTakeAgain: 67,
+      rmpTags: ["Tough grader", "Accessible outside class", "Get ready to read", "Participation matters", "Skip class? You won't pass."],
     },
     courseInsights: {
       keyTopics: ["Ecology fundamentals", "Environmental policy", "Sustainability", "Climate change", "Resource management", "Environmental justice"],
@@ -876,10 +896,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Analysis of environmental regulations, policy-making, and sustainability frameworks.",
     credits: 4, department: "Environmental Studies", prerequisites: ["ENV 101"], offered: ["Spring"],
     tags: ["major-requirement"], majorRequirements: ["Environmental Studies"], difficulty: 3,
-    professor: "Dr. Brad Johnson", professorRating: 4.2,
+    professor: "Dr. Brad Johnson", professorRating: 4.1,
     professorInfo: {
       name: "Dr. Brad Johnson",
       title: "Professor of Environmental Studies",
+      rmpRating: 4.1, rmpDifficulty: 2.6, rmpNumRatings: 7, rmpWouldTakeAgain: 75,
+      rmpTags: ["Tough grader", "Caring", "Graded by few things", "Accessible outside class", "Group projects"],
     },
     courseInsights: {
       keyTopics: ["Environmental regulations", "Policy-making process", "Sustainability frameworks", "Climate policy", "Environmental law", "Cost-benefit analysis"],
@@ -894,10 +916,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Overview of public health principles, epidemiology, health policy, and global health challenges.",
     credits: 4, department: "Public Health", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "major-requirement"], majorRequirements: ["Public Health"], difficulty: 2,
-    professor: "Dr. Kata Chillag", professorRating: 4.4,
+    professor: "Dr. Kata Chillag", professorRating: 5.0,
     professorInfo: {
       name: "Dr. Kata Chillag",
       title: "Chair of Public Health; Hamilton McKay Professor in Biosciences and Human Health",
+      rmpRating: 5.0, rmpDifficulty: 2.0, rmpNumRatings: 2, rmpWouldTakeAgain: 100,
+      rmpTags: ["Lecture heavy", "Get ready to read", "Group projects"],
     },
     courseInsights: {
       keyTopics: ["Epidemiology basics", "Health policy", "Global health", "Health disparities", "Disease prevention", "Public health ethics"],
@@ -910,10 +934,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Study of disease patterns, health determinants, and public health interventions.",
     credits: 4, department: "Public Health", prerequisites: ["PUH 101"], offered: ["Fall"],
     tags: ["major-requirement"], majorRequirements: ["Public Health"], difficulty: 3,
-    professor: "Dr. Lauren Stutts", professorRating: 4.4,
+    professor: "Dr. Lauren Stutts", professorRating: 4.6,
     professorInfo: {
       name: "Dr. Lauren Stutts",
       title: "Associate Professor of Public Health",
+      rmpRating: 4.6, rmpDifficulty: 3.0, rmpNumRatings: 27, rmpWouldTakeAgain: 88,
+      rmpTags: ["Clear grading criteria", "Gives good feedback", "Respected", "Participation matters", "Skip class? You won't pass."],
     },
     courseInsights: {
       keyTopics: ["Disease surveillance", "Study design", "Biostatistics", "Outbreak investigation", "Risk factor analysis", "Public health interventions"],
@@ -928,10 +954,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Survey of cultural, biological, archaeological, and linguistic anthropology.",
     credits: 4, department: "Anthropology", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "distribution"], difficulty: 2,
-    professor: "Dr. Fuji Lozada", professorRating: 4.5,
+    professor: "Dr. Fuji Lozada", professorRating: 3.8,
     professorInfo: {
       name: "Dr. Fuji Lozada",
       title: "Senior Associate Dean of the Faculty; Professor of Anthropology",
+      rmpRating: 3.8, rmpDifficulty: 2.2, rmpNumRatings: 13, rmpWouldTakeAgain: 67,
+      rmpTags: ["Group projects", "Gives good feedback", "Hilarious", "Respected", "Graded by few things"],
     },
     courseInsights: {
       keyTopics: ["Cultural anthropology", "Biological anthropology", "Archaeology", "Linguistic anthropology", "Ethnography", "Human evolution"],
@@ -950,6 +978,7 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     professorInfo: {
       name: "Dr. John Corso-Esquivel",
       title: "Chair & Associate Professor of Art",
+      // No Davidson College RMP listing found
     },
     courseInsights: {
       keyTopics: ["Drawing fundamentals", "Painting techniques", "Sculpture", "Digital media", "Color theory", "Composition & design"],
@@ -964,10 +993,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Survey of theatrical traditions, play analysis, and performance practices.",
     credits: 4, department: "Theatre", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "distribution"], difficulty: 2,
-    professor: "Dr. Ann Marie Costa", professorRating: 4.6,
+    professor: "Dr. Ann Marie Costa", professorRating: 3.0,
     professorInfo: {
       name: "Dr. Ann Marie Costa",
       title: "Samuel E. & Mary West Thatcher Professor of Theatre",
+      rmpRating: 3.0, rmpDifficulty: 3.0, rmpNumRatings: 5, rmpWouldTakeAgain: 50,
+      rmpTags: ["Gives good feedback", "Tough grader", "Participation matters", "Skip class? You won't pass.", "Group projects"],
     },
     courseInsights: {
       keyTopics: ["Theatre history", "Play analysis", "Performance theory", "Stagecraft", "Dramatic literature", "Contemporary theatre"],
@@ -982,10 +1013,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Survey of Western music from the Middle Ages to the present, with emphasis on listening and analysis.",
     credits: 4, department: "Music", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "distribution"], difficulty: 2,
-    professor: "Dr. Neil Lerner", professorRating: 4.5,
+    professor: "Dr. Neil Lerner", professorRating: 3.6,
     professorInfo: {
       name: "Dr. Neil Lerner",
       title: "J. Estes Millner Professor of Music; Chair of Film, Media, and Digital Studies",
+      rmpRating: 3.6, rmpDifficulty: 3.5, rmpNumRatings: 37, rmpWouldTakeAgain: 30,
+      rmpTags: ["Tough grader", "Lecture heavy", "Get ready to read", "Participation matters", "Gives good feedback"],
     },
     courseInsights: {
       keyTopics: ["Music history", "Musical forms & genres", "Listening analysis", "Cultural context of music", "Major composers", "Contemporary music trends"],
@@ -1000,10 +1033,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Historical, philosophical, and sociological foundations of American education.",
     credits: 4, department: "Educational Studies", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "major-requirement"], majorRequirements: ["Educational Studies"], difficulty: 2,
-    professor: "Dr. Chris Marsicano", professorRating: 4.3,
+    professor: "Dr. Chris Marsicano", professorRating: 4.8,
     professorInfo: {
       name: "Dr. Chris Marsicano",
       title: "Chair & Associate Professor of Educational Studies; Director of the Institute for Public Good",
+      rmpRating: 4.8, rmpDifficulty: 2.6, rmpNumRatings: 5, rmpWouldTakeAgain: 100,
+      rmpTags: ["Amazing lectures", "Caring", "Group projects", "Get ready to read", "Clear grading criteria"],
     },
     courseInsights: {
       keyTopics: ["History of American education", "Education philosophy", "Social inequality in education", "Education policy", "Teaching & learning theory", "School reform"],
@@ -1018,10 +1053,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Comparative study of world religions including their beliefs, practices, and cultural contexts.",
     credits: 4, department: "Religious Studies", prerequisites: [], offered: ["Fall", "Spring"],
     tags: ["core", "distribution"], difficulty: 2,
-    professor: "Dr. Syed Rizwan Zamir", professorRating: 4.2,
+    professor: "Dr. Syed Rizwan Zamir", professorRating: 4.5,
     professorInfo: {
       name: "Dr. Syed Rizwan Zamir",
       title: "Chair & Associate Professor of Religious Studies",
+      rmpRating: 4.5, rmpDifficulty: 3.1, rmpNumRatings: 31, rmpWouldTakeAgain: 70,
+      rmpTags: ["Get ready to read", "Participation matters", "Inspirational", "Respected", "Amazing lectures"],
     },
     courseInsights: {
       keyTopics: ["World religions overview", "Religious texts", "Rituals & practices", "Religion & culture", "Comparative theology", "Religion in modern world"],
@@ -1056,10 +1093,12 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     description: "Interdisciplinary study of the experiences, cultures, and histories of people of African descent.",
     credits: 4, department: "Africana Studies", prerequisites: [], offered: ["Fall"],
     tags: ["core", "distribution"], difficulty: 2,
-    professor: "Dr. Hilary Green", professorRating: 4.3,
+    professor: "Dr. Hilary Green", professorRating: 4.4,
     professorInfo: {
       name: "Dr. Hilary Green",
       title: "James B. Duke Professor of Africana Studies",
+      rmpRating: 4.4, rmpDifficulty: 3.4, rmpNumRatings: 8, rmpWouldTakeAgain: 84,
+      rmpTags: ["Get ready to read", "Amazing lectures", "Respected", "Accessible outside class", "Participation matters"],
     },
     courseInsights: {
       keyTopics: ["African diaspora", "African American history", "Black culture & identity", "Race & racism", "Postcolonial studies", "Contemporary Black life"],
@@ -1879,5 +1918,325 @@ export const DAVIDSON_COURSES: SeedCourse[] = [
     credits: 4, department: "Digital Studies", prerequisites: ["DAS 201", "CSC 222"], offered: ["Fall"],
     tags: ["elective"], difficulty: 4,
     careerRelevance: [{ field: "Data Science & Analytics", relevance: 0.9 }, { field: "Software Engineering", relevance: 0.7 }],
+  },
+
+  // ===== ADDITIONAL COURSES (career-paths referenced) =====
+
+  // Accounting / Economics cross-listed
+  {
+    code: "ACC 215", name: "Financial Accounting",
+    description: "Introduction to financial accounting principles including the preparation and interpretation of financial statements — balance sheets, income statements, and cash flow statements.",
+    credits: 4, department: "Economics", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["elective"], difficulty: 3,
+    professor: "Ben Baker", professorRating: 4.8,
+    professorInfo: {
+      name: "Ben Baker",
+      title: "Professor of Economics",
+      rmpRating: 4.8, rmpDifficulty: 2.7, rmpNumRatings: 18, rmpWouldTakeAgain: 100,
+      rmpTags: ["Hilarious", "Amazing Lectures", "Caring", "Test Heavy", "Accessible Outside Class"],
+    },
+    courseInsights: {
+      keyTopics: ["Balance sheets", "Income statements", "Cash flow analysis", "Accrual accounting", "Financial ratios", "Revenue recognition"],
+      skillsGained: ["Financial statement analysis", "Accounting principles", "Business valuation basics", "Financial literacy", "Spreadsheet modeling"],
+    },
+    careerRelevance: [{ field: "Investment Banking", relevance: 0.9 }, { field: "Entrepreneurship", relevance: 0.8 }, { field: "Financial Planning", relevance: 0.85 }],
+  },
+
+  // Anthropology (additional)
+  {
+    code: "ANT 200", name: "Ethnographic Methods",
+    description: "Introduction to qualitative research methods used in anthropology, including participant observation, interviewing, and field note analysis. Students conduct original ethnographic fieldwork.",
+    credits: 4, department: "Anthropology", prerequisites: ["ANT 101"], offered: ["Spring"],
+    tags: ["elective", "methods"], difficulty: 3,
+    professor: "Dr. Laurian Bowles", professorRating: 4.3,
+    professorInfo: {
+      name: "Dr. Laurian Bowles",
+      title: "Vann Professor of Racial Justice, Associate Professor & Chair of Anthropology",
+      rmpRating: 4.3, rmpDifficulty: 3.2, rmpNumRatings: 12, rmpWouldTakeAgain: 80,
+      rmpTags: ["Get ready to read", "Participation matters", "Respected", "Amazing lectures", "Inspirational"],
+    },
+    courseInsights: {
+      keyTopics: ["Participant observation", "Semi-structured interviews", "Field notes", "Coding & thematic analysis", "Research ethics", "Reflexivity"],
+      skillsGained: ["Qualitative research design", "Interviewing techniques", "Ethnographic writing", "Cross-cultural analysis", "Research ethics"],
+    },
+    careerRelevance: [{ field: "UX Design", relevance: 0.85 }, { field: "International Development", relevance: 0.8 }, { field: "Research & Academia", relevance: 0.75 }],
+  },
+
+  // Art (additional)
+  {
+    code: "ART 120", name: "Visual Design",
+    description: "Foundational principles of visual communication including color theory, typography, layout, composition, and design thinking. Studio projects explore 2D and digital design.",
+    credits: 4, department: "Art", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "introductory"], difficulty: 2,
+    professor: "Prof. Katie St. Clair", professorRating: 4.6,
+    professorInfo: {
+      name: "Prof. Katie St. Clair",
+      title: "Associate Professor of Art",
+      rmpRating: 4.6, rmpDifficulty: 4.1, rmpNumRatings: 8, rmpWouldTakeAgain: 75,
+      rmpTags: ["Gives good feedback", "Lots of homework", "Tough grader", "Skip class? You won't pass.", "Participation matters"],
+    },
+    courseInsights: {
+      keyTopics: ["Color theory", "Typography", "Layout & composition", "Visual hierarchy", "Design critique", "Digital tools"],
+      skillsGained: ["Visual communication", "Design thinking", "Creative problem solving", "Critique and feedback", "Adobe Creative Suite basics"],
+    },
+    careerRelevance: [{ field: "UX Design", relevance: 0.9 }, { field: "Marketing & Communications", relevance: 0.8 }, { field: "Arts & Museum Curation", relevance: 0.7 }],
+  },
+
+  // Chemistry (alternate numbering)
+  {
+    code: "CHE 240", name: "Organic Chemistry I",
+    description: "Structure, bonding, stereochemistry, and reactivity of carbon-containing compounds. Reaction mechanisms including substitution, elimination, and addition reactions.",
+    credits: 4, department: "Chemistry", prerequisites: ["CHE 115"], offered: ["Fall"],
+    tags: ["major-requirement"], majorRequirements: ["Chemistry", "Biology"], difficulty: 5,
+    professor: "Dr. Nicole Snyder", professorRating: 4.8,
+    professorInfo: {
+      name: "Dr. Nicole Snyder",
+      title: "Professor of Chemistry",
+      rmpRating: 4.8, rmpDifficulty: 4.2, rmpNumRatings: 50, rmpWouldTakeAgain: 98,
+      rmpTags: ["Caring", "Accessible outside class", "Gives good feedback", "Inspirational", "Tough grader"],
+    },
+    courseInsights: {
+      keyTopics: ["Molecular structure", "Stereochemistry", "Reaction mechanisms", "Substitution reactions", "Elimination reactions", "Spectroscopy"],
+      skillsGained: ["Organic reaction prediction", "Mechanism drawing", "Spectral interpretation", "3D molecular visualization", "Lab technique"],
+    },
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.95 }, { field: "Research & Academia", relevance: 0.8 }],
+  },
+
+  // Classics (additional)
+  {
+    code: "CLA 200", name: "Classical Archaeology",
+    description: "Introduction to the material culture of ancient Greece and Rome through archaeological evidence. Topics include architecture, pottery, sculpture, and excavation methods.",
+    credits: 4, department: "Classics", prerequisites: ["CLA 101"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 3,
+    professor: "Prof. Allison Smith", professorRating: 4.6,
+    professorInfo: {
+      name: "Prof. Allison Smith",
+      title: "Visiting Assistant Professor of Classics",
+      rmpRating: 4.6, rmpDifficulty: 2.7, rmpNumRatings: 6, rmpWouldTakeAgain: 100,
+      rmpTags: ["Amazing lectures", "Caring", "Accessible outside class", "Respected"],
+    },
+    courseInsights: {
+      keyTopics: ["Excavation methods", "Greek architecture", "Roman material culture", "Pottery analysis", "Sculpture & iconography", "Archaeological theory"],
+      skillsGained: ["Material culture analysis", "Archaeological method", "Visual analysis", "Research writing", "Artifact interpretation"],
+    },
+    careerRelevance: [{ field: "Arts & Museum Curation", relevance: 0.9 }, { field: "Research & Academia", relevance: 0.75 }],
+  },
+
+  // Communication Studies (additional)
+  {
+    code: "COM 210", name: "Public Speaking",
+    description: "Theory and practice of public speaking. Students develop skills in speech organization, delivery, audience analysis, and persuasive argumentation through frequent speaking exercises.",
+    credits: 4, department: "Communication Studies", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "introductory"], difficulty: 2,
+    professor: "Dr. Amanda Martinez", professorRating: 2.5,
+    professorInfo: {
+      name: "Dr. Amanda Martinez",
+      title: "Chair & Associate Professor of Communication Studies; Speaking Center Director",
+      rmpRating: 2.5, rmpDifficulty: 3.9, rmpNumRatings: 23, rmpWouldTakeAgain: 25,
+      rmpTags: ["Get ready to read", "Participation matters", "Group projects", "Tough grader", "Inspirational"],
+    },
+    courseInsights: {
+      keyTopics: ["Speech organization", "Audience analysis", "Persuasive techniques", "Delivery & presence", "Visual aids", "Impromptu speaking"],
+      skillsGained: ["Public speaking confidence", "Persuasive communication", "Presentation design", "Audience engagement", "Constructive feedback"],
+    },
+    careerRelevance: [{ field: "Marketing & Communications", relevance: 0.9 }, { field: "Law", relevance: 0.85 }, { field: "Management Consulting", relevance: 0.8 }, { field: "Product Management", relevance: 0.75 }],
+  },
+
+  // Digital Studies
+  {
+    code: "DIG 200", name: "Digital Media Production",
+    description: "Hands-on introduction to digital media creation including video production, audio recording, web design, and multimedia storytelling using industry-standard tools.",
+    credits: 4, department: "Digital Studies", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["elective", "introductory"], difficulty: 2,
+    professor: "Prof. Owen Mundy", professorRating: 3.3,
+    professorInfo: {
+      name: "Prof. Owen Mundy",
+      title: "Professor of the Practice in Film, Media, and Digital Studies",
+      rmpRating: 3.3, rmpDifficulty: 3.0, rmpNumRatings: 8, rmpWouldTakeAgain: 50,
+      rmpTags: ["Graded by few things", "Group projects", "Lots of homework", "Accessible outside class", "Get ready to read"],
+    },
+    courseInsights: {
+      keyTopics: ["Video production", "Audio recording & editing", "Web design basics", "Multimedia storytelling", "Digital photography", "Post-production"],
+      skillsGained: ["Video editing (Premiere Pro)", "Audio production", "Web design", "Multimedia storytelling", "Project management"],
+    },
+    careerRelevance: [{ field: "Media & Journalism", relevance: 0.9 }, { field: "Marketing & Communications", relevance: 0.8 }, { field: "UX Design", relevance: 0.6 }],
+  },
+
+  // Economics (additional)
+  {
+    code: "ECO 255", name: "Econometrics",
+    description: "Statistical methods applied to economic data. Topics include regression analysis, hypothesis testing, causal inference, and panel data methods. Extensive use of R/Stata.",
+    credits: 4, department: "Economics", prerequisites: ["ECO 101", "MAT 230"], offered: ["Fall", "Spring"],
+    tags: ["major-requirement", "methods"], majorRequirements: ["Economics"], difficulty: 4,
+    professor: "Dr. Austin Denteh", professorRating: 4.0,
+    professorInfo: {
+      name: "Dr. Austin Denteh",
+      title: "Assistant Professor of Economics",
+      rmpRating: 4.0, rmpDifficulty: 1.8, rmpNumRatings: 4, rmpWouldTakeAgain: 100,
+      rmpTags: ["Lecture heavy", "Accessible outside class", "Get ready to read", "EXTRA CREDIT", "Clear grading criteria"],
+    },
+    courseInsights: {
+      keyTopics: ["Linear regression", "Hypothesis testing", "Instrumental variables", "Panel data", "Causal inference", "Time series"],
+      skillsGained: ["Econometric modeling", "Statistical software (R/Stata)", "Causal reasoning", "Data analysis", "Research design"],
+    },
+    careerRelevance: [{ field: "Data Science & Analytics", relevance: 0.9 }, { field: "Management Consulting", relevance: 0.8 }, { field: "Investment Banking", relevance: 0.75 }],
+  },
+  {
+    code: "ECO 315", name: "Financial Economics",
+    description: "Theory and practice of financial markets. Topics include asset pricing, portfolio theory, risk management, derivatives, and capital market efficiency.",
+    credits: 4, department: "Economics", prerequisites: ["ECO 201", "MAT 230"], offered: ["Spring"],
+    tags: ["elective"], difficulty: 4,
+    professor: "Dr. Caleb Stroup", professorRating: 4.5,
+    professorInfo: {
+      name: "Dr. Caleb Stroup",
+      title: "Associate Professor of Economics",
+      rmpRating: 4.5, rmpDifficulty: 4.3, rmpNumRatings: 38, rmpWouldTakeAgain: 90,
+      rmpTags: ["Lots of homework", "Caring", "Group projects", "Accessible outside class", "Beware of pop quizzes"],
+    },
+    courseInsights: {
+      keyTopics: ["Asset pricing models", "Portfolio theory", "CAPM & APT", "Options & derivatives", "Market efficiency", "Risk management"],
+      skillsGained: ["Financial modeling", "Valuation techniques", "Risk assessment", "Portfolio construction", "Financial data analysis"],
+    },
+    careerRelevance: [{ field: "Investment Banking", relevance: 0.95 }, { field: "Financial Planning", relevance: 0.9 }, { field: "Management Consulting", relevance: 0.6 }],
+  },
+
+  // English (additional)
+  {
+    code: "ENG 270", name: "Expository Writing",
+    description: "Advanced writing course focused on clear, persuasive nonfiction prose. Students develop skills in argumentation, evidence-based writing, and revision through workshop-style feedback.",
+    credits: 4, department: "English", prerequisites: ["ENG 101"], offered: ["Fall", "Spring"],
+    tags: ["elective", "writing-intensive"], difficulty: 3,
+    professor: "Dr. Andrew Rippeon", professorRating: 4.7,
+    professorInfo: {
+      name: "Dr. Andrew Rippeon",
+      title: "Associate Professor of the Practice in Writing",
+      rmpRating: 4.7, rmpDifficulty: 3.1, rmpNumRatings: 24, rmpWouldTakeAgain: 92,
+      rmpTags: ["Gives good feedback", "Participation matters", "Get ready to read", "Caring", "Respected"],
+    },
+    courseInsights: {
+      keyTopics: ["Argumentative writing", "Evidence and analysis", "Revision process", "Research writing", "Rhetorical strategies", "Workshop critique"],
+      skillsGained: ["Persuasive writing", "Critical editing", "Research synthesis", "Clear communication", "Workshop participation"],
+    },
+    careerRelevance: [{ field: "Law", relevance: 0.9 }, { field: "Research & Academia", relevance: 0.85 }, { field: "Media & Journalism", relevance: 0.8 }, { field: "Nonprofit & Social Impact", relevance: 0.75 }],
+  },
+
+  // History (additional)
+  {
+    code: "HIS 200", name: "American History",
+    description: "Survey of American history from the colonial era through the present, examining political, social, cultural, and economic developments that shaped the nation.",
+    credits: 4, department: "History", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "introductory"], difficulty: 2,
+    professor: "Dr. Dan Aldridge", professorRating: 3.7,
+    professorInfo: {
+      name: "Dr. Dan Aldridge",
+      title: "Professor of History",
+      rmpRating: 3.7, rmpDifficulty: 2.6, rmpNumRatings: 21, rmpWouldTakeAgain: 80,
+      rmpTags: ["Get ready to read", "Tests? Not many", "Participation matters", "Would take again", "Gives good feedback"],
+    },
+    courseInsights: {
+      keyTopics: ["Colonial America", "American Revolution", "Civil War & Reconstruction", "Progressive Era", "Civil Rights Movement", "Contemporary America"],
+      skillsGained: ["Historical analysis", "Primary source interpretation", "Research writing", "Critical thinking", "Contextual reasoning"],
+    },
+    careerRelevance: [{ field: "Law", relevance: 0.7 }, { field: "Government & Public Policy", relevance: 0.7 }, { field: "Arts & Museum Curation", relevance: 0.8 }],
+  },
+
+  // Mathematics (alternate numbering)
+  {
+    code: "MAT 110", name: "Calculus I",
+    description: "Introduction to differential and integral calculus. Topics include limits, derivatives, applications of differentiation, definite and indefinite integrals.",
+    credits: 4, department: "Mathematics", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "major-requirement"], majorRequirements: ["Mathematics"], difficulty: 3,
+    professor: "Dr. Heather Blake", professorRating: 4.3,
+    professorInfo: {
+      name: "Dr. Heather Blake",
+      title: "Associate Chair & Associate Professor of Mathematics and Computer Science",
+      rmpRating: 4.3, rmpDifficulty: 3.4, rmpNumRatings: 16, rmpWouldTakeAgain: 82,
+      rmpTags: ["Accessible outside class", "Tough grader", "Clear grading criteria", "Gives good feedback", "Lots of homework"],
+    },
+    courseInsights: {
+      keyTopics: ["Limits & continuity", "Derivatives", "Applications of derivatives", "Integration", "Fundamental Theorem of Calculus", "Applications of integrals"],
+      skillsGained: ["Mathematical reasoning", "Problem solving", "Quantitative analysis", "Abstract thinking", "Proof basics"],
+    },
+    careerRelevance: [{ field: "Investment Banking", relevance: 0.7 }, { field: "Data Science & Analytics", relevance: 0.7 }, { field: "Software Engineering", relevance: 0.5 }],
+  },
+
+  // Public Health (alternate prefix)
+  {
+    code: "PBH 200", name: "Global Public Health",
+    description: "Introduction to global health challenges including infectious disease, maternal and child health, health systems, and the social determinants of health across different populations.",
+    credits: 4, department: "Public Health", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["elective", "introductory"], difficulty: 3,
+    professor: "Dr. Kata Chillag", professorRating: 5.0,
+    professorInfo: {
+      name: "Dr. Kata Chillag",
+      title: "Chair of Public Health & Hamilton McKay Professor in Biosciences and Human Health",
+      rmpRating: 5.0, rmpDifficulty: 2.0, rmpNumRatings: 2, rmpWouldTakeAgain: 100,
+      rmpTags: ["Lecture heavy", "Get ready to read", "Group projects"],
+    },
+    courseInsights: {
+      keyTopics: ["Global disease burden", "Health systems", "Epidemiology basics", "Social determinants of health", "Health equity", "International health policy"],
+      skillsGained: ["Public health analysis", "Epidemiological thinking", "Global health literacy", "Policy evaluation", "Cross-cultural health awareness"],
+    },
+    careerRelevance: [{ field: "Healthcare & Medicine", relevance: 0.8 }, { field: "International Development", relevance: 0.85 }, { field: "Healthcare Administration", relevance: 0.8 }],
+  },
+
+  // Philosophy (alternate numbering)
+  {
+    code: "PHI 220", name: "Ethics",
+    description: "Systematic study of moral theories and their application to contemporary ethical issues. Covers utilitarianism, deontology, virtue ethics, and applied ethics across professional domains.",
+    credits: 4, department: "Philosophy", prerequisites: [], offered: ["Fall", "Spring"],
+    tags: ["core", "introductory"], difficulty: 3,
+    professor: "Dr. Sean McKeever", professorRating: 2.5,
+    professorInfo: {
+      name: "Dr. Sean McKeever",
+      title: "Professor of Philosophy",
+      rmpRating: 2.5, rmpDifficulty: 2.9, rmpNumRatings: 41, rmpWouldTakeAgain: 55,
+      rmpTags: ["Lecture heavy", "Participation matters", "Graded by few things", "Tough grader", "Get ready to read"],
+    },
+    courseInsights: {
+      keyTopics: ["Utilitarianism", "Kantian ethics", "Virtue ethics", "Applied ethics", "Moral reasoning", "Ethical dilemmas"],
+      skillsGained: ["Ethical analysis", "Moral reasoning", "Argumentation", "Critical thinking", "Philosophical writing"],
+    },
+    careerRelevance: [{ field: "Law", relevance: 0.8 }, { field: "Research & Academia", relevance: 0.7 }, { field: "Healthcare & Medicine", relevance: 0.65 }, { field: "Media & Journalism", relevance: 0.6 }],
+  },
+
+  // Political Science (alternate numbering)
+  {
+    code: "POL 315", name: "Constitutional Law",
+    description: "In-depth study of constitutional interpretation, judicial review, and landmark Supreme Court decisions. Covers separation of powers, federalism, individual rights, and equal protection.",
+    credits: 4, department: "Political Science", prerequisites: ["POL 101"], offered: ["Fall"],
+    tags: ["elective"], difficulty: 4,
+    professor: "Dr. Andrew O'Geen", professorRating: 4.5,
+    professorInfo: {
+      name: "Dr. Andrew O'Geen",
+      title: "Associate Professor of Political Science",
+      rmpRating: 4.5, rmpDifficulty: 2.3, rmpNumRatings: 12, rmpWouldTakeAgain: 100,
+      rmpTags: ["Participation matters", "Hilarious", "Accessible outside class", "Caring", "Get ready to read"],
+    },
+    courseInsights: {
+      keyTopics: ["Judicial review", "Separation of powers", "First Amendment", "Due process", "Equal protection", "Landmark cases"],
+      skillsGained: ["Legal analysis", "Constitutional interpretation", "Case briefing", "Legal writing", "Oral argumentation"],
+    },
+    careerRelevance: [{ field: "Law", relevance: 0.95 }, { field: "Government & Public Policy", relevance: 0.8 }],
+  },
+
+  // Psychology (alternate numbering)
+  {
+    code: "PSY 230", name: "Developmental Psychology",
+    description: "Study of human cognitive, social, and emotional development across the lifespan, from infancy through late adulthood. Emphasis on theories, research methods, and applied contexts.",
+    credits: 4, department: "Psychology", prerequisites: ["PSY 100"], offered: ["Fall", "Spring"],
+    tags: ["elective"], difficulty: 3,
+    professor: "Dr. Catherine Bagwell", professorRating: 4.6,
+    professorInfo: {
+      name: "Dr. Catherine Bagwell",
+      title: "Virginia Lasater Irvin Professor of Psychology",
+      rmpRating: 4.6, rmpDifficulty: 2.6, rmpNumRatings: 5, rmpWouldTakeAgain: 80,
+      rmpTags: ["Participation matters", "Group projects", "Tough grader", "Accessible outside class", "Amazing lectures"],
+    },
+    courseInsights: {
+      keyTopics: ["Cognitive development", "Social-emotional development", "Attachment theory", "Adolescent development", "Aging", "Nature vs. nurture"],
+      skillsGained: ["Developmental assessment", "Research methods", "Lifespan perspective", "Child behavior analysis", "Applied developmental science"],
+    },
+    careerRelevance: [{ field: "Education", relevance: 0.9 }, { field: "Psychology & Counseling", relevance: 0.85 }, { field: "Healthcare & Medicine", relevance: 0.5 }],
   },
 ];

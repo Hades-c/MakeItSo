@@ -47,7 +47,7 @@ interface TransformedCourse {
 
 function stripHtml(html: string): string {
   return html
-    .replace(/<[^>]*>/g, "")
+    .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -56,6 +56,30 @@ function stripHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function cleanDescription(desc: string): string {
+  // Remove instructor prefix like "Instructor B. Baker", "Instructor: J. R. Smith"
+  // Only match name parts that look like initials (X.) or capitalized short words before a lowercase word begins
+  let cleaned = desc.replace(
+    /^Instructor:?\s+(?:[A-Z]\.?\s+)*[A-Z][a-z'-]+\s*/i,
+    ""
+  );
+  // Remove prerequisites suffix (everything from "Prerequisites" or "Prerequisite" onward)
+  cleaned = cleaned.replace(/\s*Prerequisites?[:.\s].*/i, "");
+  // Remove "Corequisite" suffix
+  cleaned = cleaned.replace(/\s*Corequisites?[:.\s].*/i, "");
+  // Remove "Cross-listed" suffix
+  cleaned = cleaned.replace(/\s*Cross-?listed.*/i, "");
+  // Remove "Note:" or "Notes:" suffix
+  cleaned = cleaned.replace(/\s*Notes?:\s.*/i, "");
+  // Clean up trailing/leading whitespace
+  cleaned = cleaned.trim();
+  // Capitalize first letter
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+  return cleaned;
 }
 
 function formatInstructorName(instructor: DavidsonInstructor): string {
@@ -132,7 +156,7 @@ function transformCourses(raw: DavidsonCourse[]): TransformedCourse[] {
     results.push({
       code,
       name: course.course_title,
-      description: stripHtml(course.course_description || ""),
+      description: cleanDescription(stripHtml(course.course_description || "")),
       department: course.departments?.[0]?.description ?? course.subject.description,
       deptCode: course.departments?.[0]?.code ?? course.subject.code,
       professor: instructorList.length > 0 ? instructorList[0] : "Staff",

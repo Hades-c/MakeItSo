@@ -81,17 +81,17 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; border: string; do
     border: "border-davidson/20",
     dot: "bg-davidson",
   },
+  distribution: {
+    bg: "bg-blue-50",
+    text: "text-blue-600",
+    border: "border-blue-200",
+    dot: "bg-blue-400",
+  },
   elective: {
     bg: "bg-emerald-50",
     text: "text-emerald-700",
     border: "border-emerald-200",
     dot: "bg-emerald-400",
-  },
-  distribution: {
-    bg: "bg-navy/5",
-    text: "text-navy",
-    border: "border-navy/20",
-    dot: "bg-navy",
   },
 };
 
@@ -462,7 +462,7 @@ export default function RoadmapPage() {
       />
 
       <motion.div
-        className="max-w-4xl mx-auto space-y-6 pb-12"
+        className="max-w-5xl mx-auto space-y-6 pb-12"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
@@ -474,7 +474,7 @@ export default function RoadmapPage() {
           <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
             My Roadmap
           </h1>
-          <p className="text-[#555555] mt-1.5">
+          <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
             AI-generated semester-by-semester course plan tailored to your major and interests.
           </p>
         </div>

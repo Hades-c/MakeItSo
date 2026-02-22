@@ -61,18 +61,18 @@ export function ActivitiesCarousel() {
   const activity = DAVIDSON_ACTIVITIES[index];
 
   return (
-    <div className="mt-12 border-t border-gray-100 pt-6 pb-4">
+    <div className="h-10 flex items-center overflow-hidden">
       <div
-        className="flex items-center gap-3 cursor-default select-none"
+        className="flex items-center gap-3 cursor-default select-none min-w-0 w-full"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onClick={advance}
       >
-        <span className="text-[10px] font-medium text-gray-300 uppercase tracking-widest whitespace-nowrap">
+        <span className="text-[10px] font-medium text-gray-300 uppercase tracking-widest whitespace-nowrap shrink-0">
           Life at Davidson
         </span>
 
-        <span className="text-gray-200">·</span>
+        <span className="text-gray-200 shrink-0">·</span>
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -81,11 +81,11 @@ export function ActivitiesCarousel() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35 }}
-            className="flex items-center gap-2 min-w-0"
+            className="flex items-center gap-2 min-w-0 overflow-hidden"
           >
-            <span className="text-sm">{activity.emoji}</span>
-            <span className="text-xs font-medium text-gray-700">{activity.name}</span>
-            <span className={`text-[10px] font-medium ${CATEGORY_COLORS[activity.category] || "text-gray-500"}`}>
+            <span className="text-sm shrink-0">{activity.emoji}</span>
+            <span className="text-xs font-medium text-gray-700 whitespace-nowrap shrink-0">{activity.name}</span>
+            <span className={`text-[10px] font-medium whitespace-nowrap shrink-0 ${CATEGORY_COLORS[activity.category] || "text-gray-500"}`}>
               {activity.category}
             </span>
             <span className="text-[11px] text-gray-400 truncate hidden sm:inline">

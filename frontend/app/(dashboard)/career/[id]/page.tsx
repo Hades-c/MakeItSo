@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CAREER_PATHS } from "@/lib/career-paths";
 import { getAlumniForCareer, type DavidsonAlumni } from "@/lib/davidson-alumni";
+import { DAVIDSON_COURSES } from "@/lib/davidson-courses";
 type Tab = "overview" | "courses" | "summer" | "networking" | "roadmap";
 
 interface CareerPlan {
@@ -107,6 +108,7 @@ export default function CareerDetailPage() {
   const [careerPlan, setCareerPlan] = useState<CareerPlan | null>(null);
   const [roadmapLoading, setRoadmapLoading] = useState(false);
   const [roadmapError, setRoadmapError] = useState(false);
+  const [expandedCourseIdx, setExpandedCourseIdx] = useState<number | null>(null);
 
   const careerPath = CAREER_PATHS.find((c) => c.id === params.id);
   if (!careerPath) {
@@ -312,43 +314,136 @@ export default function CareerDetailPage() {
       {activeTab === "courses" && (
         <div className="space-y-1">
           <p className="text-sm text-gray-500 mb-5">
-            Recommended courses at Davidson for {careerPath.title.toLowerCase()}.
+            Recommended courses at Davidson for {careerPath.title.toLowerCase()}. Click a course for more details.
           </p>
-          <div className="divide-y divide-gray-100">
+          <div className="space-y-2">
             {careerPath.courses.map((course, i) => {
               const deptColor = getDeptColor(course.code);
+              const isExpanded = expandedCourseIdx === i;
+              const richCourse = DAVIDSON_COURSES.find((c) => c.code === course.code);
               return (
-                <div key={i} className="py-4 first:pt-0 last:pb-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-3 mb-1.5">
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
-                          {course.code}
-                        </span>
-                        <div className="flex gap-0.5">
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <Star
-                              key={n}
-                              className={`h-3 w-3 ${
-                                n <= course.difficulty
-                                  ? "text-amber-400 fill-amber-400"
-                                  : "text-gray-200"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.description}</p>
-                      {course.bestProfessor && (
-                        <div className="flex items-center gap-1.5 mt-2">
-                          <span className="text-xs px-2 py-0.5 rounded bg-navy/5 text-navy font-medium">
-                            {course.bestProfessor}
+                <div key={i} className={`bg-white rounded-lg border transition-all ${isExpanded ? "border-gray-200 shadow-sm" : "border-gray-100 hover:border-gray-200"}`}>
+                  <button
+                    onClick={() => setExpandedCourseIdx(isExpanded ? null : i)}
+                    className="w-full text-left p-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-3 mb-1.5">
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
+                            {course.code}
                           </span>
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <Star
+                                key={n}
+                                className={`h-3 w-3 ${
+                                  n <= course.difficulty
+                                    ? "text-amber-400 fill-amber-400"
+                                    : "text-gray-200"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          {course.bestProfessor && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-navy/5 text-navy font-medium">
+                              {course.bestProfessor}
+                            </span>
+                          )}
                         </div>
-                      )}
+                        <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 mt-1 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                     </div>
-                  </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+                          <p className="text-sm text-gray-600 leading-relaxed">{course.description}</p>
+
+                          {richCourse && (
+                            <>
+                              {richCourse.courseInsights?.keyTopics && richCourse.courseInsights.keyTopics.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Topics</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {richCourse.courseInsights.keyTopics.map((topic) => (
+                                      <span key={topic} className="text-[11px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                        {topic}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {richCourse.courseInsights?.skillsGained && richCourse.courseInsights.skillsGained.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Skills</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {richCourse.courseInsights.skillsGained.map((skill) => (
+                                      <span key={skill} className="text-[11px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        {skill}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {richCourse.professorInfo?.rmpRating != null && (
+                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                  <span className="flex items-center gap-1">
+                                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                    <span className="font-semibold text-[#111111]">{richCourse.professorInfo.rmpRating}</span>/5
+                                  </span>
+                                  {richCourse.professorInfo.rmpDifficulty != null && (
+                                    <span>Difficulty: {richCourse.professorInfo.rmpDifficulty}/5</span>
+                                  )}
+                                  {richCourse.professorInfo.rmpWouldTakeAgain != null && (
+                                    <span>{richCourse.professorInfo.rmpWouldTakeAgain}% would take again</span>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                                {richCourse.credits && <span>{richCourse.credits} credits</span>}
+                                {richCourse.offered.length > 0 && <span>Offered: {richCourse.offered.join(", ")}</span>}
+                                {richCourse.prerequisites.length > 0 && <span>Prerequisites: {richCourse.prerequisites.join(", ")}</span>}
+                              </div>
+
+                              {richCourse.careerRelevance.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Career Relevance</p>
+                                  <div className="space-y-1">
+                                    {richCourse.careerRelevance.slice(0, 3).map(({ field, relevance }) => (
+                                      <div key={field} className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-600 w-36 truncate">{field}</span>
+                                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                          <div className="h-full rounded-full bg-davidson" style={{ width: `${relevance * 100}%` }} />
+                                        </div>
+                                        <span className="text-xs text-gray-400 w-8 text-right">{Math.round(relevance * 100)}%</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {!richCourse && course.bestProfessor && (
+                            <p className="text-xs text-gray-500">Best Professor: {course.bestProfessor}</p>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
