@@ -17,6 +17,7 @@ import {
   PlayCircle,
   Plus,
   Search,
+  Sun,
   Trash2,
   X,
   XCircle,
@@ -40,10 +41,19 @@ interface PlannedCourse {
   notes?: string;
 }
 
+interface SummerActivity {
+  _id: string;
+  title: string;
+  description?: string;
+  summer: string;
+  year: number;
+}
+
 interface CatalogCourse {
   _id: string;
   code: string;
   name: string;
+  description?: string;
   credits: number;
   department: string;
 }
@@ -189,6 +199,15 @@ export default function CoursesPage() {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
 
+  // Summer activities
+  const [summerActivities, setSummerActivities] = useState<SummerActivity[]>([]);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [activityTitle, setActivityTitle] = useState("");
+  const [activityDesc, setActivityDesc] = useState("");
+  const [activityYear, setActivityYear] = useState(new Date().getFullYear());
+  const [addingActivity, setAddingActivity] = useState(false);
+  const [deletingActivityId, setDeletingActivityId] = useState<string | null>(null);
+
   // Grade modal
   const [gradeModal, setGradeModal] = useState<PlannedCourse | null>(null);
   const [selectedGrade, setSelectedGrade] = useState("");
@@ -205,6 +224,7 @@ export default function CoursesPage() {
       if (!res.ok) throw new Error("Failed to load course plan");
       const data = await res.json();
       setPlannedCourses(data.plan?.plannedCourses ?? []);
+      setSummerActivities(data.plan?.summerActivities ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -341,10 +361,57 @@ export default function CoursesPage() {
       if (!res.ok) throw new Error("Failed to remove course");
       const data = await res.json();
       setPlannedCourses(data.plan?.plannedCourses ?? []);
+      setSummerActivities(data.plan?.summerActivities ?? []);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to remove course");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const addActivity = async () => {
+    if (!activityTitle.trim()) return;
+    setAddingActivity(true);
+    clearActionError();
+    try {
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summerActivity: { title: activityTitle.trim(), description: activityDesc.trim(), year: activityYear },
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to add activity");
+      const data = await res.json();
+      setPlannedCourses(data.plan?.plannedCourses ?? []);
+      setSummerActivities(data.plan?.summerActivities ?? []);
+      setShowActivityModal(false);
+      setActivityTitle("");
+      setActivityDesc("");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to add activity");
+    } finally {
+      setAddingActivity(false);
+    }
+  };
+
+  const deleteActivity = async (activityId: string) => {
+    setDeletingActivityId(activityId);
+    clearActionError();
+    try {
+      const res = await fetch("/api/plans", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summerActivityId: activityId }),
+      });
+      if (!res.ok) throw new Error("Failed to remove activity");
+      const data = await res.json();
+      setPlannedCourses(data.plan?.plannedCourses ?? []);
+      setSummerActivities(data.plan?.summerActivities ?? []);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to remove activity");
+    } finally {
+      setDeletingActivityId(null);
     }
   };
 
@@ -459,13 +526,23 @@ export default function CoursesPage() {
               Plan your path to graduation at Davidson.
             </p>
           </div>
-          <Button
-            onClick={() => setShowAddModal(true)}
-            className="bg-davidson hover:bg-davidson-dark text-white shadow-sm"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Course
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowAddModal(true)}
+              className="bg-davidson hover:bg-davidson-dark text-white shadow-sm"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add Course
+            </Button>
+            <Button
+              onClick={() => setShowActivityModal(true)}
+              variant="outline"
+              className="border-sky-300 text-sky-700 hover:bg-sky-50"
+            >
+              <Sun className="h-4 w-4 mr-1.5" />
+              Add Summer Activity
+            </Button>
+          </div>
         </motion.div>
 
         {/* ---- Action error toast ---- */}
@@ -704,7 +781,151 @@ export default function CoursesPage() {
           </motion.div>
           );
         })}
+
+        {/* ---- Summer Activities ---- */}
+        {summerActivities.length > 0 && (
+          <motion.div variants={fadeIn}>
+            <div className="bg-white border border-gray-100 rounded-xl shadow-sm border-l-4 border-l-sky-400">
+              <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sun className="h-4 w-4 text-sky-500" />
+                  <h3 className="font-semibold font-serif text-sm text-[#111111]">Summer Activities</h3>
+                  <Badge className="text-[10px] px-1.5 py-0 border-0 bg-sky-50 text-sky-700">
+                    {summerActivities.length} {summerActivities.length === 1 ? "activity" : "activities"}
+                  </Badge>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {[...summerActivities].sort((a, b) => a.year - b.year).map((act) => (
+                  <div key={act._id} className="px-5 py-3 flex items-start gap-3 group">
+                    <Sun className="h-4 w-4 shrink-0 text-sky-400 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-[#111111]">{act.title}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                          Summer {act.year}
+                        </span>
+                      </div>
+                      {act.description && (
+                        <p className="text-xs text-gray-500 mt-0.5">{act.description}</p>
+                      )}
+                    </div>
+                    <button
+                      disabled={deletingActivityId === act._id}
+                      onClick={() => deleteActivity(act._id)}
+                      className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40 opacity-0 group-hover:opacity-100"
+                      title="Remove activity"
+                    >
+                      {deletingActivityId === act._id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
       </motion.div>
+
+      {/* ================================================================= */}
+      {/* Add Summer Activity Modal */}
+      {/* ================================================================= */}
+      <AnimatePresence>
+        {showActivityModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            variants={modalOverlay}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <div
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+              onClick={() => {
+                setShowActivityModal(false);
+                setActivityTitle("");
+                setActivityDesc("");
+              }}
+            />
+            <motion.div
+              variants={modalContent}
+              className="relative bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-5 z-10"
+            >
+              <h2 className="text-base font-semibold font-serif text-[#111111] mb-1">
+                Add Summer Activity
+              </h2>
+              <p className="text-sm text-[#555555] mb-4">
+                Plan an internship, research, or other summer experience.
+              </p>
+              <div className="space-y-3 mb-5">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Year</label>
+                  <select
+                    value={activityYear}
+                    onChange={(e) => setActivityYear(Number(e.target.value))}
+                    className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson"
+                  >
+                    {yearOptions.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Activity</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Software engineering internship at Google"
+                    value={activityTitle}
+                    onChange={(e) => setActivityTitle(e.target.value)}
+                    autoFocus
+                    className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Description <span className="text-gray-400">(optional)</span></label>
+                  <textarea
+                    placeholder="More details about this activity..."
+                    value={activityDesc}
+                    onChange={(e) => setActivityDesc(e.target.value)}
+                    rows={2}
+                    className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson resize-none"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowActivityModal(false);
+                    setActivityTitle("");
+                    setActivityDesc("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-davidson hover:bg-davidson-dark text-white"
+                  disabled={!activityTitle.trim() || addingActivity}
+                  onClick={addActivity}
+                >
+                  {addingActivity ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ================================================================= */}
       {/* Add Course Modal */}
@@ -812,44 +1033,50 @@ export default function CoursesPage() {
                       return (
                         <div
                           key={c._id}
-                          className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+                          className="px-5 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 mb-0.5">
                               <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${getDeptColor(c.code).bg} ${getDeptColor(c.code).text}`}>
                                 {c.code}
                               </span>
                               <span className="text-xs text-gray-400">{c.department}</span>
+                              <span className="text-[10px] text-gray-400">{c.credits} cr</span>
                             </div>
-                            <p className="text-xs text-[#555555] truncate">{c.name}</p>
+                            <p className="text-sm font-medium text-[#111111]">{c.name}</p>
+                            {c.description && (
+                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{c.description}</p>
+                            )}
                           </div>
 
-                          {alreadyAdded ? (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] px-2 py-0.5 text-gray-400"
-                            >
-                              <Check className="h-3 w-3 mr-0.5" />
-                              Added
-                            </Badge>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={isAdding}
-                              onClick={() => addCourse(c._id)}
-                              className="h-7 text-xs px-2.5 border-gray-200 hover:bg-davidson-light hover:text-davidson hover:border-davidson/20"
-                            >
-                              {isAdding ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <>
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Add
-                                </>
-                              )}
-                            </Button>
-                          )}
+                          <div className="shrink-0 mt-1">
+                            {alreadyAdded ? (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-2 py-0.5 text-gray-400"
+                              >
+                                <Check className="h-3 w-3 mr-0.5" />
+                                Added
+                              </Badge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isAdding}
+                                onClick={() => addCourse(c._id)}
+                                className="h-7 text-xs px-2.5 border-gray-200 hover:bg-davidson-light hover:text-davidson hover:border-davidson/20"
+                              >
+                                {isAdding ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Add
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}

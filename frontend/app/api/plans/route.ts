@@ -43,7 +43,33 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const userId = (session.user as { id: string }).id;
-    const { courseId, semester, year, status, notes } = await req.json();
+    const body = await req.json();
+
+    // Handle summer activity addition
+    if (body.summerActivity) {
+      const { title, description, year: actYear } = body.summerActivity;
+      if (!title || !actYear) {
+        return NextResponse.json({ error: "title and year are required for summer activity" }, { status: 400 });
+      }
+
+      let plan = await CoursePlan.findOne({ userId });
+      if (!plan) {
+        plan = new CoursePlan({ userId, plannedCourses: [], summerActivities: [] });
+      }
+
+      plan.summerActivities.push({
+        title,
+        description: description || "",
+        summer: `Summer ${actYear}`,
+        year: actYear,
+      });
+
+      await plan.save();
+      return NextResponse.json({ plan }, { status: 201 });
+    }
+
+    // Handle course addition
+    const { courseId, semester, year, status, notes } = body;
 
     if (!courseId || !semester || !year) {
       return NextResponse.json({ error: "courseId, semester, and year are required" }, { status: 400 });
@@ -56,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     let plan = await CoursePlan.findOne({ userId });
     if (!plan) {
-      plan = new CoursePlan({ userId, plannedCourses: [] });
+      plan = new CoursePlan({ userId, plannedCourses: [], summerActivities: [] });
     }
 
     // Prevent duplicate entries
@@ -131,16 +157,22 @@ export async function DELETE(req: NextRequest) {
     await connectToDatabase();
 
     const userId = (session.user as { id: string }).id;
-    const { plannedCourseId } = await req.json();
+    const { plannedCourseId, summerActivityId } = await req.json();
 
     const plan = await CoursePlan.findOne({ userId });
     if (!plan) {
       return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
-    plan.plannedCourses = plan.plannedCourses.filter(
-      (c) => (c as unknown as { _id?: { toString(): string } })._id?.toString() !== plannedCourseId
-    ) as typeof plan.plannedCourses;
+    if (summerActivityId) {
+      plan.summerActivities = plan.summerActivities.filter(
+        (a) => (a as unknown as { _id?: { toString(): string } })._id?.toString() !== summerActivityId
+      ) as typeof plan.summerActivities;
+    } else if (plannedCourseId) {
+      plan.plannedCourses = plan.plannedCourses.filter(
+        (c) => (c as unknown as { _id?: { toString(): string } })._id?.toString() !== plannedCourseId
+      ) as typeof plan.plannedCourses;
+    }
 
     await plan.save();
 

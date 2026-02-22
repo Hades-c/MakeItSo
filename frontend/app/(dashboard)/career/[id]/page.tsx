@@ -37,7 +37,7 @@ type Tab = "overview" | "courses" | "summer" | "networking" | "roadmap";
 
 interface CareerPlan {
   recommendedMajor: string;
-  coursesToTake: { code: string; name: string; reason: string; priority: string; typicalYear: string }[];
+  coursesToTake: { code: string; name: string; reason: string; priority: string; typicalYear: string; courseType?: string }[];
   peopleToMeet: { role: string; type: string; reason: string; suggestedTiming: string; howToFind: string }[];
   thingsToDo: { activity: string; type: string; reason: string; timing: string; classYear: string }[];
   careerInsights: string;
@@ -69,6 +69,18 @@ const YEAR_ORDER: Record<string, number> = {
   Sophomore: 1,
   Junior: 2,
   Senior: 3,
+};
+
+const COURSE_TYPE_ORDER: Record<string, number> = {
+  "major-requirement": 0,
+  distribution: 1,
+  elective: 2,
+};
+
+const COURSE_TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  "major-requirement": { bg: "bg-davidson-light", text: "text-davidson", border: "border-davidson/20" },
+  distribution: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  elective: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
 };
 
 const TAG_COLORS: Record<string, string> = {
@@ -385,41 +397,57 @@ export default function CareerDetailPage() {
               const deptColor = getDeptColor(course.code);
               const isExpanded = expandedCourseIdx === i;
               const richCourse = DAVIDSON_COURSES.find((c) => c.code === course.code);
+              const courseInPlan = planCourseCodes.has(course.code);
+              const courseIsAdding = addingToPlan === course.code;
               return (
                 <div key={i} className={`bg-white rounded-lg border transition-all ${isExpanded ? "border-gray-200 shadow-sm" : "border-gray-100 hover:border-gray-200"}`}>
-                  <button
-                    onClick={() => setExpandedCourseIdx(isExpanded ? null : i)}
-                    className="w-full text-left p-4"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-3 mb-1.5">
-                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
-                            {course.code}
-                          </span>
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <Star
-                                key={n}
-                                className={`h-3 w-3 ${
-                                  n <= course.difficulty
-                                    ? "text-amber-400 fill-amber-400"
-                                    : "text-gray-200"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          {course.bestProfessor && (
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-navy/5 text-navy font-medium">
-                              {course.bestProfessor}
-                            </span>
-                          )}
+                  <div className="flex items-start p-4 gap-3">
+                    <button
+                      onClick={() => setExpandedCourseIdx(isExpanded ? null : i)}
+                      className="flex-1 text-left min-w-0"
+                    >
+                      <div className="flex items-center gap-3 mb-1.5">
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
+                          {course.code}
+                        </span>
+                        <div className="flex gap-0.5">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star
+                              key={n}
+                              className={`h-3 w-3 ${
+                                n <= course.difficulty
+                                  ? "text-amber-400 fill-amber-400"
+                                  : "text-gray-200"
+                              }`}
+                            />
+                          ))}
                         </div>
-                        <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
+                        {course.bestProfessor && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-navy/5 text-navy font-medium">
+                            {course.bestProfessor}
+                          </span>
+                        )}
                       </div>
-                      <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 mt-1 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
+                    </button>
+                    <div className="flex items-center gap-2 shrink-0 mt-1">
+                      {courseInPlan ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                          <Check className="h-3 w-3" /> In Plan
+                        </span>
+                      ) : (
+                        <button
+                          disabled={courseIsAdding}
+                          onClick={() => addCourseToPlan(course.code)}
+                          className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                        >
+                          {courseIsAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                          Add to Plan
+                        </button>
+                      )}
+                      <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                     </div>
-                  </button>
+                  </div>
 
                   <AnimatePresence>
                     {isExpanded && (
@@ -701,8 +729,15 @@ export default function CareerDetailPage() {
                   Recommended Courses
                 </h2>
                 <div className="grid gap-2">
-                  {[...careerPlan.coursesToTake].sort((a, b) => (YEAR_ORDER[a.typicalYear] ?? 99) - (YEAR_ORDER[b.typicalYear] ?? 99)).map((course, i) => {
-                    const pColor = PRIORITY_COLORS[course.priority] || PRIORITY_COLORS.helpful;
+                  {[...careerPlan.coursesToTake].sort((a, b) => {
+                    const typeA = COURSE_TYPE_ORDER[a.courseType ?? "elective"] ?? 99;
+                    const typeB = COURSE_TYPE_ORDER[b.courseType ?? "elective"] ?? 99;
+                    if (typeA !== typeB) return typeA - typeB;
+                    const numA = parseInt(a.code.replace(/\D/g, "")) || 0;
+                    const numB = parseInt(b.code.replace(/\D/g, "")) || 0;
+                    return numA - numB;
+                  }).map((course, i) => {
+                    const ctColor = COURSE_TYPE_COLORS[course.courseType ?? "elective"] || COURSE_TYPE_COLORS.elective;
                     const yColor = YEAR_COLORS[course.typicalYear] || { bg: "bg-gray-50", text: "text-gray-600" };
                     const deptColor = getDeptColor(course.code);
                     const inPlan = planCourseCodes.has(course.code);
@@ -715,8 +750,8 @@ export default function CareerDetailPage() {
                               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
                                 {course.code}
                               </span>
-                              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${pColor.bg} ${pColor.text} ${pColor.border}`}>
-                                {course.priority}
+                              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${ctColor.bg} ${ctColor.text} ${ctColor.border}`}>
+                                {(course.courseType ?? "elective").replace("-", " ")}
                               </span>
                               <span className={`text-[10px] px-2 py-0.5 rounded ${yColor.bg} ${yColor.text}`}>
                                 {course.typicalYear}

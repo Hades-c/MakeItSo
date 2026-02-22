@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const department = searchParams.get("department");
     const tag = searchParams.get("tag");
     const page = parseInt(searchParams.get("page") ?? "1");
-    const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 100);
+    const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 200);
     const skip = (page - 1) * limit;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

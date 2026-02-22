@@ -15,7 +15,7 @@ Generate a JSON response with this exact structure:
 {
   "recommendedMajor": "the best major at Davidson for this career",
   "coursesToTake": [
-    {"code": "DEPT 101", "name": "Course Name", "reason": "Why this course helps", "priority": "required|recommended|helpful", "typicalYear": "Freshman|Sophomore|Junior|Senior"}
+    {"code": "DEPT 101", "name": "Course Name", "reason": "Why this course helps", "priority": "required|recommended|helpful", "typicalYear": "Freshman|Sophomore|Junior|Senior", "courseType": "major-requirement|distribution|elective"}
   ],
   "peopleToMeet": [
     {"role": "Title/Role", "type": "alumni|faculty|advisor|professional", "reason": "Why meet them", "suggestedTiming": "Freshman|Sophomore|Junior|Senior", "howToFind": "Where to find them"}
