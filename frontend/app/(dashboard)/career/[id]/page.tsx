@@ -63,6 +63,13 @@ const YEAR_COLORS: Record<string, { bg: string; text: string }> = {
   Senior: { bg: "bg-davidson-light", text: "text-davidson" },
 };
 
+const YEAR_ORDER: Record<string, number> = {
+  Freshman: 0,
+  Sophomore: 1,
+  Junior: 2,
+  Senior: 3,
+};
+
 const TAG_COLORS: Record<string, string> = {
   "High Salary": "bg-emerald-50 text-emerald-700 border-emerald-200",
   "Technical": "bg-blue-50 text-blue-700 border-blue-200",
@@ -637,7 +644,7 @@ export default function CareerDetailPage() {
                   Recommended Courses
                 </h2>
                 <div className="grid gap-2">
-                  {careerPlan.coursesToTake.map((course, i) => {
+                  {[...careerPlan.coursesToTake].sort((a, b) => (YEAR_ORDER[a.typicalYear] ?? 99) - (YEAR_ORDER[b.typicalYear] ?? 99)).map((course, i) => {
                     const pColor = PRIORITY_COLORS[course.priority] || PRIORITY_COLORS.helpful;
                     const yColor = YEAR_COLORS[course.typicalYear] || { bg: "bg-gray-50", text: "text-gray-600" };
                     const deptColor = getDeptColor(course.code);
@@ -673,7 +680,7 @@ export default function CareerDetailPage() {
                   Activities & Experiences
                 </h2>
                 <div className="grid gap-2">
-                  {careerPlan.thingsToDo.map((item, i) => {
+                  {[...careerPlan.thingsToDo].sort((a, b) => (YEAR_ORDER[a.classYear] ?? 99) - (YEAR_ORDER[b.classYear] ?? 99)).map((item, i) => {
                     const aColor = ACTIVITY_COLORS[item.type] || { bg: "bg-gray-50", text: "text-gray-600" };
                     const yColor = YEAR_COLORS[item.classYear] || { bg: "bg-gray-50", text: "text-gray-600" };
                     return (
@@ -702,20 +709,21 @@ export default function CareerDetailPage() {
                   People to Connect With
                 </h2>
                 <div className="grid gap-2">
-                  {careerPlan.peopleToMeet.map((person, i) => {
+                  {[...careerPlan.peopleToMeet].sort((a, b) => (YEAR_ORDER[a.suggestedTiming] ?? 99) - (YEAR_ORDER[b.suggestedTiming] ?? 99)).map((person, i) => {
                     const typeColor: Record<string, string> = {
                       alumni: "bg-davidson-light text-davidson",
                       faculty: "bg-navy/5 text-navy",
                       advisor: "bg-purple-50 text-purple-700",
                       professional: "bg-emerald-50 text-emerald-700",
                     };
+                    const yColor = YEAR_COLORS[person.suggestedTiming] || { bg: "bg-gray-50", text: "text-gray-600" };
                     return (
                       <div key={i} className="bg-white border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${typeColor[person.type] || "bg-gray-50 text-gray-600"}`}>
                             {person.type}
                           </span>
-                          <span className="text-[10px] text-gray-400">{person.suggestedTiming}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded ${yColor.bg} ${yColor.text}`}>{person.suggestedTiming}</span>
                         </div>
                         <h4 className="font-medium text-sm text-[#111111]">{person.role}</h4>
                         <p className="text-xs text-gray-500 mt-1 leading-relaxed">{person.reason}</p>
