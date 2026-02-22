@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import {
   Briefcase,
@@ -29,8 +29,12 @@ interface DashboardSidebarProps {
   userEmail?: string | null;
 }
 
-export function DashboardSidebar({ userName, userEmail }: DashboardSidebarProps) {
+export function DashboardSidebar({ userName: propName, userEmail: propEmail }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  // Prefer live session data so name updates propagate without a full reload
+  const userName = session?.user?.name ?? propName;
+  const userEmail = session?.user?.email ?? propEmail;
 
   return (
     <>
