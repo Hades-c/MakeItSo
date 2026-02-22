@@ -42,10 +42,10 @@ export default function DashboardPage() {
       {/* Hero */}
       <motion.div variants={fadeIn} className="mb-6">
         <p className="text-sm text-gray-400 font-medium mb-1">{greeting}</p>
-        <h1 className="text-3xl sm:text-4xl font-bold font-serif tracking-tight text-[#111111]">
+        <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
           Welcome back, {firstName}
         </h1>
-        <p className="text-[#555555] mt-1 max-w-lg">
+        <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
           Your academic journey at Davidson, all in one place.
         </p>
       </motion.div>

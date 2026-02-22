@@ -39,24 +39,24 @@ export default function CareerPage() {
 
   return (
     <motion.div
-      className="max-w-5xl mx-auto"
-      initial={{ opacity: 0, y: 16 }}
+      className="max-w-5xl mx-auto space-y-6"
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.4 }}
     >
       {/* Header */}
-      <div className="pt-4 pb-10 border-b border-gray-200">
-        <h1 className="font-serif text-4xl tracking-tight text-[#111111]">
+      <div>
+        <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
           Career Paths
         </h1>
-        <p className="text-base text-[#555555] mt-3 max-w-2xl leading-relaxed">
+        <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
           Explore careers with curated courses, alumni connections, and
           AI-powered guidance tailored to your interests.
         </p>
       </div>
 
       {/* Search and Filters */}
-      <div className="py-8 space-y-5">
+      <div className="space-y-5">
         <div className="relative max-w-md">
           <Search className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
