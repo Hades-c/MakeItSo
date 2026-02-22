@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -148,6 +148,15 @@ export default function CareerDetailPage() {
   useEffect(() => {
     fetchUserPlan();
   }, [fetchUserPlan]);
+
+  // Auto-load cached career plan when switching to the roadmap tab
+  const roadmapFetched = useRef(false);
+  useEffect(() => {
+    if (activeTab === "roadmap" && !careerPlan && !roadmapLoading && !roadmapFetched.current) {
+      roadmapFetched.current = true;
+      generateRoadmap();
+    }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const planCourseCodes = new Set(userPlanCourses.map((c) => c.courseCode));
 
@@ -649,32 +658,11 @@ export default function CareerDetailPage() {
       {/* Roadmap Tab */}
       {activeTab === "roadmap" && (
         <div className="space-y-6">
-          {!careerPlan && !roadmapLoading && !roadmapError && (
-            <div className="bg-white border border-gray-100 rounded-xl p-10 text-center shadow-sm">
-              <div className="h-14 w-14 rounded-2xl bg-davidson-light border border-davidson/10 flex items-center justify-center mx-auto mb-4">
-                <Map className="h-7 w-7 text-davidson/60" />
-              </div>
-              <h2 className="font-serif text-lg font-semibold text-navy mb-2">
-                Career Roadmap for {careerPath.title}
-              </h2>
-              <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto leading-relaxed">
-                Generate an AI-powered roadmap with recommended courses, activities, and networking strategies tailored to this career path.
-              </p>
-              <Button
-                onClick={() => generateRoadmap()}
-                className="bg-davidson hover:bg-davidson-dark text-white shadow-sm"
-              >
-                <Sparkles className="h-4 w-4 mr-1.5" />
-                Generate Roadmap
-              </Button>
-            </div>
-          )}
-
           {roadmapLoading && (
             <div className="space-y-4">
               <div className="bg-white border border-gray-100 rounded-xl p-8 text-center shadow-sm">
                 <Loader2 className="h-6 w-6 animate-spin text-davidson mx-auto mb-3" />
-                <p className="text-sm text-gray-500">Generating your personalized career roadmap...</p>
+                <p className="text-sm text-gray-500">Loading your career roadmap...</p>
               </div>
               {[0, 1, 2].map((i) => (
                 <div key={i} className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
