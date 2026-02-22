@@ -347,9 +347,15 @@ export default function ExplorePage() {
   async function getRecommendations() {
     setLoading(true);
     try {
-      const interests = SUBJECT_AREAS.filter((a) =>
+      const areaLabels = SUBJECT_AREAS.filter((a) =>
         selectedAreas.includes(a.id)
       ).map((a) => a.label);
+      const interests = areaLabels.length > 0 ? areaLabels : [...selectedDepartments];
+
+      if (interests.length === 0) {
+        setLoading(false);
+        return;
+      }
 
       const res = await fetch("/api/ai/recommendations", {
         method: "POST",
