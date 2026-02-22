@@ -242,8 +242,44 @@ export default function ExplorePage() {
   // Build a set of static course codes for quick lookup
   const staticCodes = new Set(DAVIDSON_COURSES.map((c) => c.code));
 
-  // Live-only courses: courses from the API that don't exist in our static data
-  const liveOnlyCourses = liveCourses.filter((c) => !staticCodes.has(c.code));
+  // Parse dept prefix and number from a course code like "ECO 202"
+  function parseCourseCode(code: string): { dept: string; num: number } | null {
+    const m = code.match(/^([A-Z]{2,4})\s*(\d+)/);
+    return m ? { dept: m[1], num: parseInt(m[2], 10) } : null;
+  }
+
+  // Build a map of static course numbers by dept for fuzzy dedup
+  const staticByDept = new Map<string, number[]>();
+  for (const c of DAVIDSON_COURSES) {
+    const parsed = parseCourseCode(c.code);
+    if (parsed) {
+      if (!staticByDept.has(parsed.dept)) staticByDept.set(parsed.dept, []);
+      staticByDept.get(parsed.dept)!.push(parsed.num);
+    }
+  }
+
+  // Live-only courses: exclude exact matches AND near-matches (same dept, number within ±3)
+  const liveOnlyCourses = liveCourses.filter((c) => {
+    if (staticCodes.has(c.code)) return false;
+    const parsed = parseCourseCode(c.code);
+    if (!parsed) return true;
+    const staticNums = staticByDept.get(parsed.dept);
+    if (!staticNums) return true;
+    return !staticNums.some((sn) => Math.abs(sn - parsed.num) <= 3);
+  });
+
+  // Find the closest live course for a static course code (fuzzy by dept + number ±3)
+  function findLiveProfessor(code: string): string | undefined {
+    const exact = liveCourses.find((lc) => lc.code === code);
+    if (exact && exact.professor !== "Staff") return exact.professor;
+    const parsed = parseCourseCode(code);
+    if (!parsed) return undefined;
+    const match = liveCourses.find((lc) => {
+      const lp = parseCourseCode(lc.code);
+      return lp && lp.dept === parsed.dept && Math.abs(lp.num - parsed.num) <= 3;
+    });
+    return match && match.professor !== "Staff" ? match.professor : undefined;
+  }
 
   // Combined courses: static (rich data with RMP) first, then live-only extras
   const allCourses: (SeedCourse | LiveCourse)[] = [
@@ -550,7 +586,7 @@ export default function ExplorePage() {
                 <StaticCourseCard
                   key={course.code}
                   course={course as SeedCourse}
-                  liveProfessor={!(course as SeedCourse).professor ? liveCourses.find((lc) => lc.code === course.code)?.professor : undefined}
+                  liveProfessor={!(course as SeedCourse).professor ? findLiveProfessor(course.code) : undefined}
                 />
               ) : (
                 <LiveCourseCard
@@ -626,7 +662,7 @@ export default function ExplorePage() {
                       course={staticCourse}
                       aiReason={rec.reason}
                       aiCareerImpact={rec.careerImpact}
-                      liveProfessor={!staticCourse.professor ? liveCourse?.professor : undefined}
+                      liveProfessor={!staticCourse.professor ? findLiveProfessor(staticCourse.code) : undefined}
                     />
                   ) : liveCourse ? (
                     <LiveCourseCard course={liveCourse} aiReason={rec.reason} />
