@@ -1050,12 +1050,13 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                             className="fixed inset-0 z-[100]"
                           >
                             <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} />
-                            <div className="fixed inset-0 md:left-[240px] z-[101] flex items-start justify-start pt-[6vh] px-4 md:px-8 overflow-y-auto">
+                            <div className="fixed inset-0 md:left-[240px] z-[101] overflow-y-auto p-4 md:p-8 pt-[6vh]">
+                            <div className="max-w-5xl mx-auto">
                             <motion.div
                               initial={{ opacity: 0, scale: 0.98, y: 12 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.98, y: 12 }}
-                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-y-auto"
+                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-h-[85vh] overflow-y-auto"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {/* Modal header */}
@@ -1179,6 +1180,7 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                                 )}
                               </div>
                             </motion.div>
+                            </div>
                             </div>
                           </motion.div>
                         )}
@@ -1330,12 +1332,13 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                     className="fixed inset-0 z-[100]"
                   >
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} />
-                    <div className="fixed inset-0 md:left-[240px] z-[101] flex items-start justify-start pt-[6vh] px-4 md:px-8 overflow-y-auto">
+                    <div className="fixed inset-0 md:left-[240px] z-[101] overflow-y-auto p-4 md:p-8 pt-[6vh]">
+                    <div className="max-w-5xl mx-auto">
                     <motion.div
                       initial={{ opacity: 0, scale: 0.98, y: 12 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.98, y: 12 }}
-                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[85vh] overflow-y-auto"
+                      className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-h-[85vh] overflow-y-auto"
                     >
                       {/* Modal header */}
                       <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
@@ -1431,6 +1434,7 @@ function CourseCard({ course, aiReason, aiCareerImpact }: { course: EnrichedCour
                         )}
                       </div>
                     </motion.div>
+                    </div>
                     </div>
                   </motion.div>
                 )}
