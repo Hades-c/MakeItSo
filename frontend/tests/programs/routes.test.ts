@@ -132,6 +132,17 @@ describe("GET /api/programs/[id]", () => {
     expect((await errorOf(res)).code).toBe("validation_failed");
   });
 
+  it.each(["0172", "1e3", "%20172", "172.0", "+172"])(
+    "answers 400 for the non-canonical id %j, without reading the catalog",
+    async (id) => {
+      const fetcher = vi.spyOn(liveDeps, "fetcher");
+      const res = await program(id);
+      expect(res.status).toBe(400);
+      expect(res.headers.get("Cache-Control")).toBe(NO_STORE);
+      expect(fetcher).not.toHaveBeenCalled();
+    },
+  );
+
   it("answers 503 when a never-read page cannot be fetched", async () => {
     vi.spyOn(liveDeps, "fetcher").mockResolvedValue({
       status: 202,

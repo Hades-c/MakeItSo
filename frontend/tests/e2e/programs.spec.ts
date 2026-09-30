@@ -40,10 +40,15 @@ test("GET /api/programs/172 serves the Computer Science page with requirement te
   expect(program.offerings[0]?.requirementsText).toContain("Major Prerequisites:");
 });
 
-test("unknown programs are 404 and the cron route needs its secret", async ({ request }) => {
+test("unknown programs are 404, id variants 400, and the cron route needs its secret", async ({
+  request,
+}) => {
   const missing = await request.get("/api/programs/999999");
   expect(missing.status()).toBe(404);
   expect(missing.headers()["cache-control"]).toBe("private, no-store");
+  const variant = await request.get("/api/programs/0172");
+  expect(variant.status()).toBe(400);
+  expect(variant.headers()["cache-control"]).toBe("private, no-store");
   const cron = await request.get("/api/cron/programs");
   expect([401, 503]).toContain(cron.status());
 });
