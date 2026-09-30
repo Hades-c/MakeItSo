@@ -29,9 +29,13 @@ import { recordSync } from "@/server/sync";
  * Feed sync (PLAN §6.1 W4a): fetch → parse → normalise → dedupe → store, one source at a time, failures isolated
  * per source (and per channel inside a source). Every run of a source ends with exactly one
  * `recordSync(source, { ok, count, error })`:
- *   - ok: every channel of the source succeeded (Hurt Hub counts as ok when the Tribe fallback saved it);
+ *   - ok: every channel of the source succeeded cleanly (Hurt Hub counts as ok when the Tribe fallback saved it);
  *   - count: the items stored in this run;
- *   - a failed channel keeps its last good items untouched (nothing is written or pruned for it).
+ *   - a failed channel keeps its last good items untouched (nothing is written or pruned for it). A document that
+ *     parses but has no readable entry, or more unreadable entries than readable ones, is a failed channel
+ *     (assessParse), so an upstream format change never passes for a successful sync;
+ *   - a degraded channel (entries cut by a size limit, an Events Digest issue without dated events) stores what
+ *     it read but prunes nothing, and the source is recorded as failing with the reason.
  * MissingFixtureError (a test without a fixture) is never caught.
  */
 
@@ -53,8 +57,56 @@ interface ChannelOutcome {
   channel: FeedChannel;
   items: NormalizedFeedItem[];
   scope: PruneScope;
-  /** Fallback note ("iCal failed: …; used the Tribe API"). */
-  note?: string;
+  /** Logged only ("iCal failed: …; used the Tribe API", "2 entries unreadable, skipped"). */
+  notes: string[];
+  /** Degraded: stored without pruning, and the source is recorded as failing with this reason. */
+  problem?: string;
+}
+
+export interface ParseStats {
+  items: readonly unknown[];
+  /** Entries that could not be read. */
+  skipped: number;
+  /** Entries cut by a size or expansion limit. */
+  capped?: number;
+}
+
+function entries(count: number): string {
+  return count === 1 ? "1 entry" : `${count} entries`;
+}
+
+/**
+ * Health of one parsed document. Throws FeedParseError (the channel fails: nothing stored or pruned, the last good
+ * items stay) when the document had entries but none was readable, or more were unreadable than readable. Entries
+ * cut by a limit make the channel degraded (`problem`); a few unreadable entries are only logged (`note`).
+ */
+export function assessParse(stats: ParseStats): { problem?: string; note?: string } {
+  const read = stats.items.length;
+  const capped = stats.capped ?? 0;
+  if (read === 0 && stats.skipped + capped > 0) {
+    throw new FeedParseError(`no readable entries (${entries(stats.skipped + capped)} skipped)`);
+  }
+  if (stats.skipped > read) {
+    throw new FeedParseError(
+      `most entries unreadable (${stats.skipped} of ${read + stats.skipped} skipped)`,
+    );
+  }
+  return {
+    ...(capped > 0 ? { problem: `${entries(capped)} cut by the size limits` } : {}),
+    ...(stats.skipped > 0 ? { note: `${entries(stats.skipped)} unreadable, skipped` } : {}),
+  };
+}
+
+function outcomeOf(
+  channel: FeedChannel,
+  items: NormalizedFeedItem[],
+  scope: PruneScope,
+  health: { problem?: string; note?: string },
+  extra: { note?: string; problem?: string } = {},
+): ChannelOutcome {
+  const notes = [extra.note, health.note].filter((note): note is string => Boolean(note));
+  const problem = [health.problem, extra.problem].filter(Boolean).join("; ");
+  return problem ? { channel, items, scope, notes, problem } : { channel, items, scope, notes };
 }
 
 function campusTimeZone(): string {
@@ -119,13 +171,13 @@ async function runChannel(
       const fallbackUrl = channel.fallbackUrl ?? "";
       try {
         const text = await fetchText(source, channel.url);
-        const { items } = parseIcs(text, {
+        const parsed = parseIcs(text, {
           ...context,
           fallbackUrl,
           externalIdFor: channel.externalIdFor,
           cleanDescription: channel.cleanDescription,
         });
-        return { channel, items, scope: upcoming };
+        return outcomeOf(channel, parsed.items, upcoming, assessParse(parsed));
       } catch (error) {
         if (error instanceof MissingFixtureError || channel.fallback !== "tribe") throw error;
         let events: unknown[];
@@ -137,24 +189,31 @@ async function runChannel(
             `iCal ${describeFailure(error)}; Tribe API ${describeFailure(fallbackError)}`,
           );
         }
-        const { items } = normalizeTribeEvents(events, { ...context, fallbackUrl });
-        return {
-          channel,
-          items,
-          scope: upcoming,
+        const tribe = normalizeTribeEvents(events, { ...context, fallbackUrl });
+        let health: { problem?: string; note?: string };
+        try {
+          health = assessParse(tribe);
+        } catch (fallbackError) {
+          throw new ChannelFailure(
+            `iCal ${describeFailure(error)}; Tribe API ${describeFailure(fallbackError)}`,
+          );
+        }
+        return outcomeOf(channel, tribe.items, upcoming, health, {
           note: `iCal failed (${describeFailure(error)}); used the Tribe API`,
-        };
+        });
       }
     }
     case "rss-news": {
       const rss = parseRss(await fetchText(source, channel.url));
-      const { items } = normalizeNews(rss, { ...context, summarize: channel.summarize });
-      return { channel, items, scope: { kind: "none" } };
+      const news = normalizeNews(rss, { ...context, summarize: channel.summarize });
+      return outcomeOf(channel, news.items, { kind: "none" }, assessParse(news));
     }
     case "digest": {
       const rss = parseRss(await fetchText(source, channel.url));
-      const { items } = normalizeDigest(rss, context);
-      return { channel, items, scope: upcoming };
+      const digest = normalizeDigest(rss, context);
+      return outcomeOf(channel, digest.items, upcoming, assessParse(digest), {
+        problem: digest.warning,
+      });
     }
     case "libcal-hours": {
       const { data } = await fetchExternal(source, channel.url, {
@@ -163,11 +222,12 @@ async function runChannel(
         maxBytes: FEED_MAX_BYTES,
       });
       const date = libCalDate(data, dateKeyInZone(at, timeZone));
-      return {
+      return outcomeOf(
         channel,
-        items: normalizeLibraryHours(data, { ...context, date }),
-        scope: { kind: "hours", date },
-      };
+        normalizeLibraryHours(data, { ...context, date }),
+        { kind: "hours", date },
+        {},
+      );
     }
     default: {
       const unknown: never = channel.format;
@@ -181,7 +241,9 @@ async function runChannel(
  * are the same when they share an externalId (UID/guid), or when they come from different channels and link
  * to the same page. Items of one channel may share a link (LibCal's recurring "Silent Book Club" instances).
  */
-export function dedupeAcrossChannels(outcomes: readonly ChannelOutcome[]): void {
+export function dedupeAcrossChannels(
+  outcomes: ReadonlyArray<Pick<ChannelOutcome, "channel" | "items">>,
+): void {
   const ids = new Set<string>();
   const linkOwner = new Map<string, string>();
   for (const outcome of outcomes) {
@@ -212,8 +274,10 @@ async function syncSource(source: FeedSourceId): Promise<FeedSyncResult> {
     const channel = config.channels[i]!;
     if (result.status === "fulfilled") {
       outcomes.push(result.value);
-      if (result.value.note)
-        console.warn(`[feeds] ${source}/${channel.channel}: ${result.value.note}`);
+      for (const note of result.value.notes) {
+        console.warn(`[feeds] ${source}/${channel.channel}: ${note}`);
+      }
+      if (result.value.problem) failures.push(`${channel.channel}: ${result.value.problem}`);
       continue;
     }
     const reason: unknown = result.reason;
@@ -240,9 +304,12 @@ async function syncSource(source: FeedSourceId): Promise<FeedSyncResult> {
     // The configured channel always runs (with [] it stores and prunes nothing).
     if (!byChannel.has(outcome.channel.channel)) byChannel.set(outcome.channel.channel, []);
     for (const [channel, items] of byChannel) {
-      const scope = channel === outcome.channel.channel ? outcome.scope : { kind: "none" as const };
-      await storeChannelItems(source, channel, items, at, scope);
-      count += items.length;
+      // A degraded channel stores what it read but never prunes.
+      const scope =
+        channel === outcome.channel.channel && !outcome.problem
+          ? outcome.scope
+          : { kind: "none" as const };
+      count += (await storeChannelItems(source, channel, items, at, scope)).stored;
     }
   }
 

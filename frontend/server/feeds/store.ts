@@ -18,7 +18,9 @@ import type { NormalizedFeedItem } from "@/server/feeds/types";
  * `feeditems` persistence for server/feeds (PLAN §4 "New data goes only to new collections").
  *
  * - Upsert by (source, externalId); unchanged items (same content hash) only get their fetchedAt bumped.
- * - TTL: expiresAt = 60 days after the item ends (endsAt, else startsAt, else fetchedAt).
+ * - TTL: expiresAt = 60 days after the item ends (endsAt, else startsAt, else fetchedAt). An item already past
+ *   that point (a story published more than 60 days ago that its feed still carries) is not stored or counted:
+ *   the TTL monitor would delete it within a minute and the next sync would write it again.
  * - Pruning happens only for a channel that just synced successfully with a non-empty result, and only for items
  *   that are still ahead (upcoming events/deadlines, or the same day's hours) and vanished upstream (cancelled
  *   or removed). If the new result has fewer than half of the upcoming items we hold, nothing is pruned (a
@@ -70,6 +72,8 @@ export type PruneScope =
   { kind: "upcoming"; now: Date } | { kind: "hours"; date: string } | { kind: "none" };
 
 export interface StoreResult {
+  /** Items now held for this batch (written + unchanged; expired ones are left out). */
+  stored: number;
   written: number;
   unchanged: number;
   pruned: number;
@@ -95,7 +99,8 @@ export async function storeChannelItems(
   fetchedAt: Date,
   scope: PruneScope,
 ): Promise<StoreResult> {
-  const ids = items.map((item) => item.externalId);
+  const live = items.filter((item) => expiryOf(item, fetchedAt).getTime() > fetchedAt.getTime());
+  const ids = live.map((item) => item.externalId);
   const existing = ids.length
     ? await FeedItem.find(
         { source, externalId: trusted({ $in: ids }) },
@@ -106,7 +111,7 @@ export async function storeChannelItems(
 
   const unchanged: string[] = [];
   const operations: AnyBulkWriteOperation<FeedItemDoc>[] = [];
-  for (const item of items) {
+  for (const item of live) {
     const hash = contentHashOf(item);
     if (hashes.get(item.externalId) === hash) {
       unchanged.push(item.externalId);
@@ -148,7 +153,7 @@ export async function storeChannelItems(
   }
 
   let pruned = 0;
-  if (items.length > 0 && scope.kind !== "none") {
+  if (live.length > 0 && scope.kind !== "none") {
     const timedKinds: FeedKind[] = ["event", "deadline"];
     const base: QueryFilter<FeedItemDoc> =
       scope.kind === "upcoming"
@@ -159,7 +164,7 @@ export async function storeChannelItems(
             startsAt: trusted({ $gte: scope.now }),
           }
         : { source, channel, kind: "hours", "hours.date": scope.date };
-    const upcomingNew = items.filter(
+    const upcomingNew = live.filter(
       (item) =>
         item.channel === channel &&
         (scope.kind === "upcoming"
@@ -177,7 +182,7 @@ export async function storeChannelItems(
       pruned = result.deletedCount;
     }
   }
-  return { written: operations.length, unchanged: unchanged.length, pruned };
+  return { stored: live.length, written: operations.length, unchanged: unchanged.length, pruned };
 }
 
 type StoredItem = Pick<

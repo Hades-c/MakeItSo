@@ -336,6 +336,174 @@ describe("syncFeeds (fixtures)", () => {
   });
 });
 
+describe("syncFeeds: documents that parse but do not read", () => {
+  const DAVIDSONIAN = "https://thedavidsonian.news/feed/";
+  const DIGEST = "https://us6.campaign-archive.com/feed?u=a06862fb4e666d96846f036ba&id=2ac4133186";
+
+  async function lastSync(source: FeedSourceId) {
+    return SourceSync.findOne({ sourceId: source }).lean();
+  }
+
+  it("an events.ics whose every DTSTART is unreadable fails the channel and keeps the events", async () => {
+    await syncFeeds({ sources: ["wildcatsync"] });
+    const dashed = fixture("wildcatsync/events.ics").replace(
+      /^DTSTART:(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/gm,
+      "DTSTART:$1-$2-$3T$4:$5:$6Z",
+    );
+    expect(dashed).toContain("DTSTART:2026-");
+    upstream([[is(WILDCAT_ICS), dashed]]);
+    vi.stubEnv("FIXTURES_NOW", "2026-09-30T12:40:00-04:00");
+    const [result] = await syncFeeds({ sources: ["wildcatsync"] });
+    expect(result).toEqual({
+      source: "wildcatsync",
+      ok: false,
+      count: 14,
+      error: "events: parse: no readable entries (15 entries skipped)",
+    });
+    expect(await countBy("wildcatsync", { channel: "events" })).toBe(15);
+    const sync = await lastSync("wildcatsync");
+    expect(sync).toMatchObject({ ok: false, lastCount: 29 });
+    expect(sync!.lastSuccessAt!.getTime()).toBe(FIXTURE_NOW.getTime());
+  });
+
+  it("VEVENTs without SUMMARY, and RSS items without a usable link, are not a successful sync", async () => {
+    await syncFeeds({ sources: ["wildcatsync", "davidsonian"] });
+    upstream([
+      [is(WILDCAT_ICS), fixture("wildcatsync/events.ics").replace(/^SUMMARY:.*\r\n/gm, "")],
+      [
+        is(DAVIDSONIAN),
+        fixture("davidsonian/feed.rss").replaceAll(
+          "https://thedavidsonian.news",
+          "https://davidsonian.com",
+        ),
+      ],
+    ]);
+    const results = await syncFeeds({ sources: ["wildcatsync", "davidsonian"] });
+    expect(results.map((r) => [r.source, r.ok, r.error])).toEqual([
+      ["wildcatsync", false, "events: parse: no readable entries (15 entries skipped)"],
+      ["davidsonian", false, "news: parse: no readable entries (10 entries skipped)"],
+    ]);
+    expect(await countBy("wildcatsync", { channel: "events" })).toBe(15);
+    expect(await countBy("davidsonian")).toBe(10);
+  });
+
+  it("more unreadable than readable entries is a failure; a few unreadable ones are only logged", async () => {
+    await syncFeeds({ sources: ["wildcatsync"] });
+    const original = fixture("wildcatsync/events.ics");
+    let seen = 0;
+    const mostlyBroken = original.replace(/^SUMMARY:.*\r\n/gm, (line) => (seen++ < 12 ? "" : line));
+    upstream([[is(WILDCAT_ICS), mostlyBroken]]);
+    const [broken] = await syncFeeds({ sources: ["wildcatsync"] });
+    expect(broken).toMatchObject({
+      ok: false,
+      error: "events: parse: most entries unreadable (12 of 15 skipped)",
+    });
+    seen = 0;
+    const oneBroken = original.replace(/^SUMMARY:.*\r\n/gm, (line) => (seen++ < 1 ? "" : line));
+    upstream([[is(WILDCAT_ICS), oneBroken]]);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const [fine] = await syncFeeds({ sources: ["wildcatsync"] });
+    expect(fine).toEqual({ source: "wildcatsync", ok: true, count: 28 });
+    expect(warn).toHaveBeenCalledWith("[feeds] wildcatsync/events: 1 entry unreadable, skipped");
+    warn.mockRestore();
+  });
+
+  it("20 FREQ=MINUTELY events (a 2.7 KB spam calendar) fail fast and store nothing", async () => {
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0"];
+    for (let i = 0; i < 20; i++) {
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:spam-${i}`,
+        `SUMMARY:Spam ${i}`,
+        "DTSTART:20260930T000000Z",
+        "DURATION:PT1M",
+        "RRULE:FREQ=MINUTELY;INTERVAL=5",
+        "END:VEVENT",
+      );
+    }
+    lines.push("END:VCALENDAR");
+    upstream([[is(WILDCAT_ICS), lines.join("\r\n")]]);
+    const started = performance.now();
+    const [result] = await syncFeeds({ sources: ["wildcatsync"] });
+    expect(performance.now() - started).toBeLessThan(5_000);
+    expect(result).toMatchObject({
+      ok: false,
+      count: 14,
+      error: "events: parse: no readable entries (20 entries skipped)",
+    });
+    expect(await countBy("wildcatsync", { channel: "events" })).toBe(0);
+  });
+
+  it("entries cut by a limit are stored, prune nothing and the source is recorded as failing", async () => {
+    await syncFeeds({ sources: ["wildcatsync"] });
+    const hourly = [
+      "BEGIN:VEVENT",
+      "UID:hourly-flood",
+      "SUMMARY:Every hour",
+      "DTSTART:20260930T140000Z",
+      "DURATION:PT30M",
+      "RRULE:FREQ=HOURLY",
+      "END:VEVENT",
+    ].join("\r\n");
+    // Also drop one upcoming event: a degraded run must not prune it.
+    const flooded = fixture("wildcatsync/events.ics")
+      .replace(
+        /BEGIN:VEVENT\r\n(?:(?!END:VEVENT)[\s\S])*?event\/12784886\r\n(?:(?!END:VEVENT)[\s\S])*?END:VEVENT\r\n/,
+        "",
+      )
+      .replace("END:VCALENDAR", `${hourly}\r\nEND:VCALENDAR`);
+    upstream([[is(WILDCAT_ICS), flooded]]);
+    const [result] = await syncFeeds({ sources: ["wildcatsync"] });
+    expect(result).toEqual({
+      source: "wildcatsync",
+      ok: false,
+      count: 14 + 14 + 100,
+      error: "events: 1 entry cut by the size limits",
+    });
+    expect(await countBy("wildcatsync", { title: "Every hour" })).toBe(100);
+    expect(
+      await countBy("wildcatsync", {
+        externalId: "https://wildcatsync.davidson.edu/event/12784886",
+      }),
+    ).toBe(1);
+    expect((await lastSync("wildcatsync"))!.ok).toBe(false);
+  });
+
+  it("an Events Digest whose date format changed keeps the issue as news and is recorded as failing", async () => {
+    await syncFeeds({ sources: ["events-digest"] });
+    const rewritten = fixture("events-digest/feed.rss").replace(
+      /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{2}), (\d{4}) (\d{2}:\d{2} [ap]m)/g,
+      "$1/$2 at $3",
+    );
+    upstream([[is(DIGEST), rewritten]]);
+    const [result] = await syncFeeds({ sources: ["events-digest"] });
+    expect(result).toEqual({
+      source: "events-digest",
+      ok: false,
+      count: 5,
+      error:
+        "events: the newest issue (2026-09-25) lists no dated events; stored it as a news item",
+    });
+    expect(await countBy("events-digest", { channel: "issues", kind: "news" })).toBe(5);
+    // The events stored from the last good issue stay.
+    expect(await countBy("events-digest", { channel: "events" })).toBe(18);
+  });
+
+  it("news more than 60 days old is neither stored nor counted (no TTL churn)", async () => {
+    vi.stubEnv("FIXTURES_NOW", "2026-11-20T12:00:00-05:00");
+    const [result] = await syncFeeds({ sources: ["davidsonian"] });
+    // Every story in the feed is from 2026-09-16: 65 days ago.
+    expect(result).toEqual({ source: "davidsonian", ok: true, count: 0 });
+    expect(await countBy("davidsonian")).toBe(0);
+    vi.stubEnv("FIXTURES_NOW", "2026-11-10T12:00:00-05:00");
+    expect((await syncFeeds({ sources: ["davidsonian"] }))[0]).toEqual({
+      source: "davidsonian",
+      ok: true,
+      count: 10,
+    });
+  });
+});
+
 describe("dedupeAcrossChannels (WildcatSync events.ics + RSS)", () => {
   const item = (channel: string, externalId: string, url: string): NormalizedFeedItem => ({
     source: "wildcatsync",
