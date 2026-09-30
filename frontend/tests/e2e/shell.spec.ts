@@ -190,16 +190,16 @@ test("⌘K / Ctrl+K opens the command palette; Enter with nothing selected searc
   await expect(dialog).toBeVisible();
   const input = dialog.getByRole("combobox", { name: "Search MakeItSo" });
   await expect(input).toBeFocused();
-  await input.fill("organic chemistry");
-  // /api/search answers (the course provider is filled in by the catalog workstream); with no matches the palette
-  // says so and keeps the catalog fallback.
-  await expect(dialog.getByText("No matches for “organic chemistry”.")).toBeVisible();
+  // /api/search answers from every provider (courses come from the catalog, W1); with no matches the palette says
+  // so and keeps the catalog fallback. "organic chemistry" would match CHE courses, so use words no course has.
+  await input.fill("underwater basket weaving");
+  await expect(dialog.getByText("No matches for “underwater basket weaving”.")).toBeVisible();
   await expect(
-    dialog.getByRole("link", { name: /Search courses for “organic chemistry”/ }),
+    dialog.getByRole("link", { name: /Search courses for “underwater basket weaving”/ }),
   ).toBeVisible();
   await input.press("Enter");
-  await expect(page).toHaveURL(/\/courses\?q=organic\+chemistry$/);
-  await expect(page.getByRole("heading", { name: /organic chemistry/ })).toBeVisible();
+  await expect(page).toHaveURL(/\/courses\?q=underwater\+basket\+weaving$/);
+  await expect(page.getByRole("heading", { name: /underwater basket weaving/ })).toBeVisible();
   await expect(dialog).toBeHidden();
 
   // Pages are always one keystroke away, and Escape closes the palette.
