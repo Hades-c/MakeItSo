@@ -160,6 +160,18 @@ export const SYNCED_SOURCE_IDS = [
 
 export type SyncedSourceId = (typeof SYNCED_SOURCE_IDS)[number];
 
+/**
+ * Outside services MakeItSo calls that are NOT data sources: no tag, never in the Sources panel, never in
+ * recordSync. fetchExternal accepts them next to the synced sources (server/http/external.ts EXTERNAL_HOSTS).
+ *   resend  transactional e-mail (mailbox verification, password reset) when MAIL_PROVIDER=resend
+ */
+export const OUTBOUND_SERVICE_IDS = ["resend"] as const;
+export type OutboundServiceId = (typeof OUTBOUND_SERVICE_IDS)[number];
+
+/** Everything fetchExternal may call: the synced sources and the outbound services. */
+export const EXTERNAL_SERVICE_IDS = [...SYNCED_SOURCE_IDS, ...OUTBOUND_SERVICE_IDS] as const;
+export type ExternalServiceId = SyncedSourceId | OutboundServiceId;
+
 export function isSourceId(value: unknown): value is SourceId {
   return typeof value === "string" && (SOURCE_IDS as readonly string[]).includes(value);
 }

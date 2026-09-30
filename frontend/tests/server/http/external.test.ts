@@ -114,9 +114,15 @@ describe("fetchExternal in fixtures mode (the test default)", () => {
         "hurt-hub",
         "library",
         "ratemyprofessors",
+        "resend",
         "wildcatsync",
       ].sort(),
     );
+    // An outbound service is allow-listed like a source, but only for its own host.
+    expect(EXTERNAL_HOSTS.resend).toEqual(["api.resend.com"]);
+    await expect(fetchExternal("resend", "https://api.davidson.edu/emails")).rejects.toMatchObject({
+      kind: "blocked",
+    });
   });
 });
 

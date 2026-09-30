@@ -1,8 +1,9 @@
 import "server-only";
 import { z } from "zod";
-import type { SyncedSourceId } from "@/lib/sources";
+import type { OutboundServiceId } from "@/lib/sources";
 import { readEnv } from "@/server/env";
 import { EXTERNAL_HOSTS, fetchExternal } from "@/server/http/external";
+import { MissingFixtureError } from "@/server/http/fixtures";
 
 /**
  * Outgoing mail for mailbox verification and password resets (PLAN §1 "Sign-up", §6.1 W3).
@@ -16,9 +17,9 @@ import { EXTERNAL_HOSTS, fetchExternal } from "@/server/http/external";
  *   console  dev/test default: logs each message (with its code) on the server and keeps the last 50 in memory
  *            (consoleOutbox) for tests and the e2e test mailbox (app/api/auth/test-mailbox). Refused on Vercel
  *            production by server/env.ts.
- *   resend   https://api.resend.com/emails through fetchExternal (MAIL_API_KEY, MAIL_FROM). Needs "resend" in
- *            fetchExternal's host allow-list, which is a contract change (contractRequest); until the orchestrator
- *            adds it, the provider reports itself unavailable instead of calling out.
+ *   resend   https://api.resend.com/emails through fetchExternal("resend", …) (MAIL_API_KEY, MAIL_FROM). "resend"
+ *            is an outbound service id (lib/sources.ts OUTBOUND_SERVICE_IDS: allow-listed for api.resend.com, never
+ *            a data source). In fixtures mode it answers from tests/fixtures/external/resend.
  */
 
 export const MAIL_KINDS = [
@@ -111,7 +112,7 @@ export class ConsoleMailer implements Mailer {
 // ---- Resend --------------------------------------------------------------------------------------------------
 
 export const RESEND_API_URL = "https://api.resend.com/emails";
-const RESEND_SOURCE = "resend";
+const RESEND_SERVICE: OutboundServiceId = "resend";
 const RESEND_TIMEOUT_MS = 8_000;
 
 export interface MailTransportRequest {
@@ -125,20 +126,14 @@ export type MailTransport = (request: MailTransportRequest) => Promise<unknown>;
 
 const ResendResponseSchema = z.object({ id: z.string().min(1) });
 
-/** True once fetchExternal's allow-list has a "resend" source with api.resend.com (a contract change). */
+/** True when fetchExternal's allow-list lets the "resend" service reach api.resend.com (it does). */
 export function resendTransportAvailable(): boolean {
-  const hosts = (EXTERNAL_HOSTS as Readonly<Record<string, readonly string[] | undefined>>)[
-    RESEND_SOURCE
-  ];
-  return !!hosts?.includes(new URL(RESEND_API_URL).hostname);
+  return EXTERNAL_HOSTS[RESEND_SERVICE].includes(new URL(RESEND_API_URL).hostname);
 }
 
-/**
- * The production transport: fetchExternal("resend", ...). The cast is needed only until "resend" is a
- * fetchExternal source id (contractRequest); resendTransportAvailable() guards every call.
- */
+/** The production transport: fetchExternal("resend", ...). */
 export const fetchExternalTransport: MailTransport = async ({ url, headers, body }) => {
-  const res = await fetchExternal(RESEND_SOURCE as unknown as SyncedSourceId, url, {
+  const res = await fetchExternal(RESEND_SERVICE, url, {
     method: "POST",
     parse: "json",
     headers,
@@ -174,6 +169,8 @@ export class ResendMailer implements Mailer {
         },
       });
     } catch (error) {
+      // A missing fixture is a test bug: never hide it.
+      if (error instanceof MissingFixtureError) throw error;
       throw new MailDeliveryError(`Resend refused or did not answer (${message.kind})`, {
         cause: error,
       });
@@ -194,8 +191,7 @@ export function setMailTransportForTests(transport: MailTransport | undefined): 
 }
 
 /**
- * The configured mailer, or null when mail is unavailable: MAIL_PROVIDER=none, or "resend" before fetchExternal
- * allows api.resend.com. A misconfigured provider (e.g. "resend" without MAIL_API_KEY) throws EnvError, which
+ * The configured mailer, or null when mail is unavailable (MAIL_PROVIDER=none). A misconfigured provider (e.g. "resend" without MAIL_API_KEY) throws EnvError, which
  * fails the request with a 500 (PLAN §2 "Env").
  */
 export function getMailer(clock?: () => Date): Mailer | null {

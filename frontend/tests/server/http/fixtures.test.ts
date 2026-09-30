@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SYNCED_SOURCE_IDS } from "@/lib/sources";
+import { EXTERNAL_SERVICE_IDS } from "@/lib/sources";
 import { RMP_DAVIDSON_SCHOOL_ID } from "@/lib/types/ratings";
 import { FixtureManifestSchema, fixturesRoot, matchRoute } from "@/server/http/fixtures";
 
@@ -22,8 +22,8 @@ function manifestOf(sourceId: string) {
 }
 
 describe("tests/fixtures/external (PLAN §4.1.10)", () => {
-  it("has a valid manifest for every synced source, naming files that exist", () => {
-    for (const sourceId of SYNCED_SOURCE_IDS) {
+  it("has a valid manifest for every synced source and outbound service, naming files that exist", () => {
+    for (const sourceId of EXTERNAL_SERVICE_IDS) {
       const manifest = manifestOf(sourceId);
       expect(manifest.source).toBe(sourceId);
       const listed = new Set(manifest.routes.map((route) => route.file));

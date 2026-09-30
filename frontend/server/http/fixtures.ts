@@ -2,7 +2,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { SYNCED_SOURCE_IDS, type SyncedSourceId } from "@/lib/sources";
+import { EXTERNAL_SERVICE_IDS, type ExternalServiceId } from "@/lib/sources";
 
 /**
  * EXTERNAL_MODE=fixtures (PLAN §4.1.10): upstream responses come from
@@ -42,7 +42,7 @@ export type FixtureRoute = z.output<typeof FixtureRouteSchema>;
 
 export const FixtureManifestSchema = z
   .object({
-    source: z.enum(SYNCED_SOURCE_IDS),
+    source: z.enum(EXTERNAL_SERVICE_IDS),
     description: z.string(),
     /** When the real responses were captured ("YYYY-MM-DD"). */
     capturedAt: z.string().optional(),
@@ -54,7 +54,7 @@ export type FixtureManifest = z.output<typeof FixtureManifestSchema>;
 /** Thrown for a request no fixture covers. Never catch it: it means a test (or fixture) is missing. */
 export class MissingFixtureError extends Error {
   constructor(
-    readonly sourceId: SyncedSourceId,
+    readonly sourceId: ExternalServiceId,
     readonly method: string,
     readonly url: string,
   ) {
@@ -74,9 +74,9 @@ export function fixturesRoot(): string {
   return path.join(/* turbopackIgnore: true */ process.cwd(), "tests", "fixtures", "external");
 }
 
-const manifests = new Map<SyncedSourceId, Promise<FixtureManifest>>();
+const manifests = new Map<ExternalServiceId, Promise<FixtureManifest>>();
 
-export function loadManifest(sourceId: SyncedSourceId): Promise<FixtureManifest> {
+export function loadManifest(sourceId: ExternalServiceId): Promise<FixtureManifest> {
   let pending = manifests.get(sourceId);
   if (!pending) {
     const file = path.join(/* turbopackIgnore: true */ fixturesRoot(), sourceId, "manifest.json");
@@ -147,7 +147,7 @@ export interface FixtureResponse {
 
 /** Resolve a request to its fixture file. Throws MissingFixtureError when nothing matches. */
 export async function resolveFixture(
-  sourceId: SyncedSourceId,
+  sourceId: ExternalServiceId,
   method: string,
   url: string,
   body?: string,

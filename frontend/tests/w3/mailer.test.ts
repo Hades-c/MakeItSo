@@ -21,6 +21,7 @@ import {
 } from "@/server/auth/mailer";
 import { EnvError } from "@/server/env";
 import { EXTERNAL_HOSTS } from "@/server/http/external";
+import { MissingFixtureError } from "@/server/http/fixtures";
 
 afterEach(() => {
   setMailTransportForTests(undefined);
@@ -43,15 +44,19 @@ describe("getMailer (MAIL_PROVIDER)", () => {
     expect(getMailer()).toBeNull();
   });
 
-  it("builds the Resend mailer only once fetchExternal can reach api.resend.com", () => {
+  it('builds the Resend mailer on fetchExternal\'s outbound service "resend" (api.resend.com)', async () => {
     vi.stubEnv("MAIL_PROVIDER", "resend");
     vi.stubEnv("MAIL_API_KEY", "re_test_key");
     vi.stubEnv("MAIL_FROM", "MakeItSo <noreply@example.org>");
-    // The contract gap (contractRequest): "resend" is not a fetchExternal source yet.
-    expect(resendTransportAvailable()).toBe(
-      !!(EXTERNAL_HOSTS as Record<string, readonly string[] | undefined>).resend,
+    expect(EXTERNAL_HOSTS.resend).toEqual(["api.resend.com"]);
+    expect(resendTransportAvailable()).toBe(true);
+    const mailer = getMailer();
+    expect(mailer?.provider).toBe("resend");
+    expect(isMailAvailable()).toBe(true);
+    // No transport override: the real fetchExternal path, answered by tests/fixtures/external/resend.
+    await expect(mailer!.send(verificationEmail("casey@davidson.edu", "123456"))).resolves.toBe(
+      undefined,
     );
-    if (!resendTransportAvailable()) expect(getMailer()).toBeNull();
 
     setMailTransportForTests(async () => ({ id: "email_1" }));
     expect(getMailer()?.provider).toBe("resend");
@@ -128,6 +133,17 @@ describe("ResendMailer", () => {
     });
     await expect(odd.send(alreadyRegisteredEmail("x@davidson.edu"))).rejects.toBeInstanceOf(
       MailDeliveryError,
+    );
+    // …but a missing fixture is a test bug and is never wrapped.
+    const unrecorded = new ResendMailer({
+      apiKey: "k",
+      from: "a@example.org",
+      transport: async () => {
+        throw new MissingFixtureError("resend", "POST", "https://api.resend.com/other");
+      },
+    });
+    await expect(unrecorded.send(alreadyRegisteredEmail("x@davidson.edu"))).rejects.toBeInstanceOf(
+      MissingFixtureError,
     );
   });
 });

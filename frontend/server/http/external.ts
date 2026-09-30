@@ -1,6 +1,6 @@
 import "server-only";
 import type { z } from "zod";
-import type { SyncedSourceId } from "@/lib/sources";
+import type { ExternalServiceId } from "@/lib/sources";
 import { readEnv } from "@/server/env";
 import { resolveFixture } from "@/server/http/fixtures";
 
@@ -14,6 +14,8 @@ import { resolveFixture } from "@/server/http/fixtures";
  * - EXTERNAL_MODE=live (default) fetches; EXTERNAL_MODE=fixtures (vitest, e2e, CI) serves
  *   tests/fixtures/external/<sourceId>/ and never touches the network. An unknown URL in fixtures mode throws
  *   MissingFixtureError (never catch it).
+ * - The first argument is a synced source (lib/sources.ts SYNCED_SOURCE_IDS) or an outbound service that is not a
+ *   data source (OUTBOUND_SERVICE_IDS: "resend" for e-mail); both are ExternalServiceId.
  * - https only, and only to the source's allow-listed hosts (EXTERNAL_HOSTS); redirects are followed (≤ 3) only
  *   within that list. Anything else throws ExternalFetchError("blocked").
  * - timeout (default 8 s) → "timeout"; network failure → "network"; non-2xx → "http" (with status); body above
@@ -21,8 +23,11 @@ import { resolveFixture } from "@/server/http/fixtures";
  *   Services catch ExternalFetchError, keep their last good data and `recordSync(source, {ok: false, ...})`.
  */
 
-/** Hosts each synced source may call. */
-export const EXTERNAL_HOSTS: Readonly<Record<SyncedSourceId, readonly string[]>> = {
+/**
+ * Hosts each synced source (lib/sources.ts SYNCED_SOURCE_IDS) and each outbound service (OUTBOUND_SERVICE_IDS:
+ * not data sources, never in the Sources panel) may call.
+ */
+export const EXTERNAL_HOSTS: Readonly<Record<ExternalServiceId, readonly string[]>> = {
   "course-schedule": ["api.davidson.edu"],
   catalog: ["catalog.davidson.edu"],
   ratemyprofessors: ["www.ratemyprofessors.com"],
@@ -32,6 +37,8 @@ export const EXTERNAL_HOSTS: Readonly<Record<SyncedSourceId, readonly string[]>>
   davidsonian: ["thedavidsonian.news"],
   "events-digest": ["us6.campaign-archive.com"],
   "davidson-news": ["www.davidson.edu"],
+  // Outbound services.
+  resend: ["api.resend.com"],
 };
 
 export const DEFAULT_EXTERNAL_TIMEOUT_MS = 8_000;
@@ -45,7 +52,7 @@ export type ExternalFailure =
 
 export class ExternalFetchError extends Error {
   constructor(
-    readonly sourceId: SyncedSourceId,
+    readonly sourceId: ExternalServiceId,
     readonly url: string,
     readonly kind: ExternalFailure,
     message: string,
@@ -72,7 +79,7 @@ export interface FetchExternalOptions<P extends "json" | "text", S extends z.Zod
 }
 
 export interface ExternalResponse<T> {
-  sourceId: SyncedSourceId;
+  sourceId: ExternalServiceId;
   /** Final URL (after redirects). */
   url: string;
   status: number;
@@ -84,7 +91,7 @@ export interface ExternalResponse<T> {
 
 type DataOf<P, S> = S extends z.ZodType ? z.output<S> : P extends "text" ? string : unknown;
 
-function assertAllowed(sourceId: SyncedSourceId, url: string): URL {
+function assertAllowed(sourceId: ExternalServiceId, url: string): URL {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -106,7 +113,7 @@ function assertAllowed(sourceId: SyncedSourceId, url: string): URL {
 }
 
 async function readCapped(
-  sourceId: SyncedSourceId,
+  sourceId: ExternalServiceId,
   url: string,
   res: Response,
   maxBytes: number,
@@ -153,7 +160,7 @@ export async function fetchExternal<
   P extends "json" | "text" = "json",
   S extends z.ZodType | undefined = undefined,
 >(
-  sourceId: SyncedSourceId,
+  sourceId: ExternalServiceId,
   url: string,
   options: FetchExternalOptions<P, S> = {},
 ): Promise<ExternalResponse<DataOf<P, S>>> {

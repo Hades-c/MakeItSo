@@ -15,6 +15,7 @@ manifest format and matching rules.
 | `davidsonian/`      | `thedavidsonian.news/feed/`                                                               | RSS                                                                                                                                     |
 | `events-digest/`    | `us6.campaign-archive.com` (Mailchimp)                                                    | RSS                                                                                                                                     |
 | `davidson-news/`    | `www.davidson.edu/rss.xml`                                                                | RSS (includes the two stale sticky items)                                                                                               |
+| `resend/`           | `api.resend.com` (an outbound service, not a data source: `OUTBOUND_SERVICE_IDS`)          | **Synthetic** success answer of `POST /emails` (the Resend mailer in fixtures mode)                                                   |
 
 ## Rules
 
