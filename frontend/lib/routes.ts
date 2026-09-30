@@ -1,0 +1,150 @@
+import { COURSE_CODE_PATTERN, normalizeCourseCode } from "@/lib/types/common";
+import { isTermCode, type TermCode } from "@/lib/term";
+
+/**
+ * Typed href builders and parsers for every page (PLAN §3). Build links only with these, so a route change is one
+ * edit. Tabs, filters and the term live in URL search params (PLAN §7 "State"), named like the matching API query
+ * schemas (CatalogQuerySchema, EventsQuerySchema) so a page can parse its searchParams with them. Isomorphic.
+ *
+ *   routes.course("202602", "CSC 221")   → "/courses/202602/CSC-221"
+ *   routes.courses({ term: "202602", q: "data", dept: ["CSC", "MAT"] }) → "/courses?term=202602&q=data&dept=CSC&dept=MAT"
+ *   routes.plan("next")                  → "/plan?tab=next"
+ *   routes.career("software-engineering") → "/careers/software-engineering"
+ */
+
+type QueryValue = string | number | boolean | null | undefined | readonly (string | number)[];
+
+/** "?a=1&b=x&b=y" from an object; undefined, null, "", false and [] are left out. Keys keep insertion order. */
+export function queryString(params: Readonly<Record<string, QueryValue>>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "" || value === false) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) search.append(key, String(item));
+    } else {
+      search.append(key, String(value));
+    }
+  }
+  const text = search.toString();
+  return text ? `?${text}` : "";
+}
+
+// ---- Course slugs ------------------------------------------------------------------------------------------------
+
+/** URL form of a course code: "CSC 221" → "CSC-221". */
+export function courseSlug(code: string): string {
+  return normalizeCourseCode(code).replace(" ", "-");
+}
+
+/** "CSC-221" / "csc-221" / "CSC%20221" → "CSC 221"; null when it is not a course code. */
+export function parseCourseSlug(slug: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(slug);
+  } catch {
+    return null;
+  }
+  const code = normalizeCourseCode(decoded.replace(/-/g, " "));
+  return COURSE_CODE_PATTERN.test(code) ? code : null;
+}
+
+// ---- Tabs --------------------------------------------------------------------------------------------------------
+
+/** /plan tabs: Next semester (WebTree list), 4-year plan, Suggestions (AI, R2), Summer. */
+export const PLAN_TABS = ["next", "four-year", "suggestions", "summer"] as const;
+export type PlanTab = (typeof PLAN_TABS)[number];
+export const DEFAULT_PLAN_TAB: PlanTab = "next";
+
+export function parsePlanTab(value: string | string[] | null | undefined): PlanTab {
+  const first = Array.isArray(value) ? value[0] : value;
+  return (PLAN_TABS as readonly string[]).includes(first ?? "")
+    ? (first as PlanTab)
+    : DEFAULT_PLAN_TAB;
+}
+
+/** A term code from a search param, or null (callers then use the registration term). */
+export function parseTermParam(value: string | string[] | null | undefined): TermCode | null {
+  const first = Array.isArray(value) ? value[0] : value;
+  return first && isTermCode(first) ? first : null;
+}
+
+// ---- Callback URLs -----------------------------------------------------------------------------------------------
+
+/**
+ * A same-origin path to return to after sign-in (PLAN §3: login honours a same-origin callbackUrl). Accepts an app
+ * path ("/plan?tab=next") or an absolute URL on `origin`; anything else (other hosts, "//evil", "javascript:")
+ * gives `fallback`.
+ */
+export function safeCallbackPath(
+  value: string | null | undefined,
+  origin: string,
+  fallback = "/today",
+): string {
+  if (!value) return fallback;
+  try {
+    const base = new URL(origin);
+    const url = new URL(value, base);
+    if (url.origin !== base.origin) return fallback;
+    if (!value.startsWith("/") && !value.startsWith(base.origin)) return fallback;
+    if (value.startsWith("//") || value.startsWith("/\\")) return fallback;
+    const path = `${url.pathname}${url.search}${url.hash}`;
+    return path.startsWith("/login") || path.startsWith("/register") ? fallback : path;
+  } catch {
+    return fallback;
+  }
+}
+
+// ---- Builders ----------------------------------------------------------------------------------------------------
+
+export interface CoursesParams {
+  term?: TermCode;
+  q?: string;
+  dept?: readonly string[];
+  req?: readonly string[];
+  days?: readonly string[];
+  after?: string;
+  before?: string;
+  openOnly?: boolean;
+  level?: readonly string[];
+  page?: number;
+}
+
+export interface EventsParams {
+  sources?: readonly string[];
+  kinds?: readonly string[];
+  q?: string;
+}
+
+export const routes = {
+  home: () => "/",
+  login: (callbackUrl?: string) => `/login${queryString({ callbackUrl })}`,
+  register: () => "/register",
+  verify: () => "/verify",
+  privacy: () => "/privacy",
+  onboarding: () => "/onboarding",
+  today: () => "/today",
+  courses: (params: CoursesParams = {}) =>
+    `/courses${queryString({
+      term: params.term,
+      q: params.q?.trim(),
+      dept: params.dept,
+      req: params.req,
+      days: params.days,
+      after: params.after,
+      before: params.before,
+      openOnly: params.openOnly ? "true" : undefined,
+      level: params.level,
+      page: params.page && params.page > 1 ? params.page : undefined,
+    })}`,
+  course: (term: TermCode, code: string) => `/courses/${term}/${courseSlug(code)}`,
+  plan: (tab?: PlanTab, params: { term?: TermCode } = {}) =>
+    `/plan${queryString({ tab, term: params.term })}`,
+  careers: () => "/careers",
+  career: (slug: string) => `/careers/${encodeURIComponent(slug)}`,
+  events: (params: EventsParams = {}) =>
+    `/events${queryString({ sources: params.sources, kinds: params.kinds, q: params.q?.trim() })}`,
+  alumni: (params: { career?: string } = {}) => `/alumni${queryString({ career: params.career })}`,
+  profile: () => "/profile",
+} as const;
+
+export type AppRoutes = typeof routes;
