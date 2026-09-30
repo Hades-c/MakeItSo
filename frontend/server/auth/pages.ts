@@ -1,7 +1,6 @@
 import "server-only";
 import { unstable_rethrow } from "next/navigation";
-import { safeCallbackPath } from "@/lib/routes";
-import { appOriginForEmail } from "@/server/auth/emails";
+import { safeAppPath } from "@/server/auth/paths";
 import { getSessionUser, type SessionUser } from "@/server/auth/session";
 
 /** Helpers for the auth pages (app/(auth)/**): server components only. */
@@ -12,9 +11,9 @@ export function firstParam(value: string | string[] | undefined): string | undef
   return Array.isArray(value) ? value[0] : value;
 }
 
-/** A same-origin path to continue to (lib/routes safeCallbackPath); /today otherwise. */
+/** A same-origin path to continue to (server/auth/paths.ts safeAppPath); /today otherwise. */
 export function callbackPathFrom(value: string | string[] | undefined): string {
-  return safeCallbackPath(firstParam(value), appOriginForEmail() ?? "http://localhost");
+  return safeAppPath(firstParam(value));
 }
 
 /**

@@ -1,13 +1,15 @@
 import "server-only";
 import mongoose from "mongoose";
 import { getServerSession, type Session } from "next-auth";
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
 import { isDavidsonEmail } from "@/lib/api/account";
 import { queryString, routes } from "@/lib/routes";
 import User from "@/models/User";
 import { getAuthOptions } from "@/server/auth/options";
+import { safeAppPath } from "@/server/auth/paths";
 import { getDb } from "@/server/db";
 import { ApiError } from "@/server/http/errors";
 
@@ -92,20 +94,51 @@ export interface RequireUserOptions {
    * which explains the rule and offers the code.
    */
   verifiedDavidson?: boolean;
+  /**
+   * The page's own path (with its query), to come back to after signing in or verifying: /login?callbackUrl=…,
+   * /verify?next=…. Without it, the RETURN_PATH_HEADER request header is used when present (set by the request
+   * proxy; contractRequest), else the student lands on /today. Checked with safeAppPath either way.
+   */
+  returnTo?: string;
 }
+
+/** Request header the proxy sets to the requested path + query, so layouts can pass it on (see returnTo). */
+export const RETURN_PATH_HEADER = "x-mis-return-path";
 
 /** Where requireUser({ verifiedDavidson: true }) sends accounts that do not qualify. */
 export const VERIFIED_ONLY_REDIRECT = `${routes.verify()}${queryString({ reason: "davidson" })}`;
 
+/** VERIFIED_ONLY_REDIRECT, continuing to `next` (a same-origin path) once verified. */
+export function verifiedOnlyRedirect(next?: string | null): string {
+  return `${routes.verify()}${queryString({ reason: "davidson", next: next || undefined })}`;
+}
+
+/** The path to return to: `returnTo`, else the proxy's header; null when neither is a safe app path. */
+async function returnPath(returnTo: string | undefined): Promise<string | null> {
+  let candidate = returnTo;
+  if (candidate === undefined) {
+    try {
+      candidate = (await headers()).get(RETURN_PATH_HEADER) ?? undefined;
+    } catch (error) {
+      // Outside a request (tests, scripts) there are no headers: no return path.
+      unstable_rethrow(error);
+      candidate = undefined;
+    }
+  }
+  return safeAppPath(candidate, "") || null;
+}
+
 /**
- * For server components, layouts and server actions: returns the signed-in user or redirects to /login (and,
- * with `verifiedDavidson`, to /verify?reason=davidson). Route handlers use requireApiUser() or defineRoute's auth
- * modes, which answer 401/403 rather than redirecting.
+ * For server components, layouts and server actions: returns the signed-in user or redirects to
+ * /login?callbackUrl=<this page> (and, with `verifiedDavidson`, to /verify?reason=davidson&next=<this page>).
+ * Route handlers use requireApiUser() or defineRoute's auth modes, which answer 401/403 rather than redirecting.
  */
 export async function requireUser(options: RequireUserOptions = {}): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user) redirect(routes.login());
-  if (options.verifiedDavidson && !isVerifiedDavidsonUser(user)) redirect(VERIFIED_ONLY_REDIRECT);
+  if (!user) redirect(routes.login((await returnPath(options.returnTo)) ?? undefined));
+  if (options.verifiedDavidson && !isVerifiedDavidsonUser(user)) {
+    redirect(verifiedOnlyRedirect(await returnPath(options.returnTo)));
+  }
   return user;
 }
 

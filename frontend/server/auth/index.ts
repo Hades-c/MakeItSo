@@ -31,7 +31,9 @@ export {
   requireApiUser,
   requireUser,
   resolveSessionUser,
+  RETURN_PATH_HEADER,
   VERIFIED_ONLY_REDIRECT,
+  verifiedOnlyRedirect,
   type RequireUserOptions,
   type SessionUser,
 } from "./session";
@@ -63,6 +65,7 @@ export {
   type ProfileView,
 } from "./profile";
 export { hashPassword, passwordProblem, verifyPassword } from "./passwords";
+export { isSafeAppPath, safeAppPath } from "./paths";
 export { getMailer, isMailAvailable, type Mailer, type MailMessage } from "./mailer";
 export {
   confirmPasswordReset,
