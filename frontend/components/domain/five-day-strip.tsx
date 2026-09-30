@@ -39,8 +39,10 @@ function dayNumber(date: string): string {
 }
 
 /**
- * The week at a glance (Lakeside Today header): one pill per day with the date and a dot per item, today filled
- * in Lake Blue. Stretches to the full width on phones; every pill is at least 44px tall.
+ * The week at a glance (Lakeside Today header): one pill per day with the date and a dot per item, the day shown
+ * (today by default) filled in Lake Blue. The shown day is aria-current ("page" for links) and read out as
+ * "shown"; today, when another day is shown, is aria-current="date". Stretches to the full width on phones; every
+ * pill is at least 44px tall.
  */
 export function FiveDayStrip({
   days,
@@ -49,8 +51,9 @@ export function FiveDayStrip({
   className,
 }: FiveDayStripProps) {
   const anySelected = days.some((d) => d.selected);
+  const hasLinks = days.some((d) => d.href);
   // A strip of links is navigation; without links it is just a labelled group.
-  const Wrapper = days.some((d) => d.href) ? "nav" : "div";
+  const Wrapper = hasLinks ? "nav" : "div";
   return (
     <Wrapper
       aria-label={label}
@@ -60,6 +63,9 @@ export function FiveDayStrip({
       <ol className="flex gap-1.5">
         {days.map((day) => {
           const filled = anySelected ? !!day.selected : day.isToday;
+          // The day the page shows: the selected one, else today on a strip that navigates.
+          const shown = anySelected ? !!day.selected : day.isToday && hasLinks;
+          const current = shown ? (day.href ? "page" : "true") : day.isToday ? "date" : undefined;
           const count = Math.max(0, Math.floor(day.count));
           const content = (
             <>
@@ -86,6 +92,7 @@ export function FiveDayStrip({
               <span className="sr-only">
                 {longDate(day.date)}: {count} {count === 1 ? noun[0] : noun[1]}
                 {day.isToday ? ", today" : ""}
+                {shown ? ", shown" : ""}
               </span>
             </>
           );
@@ -101,13 +108,13 @@ export function FiveDayStrip({
               {day.href ? (
                 <Link
                   href={day.href}
-                  aria-current={day.isToday ? "date" : undefined}
+                  aria-current={current}
                   className={cn(box, !filled && "transition-colors hover:bg-surface-2")}
                 >
                   {content}
                 </Link>
               ) : (
-                <div className={box} aria-current={day.isToday ? "date" : undefined}>
+                <div className={box} aria-current={current}>
                   {content}
                 </div>
               )}

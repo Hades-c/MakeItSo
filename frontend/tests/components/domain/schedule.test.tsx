@@ -625,11 +625,13 @@ describe("FiveDayStrip", () => {
     expect(links.map((l) => l.textContent)).toEqual([
       "Mon28Monday, September 28: 3 items",
       "Tue29Tuesday, September 29: 1 item",
-      "Wed30Wednesday, September 30: 5 items, today",
+      "Wed30Wednesday, September 30: 5 items, today, shown",
       "Thu1Thursday, October 1: 0 items",
       "Fri2Friday, October 2: 2 items",
     ]);
-    expect(links[2]).toHaveAttribute("aria-current", "date");
+    // Today is the day the page shows.
+    expect(links[2]).toHaveAttribute("aria-current", "page");
+    expect(links[0]).not.toHaveAttribute("aria-current");
     expect(links[2]).toHaveClass("bg-primary-fill");
     expect(links[0]).toHaveAttribute("href", "/today?day=2026-09-28");
     // At most three dots, however busy the day.
@@ -645,6 +647,11 @@ describe("FiveDayStrip", () => {
     expect(links[4]).toHaveClass("bg-primary-fill");
     expect(links[2]).not.toHaveClass("bg-primary-fill");
     expect(links[2]).toHaveClass("border-primary");
+    // The shown day is the current page and says so; today keeps aria-current="date".
+    expect(links[4]).toHaveAttribute("aria-current", "page");
+    expect(links[4]).toHaveTextContent("Friday, October 2: 2 items, shown");
+    expect(links[2]).toHaveAttribute("aria-current", "date");
+    expect(links[2]).not.toHaveTextContent("shown");
 
     rerender(
       <FiveDayStrip
@@ -657,5 +664,19 @@ describe("FiveDayStrip", () => {
     expect(screen.getByRole("group", { name: "Next week" })).toHaveTextContent(
       "Monday, September 28: 3 classes",
     );
+    // Without links nothing is "shown": today is just today.
+    expect(screen.getByText(/Wednesday, September 30/).closest("[aria-current]")).toHaveAttribute(
+      "aria-current",
+      "date",
+    );
+    rerender(
+      <FiveDayStrip
+        label="Next week"
+        days={days.map((d) => ({ ...d, href: undefined, selected: d.label === "Thu" }))}
+      />,
+    );
+    const thursday = screen.getByText(/Thursday, October 1/).closest("[aria-current]");
+    expect(thursday).toHaveAttribute("aria-current", "true");
+    expect(thursday).toHaveTextContent("Thursday, October 1: 0 items, shown");
   });
 });
