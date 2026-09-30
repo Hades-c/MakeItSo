@@ -66,7 +66,10 @@ export class MissingFixtureError extends Error {
   }
 }
 
-/** tests/fixtures/external, resolved from the working directory (vitest, next start and CI run in frontend/). */
+/**
+ * tests/fixtures/external, resolved from the working directory (vitest, next start and CI run in frontend/). The
+ * turbopackIgnore hints keep the fixtures out of the production output-file trace.
+ */
 export function fixturesRoot(): string {
   return path.join(/* turbopackIgnore: true */ process.cwd(), "tests", "fixtures", "external");
 }
@@ -76,7 +79,7 @@ const manifests = new Map<SyncedSourceId, Promise<FixtureManifest>>();
 export function loadManifest(sourceId: SyncedSourceId): Promise<FixtureManifest> {
   let pending = manifests.get(sourceId);
   if (!pending) {
-    const file = path.join(fixturesRoot(), sourceId, "manifest.json");
+    const file = path.join(/* turbopackIgnore: true */ fixturesRoot(), sourceId, "manifest.json");
     pending = readFile(/* turbopackIgnore: true */ file, "utf8").then((text) => {
       const manifest = FixtureManifestSchema.parse(JSON.parse(text));
       if (manifest.source !== sourceId) {
@@ -152,7 +155,7 @@ export async function resolveFixture(
   const manifest = await loadManifest(sourceId);
   const route = matchRoute(manifest, method, url, body);
   if (!route) throw new MissingFixtureError(sourceId, method.toUpperCase(), url);
-  const file = path.join(fixturesRoot(), sourceId, route.file);
+  const file = path.join(/* turbopackIgnore: true */ fixturesRoot(), sourceId, route.file);
   return {
     status: route.status,
     contentType:
