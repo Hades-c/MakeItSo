@@ -45,14 +45,7 @@ export default async function TodayPage() {
         <SourceTagList
           label="Sources Today will draw on"
           className="justify-center"
-          sources={[
-            "course-schedule",
-            "academic-calendar",
-            "course-site",
-            "handshake",
-            "wildcatsync",
-            "davidson-one",
-          ]}
+          sources={["course-schedule", "registrar", "my-plan", "wildcatsync"]}
         />
       </EmptyState>
     </>

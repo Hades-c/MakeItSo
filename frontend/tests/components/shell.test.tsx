@@ -71,6 +71,26 @@ describe("SourcesPanel", () => {
     ]);
   });
 
+  it("shows curated sources with their verified date and link-only platforms under Links", () => {
+    render(
+      <SourcesPanel
+        now={now}
+        sources={[
+          { id: "registrar", label: "Academic calendar", verifiedAt: "2026-09-28T16:00:00Z" },
+        ]}
+        links={[{ id: "handshake", href: "https://app.joinhandshake.com/" }]}
+      />,
+    );
+    const region = screen.getByRole("region", { name: "Sources" });
+    expect(within(region).getAllByRole("listitem")[0]).toHaveTextContent(
+      "Academic calendar, verified Sep 28",
+    );
+    const link = within(region).getByRole("link", { name: /Handshake/ });
+    expect(link).toHaveAttribute("href", "https://app.joinhandshake.com/");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link).toHaveTextContent("(opens in a new tab)");
+  });
+
   it("says when nothing has synced", () => {
     render(<SourcesPanel now={now} sources={[]} />);
     expect(screen.getByText("No sources synced yet.")).toBeInTheDocument();

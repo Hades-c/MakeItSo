@@ -10,7 +10,6 @@ import {
 import { Wordmark } from "@/components/app/wordmark";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
-import { CourseCode } from "@/components/ui/course-code";
 import { SourceTag, SourceTagList } from "@/components/ui/source-tag";
 import type { SourceId } from "@/lib/sources";
 
@@ -40,33 +39,23 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   },
 ];
 
-const EXAMPLE_ITEMS: { what: React.ReactNode; when: string; source: SourceId }[] = [
-  {
-    what: (
-      <span className="inline-flex flex-wrap items-baseline gap-x-2">
-        <CourseCode code="CSC 221" section="A" />
-        <span>Data Structures</span>
-      </span>
-    ),
-    when: "10:30a",
-    source: "course-schedule",
-  },
-  { what: "Problem set", when: "Thu 11:59p", source: "course-site" },
-  { what: "Summer internship application", when: "Mon Oct 5", source: "handshake" },
-  { what: "Club open house", when: "Thu 7:00p", source: "wildcatsync" },
+/** What MakeItSo shows, and the source tag each kind of item carries. Descriptive only: no sample data. */
+const PROVENANCE: { what: string; source: SourceId }[] = [
+  { what: "Sections, seats and meeting times", source: "course-schedule" },
+  { what: "Registration windows and academic deadlines", source: "registrar" },
+  { what: "Professor ratings, with the date they were checked", source: "ratemyprofessors" },
+  { what: "Club, library and campus events", source: "wildcatsync" },
+  { what: "Courses you have taken and plan to take", source: "my-plan" },
 ];
 
 const ALL_SOURCES: SourceId[] = [
   "course-schedule",
   "registrar",
-  "course-site",
-  "handshake",
+  "ratemyprofessors",
   "wildcatsync",
-  "davidson-one",
   "hurt-hub",
   "library",
   "davidsonian",
-  "ratemyprofessors",
 ];
 
 export default function HomePage() {
@@ -114,31 +103,32 @@ export default function HomePage() {
             </div>
           </div>
 
-          <figure
-            aria-label="Example of a MakeItSo day"
+          <section
+            aria-labelledby="provenance-title"
             className="min-w-0 rounded-2xl border border-line bg-surface p-5 shadow-card md:p-6"
           >
-            <figcaption className="mb-2 flex items-center justify-between gap-3 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
-              <span>Example day</span>
-              <span>Illustration</span>
-            </figcaption>
-            <p className="text-lg font-strong tracking-title text-fg">
-              Two classes today, starting with CSC 221 at 10:30 AM, and a problem set is due
-              Thursday.
-            </p>
-            <ul className="mt-4 divide-y divide-line">
-              {EXAMPLE_ITEMS.map((item) => (
+            <h2
+              id="provenance-title"
+              className="font-mono text-xs font-medium tracking-label text-fg-3 uppercase"
+            >
+              Every item is labelled
+            </h2>
+            <ul className="mt-3 divide-y divide-line">
+              {PROVENANCE.map((item) => (
                 <li
                   key={item.source}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 text-sm font-semibold text-fg"
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-2.5 text-sm font-semibold text-fg"
                 >
-                  <span className="min-w-0 flex-1">{item.what}</span>
-                  <span className="font-mono text-xs font-normal text-fg-2">{item.when}</span>
+                  <span className="min-w-0">{item.what}</span>
                   <SourceTag source={item.source} />
                 </li>
               ))}
+              <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-2.5 text-sm font-semibold text-fg">
+                <span className="min-w-0">Suggestions for your plan</span>
+                <AiChip />
+              </li>
             </ul>
-          </figure>
+          </section>
         </section>
 
         <section aria-labelledby="features-title" className="border-y border-line bg-surface">
@@ -169,8 +159,8 @@ export default function HomePage() {
               Every item shows where it came from
             </h2>
             <p className="mt-3 text-base text-fg-2">
-              Course data comes from the Registrar&apos;s public schedule. Opportunities, events and
-              deadlines keep a tag naming their source, so you always know what to double-check.
+              Course data comes from the Registrar&apos;s public schedule. Deadlines, ratings and
+              events keep a tag naming their source, so you always know what to double-check.
             </p>
           </div>
           <SourceTagList label="Sources MakeItSo draws on" sources={ALL_SOURCES} className="mt-6" />

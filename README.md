@@ -72,12 +72,13 @@ kept for "now" and urgent items. Errors use a separate danger colour, and focus 
   built class names in `app/`, `components/` and `lib/`. `tests/design/tokens.test.ts` checks WCAG AA contrast for
   every token pair in both themes.
 - **Type**: Instrument Sans for UI and body, IBM Plex Mono (`font-mono`) for course codes, times, rooms, CRNs and
-  labels (both via `next/font/google`, self-hosted at build time). Sizes `text-xs` (12px, the floor) to `text-2xl`
+  labels. Both are self-hosted from the `@fontsource` packages through `next/font/local`, so the build needs no
+  network and the browser never calls Google. Sizes `text-xs` (12px, the floor) to `text-2xl`
   (32px), plus `text-3xl` (44px) for big numbers.
 - **Breakpoints**: `md` = 720px (bottom tabs below, sidebar above), `lg` = 900px (two content columns), `xl` =
   1180px (full 240px sidebar; a 72px icon rail between 720 and 1180px).
 - **Course colours** come from the department (`lib/course-color.ts`); the code is always printed next to the colour.
-- **Provenance**: every aggregated item shows a `<SourceTag>` (HANDSHAKE, WILDCATSYNC, COURSE SITE...; ids in
+- **Provenance**: every aggregated item shows a `<SourceTag>` (COURSE SCHEDULE, REGISTRAR, WILDCATSYNC...; ids in
   `lib/sources.ts`), and every AI output shows `<AiChip>` ("AI · verify with your advisor"). The Today headline is
   a one-sentence day summary built deterministically by `lib/day-summary.ts`, never free model text.
 
@@ -126,9 +127,6 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `npm run format`    | Prettier (with the Tailwind class sorter); `npm run format:check` to verify only |
 | `npm test`          | Vitest unit + integration tests (`tests/**/*.test.ts[x]`)                        |
 | `npm run test:e2e`  | Playwright end-to-end tests against `next build && next start -p 3210`           |
-
-`npm run build` downloads the two Google fonts once (next/font self-hosts them), so the build machine needs
-access to fonts.googleapis.com.
 
 ### Tests
 

@@ -2,15 +2,20 @@ import type * as React from "react";
 import { BottomTabs } from "./bottom-tabs";
 import { Sidebar } from "./sidebar";
 import type { NavCounts } from "./sidebar-nav";
-import type { SourceSync } from "./sources-panel";
+import type { SourceLink, SourceSync } from "./sources-panel";
 import { TopBar } from "./top-bar";
 
 export interface AppShellProps {
   user: { name: string; email: string };
   /** Sidebar counts; omit any that are not known (no hardcoded numbers). */
   counts?: NavCounts;
-  /** Feeds shown in the Sources panel with their last sync time. */
+  /**
+   * Sources panel: synced feeds with their real last-sync time and curated content with its verified date. List
+   * only sources that are actually synced or verified.
+   */
   sources?: readonly SourceSync[];
+  /** Platforms MakeItSo only links to (shown under "Links"). */
+  links?: readonly SourceLink[];
   /** "Now" for relative labels, computed once per request on the server. */
   now: Date;
   /** IANA zone for every time shown (APP_TIMEZONE). */
@@ -23,7 +28,15 @@ export interface AppShellProps {
  * column. Server component; the interactive parts (search, menus, active nav) are small client islands.
  * app/(hub)/layout.tsx passes real data in.
  */
-export function AppShell({ user, counts, sources = [], now, timeZone, children }: AppShellProps) {
+export function AppShell({
+  user,
+  counts,
+  sources = [],
+  links,
+  now,
+  timeZone,
+  children,
+}: AppShellProps) {
   return (
     <div className="min-h-dvh bg-bg">
       <a
@@ -34,7 +47,7 @@ export function AppShell({ user, counts, sources = [], now, timeZone, children }
       </a>
       <TopBar user={user} />
       <div className="md:grid md:grid-cols-[4.5rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)]">
-        <Sidebar counts={counts} sources={sources} now={now} timeZone={timeZone} />
+        <Sidebar counts={counts} sources={sources} links={links} now={now} timeZone={timeZone} />
         <main
           id="main"
           tabIndex={-1}
