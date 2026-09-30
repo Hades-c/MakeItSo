@@ -68,7 +68,10 @@ function EventGroupSection({ group, options }: { group: EventGroup; options: Pre
       >
         {group.title}
         {group.detail ? (
-          <span className="text-sm font-medium text-fg-3">{group.detail}</span>
+          <>
+            {" "}
+            <span className="text-sm font-medium text-fg-3">{group.detail}</span>
+          </>
         ) : null}
         <span className="font-mono text-xs font-medium text-fg-3">
           <span className="sr-only">, </span>
@@ -111,9 +114,8 @@ function EventRow({ item, options }: { item: FeedItem; options: PresentOptions }
             rel="noopener noreferrer"
             className="rounded-xs break-words hover:text-primary hover:underline"
           >
-            {item.title}
-            <ExternalLink aria-hidden className="ml-1 inline size-3.5 align-[-0.125em] text-fg-3" />
-            <span className="sr-only"> (opens in a new tab)</span>
+            {item.title} <span className="sr-only">(opens in a new tab)</span>
+            <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
           </a>
         </h3>
         {item.location ? (

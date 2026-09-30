@@ -78,9 +78,8 @@ export function LibraryHoursView({
             rel="noopener noreferrer"
             className="-my-2 inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-semibold text-primary hover:underline md:min-h-0"
           >
-            Library website
+            Library website <span className="sr-only">(opens in a new tab)</span>
             <ExternalLink aria-hidden className="size-3.5" />
-            <span className="sr-only"> (opens in a new tab)</span>
           </a>
         ) : null}
       </div>
