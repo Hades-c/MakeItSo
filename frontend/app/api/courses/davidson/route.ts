@@ -1,239 +1,62 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { CourseDataUnavailableError, getTermCourses, getTerms } from "@/lib/davidson-api";
 
-const DAVIDSON_API_URL =
-  "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202502";
+export const dynamic = "force-dynamic";
 
-interface DavidsonInstructor {
-  first_name: string;
-  last_name: string;
-}
+// GET /api/courses/davidson[?term=202601|202602]
+// Live course schedule from the Davidson College public API. Defaults to the
+// registration term (first non-summer term after the active one). Only the
+// active term and the registration term may be requested.
+export async function GET(req: NextRequest) {
+  const terms = await getTerms();
+  const requested = req.nextUrl.searchParams.get("term");
+  const allowed = [terms.registration, terms.active];
+  const term = requested ? allowed.find((t) => t.code === requested) : terms.registration;
 
-interface DavidsonMeeting {
-  weekdays: string;
-  class_time: string;
-  building?: { description: string };
-  room?: string;
-}
-
-interface DavidsonCourse {
-  id: string;
-  course_number: string;
-  course_title: string;
-  course_description: string;
-  departments: { code: string; description: string }[];
-  instructors: DavidsonInstructor[];
-  enrollment: { current: number; max: number; remaining: number };
-  grad_requirements: { code: string; description: string }[];
-  meetings: DavidsonMeeting[];
-  section: string;
-  subject: { code: string; description: string };
-  term: { code: number; description: string };
-}
-
-interface TransformedCourse {
-  code: string;
-  name: string;
-  description: string;
-  department: string;
-  deptCode: string;
-  professor: string;
-  instructors: string[];
-  sections: number;
-  enrollment: { current: number; max: number };
-  gradRequirements: string[];
-  schedule: string;
-  location: string;
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function cleanDescription(desc: string): string {
-  // Remove instructor prefix like "Instructor B. Baker", "Instructor: J. R. Smith"
-  // Only match name parts that look like initials (X.) or capitalized short words before a lowercase word begins
-  let cleaned = desc.replace(
-    /^Instructor:?\s+(?:[A-Z]\.?\s+)*[A-Z][a-z'-]+\s*/i,
-    ""
-  );
-  // Remove prerequisites suffix (everything from "Prerequisites" or "Prerequisite" onward)
-  cleaned = cleaned.replace(/\s*Prerequisites?[:.\s].*/i, "");
-  // Remove "Corequisite" suffix
-  cleaned = cleaned.replace(/\s*Corequisites?[:.\s].*/i, "");
-  // Remove "Cross-listed" suffix
-  cleaned = cleaned.replace(/\s*Cross-?listed.*/i, "");
-  // Remove "Note:" or "Notes:" suffix
-  cleaned = cleaned.replace(/\s*Notes?:\s.*/i, "");
-  // Clean up trailing/leading whitespace
-  cleaned = cleaned.trim();
-  // Truncate long descriptions at the last sentence boundary within 300 chars
-  if (cleaned.length > 300) {
-    const truncated = cleaned.slice(0, 300);
-    const lastPeriod = truncated.lastIndexOf(". ");
-    cleaned = lastPeriod > 80 ? truncated.slice(0, lastPeriod + 1) : truncated.trimEnd() + "...";
-  }
-  // Capitalize first letter
-  if (cleaned.length > 0) {
-    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-  }
-  return cleaned;
-}
-
-function formatInstructorName(instructor: DavidsonInstructor): string {
-  return `${instructor.first_name} ${instructor.last_name}`.trim();
-}
-
-function formatSchedule(meetings: DavidsonMeeting[]): string {
-  if (!meetings || meetings.length === 0) return "TBA";
-  const meeting = meetings[0];
-  const weekdays = meeting.weekdays || "TBA";
-  const time = meeting.class_time || "TBA";
-  return `${weekdays} ${time}`;
-}
-
-function formatLocation(meetings: DavidsonMeeting[]): string {
-  if (!meetings || meetings.length === 0) return "TBA";
-  const meeting = meetings[0];
-  const building = meeting.building?.description || "";
-  const room = meeting.room || "";
-  const location = `${building} ${room}`.trim();
-  return location || "TBA";
-}
-
-function transformCourses(raw: DavidsonCourse[]): TransformedCourse[] {
-  const courseMap = new Map<
-    string,
-    {
-      course: DavidsonCourse;
-      sections: number;
-      totalCurrent: number;
-      totalMax: number;
-      allInstructors: Set<string>;
-    }
-  >();
-
-  for (const course of raw) {
-    const code = `${course.subject.code} ${course.course_number}`;
-
-    if (courseMap.has(code)) {
-      const existing = courseMap.get(code)!;
-      existing.sections += 1;
-      existing.totalCurrent += course.enrollment?.current ?? 0;
-      existing.totalMax += course.enrollment?.max ?? 0;
-
-      for (const instructor of course.instructors ?? []) {
-        const name = formatInstructorName(instructor);
-        if (name) existing.allInstructors.add(name);
-      }
-    } else {
-      const instructors = new Set<string>();
-      for (const instructor of course.instructors ?? []) {
-        const name = formatInstructorName(instructor);
-        if (name) instructors.add(name);
-      }
-
-      courseMap.set(code, {
-        course,
-        sections: 1,
-        totalCurrent: course.enrollment?.current ?? 0,
-        totalMax: course.enrollment?.max ?? 0,
-        allInstructors: instructors,
-      });
-    }
-  }
-
-  const results: TransformedCourse[] = [];
-  const entries = Array.from(courseMap.entries());
-
-  for (let i = 0; i < entries.length; i++) {
-    const [code, entry] = entries[i];
-    const { course, sections, totalCurrent, totalMax, allInstructors } = entry;
-    const instructorList: string[] = Array.from(allInstructors);
-
-    results.push({
-      code,
-      name: course.course_title,
-      description: cleanDescription(stripHtml(course.course_description || "")),
-      department: course.subject.description,
-      deptCode: course.subject.code,
-      professor: instructorList.length > 0 ? instructorList[0] : "Staff",
-      instructors: instructorList.length > 0 ? instructorList : ["Staff"],
-      sections,
-      enrollment: { current: totalCurrent, max: totalMax },
-      gradRequirements: (course.grad_requirements ?? []).map(
-        (gr: { code: string; description: string }) => gr.code
-      ),
-      schedule: formatSchedule(course.meetings),
-      location: formatLocation(course.meetings),
-    });
-  }
-
-  results.sort((a, b) => a.code.localeCompare(b.code));
-
-  return results;
-}
-
-// Simple in-memory cache (Next.js fetch cache can't handle responses >2MB)
-let cachedResult: { data: unknown; expiry: number } | null = null;
-const CACHE_TTL = 3600 * 1000; // 1 hour
-
-// GET /api/courses/davidson - fetch courses from Davidson College API
-export async function GET() {
-  try {
-    if (cachedResult && Date.now() < cachedResult.expiry) {
-      return NextResponse.json(cachedResult.data);
-    }
-
-    const response = await fetch(DAVIDSON_API_URL, {
-      cache: "no-store", // Response exceeds Next.js 2MB cache limit
-    });
-
-    if (!response.ok) {
-      console.error(
-        `Davidson API responded with status ${response.status}: ${response.statusText}`
-      );
-      return NextResponse.json(
-        { error: "Failed to fetch courses from Davidson API" },
-        { status: 502 }
-      );
-    }
-
-    const rawCourses: DavidsonCourse[] = await response.json();
-
-    if (!Array.isArray(rawCourses)) {
-      console.error("Davidson API returned unexpected data format");
-      return NextResponse.json(
-        { error: "Unexpected response format from Davidson API" },
-        { status: 502 }
-      );
-    }
-
-    const courses = transformCourses(rawCourses);
-
-    const data = {
-      courses,
-      total: courses.length,
-      term: "Spring 2026",
-      fetchedAt: new Date().toISOString(),
-    };
-
-    cachedResult = { data, expiry: Date.now() + CACHE_TTL };
-
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("GET /api/courses/davidson error:", error);
+  if (!term) {
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+      {
+        error: `Unsupported term. Use ${terms.active.code} (${terms.active.label}) or ${terms.registration.code} (${terms.registration.label}).`,
+        terms: { active: terms.active, registration: terms.registration },
+      },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const { data, stale } = await getTermCourses(term);
+    return NextResponse.json(
+      {
+        courses: data.courses,
+        total: data.courses.length,
+        sectionCount: data.sectionCount,
+        term: data.term.label,
+        termCode: data.term.code,
+        terms: { active: terms.active, registration: terms.registration, source: terms.source },
+        fetchedAt: data.fetchedAt,
+        stale,
+      },
+      {
+        headers: {
+          // Public schedule data; let the CDN absorb registration-day traffic.
+          "Cache-Control": stale
+            ? "public, s-maxage=60, stale-while-revalidate=300"
+            : "public, s-maxage=300, stale-while-revalidate=900",
+        },
+      }
+    );
+  } catch (error) {
+    if (!(error instanceof CourseDataUnavailableError)) {
+      console.error("GET /api/courses/davidson error:", error);
+    }
+    return NextResponse.json(
+      {
+        error: `Course data for ${term.label} is temporarily unavailable. Please try again in a minute.`,
+        term: term.label,
+        termCode: term.code,
+        terms: { active: terms.active, registration: terms.registration, source: terms.source },
+      },
+      { status: 502, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
