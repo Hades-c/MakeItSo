@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
-import { DB_CONNECT_OPTIONS, disconnectDb, getDb } from "@/server/db";
+import { DB_CONNECT_OPTIONS, disconnectDb, getDb, trusted } from "@/server/db";
 import { EnvError, resetEnvCache } from "@/server/env";
 
 let testDb: TestDb;
@@ -30,6 +30,23 @@ describe("getDb", () => {
 
     await getDb();
     expect(connect).toHaveBeenCalledTimes(1);
+  });
+
+  it("sanitizes query filters so request data cannot inject operators (PLAN §4.1.9)", async () => {
+    await getDb();
+    expect(mongoose.get("sanitizeFilter")).toBe(true);
+    const Probe =
+      mongoose.models.SanitizeProbe ??
+      mongoose.model("SanitizeProbe", new mongoose.Schema({ email: String }));
+    await Probe.create({ email: "a@davidson.edu" });
+    // {"$ne": null} from a JSON body is wrapped in $eq, so it is a (failing) literal match, never an operator:
+    // mongoose rejects it with a CastError (a 400 through defineRoute) instead of matching every document.
+    const injected = JSON.parse('{"$ne": null}') as string;
+    await expect(Probe.countDocuments({ email: injected })).rejects.toMatchObject({
+      name: "CastError",
+    });
+    // Intentional operators are wrapped in trusted().
+    expect(await Probe.countDocuments({ email: trusted({ $ne: null }) })).toBe(1);
   });
 
   it("uses a 5 s server selection timeout and no command buffering", () => {

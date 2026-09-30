@@ -10,7 +10,16 @@ import { readEnv } from "@/server/env";
  *   share one connection, but it is RESET when the attempt fails: the next call retries instead of replaying the
  *   cached rejection forever (audit performance/mongo-rejected-promise-cached).
  * - serverSelectionTimeoutMS is 5 s (driver default is 30 s), so an unreachable database fails fast.
+ * - `sanitizeFilter` is on (PLAN §4.1.9): any object with a `$`-key inside a query FILTER is wrapped in `$eq`, so
+ *   request data can never inject a query operator. Operators you write on purpose must be wrapped:
+ *     Plan.findOneAndUpdate({ userId, items: trusted({ $not: { $elemMatch: { ... } } }) }, update)
+ *   (updates such as `$set`/`$pull`/`$inc` are not filters and need nothing.)
  */
+
+mongoose.set("sanitizeFilter", true);
+
+/** Mark a hand-written query operator as intentional under sanitizeFilter (re-export of mongoose.trusted). */
+export const trusted: typeof mongoose.trusted = (value) => mongoose.trusted(value);
 
 export const DB_CONNECT_OPTIONS = {
   bufferCommands: false,
@@ -31,6 +40,7 @@ export async function getDb(): Promise<typeof mongoose> {
   // failed attempt or an explicit disconnectDb().
   if (!cache.promise) {
     const uri = readEnv("MONGODB_URI");
+    mongoose.set("sanitizeFilter", true);
     const attempt = mongoose.connect(uri, DB_CONNECT_OPTIONS);
     cache.promise = attempt;
     attempt.catch(() => {

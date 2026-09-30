@@ -19,10 +19,10 @@ afterAll(async () => {
   await testDb.stop();
 });
 
-function registerRequest(body: unknown): Request {
+function registerRequest(body: unknown, headers: Record<string, string> = {}): Request {
   return new Request("http://localhost/api/auth/register", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", origin: "http://localhost", ...headers },
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
 }
@@ -70,6 +70,26 @@ describe("POST /api/auth/register", () => {
     expect(((await malformed.json()) as { error: { code: string } }).error.code).toBe(
       "bad_request",
     );
+  });
+
+  it("keeps ignoring unknown fields, as before the defineRoute port", async () => {
+    const res = await register(registerRequest({ ...alex, currentYear: "Junior", extra: "x" }));
+    expect(res.status).toBe(201);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("rejects cross-site and non-JSON requests before touching the database", async () => {
+    const crossSite = await register(registerRequest(alex, { origin: "https://evil.example" }));
+    expect(crossSite.status).toBe(403);
+    const noOrigin = new Request("http://localhost/api/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(alex),
+    });
+    expect((await register(noOrigin)).status).toBe(403);
+    const form = await register(registerRequest("name=x", { "content-type": "text/plain" }));
+    expect(form.status).toBe(415);
+    expect(await User.countDocuments()).toBe(0);
   });
 });
 

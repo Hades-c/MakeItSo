@@ -16,6 +16,9 @@ export default defineConfig({
   test: {
     unstubEnvs: true,
     restoreMocks: true,
+    // Outside services are served from tests/fixtures/external: unit and integration tests never use the network
+    // (PLAN §4.1.10). A test that needs live data does not belong in this suite.
+    env: { EXTERNAL_MODE: "fixtures" },
     projects: [
       {
         extends: true,
@@ -23,6 +26,7 @@ export default defineConfig({
           name: "node",
           environment: "node",
           include: ["tests/**/*.test.ts"],
+          setupFiles: ["./tests/helpers/no-network.ts"],
           // Integration tests start an in-memory MongoDB (first run downloads the binary).
           hookTimeout: 120_000,
           testTimeout: 30_000,
