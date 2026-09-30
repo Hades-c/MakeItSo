@@ -12,6 +12,8 @@ import {
 } from "./helpers";
 import { POST as verify } from "@/app/api/account/verify/route";
 import { POST as resend } from "@/app/api/account/verify/resend/route";
+import { POST as confirmReset } from "@/app/api/auth/password-reset/confirm/route";
+import { POST as requestReset } from "@/app/api/auth/password-reset/route";
 import { POST as register } from "@/app/api/auth/register/route";
 import { GET as me } from "@/app/api/me/route";
 import RateLimit from "@/models/RateLimit";
@@ -156,6 +158,56 @@ describe("POST /api/account/verify", () => {
         )
       ).status,
     ).toBe(403);
+  });
+});
+
+describe("wrong codes: one budget per account across verification and reset (review regression)", () => {
+  it("a squatter without the mailbox gets 10 guesses a day in all, not 15 + 15 an hour", async () => {
+    const { id, code } = await registerAndSignIn("victim@davidson.edu");
+    let guesses = 0;
+    for (let i = 0; i < 5; i++) {
+      const res = await postVerify(wrongCode(code));
+      if (res.status === 400 || res.status === 429) guesses++;
+    }
+    // Reset codes for an unverified account come out of the same send budget as verification codes.
+    expect(
+      (
+        await requestReset(
+          jsonRequest("/api/auth/password-reset", { body: { email: "victim@davidson.edu" } }),
+        )
+      ).status,
+    ).toBe(202);
+    const resetCode = lastConsoleMessage("victim@davidson.edu")!.code!;
+    for (let i = 0; i < 5; i++) {
+      await RateLimit.deleteMany({ key: /^reset-confirm:ip/ });
+      const res = await confirmReset(
+        jsonRequest("/api/auth/password-reset/confirm", {
+          body: {
+            email: "victim@davidson.edu",
+            code: wrongCode(resetCode),
+            newPassword: "squatter's new pw",
+          },
+        }),
+      );
+      expect(res.status).toBe(400);
+      guesses++;
+    }
+    expect(guesses).toBe(10);
+    expect(await RateLimit.collection.findOne({ key: `code-fail:user:${id}` })).toMatchObject({
+      count: 10,
+    });
+
+    // No more codes today, with a uniform 429 that says when.
+    const refused = await postResend();
+    expect(refused.status).toBe(429);
+    expect(Number(refused.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect((await errorOf(refused)).message).toMatch(/Too many wrong codes for this account/);
+    expect(await VerificationCode.countDocuments({ userId: id, attempts: 0 })).toBe(0);
+
+    // A new UTC day brings a new budget.
+    stubNowPlus(9 * 3600_000);
+    expect((await postResend()).status).toBe(202);
+    expect((await postVerify(lastConsoleMessage("victim@davidson.edu")!.code!)).status).toBe(200);
   });
 });
 

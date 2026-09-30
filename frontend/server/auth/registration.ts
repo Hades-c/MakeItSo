@@ -3,7 +3,7 @@ import type { Types } from "mongoose";
 import type { CheckInboxResponse } from "@/app/(auth)/_lib/contracts";
 import User from "@/models/User";
 import { eraseAccountData } from "@/server/account/erasers";
-import { issueCode, CODE_SENDS_PER_HOUR } from "@/server/auth/codes";
+import { issueCode, CODE_SENDS_PER_HOUR, markCodeSent } from "@/server/auth/codes";
 import { runAfterResponse } from "@/server/auth/defer";
 import {
   alreadyRegisteredEmail,
@@ -13,11 +13,10 @@ import {
 import { getMailer, type Mailer } from "@/server/auth/mailer";
 import { hashPassword, passwordProblem } from "@/server/auth/passwords";
 import { defaultGraduationYear } from "@/server/auth/profile";
-import { consumeMailAllowance } from "@/server/auth/rate-limits";
+import { consumeAuthLimit, consumeMailAllowance } from "@/server/auth/rate-limits";
 import { now } from "@/server/clock";
 import { getDb, trusted } from "@/server/db";
 import { ApiError, isDuplicateKeyError } from "@/server/http/errors";
-import { consumeRateLimit } from "@/server/http/rate-limit";
 
 /**
  * Registration (PLAN §1 "Sign-up", §6.1 W3). The route validates the body with accountApi.register
@@ -26,11 +25,14 @@ import { consumeRateLimit } from "@/server/http/rate-limit";
  *
  *   no account                 → create it (emailVerifiedAt: null) and e-mail a verification code
  *   verified or legacy account → nothing changes; e-mail "you already have an account — sign in"
- *   unverified, < 24 h old     → nothing changes; e-mail "a sign-up is waiting" (the inbox owner can take the
- *                                address over with Forgot password, which proves the mailbox)
- *   unverified, ≥ 24 h old     → replace it (its data is erased) with the new registration — only when mail is
- *                                available: without a mail provider nobody can verify, so nothing is ever
- *                                replaced (every account would otherwise be up for grabs after a day)
+ *   unverified, otherwise      → nothing changes; e-mail "a sign-up is waiting" (the inbox owner can take the
+ *                                address over with Forgot password, which proves the mailbox and starts the
+ *                                account fresh: server/auth/password-reset.ts)
+ *   unverified, code sent      → replace it (its data is erased) with the new registration, once 24 h have
+ *   ≥ 24 h ago                   passed since the FIRST code (verification or reset) reached its inbox
+ *                                (User.verificationSentAt), and only while mail is available. An account that
+ *                                was never sent a code (e.g. created while MAIL_PROVIDER=none) is never
+ *                                replaced: turning mail on must not put every such account up for grabs.
  *
  * "First to verify wins": the replacement deletes the old account only while it is still unverified (one atomic
  * findOneAndDelete), and verification marks an account only while it still exists (server/auth/verification.ts),
@@ -41,7 +43,10 @@ import { consumeRateLimit } from "@/server/http/rate-limit";
  * address. Mail goes out after the response (runAfterResponse), at most 3 per hour per address.
  */
 
-/** An unverified new-flow account older than this may be replaced by a new registration of its address. */
+/**
+ * An unverified new-flow account whose first code was sent longer ago than this may be replaced by a new
+ * registration of its address.
+ */
 export const REPLACE_UNVERIFIED_AFTER_MS = 24 * 60 * 60 * 1000;
 
 export const CHECK_INBOX_MESSAGE =
@@ -63,7 +68,7 @@ interface ExistingAccount {
   _id: Types.ObjectId;
   emailVerifiedAt?: Date | null;
   legacyAccount?: boolean;
-  createdAt?: Date;
+  verificationSentAt?: Date;
 }
 
 /** Stored `emailVerifiedAt: null` = a new-flow sign-up that is not verified; missing = legacy. */
@@ -74,13 +79,15 @@ function isPendingSignup(doc: ExistingAccount): boolean {
 function isReplaceable(doc: ExistingAccount, at: Date): boolean {
   return (
     isPendingSignup(doc) &&
-    doc.createdAt instanceof Date &&
-    doc.createdAt.getTime() <= at.getTime() - REPLACE_UNVERIFIED_AFTER_MS
+    doc.verificationSentAt instanceof Date &&
+    doc.verificationSentAt.getTime() <= at.getTime() - REPLACE_UNVERIFIED_AFTER_MS
   );
 }
 
 async function findExisting(email: string): Promise<ExistingAccount | null> {
-  return User.findOne({ email }).select("_id emailVerifiedAt legacyAccount createdAt").lean();
+  return User.findOne({ email })
+    .select("_id emailVerifiedAt legacyAccount verificationSentAt")
+    .lean();
 }
 
 async function replaceIfStillUnverified(existing: ExistingAccount, at: Date): Promise<boolean> {
@@ -89,7 +96,7 @@ async function replaceIfStillUnverified(existing: ExistingAccount, at: Date): Pr
     _id: existing._id,
     emailVerifiedAt: trusted({ $type: "null" }),
     legacyAccount: trusted({ $ne: true }),
-    createdAt: trusted({ $lte: cutoff }),
+    verificationSentAt: trusted({ $lte: cutoff }),
   }).lean();
   if (!removed) return false;
   try {
@@ -146,7 +153,7 @@ async function sendRegistrationMail(
 ): Promise<void> {
   if (outcome.kind === "created") {
     // The first code counts against the same 3-per-hour send limit as "Send a new code".
-    const sends = await consumeRateLimit(
+    const sends = await consumeAuthLimit(
       `verify-resend:user:${outcome.userId}`,
       CODE_SENDS_PER_HOUR,
       3600,
@@ -155,6 +162,7 @@ async function sendRegistrationMail(
     if (!sends.allowed) return;
     const code = await issueCode(outcome.userId, email, "verify-email", at);
     await mailer.send(verificationEmail(email, code));
+    await markCodeSent(outcome.userId, at);
     return;
   }
   if (!(await consumeMailAllowance("register-mail", email, at))) return;

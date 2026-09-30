@@ -39,7 +39,15 @@ afterAll(async () => {
 
 describe("the hub's verify banner", () => {
   it("verifyBannerFor shows only unverified @davidson.edu accounts, while mail is available", async () => {
-    const fresh = await insertUser({ email: "fresh@davidson.edu", raw: { emailVerifiedAt: null } });
+    // The 24 h replacement window starts with the first code sent, not at sign-up (review regression).
+    const fresh = await insertUser({
+      email: "fresh@davidson.edu",
+      raw: {
+        emailVerifiedAt: null,
+        createdAt: new Date("2026-09-01T00:00:00Z"),
+        verificationSentAt: new Date("2026-09-30T16:00:00Z"),
+      },
+    });
     const signedIn = (await resolveSessionUser(await sessionFor(fresh)))!;
     stubNowPlus(5 * 3_600_000);
     expect(await verifyBannerFor(signedIn, now())).toEqual({
@@ -47,6 +55,15 @@ describe("the hub's verify banner", () => {
       replaceable: true,
       hoursLeft: 19,
     });
+
+    // Never sent a code (e.g. created while mail was off): not replaceable, however old.
+    const neverSent = await insertUser({
+      email: "never.sent@davidson.edu",
+      raw: { emailVerifiedAt: null, createdAt: new Date("2026-01-01T00:00:00Z") },
+    });
+    expect(
+      await verifyBannerFor((await resolveSessionUser(await sessionFor(neverSent)))!, now()),
+    ).toEqual({ email: "never.sent@davidson.edu", replaceable: false, hoursLeft: null });
 
     const legacy = await insertUser({ email: "legacy@davidson.edu" });
     expect(

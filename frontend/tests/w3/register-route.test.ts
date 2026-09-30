@@ -2,7 +2,16 @@ import mongoose from "mongoose";
 import type { Session } from "next-auth";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
-import { errorOf, FIXTURE_NOW, insertUser, jsonRequest, stubAuthEnv } from "./helpers";
+import {
+  errorOf,
+  FIXTURE_NOW,
+  insertUser,
+  jsonRequest,
+  sessionFor,
+  stubAuthEnv,
+  stubNowPlus,
+} from "./helpers";
+import { POST as resend } from "@/app/api/account/verify/resend/route";
 import { POST as register } from "@/app/api/auth/register/route";
 import CoursePlanV1 from "@/models/legacy/CoursePlanV1";
 import RateLimit from "@/models/RateLimit";
@@ -23,6 +32,10 @@ vi.mock("next-auth", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   getServerSession: async () => auth.session,
 }));
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  connection: async () => undefined,
+}));
 
 let testDb: TestDb;
 
@@ -42,6 +55,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  auth.session = null;
   await testDb.clear();
 });
 
@@ -94,6 +108,10 @@ describe("POST /api/auth/register (PLAN §1 Sign-up)", () => {
     expect(mail).toMatchObject({ kind: "verify-email" });
     expect(mail?.code).toMatch(/^\d{6}$/);
     expect(await VerificationCode.countDocuments({ userId: stored?._id })).toBe(1);
+    // The code reached the inbox: the 24 h replacement window starts now (not at sign-up).
+    expect((await User.collection.findOne({ email: CASEY }))?.verificationSentAt).toEqual(
+      new Date(FIXTURE_NOW),
+    );
     // The first code counts against the 3-per-hour send limit.
     expect(
       await RateLimit.collection.findOne({ key: `verify-resend:user:${stored?._id.toString()}` }),
@@ -151,12 +169,22 @@ describe("POST /api/auth/register (PLAN §1 Sign-up)", () => {
     expect(lastConsoleMessage(CASEY)).toMatchObject({ kind: "signup-pending" });
   });
 
-  it("replaces an unverified sign-up older than 24 h, erasing its data (squat replacement)", async () => {
+  it("keeps an unverified sign-up whose first code went out less than 24 h ago", async () => {
+    const sent = new Date(new Date(FIXTURE_NOW).getTime() - REPLACE_UNVERIFIED_AFTER_MS + 60_000);
+    const pending = await insertUser({
+      email: CASEY,
+      raw: { emailVerifiedAt: null, createdAt: new Date("2026-09-01"), verificationSentAt: sent },
+    });
+    await post(casey);
+    expect((await User.collection.findOne({ email: CASEY }))?._id.toString()).toBe(pending.id);
+  });
+
+  it("replaces an unverified sign-up whose first code went out over 24 h ago, erasing its data (squat replacement)", async () => {
     const created = new Date(new Date(FIXTURE_NOW).getTime() - REPLACE_UNVERIFIED_AFTER_MS - 1000);
     const squat = await insertUser({
       email: CASEY,
       password: "squatter password",
-      raw: { emailVerifiedAt: null, createdAt: created },
+      raw: { emailVerifiedAt: null, createdAt: created, verificationSentAt: created },
     });
     const squatId = new mongoose.Types.ObjectId(squat.id);
     await VerificationCode.collection.insertOne({
@@ -203,12 +231,66 @@ describe("POST /api/auth/register (PLAN §1 Sign-up)", () => {
     );
   });
 
+  it("never replaces a sign-up that was never sent a code, however old (review regression)", async () => {
+    // Created while MAIL_PROVIDER=none (the production default): no code, so no verificationSentAt.
+    const old = new Date(new Date(FIXTURE_NOW).getTime() - 30 * REPLACE_UNVERIFIED_AFTER_MS);
+    const student = await insertUser({
+      email: CASEY,
+      raw: { emailVerifiedAt: null, createdAt: old },
+    });
+    await post({ ...casey, name: "Attacker", password: "attacker chosen pw" });
+    expect((await User.collection.findOne({ email: CASEY }))?._id.toString()).toBe(student.id);
+    expect(lastConsoleMessage(CASEY)?.kind).toBe("signup-pending");
+  });
+
+  it("keeps accounts made while mail was off when mail is switched on (reviewer's none → console PoC)", async () => {
+    vi.stubEnv("MAIL_PROVIDER", "none");
+    await post({ ...casey, name: "Real Student", password: "the students own pw" });
+    const student = await User.collection.findOne({ email: CASEY });
+    expect(student).toMatchObject({ emailVerifiedAt: null });
+    expect(student).not.toHaveProperty("verificationSentAt");
+    await CoursePlanV1.collection.insertOne({ userId: student!._id, plannedCourses: [] });
+    expect(await VerificationCode.countDocuments({})).toBe(0);
+
+    // Three days later the owner configures a provider; someone registers the same address.
+    stubNowPlus(3 * REPLACE_UNVERIFIED_AFTER_MS);
+    vi.stubEnv("MAIL_PROVIDER", "console");
+    await RateLimit.deleteMany({});
+    const res = await post({ ...casey, name: "Attacker", password: "attacker chosen pw" });
+    expect(res.status).toBe(202);
+    const after = await User.collection.findOne({ email: CASEY });
+    expect(after?._id).toEqual(student?._id);
+    expect(after?.name).toBe("Real Student");
+    expect(await CoursePlanV1.collection.countDocuments({ userId: student!._id })).toBe(1);
+    expect(
+      await authorizeCredentials({ email: CASEY, password: "the students own pw" }),
+    ).not.toBeNull();
+    expect(await authorizeCredentials({ email: CASEY, password: "attacker chosen pw" })).toBeNull();
+
+    // The window starts with the first code that actually reaches the inbox (the student asks for one).
+    auth.session = await sessionFor({
+      id: student!._id.toString(),
+      email: CASEY,
+      name: "Real Student",
+    });
+    expect((await resend(jsonRequest("/api/account/verify/resend"))).status).toBe(202);
+    const sentAt = (await User.collection.findOne({ email: CASEY }))?.verificationSentAt;
+    expect(sentAt).toEqual(
+      new Date(new Date(FIXTURE_NOW).getTime() + 3 * REPLACE_UNVERIFIED_AFTER_MS),
+    );
+    // Still unverified a day after that code: the normal replacement rule applies again.
+    stubNowPlus(4 * REPLACE_UNVERIFIED_AFTER_MS + 1000);
+    await RateLimit.deleteMany({});
+    await post({ ...casey, name: "Later Registrant", password: "later registrant pw" });
+    expect((await User.collection.findOne({ email: CASEY }))?.name).toBe("Later Registrant");
+  });
+
   it("never replaces anything while mail is unavailable (nobody could verify)", async () => {
     vi.stubEnv("MAIL_PROVIDER", "none");
     const old = new Date(new Date(FIXTURE_NOW).getTime() - 2 * REPLACE_UNVERIFIED_AFTER_MS);
     const squat = await insertUser({
       email: CASEY,
-      raw: { emailVerifiedAt: null, createdAt: old },
+      raw: { emailVerifiedAt: null, createdAt: old, verificationSentAt: old },
     });
     const res = await post(casey);
     expect(await answer(res)).toEqual({

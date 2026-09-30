@@ -80,13 +80,18 @@ export function signupPendingEmail(to: string): MailMessage {
       `e-mail at ${link(routes.verify())} (you can ask for a new code there).`,
       "",
       `If you did not: reset the password at ${link(FORGOT_PASSWORD_PATH)}. Only someone who can read`,
-      "this inbox can do that, and it verifies the address, so the account becomes yours.",
+      "this inbox can do that. It verifies the address and starts the account fresh: whatever the other",
+      "person set up in it (name, profile, plan, AI consent) is deleted, and the account becomes yours.",
       FOOTER,
     ].join("\n"),
   };
 }
 
-export function passwordResetEmail(to: string, code: string): MailMessage {
+export function passwordResetEmail(
+  to: string,
+  code: string,
+  { pendingSignup = false }: { pendingSignup?: boolean } = {},
+): MailMessage {
   return {
     kind: "reset-password",
     to,
@@ -96,6 +101,14 @@ export function passwordResetEmail(to: string, code: string): MailMessage {
       `Your MakeItSo password reset code is ${code}.`,
       "",
       `Enter it at ${link(FORGOT_PASSWORD_PATH)} within 15 minutes, together with your new password.`,
+      ...(pendingSignup
+        ? [
+            "",
+            "The MakeItSo account for this address was created recently and has not been verified yet.",
+            "Resetting the password verifies it and starts it fresh: anything set up in it so far (name,",
+            "profile, plan, AI consent) is deleted, in case someone else created it with your address.",
+          ]
+        : []),
       "",
       "If you did not ask to reset your password, ignore this e-mail: your password has not changed.",
       FOOTER,

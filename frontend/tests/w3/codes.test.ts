@@ -1,17 +1,23 @@
 import mongoose from "mongoose";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
-import { stubAuthEnv } from "./helpers";
+import { insertUser, stubAuthEnv } from "./helpers";
+import RateLimit from "@/models/RateLimit";
+import User from "@/models/User";
 import VerificationCode from "@/models/VerificationCode";
 import {
+  CODE_RETENTION_MS,
   CODE_TTL_MS,
   consumeCode,
   deleteCodes,
   generateCode,
   hashCode,
   issueCode,
+  liveCode,
+  markCodeSent,
   MAX_CODE_ATTEMPTS,
 } from "@/server/auth/codes";
+import { CODE_FAILURES_PER_DAY, codeFailureKey } from "@/server/auth/rate-limits";
 import { getDb } from "@/server/db";
 
 let testDb: TestDb;
@@ -19,7 +25,7 @@ let testDb: TestDb;
 beforeAll(async () => {
   testDb = await startTestDb();
   await getDb();
-  await VerificationCode.createIndexes();
+  await Promise.all([VerificationCode.createIndexes(), RateLimit.createIndexes()]);
 });
 
 beforeEach(() => stubAuthEnv());
@@ -53,7 +59,7 @@ describe("verification codes (PLAN §6.1 W3)", () => {
     expect(doc.codeHash).not.toContain(code);
     expect(JSON.stringify(doc)).not.toContain(`"${code}"`);
     expect(doc.codeHash).toBe(hashCode(id, "verify-email", code));
-    expect(doc.expiresAt.getTime() - at.getTime()).toBe(CODE_TTL_MS);
+    expect(doc.codeExpiresAt.getTime() - at.getTime()).toBe(CODE_TTL_MS);
     expect(CODE_TTL_MS).toBe(15 * 60 * 1000);
 
     // The hash is keyed with the server secret: a database dump alone cannot be brute-forced.
@@ -157,6 +163,32 @@ describe("verification codes (PLAN §6.1 W3)", () => {
     });
   });
 
+  it("keep the document 24 h, with a purge time in the real future even under a pinned clock (TTL regression)", async () => {
+    const id = userId();
+    await issueCode(id, "casey@davidson.edu", "verify-email", at);
+    const doc = await VerificationCode.findOne({ userId: id }).lean();
+    // Logical expiry on the pinned clock; the TTL field on the real one (the TTL monitor uses real time).
+    expect(doc?.codeExpiresAt).toEqual(later(CODE_TTL_MS));
+    expect(doc?.expiresAt.getTime()).toBeGreaterThan(Date.now() + CODE_RETENTION_MS - 60_000);
+    const indexes = await VerificationCode.collection.indexes();
+    expect(indexes.find((i) => i.expireAfterSeconds === 0)?.key).toEqual({ expiresAt: 1 });
+  });
+
+  it("report the live code (unused, unexpired, attempts left) and nothing else", async () => {
+    const id = userId();
+    expect(await liveCode(id, "verify-email", at)).toBeNull();
+    const code = await issueCode(id, "casey@davidson.edu", "verify-email", at);
+    expect(await liveCode(id, "verify-email", later(1000))).toEqual({
+      sentAt: at,
+      expiresAt: later(CODE_TTL_MS),
+    });
+    expect(await liveCode(id, "reset-password", later(1000))).toBeNull();
+    expect(await liveCode(id, "verify-email", later(CODE_TTL_MS))).toBeNull();
+    await consumeCode(id, "verify-email", code, later(2000));
+    expect(await liveCode(id, "verify-email", later(3000))).toBeNull();
+    expect(await liveCode("not-an-id", "verify-email", at)).toBeNull();
+  });
+
   it("can be deleted per user (and ignore malformed ids)", async () => {
     const id = userId();
     await issueCode(id, "casey@davidson.edu", "verify-email", at);
@@ -164,5 +196,86 @@ describe("verification codes (PLAN §6.1 W3)", () => {
     expect(await deleteCodes(id, "reset-password")).toBe(1);
     expect(await deleteCodes(id)).toBe(1);
     expect(await deleteCodes("not-an-id")).toBe(0);
+  });
+});
+
+describe("the per-account wrong-code budget (review regression: slow brute force)", () => {
+  const wrongFor = (code: string) => (code === "000000" ? "111111" : "000000");
+
+  it("caps wrong codes at 10 a day across every code and purpose, then checks none", async () => {
+    const id = userId();
+    let wrong = 0;
+    for (const purpose of ["verify-email", "reset-password"] as const) {
+      const code = await issueCode(id, "casey@davidson.edu", purpose, at);
+      for (let i = 0; i < MAX_CODE_ATTEMPTS; i++) {
+        const check = await consumeCode(id, purpose, wrongFor(code), later(1000));
+        if (!check.ok && check.reason === "mismatch") wrong++;
+      }
+    }
+    expect(wrong).toBe(CODE_FAILURES_PER_DAY);
+    // A fresh code, even the RIGHT one, is not compared any more today.
+    const fresh = await issueCode(id, "casey@davidson.edu", "verify-email", later(2000));
+    const locked = await consumeCode(id, "verify-email", fresh, later(3000));
+    expect(locked).toMatchObject({ ok: false, reason: "locked" });
+    if (!locked.ok) expect(locked.retryAfterSec).toBeGreaterThan(0);
+    // The next UTC day brings a new budget.
+    const nextDay = new Date(Date.UTC(2026, 9, 1, 0, 0, 1));
+    const again = await issueCode(id, "casey@davidson.edu", "verify-email", nextDay);
+    expect(await consumeCode(id, "verify-email", again, nextDay)).toMatchObject({ ok: true });
+  });
+
+  it("gives a right code's guess back and spends nothing without a live code", async () => {
+    const id = userId();
+    for (let i = 0; i < 12; i++) {
+      await consumeCode(id, "verify-email", "123456", later(1000)); // never sent: nothing compared
+    }
+    for (let round = 0; round < 12; round++) {
+      const code = await issueCode(id, "casey@davidson.edu", "verify-email", later(round * 1000));
+      expect(await consumeCode(id, "verify-email", code, later(round * 1000 + 1))).toMatchObject({
+        ok: true,
+      });
+    }
+    const counter = await RateLimit.collection.findOne({ key: codeFailureKey(id) });
+    expect(counter?.count ?? 0).toBe(0);
+  });
+
+  it("holds under parallel guesses on two live codes", async () => {
+    const id = userId();
+    const first = await issueCode(id, "casey@davidson.edu", "verify-email", at);
+    for (let i = 0; i < MAX_CODE_ATTEMPTS; i++) {
+      await consumeCode(id, "verify-email", wrongFor(first), later(1000));
+    }
+    const reset = await issueCode(id, "casey@davidson.edu", "reset-password", at);
+    await consumeCode(id, "reset-password", wrongFor(reset), later(1000));
+    // 6 of 10 spent; 9 guesses (5 + 4 attempts left on the two live codes) race for the last 4.
+    const verify = await issueCode(id, "casey@davidson.edu", "verify-email", later(2000));
+    const results = await Promise.all([
+      ...Array.from({ length: 5 }, () =>
+        consumeCode(id, "verify-email", wrongFor(verify), later(3000)),
+      ),
+      ...Array.from({ length: 4 }, () =>
+        consumeCode(id, "reset-password", wrongFor(reset), later(3000)),
+      ),
+    ]);
+    expect(results.filter((r) => !r.ok && r.reason === "mismatch")).toHaveLength(4);
+    expect(results.filter((r) => !r.ok && r.reason === "locked")).toHaveLength(5);
+  });
+});
+
+describe("markCodeSent (start of the 24 h replacement window)", () => {
+  it("records the FIRST send, and only on a pending new sign-up", async () => {
+    const pending = await insertUser({ raw: { emailVerifiedAt: null } });
+    const legacy = await insertUser();
+    const verified = await insertUser({ raw: { emailVerifiedAt: at } });
+    await markCodeSent(pending.id, at);
+    await markCodeSent(pending.id, later(60_000));
+    await markCodeSent(legacy.id, at);
+    await markCodeSent(verified.id, at);
+    await markCodeSent("not-an-id", at);
+    const sentAt = async (id: string) =>
+      (await User.findById(id).select("verificationSentAt").lean())?.verificationSentAt;
+    expect(await sentAt(pending.id)).toEqual(at);
+    expect(await sentAt(legacy.id)).toBeUndefined();
+    expect(await sentAt(verified.id)).toBeUndefined();
   });
 });

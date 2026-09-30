@@ -16,8 +16,9 @@ import { CLASS_STANDINGS, type ClassStanding } from "@/lib/term";
  *
  * `emailVerifiedAt` has three states, and the difference matters:
  *   - a Date: the mailbox was verified with a code (server/auth/verification.ts, or a password reset);
- *   - null (stored explicitly): a new-flow registration that is not verified yet. After 24 hours a new
- *     registration of the same address may replace it (server/auth/registration.ts);
+ *   - null (stored explicitly): a new-flow registration that is not verified yet. Once a code has been e-mailed
+ *     to it (`verificationSentAt`) and 24 hours have passed, a new registration of the same address may replace
+ *     it (server/auth/registration.ts). An account that was never sent a code is never replaced;
  *   - missing: a legacy account. It keeps working, may verify its own mailbox, and is never replaced.
  * defineRoute's "verified"/"admin" modes read the raw field (server/http/auth.ts readAccountFlags).
  */
@@ -32,6 +33,12 @@ export interface IUser {
 
   // ---- W3 ------------------------------------------------------------------------------------------------------
   emailVerifiedAt?: Date | null;
+  /**
+   * When the first code (verification or password reset) was e-mailed to this still-unverified account: the 24 h
+   * window after which a new registration may replace it starts here, not at sign-up, so accounts created while
+   * no mail provider existed are never replaceable before their inbox was ever reached.
+   */
+  verificationSentAt?: Date;
   /** Bumped by "sign out everywhere", a password change or reset, and deletion; JWTs carry the value they had. */
   sessionVersion?: number;
   /** Set by scripts/flag-legacy-accounts.ts on accounts created before the rewrite. Never replaced. */
@@ -70,6 +77,7 @@ const UserSchema = new Schema<IUser>(
     image: { type: String },
 
     emailVerifiedAt: { type: Date },
+    verificationSentAt: { type: Date },
     sessionVersion: { type: Number, min: 0 },
     legacyAccount: { type: Boolean },
 

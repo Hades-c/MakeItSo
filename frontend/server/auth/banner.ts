@@ -19,7 +19,10 @@ import { getDb } from "@/server/db";
  */
 export interface VerifyBannerState {
   email: string;
-  /** True for a new sign-up that a later sign-up of the same address may replace after 24 hours. */
+  /**
+   * True for a new sign-up that a later sign-up of the same address may replace: once a code was e-mailed to it,
+   * 24 hours after that first code (User.verificationSentAt). Never before a code was sent.
+   */
   replaceable: boolean;
   /** Hours of the 24 still left before that can happen (null when not replaceable). */
   hoursLeft: number | null;
@@ -36,13 +39,17 @@ export async function verifyBannerFor(
   if (mongoose.isValidObjectId(user.id)) {
     await getDb();
     const doc = await User.findById(user.id)
-      .select("emailVerifiedAt legacyAccount createdAt")
+      .select("emailVerifiedAt legacyAccount verificationSentAt")
       .lean();
     if (doc && isEmailVerified(doc)) return null;
-    if (doc && doc.emailVerifiedAt === null && doc.legacyAccount !== true) {
+    if (
+      doc &&
+      doc.emailVerifiedAt === null &&
+      doc.legacyAccount !== true &&
+      doc.verificationSentAt instanceof Date
+    ) {
       replaceable = true;
-      const createdAt = doc.createdAt instanceof Date ? doc.createdAt.getTime() : at.getTime();
-      const leftMs = createdAt + REPLACE_UNVERIFIED_AFTER_MS - at.getTime();
+      const leftMs = doc.verificationSentAt.getTime() + REPLACE_UNVERIFIED_AFTER_MS - at.getTime();
       hoursLeft = Math.max(0, Math.ceil(leftMs / 3_600_000));
     }
   }
