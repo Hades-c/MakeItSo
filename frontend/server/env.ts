@@ -14,8 +14,9 @@ import { z } from "zod";
  * Production checks (NODE_ENV=production, i.e. `next start` and every Vercel deployment):
  *   - NEXTAUTH_SECRET is at least 32 characters and not the .env.example placeholder;
  *   - APP_ORIGIN is set (except on Vercel preview deployments, whose origins are per deployment);
- *   - on the Vercel production environment: AI_PROVIDER is not "mock", EXTERNAL_MODE is not "fixtures" and
- *     MAIL_PROVIDER is not "console".
+ *   - on the Vercel production environment: AI_PROVIDER is not "mock", EXTERNAL_MODE is not "fixtures",
+ *     MAIL_PROVIDER is not "console" and FIXTURES_NOW is unset;
+ *   - RATE_LIMITS=off only with EXTERNAL_MODE=fixtures (the e2e server) and never on Vercel production.
  */
 
 /** Treat empty or whitespace-only values (common in copied .env files) as "not set". */
@@ -120,6 +121,29 @@ export const envSchema = z.object({
   EXTERNAL_MODE: z.preprocess(
     unsetIfBlank,
     z.enum(["live", "fixtures"], { error: 'must be "live" or "fixtures"' }).default("live"),
+  ),
+  /**
+   * Test knob: pins server "now" (server/clock.ts) to this instant, so the fixture world (recorded 2026-09-30) stays
+   * current after the real registration term moves on. Honoured only with EXTERNAL_MODE=fixtures; rejected on
+   * Vercel production. vitest and Playwright set 2026-09-30T12:00:00-04:00.
+   */
+  FIXTURES_NOW: z.preprocess(
+    unsetIfBlank,
+    z.iso
+      .datetime({
+        offset: true,
+        error: "must be an ISO date-time with an offset, e.g. 2026-09-30T12:00:00-04:00",
+      })
+      .optional(),
+  ),
+  /**
+   * Test knob: "off" skips every rate limit (defineRoute rateLimit and consumeRateLimit), because outside Vercel all
+   * requests share one client-IP bucket and the e2e suite registers and signs in dozens of times. Default "on";
+   * "off" needs EXTERNAL_MODE=fixtures and is rejected on Vercel production.
+   */
+  RATE_LIMITS: z.preprocess(
+    unsetIfBlank,
+    z.enum(["on", "off"], { error: 'must be "on" or "off"' }).default("on"),
   ),
 
   // --- AI (Anthropic) -----------------------------------------------------------------------------------------------
@@ -245,6 +269,23 @@ const RULES: readonly EnvRule[] = [
     check: (env) =>
       env.VERCEL_ENV === "production" && env.EXTERNAL_MODE === "fixtures"
         ? 'EXTERNAL_MODE must not be "fixtures" in the Vercel production environment'
+        : null,
+  },
+  {
+    about: ["FIXTURES_NOW"],
+    reads: ["VERCEL_ENV"],
+    check: (env) =>
+      env.VERCEL_ENV === "production" && env.FIXTURES_NOW
+        ? "FIXTURES_NOW must not be set in the Vercel production environment"
+        : null,
+  },
+  {
+    about: ["RATE_LIMITS"],
+    reads: ["VERCEL_ENV", "EXTERNAL_MODE"],
+    check: (env) =>
+      env.RATE_LIMITS === "off" &&
+      (env.VERCEL_ENV === "production" || env.EXTERNAL_MODE !== "fixtures")
+        ? 'RATE_LIMITS=off is a test setting: it needs EXTERNAL_MODE=fixtures and is rejected on Vercel production'
         : null,
   },
   {

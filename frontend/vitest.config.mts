@@ -17,8 +17,9 @@ export default defineConfig({
     unstubEnvs: true,
     restoreMocks: true,
     // Outside services are served from tests/fixtures/external: unit and integration tests never use the network
-    // (PLAN §4.1.10). A test that needs live data does not belong in this suite.
-    env: { EXTERNAL_MODE: "fixtures" },
+    // (PLAN §4.1.10). A test that needs live data does not belong in this suite. Server "now" (server/clock.ts) is
+    // pinned to the day the fixtures were recorded; a test moves it with vi.stubEnv("FIXTURES_NOW", ...).
+    env: { EXTERNAL_MODE: "fixtures", FIXTURES_NOW: "2026-09-30T12:00:00-04:00" },
     projects: [
       {
         extends: true,

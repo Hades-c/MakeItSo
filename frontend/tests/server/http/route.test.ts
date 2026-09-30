@@ -13,6 +13,7 @@ import { SectionSchema } from "@/lib/types/catalog";
 import { resetEnvCache } from "@/server/env";
 import {
   ApiError,
+  consumeRateLimit,
   defineRoute,
   isDefinedRoute,
   isVerifiedDavidson,
@@ -514,5 +515,31 @@ describe("defineRoute: rate limits", () => {
     expect(Number(third.headers.get("retry-after"))).toBeGreaterThan(0);
     expect((await errorOf(third)).code).toBe("rate_limited");
     expect(await mongoose.connection.db!.collection("ratelimits").countDocuments()).toBe(1);
+  });
+
+  it("RATE_LIMITS=off (the e2e server) skips every limit without touching the database", async () => {
+    vi.stubEnv("RATE_LIMITS", "off");
+    const limited = defineRoute(
+      {
+        method: "GET",
+        auth: "public",
+        rateLimit: { name: "test-register", limit: 1, windowSec: 3600, by: "ip" },
+      },
+      () => ({ ok: true }),
+    );
+    for (let i = 0; i < 5; i++) {
+      expect((await limited(new Request(`${ORIGIN}/x`))).status).toBe(200);
+    }
+    expect(await consumeRateLimit("verify-resend:user:u1", 3, 3600)).toMatchObject({
+      allowed: true,
+    });
+    expect(await mongoose.connection.db!.collection("ratelimits").countDocuments()).toBe(0);
+
+    // Outside fixtures mode the knob is a configuration error (500), never a silent bypass.
+    vi.stubEnv("EXTERNAL_MODE", "live");
+    resetEnvCache();
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect((await limited(new Request(`${ORIGIN}/x`))).status).toBe(500);
+    expect(log).toHaveBeenCalled();
   });
 });

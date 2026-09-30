@@ -50,6 +50,8 @@ describe("getEnv", () => {
       CRON_SECRET: undefined,
       ADMIN_EMAILS: [],
       EXTERNAL_MODE: "live",
+      FIXTURES_NOW: undefined,
+      RATE_LIMITS: "on",
       ANTHROPIC_API_KEY: undefined,
       AI_PROVIDER: "anthropic",
       AI_ENABLED: true,
@@ -235,6 +237,39 @@ describe("production checks (PLAN §2)", () => {
       "mock",
     );
     expect(getEnv({ ...production, EXTERNAL_MODE: "fixtures" }).EXTERNAL_MODE).toBe("fixtures");
+  });
+
+  it("allows the test knobs FIXTURES_NOW and RATE_LIMITS=off only where tests run", () => {
+    const e2e = { ...production, EXTERNAL_MODE: "fixtures" };
+    const env = getEnv({ ...e2e, FIXTURES_NOW: "2026-09-30T12:00:00-04:00", RATE_LIMITS: "off" });
+    expect([env.FIXTURES_NOW, env.RATE_LIMITS]).toEqual(["2026-09-30T12:00:00-04:00", "off"]);
+
+    expect(problemsOf(() => getEnv({ ...production, RATE_LIMITS: "off" }))).toEqual([
+      expect.stringMatching(/RATE_LIMITS=off is a test setting/),
+    ]);
+    expect(problemsOf(() => getEnv({ ...valid, RATE_LIMITS: "off" }))).toHaveLength(1);
+    expect(
+      problemsOf(() =>
+        getEnv({
+          ...e2e,
+          VERCEL_ENV: "production",
+          FIXTURES_NOW: "2026-09-30T12:00:00-04:00",
+          RATE_LIMITS: "off",
+        }),
+      ),
+    ).toEqual([
+      expect.stringMatching(/EXTERNAL_MODE/),
+      expect.stringMatching(/FIXTURES_NOW/),
+      expect.stringMatching(/RATE_LIMITS/),
+    ]);
+    expect(() => readEnv("RATE_LIMITS", { RATE_LIMITS: "off" })).toThrow(/EXTERNAL_MODE=fixtures/);
+    expect(readEnv("RATE_LIMITS", { RATE_LIMITS: "off", EXTERNAL_MODE: "fixtures" })).toBe("off");
+    expect(problemsOf(() => getEnv({ ...valid, FIXTURES_NOW: "2026-09-30" }))).toEqual([
+      expect.stringMatching(/^FIXTURES_NOW must be an ISO date-time with an offset/),
+    ]);
+    expect(problemsOf(() => getEnv({ ...valid, RATE_LIMITS: "sometimes" }))).toEqual([
+      'RATE_LIMITS must be "on" or "off"',
+    ]);
   });
 
   it("requires MAIL_API_KEY and MAIL_FROM for the resend mailer", () => {

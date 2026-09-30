@@ -22,7 +22,8 @@ import { notImplemented } from "@/server/http/errors";
  */
 
 export interface ResolveTermsOptions {
-  /** Evaluate "current" and "registration" at this instant (default now). */
+  /** Evaluate "current" and "registration" at this instant (default: `now()` from server/clock.ts, which is pinned
+   * by FIXTURES_NOW in fixtures mode; never `new Date()` directly). */
   now?: Date;
 }
 

@@ -138,6 +138,8 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `CRON_SECRET`           | for cron     | Bearer secret Vercel Cron sends (≥ 16 characters). Cron routes answer 503 without it                      |
 | `ADMIN_EMAILS`          | no           | Comma-separated addresses allowed on admin routes (with a verified mailbox)                               |
 | `EXTERNAL_MODE`         | no           | `live` (default) or `fixtures` (serve `tests/fixtures/external`; tests, e2e, CI)                          |
+| `FIXTURES_NOW`          | tests only   | With `fixtures`: pins server "now" (`server/clock.ts`); vitest and e2e use `2026-09-30T12:00:00-04:00`    |
+| `RATE_LIMITS`           | tests only   | `on` (default) or `off` (skip rate limits; needs `EXTERNAL_MODE=fixtures`; the e2e server sets it)        |
 | `FEATURE_CAREERS`       | no           | Careers pages on/off. Default `true`                                                                      |
 | `FEATURE_EVENTS`        | no           | Events page and feeds on/off. Default `true`                                                              |
 | `FEATURE_ALUMNI`        | no           | Alumni directory on/off. Default `true`                                                                   |
@@ -146,8 +148,9 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `RMP_SUMMARIES_ENABLED` | no           | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)                           |
 
 Production (`next start` and every Vercel deployment) also checks that the Vercel production environment does not
-use `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures` or the console mailer. A bad value fails the request that needs it
-with a 500 and a server log naming the variable; it never fails the build.
+use `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures`, the console mailer or `FIXTURES_NOW`, and `RATE_LIMITS=off` is
+refused anywhere without `EXTERNAL_MODE=fixtures`. A bad value fails the request that needs it with a 500 and a
+server log naming the variable; it never fails the build.
 
 ### Scripts (run in `frontend/`)
 

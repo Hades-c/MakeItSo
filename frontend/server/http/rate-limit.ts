@@ -7,7 +7,13 @@ import { ApiError, isDuplicateKeyError } from "@/server/http/errors";
 /**
  * Atomic fixed-window rate limiting on MongoDB (PLAN §6.1 W3): one counter document per (key, window), incremented
  * with `findOneAndUpdate({$inc}, {upsert})`, removed by a TTL index when the window ends. Used by defineRoute's
- * `rateLimit` option and directly by services (e.g. per-account login backoff).
+ * `rateLimit` option and directly by services (e.g. per-account login backoff, the verification-code resend limit
+ * `verify-resend:user:<id>` at 3 per hour).
+ *
+ * Test knob: RATE_LIMITS=off (server/env.ts; only with EXTERNAL_MODE=fixtures, never on Vercel production) makes
+ * every check pass without touching the database. The Playwright server sets it: off Vercel every request shares
+ * the "local" client-IP bucket, and the suite registers and signs in far more often than the real limits allow.
+ * Unit tests keep limits on (the default) and test them directly.
  */
 
 export interface RateLimitRule {
@@ -28,6 +34,11 @@ export interface RateLimitResult {
   retryAfterSec: number;
 }
 
+/** True when RATE_LIMITS=off (tests only; see the module comment). */
+export function rateLimitsOff(): boolean {
+  return readEnv("RATE_LIMITS") === "off";
+}
+
 /** Count one hit on `key` and say whether it is within `limit` for the current `windowSec` window. */
 export async function consumeRateLimit(
   key: string,
@@ -35,6 +46,7 @@ export async function consumeRateLimit(
   windowSec: number,
   now: Date = new Date(),
 ): Promise<RateLimitResult> {
+  if (rateLimitsOff()) return { allowed: true, count: 0, remaining: limit, retryAfterSec: 0 };
   await getDb();
   const windowMs = windowSec * 1000;
   const windowStart = new Date(Math.floor(now.getTime() / windowMs) * windowMs);
@@ -82,6 +94,7 @@ export async function enforceRateLimits(
   request: Request,
   userId: string | null,
 ): Promise<void> {
+  if (rateLimitsOff()) return;
   for (const rule of rules) {
     const subject = rule.by === "user" && userId ? `user:${userId}` : `ip:${clientIp(request)}`;
     const result = await consumeRateLimit(`${rule.name}:${subject}`, rule.limit, rule.windowSec);

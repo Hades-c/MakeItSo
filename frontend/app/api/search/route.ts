@@ -1,5 +1,6 @@
 import { searchApi } from "@/lib/api/search";
 import { getFlags } from "@/lib/flags";
+import { now } from "@/server/clock";
 import { defineRoute, isVerifiedDavidson } from "@/server/http";
 import { search } from "@/server/search";
 
@@ -10,7 +11,7 @@ export const GET = defineRoute(searchApi.search, async ({ user, query }) => {
     user,
     flags: getFlags(),
     isVerifiedDavidson: () => (verified ??= isVerifiedDavidson(user.id)),
-    now: new Date(),
+    now: now(),
   });
   return { results };
 });

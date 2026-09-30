@@ -41,6 +41,7 @@ export {
   clientIp,
   consumeRateLimit,
   enforceRateLimits,
+  rateLimitsOff,
   type RateLimitResult,
   type RateLimitRule,
 } from "./rate-limit";
