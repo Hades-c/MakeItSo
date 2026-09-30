@@ -307,12 +307,14 @@ function ProgramRows({
   const id = FIELDS[field].id;
   const label = FIELDS[field].label;
   const errorId = error ? `${id}-error` : undefined;
+  // min-w-0: a fieldset is at least as wide as its content by default, which let a long official name push the
+  // row off the side of a phone screen.
   return (
     <fieldset
       id={id}
       tabIndex={-1}
       aria-describedby={errorId}
-      className="flex flex-col gap-2 rounded-md outline-none"
+      className="flex min-w-0 flex-col gap-2 rounded-md outline-none"
     >
       <legend className="mb-1.5 text-sm font-semibold text-fg">{label}</legend>
       {rows.length === 0 ? (

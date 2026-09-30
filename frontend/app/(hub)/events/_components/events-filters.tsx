@@ -112,7 +112,7 @@ export function EventsFilters({ view }: EventsFiltersProps) {
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:gap-x-8">
-        <fieldset>
+        <fieldset className="min-w-0">
           <legend className={LEGEND}>When</legend>
           <div className="flex flex-wrap gap-2">
             {EVENT_RANGES.map((value) => (
@@ -134,7 +134,7 @@ export function EventsFilters({ view }: EventsFiltersProps) {
           </div>
         </fieldset>
 
-        <fieldset>
+        <fieldset className="min-w-0">
           <legend className={LEGEND}>Show</legend>
           <div className="flex flex-wrap gap-2">
             {EVENT_KINDS.map((value) => (
@@ -157,7 +157,7 @@ export function EventsFilters({ view }: EventsFiltersProps) {
           </div>
         </fieldset>
 
-        <fieldset aria-describedby="events-sources-hint">
+        <fieldset className="min-w-0" aria-describedby="events-sources-hint">
           <legend className={LEGEND}>Sources</legend>
           <div className="flex flex-wrap gap-2">
             {EVENT_SOURCE_IDS.map((value) => (
