@@ -19,6 +19,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("next-auth/react", () => ({ signIn: nextAuth.signIn }));
 vi.mock("@/app/(hub)/profile/_lib/navigate", () => nav);
 
+// Radix Select flows are many real user events each; the default 5 s is tight on a busy machine.
+vi.setConfig({ testTimeout: 20_000 });
+
 const NOW = "2026-09-30T16:00:00.000Z";
 const TZ = "America/New_York";
 
