@@ -189,9 +189,18 @@ export const CALENDAR_CATEGORIES = [
   "other",
 ] as const;
 
+/** Source tags an academic-calendar row can carry (curated kind). */
+export const CALENDAR_EVENT_SOURCES = [
+  "registrar",
+  "davidson-offices",
+] as const satisfies readonly SourceId[];
+export type CalendarEventSource = (typeof CALENDAR_EVENT_SOURCES)[number];
+
 /**
- * One Registrar academic-calendar entry (source tag: REGISTRAR). Dates are America/New_York calendar dates;
- * `time` (24 h ET) is the opening/at time when the Registrar gives one ("WebTree opens Oct 12 at 7 a.m.").
+ * One academic-calendar entry. Dates are America/New_York calendar dates; `time` (24 h ET) is the opening/at time
+ * when the page gives one ("WebTree opens Oct 12 at 7 a.m."). `source` is the row's stored tag (PLAN §5: tag text
+ * comes from the item's stored source): REGISTRAR for rows from Registrar pages, DAVIDSON OFFICES for rows from
+ * other offices' pages (HR holidays, Residence Life, the CIS application; the card names the office).
  */
 export const CalendarEventSchema = SourcedSchema.extend({
   id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -203,6 +212,7 @@ export const CalendarEventSchema = SourcedSchema.extend({
   termCode: TermCodeSchema,
   audience: z.string().nullable(),
   description: z.string(),
+  source: z.enum(CALENDAR_EVENT_SOURCES),
 }).strict();
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>;
 

@@ -6,6 +6,7 @@ import {
   CalendarEventSchema,
   type CALENDAR_CATEGORIES,
   type CalendarEvent,
+  type CalendarEventSource,
 } from "@/lib/types/content";
 import {
   addDays,
@@ -37,9 +38,9 @@ import {
  * - Known discrepancy: the calendar gives Aug 28, 2026 for removing Summer 2026 incompletes while the Incomplete
  *   Courses page says "Summer - September 1st"; the calendar date is used.
  *
- * Source tag: REGISTRAR for rows from Registrar pages (the calendar, the Academic Regulations, personal leave, the
- * Banner terms), DAVIDSON OFFICES for rows from other offices' pages (HR holidays, Residence Life, CIS): see
- * calendarEventSource(), which reads a row's first source. Any other page a description quotes (the WebTree
+ * Source tag (stored as `source` on every row): REGISTRAR for rows from Registrar pages (the calendar, the Academic
+ * Regulations, personal leave, the Banner terms), DAVIDSON OFFICES for rows from other offices' pages (HR holidays,
+ * Residence Life, CIS): see calendarSourceForUrls(), which reads a row's first source. Any other page a description quotes (the WebTree
  * overview, the self-scheduled exam procedures, the Academic Regulations) is listed after it.
  * Faculty/staff-only rows (textbooks, grades due, chair reviews, office closures) are kept with their audience;
  * the student views leave them out (isStudentFacing()).
@@ -1266,12 +1267,30 @@ const EVENTS = [
     sources: [REGISTRAR_CALENDAR_2026_27],
     verifiedAt: "2026-09-30",
   },
-] satisfies z.input<typeof CalendarEventSchema>[];
+] satisfies Omit<z.input<typeof CalendarEventSchema>, "source">[];
+
+const REGISTRAR_SOURCE_PREFIXES = [
+  "https://www.davidson.edu/offices-and-services/registrar/",
+  ACADEMIC_REGULATIONS_2026_27,
+  BANNER_TERMS,
+];
+
+/**
+ * The truthful source tag for a row from its sources (the first is the row's own page): REGISTRAR for Registrar
+ * pages (the calendar, the Academic Regulations, personal leave, the Banner terms), DAVIDSON OFFICES for other
+ * offices' pages. Stored on every row as `source` when the module loads.
+ */
+export function calendarSourceForUrls(sources: readonly string[]): CalendarEventSource {
+  const url = sources[0] ?? "";
+  return REGISTRAR_SOURCE_PREFIXES.some((prefix) => url.startsWith(prefix))
+    ? "registrar"
+    : "davidson-offices";
+}
 
 export const ACADEMIC_CALENDAR: readonly CalendarEvent[] = defineContent(
   "academic-calendar",
   CalendarEventSchema,
-  EVENTS,
+  EVENTS.map((event) => ({ ...event, source: calendarSourceForUrls(event.sources) })),
   (event) => event.id,
 );
 
@@ -1310,20 +1329,9 @@ export function isStudentFacing(event: CalendarEvent): boolean {
   return !parts.every((part) => STAFF_AUDIENCE.test(part));
 }
 
-const REGISTRAR_SOURCE_PREFIXES = [
-  "https://www.davidson.edu/offices-and-services/registrar/",
-  ACADEMIC_REGULATIONS_2026_27,
-  BANNER_TERMS,
-];
-
-/** The truthful source tag of a row: REGISTRAR for Registrar pages, DAVIDSON OFFICES for other offices' pages. */
-export function calendarEventSource(
-  event: CalendarEvent,
-): Extract<SourceId, "registrar" | "davidson-offices"> {
-  const url = event.sources[0] ?? "";
-  return REGISTRAR_SOURCE_PREFIXES.some((prefix) => url.startsWith(prefix))
-    ? "registrar"
-    : "davidson-offices";
+/** The row's source tag (its stored `source`; kept for the callers that name it). */
+export function calendarEventSource(event: CalendarEvent): CalendarEventSource {
+  return event.source;
 }
 
 export interface CalendarQueryOptions {

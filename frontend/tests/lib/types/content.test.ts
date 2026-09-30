@@ -172,23 +172,32 @@ describe("content types (PLAN §4.1.6)", () => {
   });
 
   it("fits calendar events, programs and portal links", () => {
-    expect(
-      CalendarEventSchema.parse({
-        id: "s27-webtree-opens",
-        title: "WebTree opens",
-        category: "registration",
-        start: "2026-10-12",
-        end: null,
-        time: "07:00",
-        termCode: "202602",
-        audience: null,
-        description: "WebTree preferences open at 7 a.m.",
-        sources: [
-          "https://www.davidson.edu/offices-and-services/registrar/academic-calendars/2026-2027",
-        ],
-        verifiedAt: "2026-09-30",
-      }).time,
-    ).toBe("07:00");
+    const webtree = {
+      id: "s27-webtree-opens",
+      title: "WebTree opens",
+      category: "registration",
+      start: "2026-10-12",
+      end: null,
+      time: "07:00",
+      termCode: "202602",
+      audience: null,
+      description: "WebTree preferences open at 7 a.m.",
+      source: "registrar",
+      sources: [
+        "https://www.davidson.edu/offices-and-services/registrar/academic-calendars/2026-2027",
+      ],
+      verifiedAt: "2026-09-30",
+    };
+    expect(CalendarEventSchema.parse(webtree).time).toBe("07:00");
+    // The stored tag is REGISTRAR or DAVIDSON OFFICES, and required.
+    expect(CalendarEventSchema.parse({ ...webtree, source: "davidson-offices" }).source).toBe(
+      "davidson-offices",
+    );
+    const { source: _source, ...untagged } = webtree;
+    expect(CalendarEventSchema.safeParse(untagged).success).toBe(false);
+    expect(CalendarEventSchema.safeParse({ ...webtree, source: "matthews-center" }).success).toBe(
+      false,
+    );
     expect(
       ProgramSchema.parse({
         slug: "summer-internship-grants",

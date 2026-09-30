@@ -7,6 +7,7 @@ import {
   calendarDeadlinesBetween,
   calendarEventSource,
   calendarForTerm,
+  calendarSourceForUrls,
   eventEndDay,
   getCalendarEvent,
   isStudentFacing,
@@ -124,6 +125,13 @@ describe("academic calendar data", () => {
     expect(calendarEventSource(event("f26-halls-close"))).toBe("davidson-offices"); // Residence Life
     expect(calendarEventSource(event("s27-cis-application"))).toBe("davidson-offices");
     expect(calendarEventSource(event("s27-easter-holiday-offices"))).toBe("davidson-offices"); // HR
+    // The tag is stored on every row (CalendarEvent.source), by the rule on the row's own page.
+    for (const row of ACADEMIC_CALENDAR) {
+      expect([row.id, row.source]).toEqual([row.id, calendarSourceForUrls(row.sources)]);
+      expect(calendarEventSource(row)).toBe(row.source);
+    }
+    expect(ACADEMIC_CALENDAR.filter((row) => row.source === "davidson-offices")).toHaveLength(13);
+    expect(calendarSourceForUrls([])).toBe("davidson-offices");
   });
 
   it("lists no single religious observance as a student holiday", () => {
