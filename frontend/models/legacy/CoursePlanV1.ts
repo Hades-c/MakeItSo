@@ -1,5 +1,7 @@
 /**
- * READ-ONLY. NEVER WRITE.
+ * READ-ONLY. NEVER WRITE — with ONE exception: account deletion erases the student's own documents
+ * (`deleteMany` by userId, the "courseplans-legacy" built-in in server/account/erasers.ts). Nothing else inserts,
+ * updates or deletes here.
  *
  * The hackathon (v1) course plan in the legacy `courseplans` collection. New code never writes it (PLAN §4 "New
  * data goes only to new collections"): the v2 plan lives in `plans` (models/Plan.ts), and server/plan's
