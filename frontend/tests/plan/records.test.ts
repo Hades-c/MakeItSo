@@ -243,8 +243,12 @@ describe("AI drafts", () => {
     ]);
     expect((await listDrafts(user))[0]?.status).toBe("accepted");
     expect((await getPlan(user)).items).toHaveLength(4);
-    // Accepting again adds nothing new.
-    expect((await updateDraftStatus(user, draft.id, "accepted")).added).toEqual([]);
+    // One-way: accepting again (a double submit or a replay) is a 409 that adds nothing.
+    expect(await rejection(updateDraftStatus(user, draft.id, "accepted"))).toMatchObject({
+      status: 409,
+      message: "This draft was already accepted.",
+    });
+    expect((await getPlan(user)).items).toHaveLength(4);
   });
 
   it("dismisses, and 404s unknown drafts", async () => {

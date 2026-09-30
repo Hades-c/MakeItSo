@@ -32,8 +32,9 @@ import {
 import { conflictWindowLabel, detectConflictsImpl } from "@/server/plan/conflicts";
 import { loadPlanContext, userObjectId } from "@/server/plan/context";
 import { readLegacyPlanImpl } from "@/server/plan/legacy";
-import { isCompMet } from "@/server/plan/requirements";
+import { isCompMet, isSameDegreeCourse } from "@/server/plan/requirements";
 import { courseRestrictionWarnings, sectionRestrictionWarnings } from "@/server/plan/restrictions";
+import { classesBegun } from "@/server/plan/schedule";
 import {
   ensurePlanDoc,
   itemFromDoc,
@@ -54,9 +55,14 @@ import {
  *   - add:    findOneAndUpdate({ userId, items: { $not: { $elemMatch: { termCode, canonicalCode, status ∈ active } } },
  *             "items.<max-1>": { $exists: false } }, { $push }) — a concurrent duplicate simply does not match (409);
  *   - remove: $pull by id;
- *   - patch:  $set through the filtered positional operator (items.$[it].field) on the whitelisted fields
- *             (termCode, crn, status, passFail, note) and the catalog facts they imply, guarded by the item's
- *             current key fields and, when the key changes, by "no other active item has the new key".
+ *   - patch:  $set through the filtered positional operator (items.$[it].field) on exactly the fields the patch
+ *             names (status, passFail, note), plus, when the listing changes (a new CRN or term), the term, the CRN
+ *             and the catalog facts they imply. The filter guards the item's key fields (and, for a listing change,
+ *             its stored CRN and code), so a concurrent change to what the write was computed from makes it miss and
+ *             retry; "no other active item has the key" guards reactivations and moves. Fields the patch does not
+ *             name are never written, so concurrent patches of different fields all survive.
+ * A v2 document is written only once a change is certain: validation, 404s and 409s come first (a legacy
+ * student's plan stays in memory until then).
  * The duplicate key is (termCode, canonicalCode) among items that are not dropped/failed/withdrawn. The same code
  * in another term is always allowed (retakes, ensembles, topics courses): the answer warns instead.
  *
@@ -81,15 +87,38 @@ function invalid(message: string, path?: string): ApiError {
   return new ApiError(400, "validation_failed", message, path ? [{ path, message }] : undefined);
 }
 
-/** The student's items now (v2, else the legacy conversion, else none): the snapshot warnings are computed on. */
-async function currentItems(userId: string, oid: mongoose.Types.ObjectId): Promise<PlanItem[]> {
+function itemsOf(doc: Record<string, unknown> | null): PlanItem[] {
+  return Array.isArray(doc?.items)
+    ? (doc.items as Record<string, unknown>[]).flatMap((raw) => itemFromDoc(raw) ?? [])
+    : [];
+}
+
+/**
+ * The student's items now (v2, else the legacy conversion, else none): the snapshot validation and warnings are
+ * computed on. `stored` is false while the plan is only the in-memory legacy view (or empty).
+ */
+async function currentItems(
+  userId: string,
+  oid: mongoose.Types.ObjectId,
+): Promise<{ items: PlanItem[]; stored: boolean }> {
   const doc = await readPlanDoc(oid, { items: 1 });
-  if (doc) {
-    return Array.isArray(doc.items)
-      ? (doc.items as Record<string, unknown>[]).flatMap((raw) => itemFromDoc(raw) ?? [])
-      : [];
-  }
-  return (await readLegacyPlanImpl(userId))?.items ?? [];
+  if (doc) return { items: itemsOf(doc), stored: true };
+  return { items: (await readLegacyPlanImpl(userId))?.items ?? [], stored: false };
+}
+
+function notInPlan(): ApiError {
+  return new ApiError(404, "not_found", "That course is not in your plan.");
+}
+
+/** Same key: the (termCode, canonicalCode) of another active item. */
+function takenBy(items: readonly PlanItem[], item: PlanItem): PlanItem | undefined {
+  return items.find(
+    (other) =>
+      other.id !== item.id &&
+      other.termCode === item.termCode &&
+      other.canonicalCode === item.canonicalCode &&
+      ACTIVE.has(other.status),
+  );
 }
 
 function sameCourse(a: Pick<PlanItem, "courseCode" | "canonicalCode">, b: typeof a): boolean {
@@ -154,7 +183,19 @@ interface WarningInput {
   others: readonly PlanItem[];
   context: PlanContext;
   at: Date;
-  terms: ResolvedTerms;
+  /** The catalog's terms; null when they could not be loaded (a patch that needs no catalog still succeeds). */
+  terms: ResolvedTerms | null;
+  /** The stored CRN no longer resolves in the item's term (a cancelled or renumbered section). */
+  staleCrn?: boolean;
+}
+
+/** A section lookup for warnings only: a catalog failure means no warning, never a failed change. */
+async function sectionForWarnings(termCode: TermCode, crn: string): Promise<Section | null> {
+  try {
+    return await lookupSection(termCode, crn);
+  } catch {
+    return null;
+  }
 }
 
 /** Warnings for an item as it would be stored (retake, restrictions, unverified, NSCI, P/F, time conflicts). */
@@ -165,6 +206,7 @@ async function itemWarnings(input: WarningInput): Promise<PlanWarning[]> {
   const active = ACTIVE.has(item.status);
 
   if (active) {
+    const byTerm = (a: PlanItem, b: PlanItem) => (a.termCode ?? "").localeCompare(b.termCode ?? "");
     const completed = others
       .filter(
         (other) =>
@@ -172,8 +214,17 @@ async function itemWarnings(input: WarningInput): Promise<PlanWarning[]> {
           other.termCode !== item.termCode &&
           sameCourse(other, item),
       )
-      .sort((a, b) => (a.termCode ?? "").localeCompare(b.termCode ?? ""));
+      .sort(byTerm);
     const last = completed[completed.length - 1];
+    // The same course planned or taken in another term: it counts once (server/plan/requirements.ts).
+    const copy = others
+      .filter(
+        (other) =>
+          ACTIVE.has(other.status) &&
+          other.termCode !== item.termCode &&
+          isSameDegreeCourse(other, item),
+      )
+      .sort(byTerm)[0];
     if (last) {
       out.push({
         code: "already-completed",
@@ -182,13 +233,28 @@ async function itemWarnings(input: WarningInput): Promise<PlanWarning[]> {
           : `Already counted as AP/transfer credit — plan a retake?`,
         ...ref,
       });
+    } else if (copy) {
+      out.push({
+        code: "already-completed",
+        message: `${item.courseCode} is also ${copy.termCode ? `in your ${termLabel(copy.termCode)} plan` : "listed as AP/transfer credit"} — a course counts once toward the degree unless it may be repeated for credit.`,
+        ...ref,
+      });
     }
+  }
+
+  if (input.staleCrn && active && item.crn && item.termCode) {
+    out.push({
+      code: "unverified-course",
+      message: `CRN ${item.crn} is no longer in the ${termLabel(item.termCode)} schedule: pick another section of ${item.courseCode}, or clear the CRN.`,
+      ...ref,
+    });
   }
 
   if (REGISTERING.has(item.status) && item.termCode && facts?.sameTerm) {
     const restriction = {
       standing: standingForTerm(context, item.termCode, at),
       compMet: isCompMet(others, item.termCode),
+      classesBegun: classesBegun(terms, item.termCode, at),
       ...ref,
     };
     out.push(
@@ -204,7 +270,13 @@ async function itemWarnings(input: WarningInput): Promise<PlanWarning[]> {
       message: `${item.courseCode} is not in the Davidson course data; it is saved as an unverified entry.`,
       ...ref,
     });
-  } else if (facts && !facts.sameTerm && item.termCode && isPublished(terms, item.termCode)) {
+  } else if (
+    facts &&
+    !facts.sameTerm &&
+    item.termCode &&
+    terms &&
+    isPublished(terms, item.termCode)
+  ) {
     out.push({
       code: "unverified-course",
       message: `${item.courseCode} is not in the ${termLabel(item.termCode)} schedule — check the term. Title and credits come from ${termLabel(facts.termCode)}.`,
@@ -259,7 +331,7 @@ async function itemWarnings(input: WarningInput): Promise<PlanWarning[]> {
       (other) => other.termCode === item.termCode && other.crn && ACTIVE.has(other.status),
     );
     const sections = (
-      await Promise.all(neighbours.map((other) => lookupSection(item.termCode!, other.crn!)))
+      await Promise.all(neighbours.map((other) => sectionForWarnings(item.termCode!, other.crn!)))
     ).filter((s): s is Section => s !== null);
     for (const conflict of detectConflictsImpl([section, ...sections])) {
       if (conflict.a.crn !== section.crn && conflict.b.crn !== section.crn) continue;
@@ -286,25 +358,17 @@ async function explainNoMatch(
   item: PlanItem,
   checkFull: boolean,
 ): Promise<ApiError> {
-  const doc = await readPlanDoc(oid, { items: 1 });
-  const items = Array.isArray(doc?.items)
-    ? (doc.items as Record<string, unknown>[]).flatMap((raw) => itemFromDoc(raw) ?? [])
-    : [];
-  if (checkFull && items.length >= MAX_PLAN_ITEMS) {
-    return new ApiError(
-      409,
-      "conflict",
-      `Your plan holds the maximum of ${MAX_PLAN_ITEMS} courses. Remove some before adding more.`,
-    );
-  }
-  const existing = items.find(
-    (other) =>
-      other.id !== item.id &&
-      other.termCode === item.termCode &&
-      other.canonicalCode === item.canonicalCode &&
-      ACTIVE.has(other.status),
+  const items = itemsOf(await readPlanDoc(oid, { items: 1 }));
+  if (checkFull && items.length >= MAX_PLAN_ITEMS) return planFull();
+  return new ApiError(409, "conflict", duplicateMessage(item, takenBy(items, item)));
+}
+
+function planFull(): ApiError {
+  return new ApiError(
+    409,
+    "conflict",
+    `Your plan holds the maximum of ${MAX_PLAN_ITEMS} courses. Remove some before adding more.`,
   );
-  return new ApiError(409, "conflict", duplicateMessage(item, existing));
 }
 
 export function parseOr400<S extends z.ZodType>(schema: S, value: unknown): z.output<S> {
@@ -352,7 +416,11 @@ export async function addItemImpl(userId: string, raw: AddPlanItemInput): Promis
     ...(input.note ? { note: input.note } : {}),
   };
 
-  const [others, terms] = await Promise.all([currentItems(userId, oid), catalogTerms()]);
+  const [{ items: others }, terms] = await Promise.all([currentItems(userId, oid), catalogTerms()]);
+  // Answer a full plan or a taken key before anything is written (the update filter below stays the guard).
+  if (others.length >= MAX_PLAN_ITEMS) throw planFull();
+  const taken = ACTIVE.has(item.status) ? takenBy(others, item) : undefined;
+  if (taken) throw new ApiError(409, "conflict", duplicateMessage(item, taken));
   const warnings = await itemWarnings({ item, facts, section, others, context, at, terms });
 
   await ensurePlanDoc(userId, oid, { create: true });
@@ -380,6 +448,25 @@ export async function addItemImpl(userId: string, raw: AddPlanItemInput): Promis
   return { item, warnings };
 }
 
+/** The facts an unchanged listing gives for warnings (best effort: the catalog is not needed for the change). */
+async function factsForWarnings(
+  item: PlanItem,
+): Promise<{ facts: CourseFacts | null; section: Section | null; staleCrn: boolean }> {
+  const none = { facts: null, section: null, staleCrn: false };
+  if (item.unverified || !item.termCode) return none;
+  try {
+    if (item.crn) {
+      const section = await lookupSection(item.termCode, item.crn);
+      return section
+        ? { facts: factsFromSection(section), section, staleCrn: false }
+        : { ...none, staleCrn: true };
+    }
+    return { ...none, facts: await lookupCourse(item.termCode, item.courseCode) };
+  } catch {
+    return none;
+  }
+}
+
 export async function updateItemImpl(
   userId: string,
   itemId: string,
@@ -387,146 +474,157 @@ export async function updateItemImpl(
 ): Promise<AddItemResult> {
   const patch = parseOr400(UpdatePlanItemBodySchema, raw);
   const oid = userObjectId(userId);
-  if (!mongoose.isValidObjectId(itemId))
-    throw new ApiError(404, "not_found", "That course is not in your plan.");
+  if (!mongoose.isValidObjectId(itemId)) throw notInPlan();
   const itemOid = new mongoose.Types.ObjectId(itemId);
   const at = now();
   const context = await loadPlanContext(userId, at);
-  if (!(await ensurePlanDoc(userId, oid, { create: false }))) {
-    throw new ApiError(404, "not_found", "That course is not in your plan.");
-  }
-  const terms = await catalogTerms();
+  let terms: ResolvedTerms | null | undefined;
+  const warningTerms = async () =>
+    terms !== undefined ? terms : (terms = await catalogTerms().catch(() => null));
+  const note = patch.note === undefined ? undefined : patch.note || null;
 
   for (let attempt = 0; attempt < UPDATE_ATTEMPTS; attempt += 1) {
-    const items = await currentItems(userId, oid);
+    const { items, stored } = await currentItems(userId, oid);
     const current = items.find((item) => item.id === itemId);
-    if (!current) throw new ApiError(404, "not_found", "That course is not in your plan.");
+    if (!current) throw notInPlan();
     const others = items.filter((item) => item.id !== itemId);
 
     const termCode = patch.termCode !== undefined ? patch.termCode : current.termCode;
     const termChanged = termCode !== current.termCode;
+    const storedCrn = current.crn ?? null;
+    // The listing changes with a new CRN or a move (CRNs belong to one term: a move drops the CRN unless a new
+    // one comes with it). Only then is the catalog asked, so a stored CRN that has since left the schedule never
+    // blocks a status, P/F or note change.
+    const relist = termChanged || (patch.crn !== undefined && patch.crn !== storedCrn);
     if (termChanged) checkTerm(context, termCode, current.source);
-    // CRNs belong to one term: moving an item drops its CRN unless a new one comes with the move.
-    const crn = patch.crn !== undefined ? patch.crn : termChanged ? null : (current.crn ?? null);
+    const crn = patch.crn !== undefined ? patch.crn : termChanged ? null : storedCrn;
 
     let facts: CourseFacts | null = null;
     let section: Section | null = null;
-    if (crn) {
-      section = await sectionFor(termCode, crn, current);
-      facts = factsFromSection(section);
-    } else if (termChanged || (current.crn && patch.crn === null)) {
-      facts = await lookupCourse(termCode, current.courseCode);
-    }
-    const derived = facts
-      ? {
-          courseCode: facts.courseCode,
-          canonicalCode: facts.canonicalCode,
-          title: facts.title,
-          credits: facts.credits,
-          reqCodes: facts.reqCodes,
-          unverified: false,
-        }
-      : {
-          courseCode: current.courseCode,
-          canonicalCode: current.canonicalCode,
-          title: current.title,
-          credits: current.credits,
-          reqCodes: current.reqCodes,
-          unverified: current.unverified,
-        };
-    const note = patch.note !== undefined ? patch.note || null : (current.note ?? null);
-    const next: PlanItem = {
-      id: current.id,
-      termCode,
-      ...derived,
-      ...(crn ? { crn } : {}),
-      status: patch.status ?? current.status,
-      passFail: patch.passFail ?? current.passFail,
-      source: current.source,
-      ...(note ? { note } : {}),
-    };
-    if (!facts && !current.unverified && next.termCode) {
-      // Unchanged listing: the facts for warnings (restrictions) come from the catalog as stored.
-      section = next.crn ? await lookupSection(next.termCode, next.crn) : null;
-      facts = section ? factsFromSection(section) : null;
+    if (relist) {
+      if (crn) {
+        section = await sectionFor(termCode, crn, current);
+        facts = factsFromSection(section);
+      } else {
+        facts = await lookupCourse(termCode, current.courseCode);
+      }
     }
 
-    const set: Record<string, unknown> = {
-      "items.$[it].termCode": next.termCode,
-      "items.$[it].courseCode": next.courseCode,
-      "items.$[it].canonicalCode": next.canonicalCode,
-      "items.$[it].title": next.title,
-      "items.$[it].credits": next.credits,
-      "items.$[it].status": next.status,
-      "items.$[it].passFail": next.passFail,
-      "items.$[it].unverified": next.unverified,
-    };
+    const differs =
+      relist ||
+      (patch.status !== undefined && patch.status !== current.status) ||
+      (patch.passFail !== undefined && patch.passFail !== current.passFail) ||
+      (note !== undefined && note !== (current.note ?? null));
+    if (!differs) {
+      // Nothing to change: answer the item as it is (and write nothing, not even a legacy import).
+      const found = await factsForWarnings(current);
+      const warnings = await itemWarnings({
+        item: current,
+        ...found,
+        others,
+        context,
+        at,
+        terms: await warningTerms(),
+      });
+      return { item: current, warnings };
+    }
+
+    // Exactly the fields the patch names, plus the listing and its catalog facts when it changes.
+    const field = (name: string) => `items.$[it].${name}`;
+    const set: Record<string, unknown> = {};
     const unset: Record<string, ""> = {};
-    if (next.crn) set["items.$[it].crn"] = next.crn;
-    else unset["items.$[it].crn"] = "";
-    if (next.note) set["items.$[it].note"] = next.note;
-    else unset["items.$[it].note"] = "";
-    if (next.reqCodes) set["items.$[it].reqCodes"] = next.reqCodes;
-    else unset["items.$[it].reqCodes"] = "";
+    if (patch.status !== undefined) set[field("status")] = patch.status;
+    if (patch.passFail !== undefined) set[field("passFail")] = patch.passFail;
+    if (note !== undefined) {
+      if (note) set[field("note")] = note;
+      else unset[field("note")] = "";
+    }
+    if (relist) {
+      set[field("termCode")] = termCode;
+      if (crn) set[field("crn")] = crn;
+      else unset[field("crn")] = "";
+      if (facts) {
+        set[field("courseCode")] = facts.courseCode;
+        set[field("canonicalCode")] = facts.canonicalCode;
+        set[field("title")] = facts.title;
+        set[field("credits")] = facts.credits;
+        set[field("unverified")] = false;
+        if (facts.reqCodes) set[field("reqCodes")] = facts.reqCodes;
+        else unset[field("reqCodes")] = "";
+      }
+    }
 
-    const filter: Record<string, unknown> = {
-      userId: oid,
-      items: trusted({
-        $elemMatch: {
-          _id: itemOid,
-          termCode: current.termCode,
-          canonicalCode: current.canonicalCode,
-          status: current.status,
-        },
-      }),
+    // Guard what the write was computed from: the key always; the listing (CRN, code) when facts are re-read; the
+    // status when the key check below depends on it. A concurrent change there makes the update miss (retry).
+    const guard: Record<string, unknown> = {
+      _id: itemOid,
+      termCode: current.termCode,
+      canonicalCode: current.canonicalCode,
     };
-    const keyChanged =
-      next.termCode !== current.termCode || next.canonicalCode !== current.canonicalCode;
-    if (ACTIVE.has(next.status) && (keyChanged || !ACTIVE.has(current.status))) {
+    if (relist) {
+      guard.courseCode = current.courseCode;
+      guard.crn = storedCrn; // null also matches a missing field
+    }
+    const nextCanonical = relist && facts ? facts.canonicalCode : current.canonicalCode;
+    const keyChanged = termChanged || nextCanonical !== current.canonicalCode;
+    if (keyChanged && patch.status === undefined) guard.status = current.status;
+    const nextStatus = patch.status ?? current.status;
+    // "No other active item has the key": for a move, a change of listing key, or a status the patch sets.
+    const keyCheck = ACTIVE.has(nextStatus) && (keyChanged || patch.status !== undefined);
+    const filter: Record<string, unknown> = { userId: oid, items: trusted({ $elemMatch: guard }) };
+    if (keyCheck) {
       filter.$nor = [
         {
           items: trusted({
             $elemMatch: {
               _id: { $ne: itemOid },
-              termCode: next.termCode,
-              canonicalCode: next.canonicalCode,
+              termCode,
+              canonicalCode: nextCanonical,
               status: { $in: ACTIVE_LIST },
             },
           }),
         },
       ];
     }
-    const result = await Plan.updateOne(
+    const next: PlanItem = {
+      ...current,
+      termCode,
+      courseCode: relist && facts ? facts.courseCode : current.courseCode,
+      canonicalCode: nextCanonical,
+      status: nextStatus,
+    };
+    const clash = keyCheck ? takenBy(others, next) : undefined;
+    if (clash) throw new ApiError(409, "conflict", duplicateMessage(next, clash));
+
+    // A legacy student's first real change writes v2 now (never earlier).
+    if (!stored) await ensurePlanDoc(userId, oid, { create: false });
+    const updated = await Plan.findOneAndUpdate(
       filter,
-      { $set: set, ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}) },
-      { arrayFilters: [{ "it._id": itemOid }] },
-    );
-    if (result.matchedCount === 1) {
+      {
+        ...(Object.keys(set).length > 0 ? { $set: set } : {}),
+        ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}),
+      },
+      { arrayFilters: [{ "it._id": itemOid }], returnDocument: "after", projection: { items: 1 } },
+    ).lean();
+    if (updated) {
+      const item = itemsOf(updated as Record<string, unknown>).find((entry) => entry.id === itemId);
+      if (!item) throw notInPlan();
+      const found = relist ? { facts, section, staleCrn: false } : await factsForWarnings(item);
       const warnings = await itemWarnings({
-        item: next,
-        facts,
-        section,
+        item,
+        ...found,
         others,
         context,
         at,
-        terms,
+        terms: await warningTerms(),
       });
-      return { item: next, warnings };
+      return { item, warnings };
     }
-    // Not matched: gone, the new key is taken, or the item changed under us (then try again).
-    const fresh = await currentItems(userId, oid);
-    const stillThere = fresh.find((item) => item.id === itemId);
-    if (!stillThere) throw new ApiError(404, "not_found", "That course is not in your plan.");
-    const taken = fresh.find(
-      (item) =>
-        item.id !== itemId &&
-        item.termCode === next.termCode &&
-        item.canonicalCode === next.canonicalCode &&
-        ACTIVE.has(item.status),
-    );
-    if (taken && ACTIVE.has(next.status)) {
-      throw new ApiError(409, "conflict", duplicateMessage(next, taken));
-    }
+    // Not matched: gone, the key is taken, or the item changed under us (then try again).
+    const fresh = itemsOf(await readPlanDoc(oid, { items: 1 }));
+    if (!fresh.some((item) => item.id === itemId)) throw notInPlan();
+    const taken = keyCheck ? takenBy(fresh, next) : undefined;
+    if (taken) throw new ApiError(409, "conflict", duplicateMessage(next, taken));
   }
   throw new ApiError(409, "conflict", "Your plan changed while saving. Please try again.");
 }
@@ -534,7 +632,12 @@ export async function updateItemImpl(
 export async function removeItemImpl(userId: string, itemId: string): Promise<void> {
   const oid = userObjectId(userId);
   if (!mongoose.isValidObjectId(itemId)) return;
-  if (!(await ensurePlanDoc(userId, oid, { create: false }))) return;
+  if (!(await readPlanDoc(oid, { _id: 1 }))) {
+    // A legacy student's first real change writes v2 now; an id that is not in the plan writes nothing.
+    const legacy = await readLegacyPlanImpl(userId);
+    if (!legacy?.items.some((item) => item.id === itemId)) return;
+    if (!(await ensurePlanDoc(userId, oid, { create: false }))) return;
+  }
   await Plan.updateOne(
     { userId: oid },
     { $pull: { items: { _id: new mongoose.Types.ObjectId(itemId) } } },

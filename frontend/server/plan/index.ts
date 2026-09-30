@@ -100,7 +100,11 @@ export async function addItem(userId: string, input: AddPlanItemInput): Promise<
   return addItemImpl(userId, input);
 }
 
-/** Patch whitelisted fields (404 when the item does not exist). */
+/**
+ * Patch whitelisted fields (404 when the item does not exist). Only the fields the patch names are written (plus
+ * the catalog facts of a new CRN or term), so concurrent patches of different fields all survive; a stored CRN that
+ * has left the schedule is a warning, never a reason to refuse a status, P/F or note change.
+ */
 export async function updateItem(
   userId: string,
   itemId: string,
@@ -312,7 +316,10 @@ export async function saveDraft(
   return saveDraftImpl(userId, draft);
 }
 
-/** Accept (adds the draft's items that are not in the plan yet, per course) or dismiss a draft. */
+/**
+ * Accept (adds the draft's items that are not in the plan yet, per course) or dismiss a draft: one-way from
+ * "pending" (409 when the draft was already accepted or dismissed).
+ */
 export async function updateDraftStatus(
   userId: string,
   draftId: string,

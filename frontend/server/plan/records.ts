@@ -17,7 +17,7 @@ import {
 } from "@/lib/types/plan";
 import Plan from "@/models/Plan";
 import { now } from "@/server/clock";
-import { trusted } from "@/server/db";
+import { getDb, trusted } from "@/server/db";
 import { ApiError } from "@/server/http/errors";
 import { lookupCourse } from "@/server/plan/catalog";
 import { loadPlanContext, userObjectId } from "@/server/plan/context";
@@ -117,7 +117,6 @@ export async function updateSummerImpl(
   const oid = userObjectId(userId);
   const id = objectId(activityId, "summer entry");
   if (body.termCode) await checkSummerTerm(userId, body.termCode);
-  if (!(await ensurePlanDoc(userId, oid, { create: false }))) throw notFound("summer entry");
   const set: Raw = {};
   const unset: Record<string, ""> = {};
   for (const key of ["termCode", "title", "kind", "organization", "note"] as const) {
@@ -128,18 +127,29 @@ export async function updateSummerImpl(
     else set[`summer.$[s].${key}`] = value;
   }
   const changes = Object.keys(set).length + Object.keys(unset).length;
-  const updated =
-    changes > 0
-      ? await Plan.findOneAndUpdate(
-          { userId: oid, "summer._id": id },
-          {
-            ...(Object.keys(set).length > 0 ? { $set: set } : {}),
-            ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}),
-          },
-          { arrayFilters: [{ "s._id": id }], returnDocument: "after", projection: { summer: 1 } },
-        ).lean()
-      : // Nothing to change (an empty patch): answer the entry as it is.
-        await Plan.findOne({ userId: oid }, { summer: 1 }).lean();
+  const stored = await readPlanDoc(oid, { summer: 1 });
+  if (!stored) {
+    // Only the in-memory legacy view: the entry must be in it, and v2 is written only for a real change.
+    const legacy = (await readLegacyPlanImpl(userId))?.summer ?? [];
+    const entry = legacy.find((activity) => activity.id === activityId);
+    if (!entry) throw notFound("summer entry");
+    if (changes === 0) return entry;
+    if (!(await ensurePlanDoc(userId, oid, { create: false }))) throw notFound("summer entry");
+  } else if (changes === 0) {
+    // Nothing to change (an empty patch): answer the entry as it is.
+    const raw = rawList(stored, "summer").find((entry) => String(entry._id) === activityId);
+    const activity = raw ? summerFromDoc(raw) : null;
+    if (!activity) throw notFound("summer entry");
+    return activity;
+  }
+  const updated = await Plan.findOneAndUpdate(
+    { userId: oid, "summer._id": id },
+    {
+      ...(Object.keys(set).length > 0 ? { $set: set } : {}),
+      ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}),
+    },
+    { arrayFilters: [{ "s._id": id }], returnDocument: "after", projection: { summer: 1 } },
+  ).lean();
   const raw = rawList(updated as Raw | null, "summer").find(
     (entry) => String(entry._id) === activityId,
   );
@@ -151,7 +161,12 @@ export async function updateSummerImpl(
 export async function removeSummerImpl(userId: string, activityId: string): Promise<void> {
   const oid = userObjectId(userId);
   if (!/^[a-f0-9]{24}$/.test(activityId)) return;
-  if (!(await ensurePlanDoc(userId, oid, { create: false }))) return;
+  if (!(await readPlanDoc(oid, { _id: 1 }))) {
+    // A legacy student's first real change writes v2 now; an id that is not in the plan writes nothing.
+    const legacy = (await readLegacyPlanImpl(userId))?.summer ?? [];
+    if (!legacy.some((activity) => activity.id === activityId)) return;
+    if (!(await ensurePlanDoc(userId, oid, { create: false }))) return;
+  }
   await Plan.updateOne(
     { userId: oid },
     { $pull: { summer: { _id: new mongoose.Types.ObjectId(activityId) } } },
@@ -200,7 +215,8 @@ export async function addDeadlineImpl(
 export async function removeDeadlineImpl(userId: string, deadlineId: string): Promise<void> {
   const oid = userObjectId(userId);
   if (!/^[a-f0-9]{24}$/.test(deadlineId)) return;
-  if (!(await ensurePlanDoc(userId, oid, { create: false }))) return;
+  // Deadlines exist only in v2 (a legacy plan has none): without a document there is nothing to remove.
+  await getDb();
   await Plan.updateOne(
     { userId: oid },
     { $pull: { deadlines: { _id: new mongoose.Types.ObjectId(deadlineId) } } },
@@ -215,21 +231,22 @@ export async function updateManualImpl(
 ): Promise<PlanView["manual"]> {
   const body = parseOr400(UpdateManualBodySchema, patch);
   const oid = userObjectId(userId);
-  await ensurePlanDoc(userId, oid, { create: true });
   const set: Raw = {};
   if (body.languageExempt !== undefined) set["manual.languageExempt"] = body.languageExempt;
   if (body.pe !== undefined) {
     set["manual.pe.lifetimeActivities"] = body.pe.lifetimeActivities;
     set["manual.pe.teamSport"] = body.pe.teamSport;
   }
-  const updated =
-    Object.keys(set).length > 0
-      ? await Plan.findOneAndUpdate(
-          { userId: oid },
-          { $set: set },
-          { returnDocument: "after", projection: { manual: 1 } },
-        ).lean()
-      : await Plan.findOne({ userId: oid }, { manual: 1 }).lean();
+  if (Object.keys(set).length === 0) {
+    // Nothing to change (an empty patch): answer the inputs as they are, writing nothing.
+    return manualFromDoc((await readPlanDoc(oid, { manual: 1 }))?.manual);
+  }
+  await ensurePlanDoc(userId, oid, { create: true });
+  const updated = await Plan.findOneAndUpdate(
+    { userId: oid },
+    { $set: set },
+    { returnDocument: "after", projection: { manual: 1 } },
+  ).lean();
   return manualFromDoc((updated as Raw | null)?.manual);
 }
 
@@ -288,10 +305,14 @@ function sameCourseCode(item: PlanItem, code: string, canonical: string): boolea
 }
 
 /**
- * Accept or dismiss a draft. Accepting adds, through the same validated add as any other (source "ai-draft",
- * status planned), each draft course that is not in the plan yet — per course, in any term, never hiding a whole
- * term; a course that cannot be added (outside the plan's terms, no longer in the catalog, taken meanwhile) is
- * left out of `added`. The student can also accept course by course with POST /api/plan/items.
+ * Accept or dismiss a draft: a one-way transition from "pending", claimed atomically before anything else
+ * (`$elemMatch: { _id, status: "pending" }`), so a double-submitted or replayed Accept, or an Accept after a
+ * Dismiss, answers 409 and never re-adds courses the student has removed since. Accepting then adds, through the
+ * same validated add as any other (source "ai-draft", status planned), each draft course that is not in the plan
+ * yet — per course, in any term, never hiding a whole term; a course that cannot be added (outside the plan's
+ * terms, no longer in the catalog, taken meanwhile) is left out of `added`. If the adds fail for another reason
+ * (the catalog is down), the draft goes back to "pending" so it can be accepted again. The student can also
+ * accept course by course with POST /api/plan/items.
  */
 export async function updateDraftStatusImpl(
   userId: string,
@@ -300,41 +321,58 @@ export async function updateDraftStatusImpl(
 ): Promise<{ draft: PlanDraft; added: PlanItem[] }> {
   const oid = userObjectId(userId);
   const id = objectId(draftId, "draft");
-  const doc = await readPlanDoc(oid, { drafts: 1, items: 1 });
-  const raw = rawList(doc, "drafts").find((entry) => String(entry._id) === draftId);
+  await getDb();
+  const claimed = await Plan.findOneAndUpdate(
+    { userId: oid, drafts: trusted({ $elemMatch: { _id: id, status: "pending" } }) },
+    { $set: { "drafts.$.status": status } },
+    { returnDocument: "before", projection: { drafts: 1, items: 1 } },
+  ).lean();
+  if (!claimed) {
+    const doc = await readPlanDoc(oid, { drafts: 1 });
+    const raw = rawList(doc, "drafts").find((entry) => String(entry._id) === draftId);
+    const existing = raw ? draftFromDoc(raw) : null;
+    if (!existing) throw notFound("draft");
+    throw new ApiError(409, "conflict", `This draft was already ${existing.status}.`);
+  }
+  const raw = rawList(claimed as Raw, "drafts").find((entry) => String(entry._id) === draftId);
   const draft = raw ? draftFromDoc(raw) : null;
   if (!draft) throw notFound("draft");
 
   const added: PlanItem[] = [];
   if (status === "accepted") {
-    const planItems = rawList(doc, "items")
-      .flatMap((entry) => itemFromDoc(entry) ?? [])
-      .filter(isActiveItem);
-    for (const entry of draft.items) {
-      const facts = await lookupCourse(entry.termCode, entry.courseCode);
-      const canonical = facts?.canonicalCode ?? entry.courseCode;
-      const known = [...planItems, ...added];
-      if (known.some((item) => sameCourseCode(item, entry.courseCode, canonical))) continue;
-      try {
-        const result = await addItemImpl(userId, {
-          termCode: entry.termCode,
-          courseCode: entry.courseCode,
-          status: "planned",
-          passFail: false,
-          source: "ai-draft",
-        });
-        added.push(result.item);
-      } catch (error) {
-        if (!(error instanceof ApiError) || (error.status !== 400 && error.status !== 409)) {
-          throw error;
+    try {
+      const planItems = rawList(claimed as Raw, "items")
+        .flatMap((entry) => itemFromDoc(entry) ?? [])
+        .filter(isActiveItem);
+      for (const entry of draft.items) {
+        const facts = await lookupCourse(entry.termCode, entry.courseCode);
+        const canonical = facts?.canonicalCode ?? entry.courseCode;
+        const known = [...planItems, ...added];
+        if (known.some((item) => sameCourseCode(item, entry.courseCode, canonical))) continue;
+        try {
+          const result = await addItemImpl(userId, {
+            termCode: entry.termCode,
+            courseCode: entry.courseCode,
+            status: "planned",
+            passFail: false,
+            source: "ai-draft",
+          });
+          added.push(result.item);
+        } catch (error) {
+          if (!(error instanceof ApiError) || (error.status !== 400 && error.status !== 409)) {
+            throw error;
+          }
         }
       }
+    } catch (error) {
+      await Plan.updateOne(
+        { userId: oid, drafts: trusted({ $elemMatch: { _id: id, status: "accepted" } }) },
+        { $set: { "drafts.$.status": "pending" } },
+      ).catch((revertError: unknown) => {
+        console.error(`[plan] draft ${draftId} could not go back to pending:`, revertError);
+      });
+      throw error;
     }
   }
-  const result = await Plan.updateOne(
-    { userId: oid, "drafts._id": id },
-    { $set: { "drafts.$.status": status } },
-  );
-  if (result.matchedCount !== 1) throw notFound("draft");
   return { draft: { ...draft, status }, added };
 }

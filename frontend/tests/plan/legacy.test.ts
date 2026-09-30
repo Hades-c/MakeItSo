@@ -492,8 +492,9 @@ describe("readLegacyPlan and the first change (with the real catalog)", () => {
     ]);
   });
 
-  it("a duplicate of a converted item is a 409 on the first change", async () => {
+  it("a duplicate of a converted item is a 409 that writes nothing (v2 only for a real change)", async () => {
     const user = await legacyStudent();
+    const before = await legacyDocs();
     const error = await addItem(
       user,
       AddPlanItemBodySchema.parse({
@@ -502,8 +503,13 @@ describe("readLegacyPlan and the first change (with the real catalog)", () => {
         status: "completed",
       }),
     ).catch((e: unknown) => e);
-    expect(error).toMatchObject({ status: 409 });
-    expect((await planDoc(user))?.items).toHaveLength(3);
+    expect(error).toMatchObject({
+      status: 409,
+      message: "CSC 121 is already in your Fall 2025 plan.",
+    });
+    expect(await planDoc(user)).toBeNull();
+    expect((await getPlan(user)).legacy).toBe(true);
+    expect(await legacyDocs()).toEqual(before);
   });
 
   it("parallel first changes write one v2 document with every change", async () => {

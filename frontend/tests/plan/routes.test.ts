@@ -378,6 +378,15 @@ describe("progress, schedule, WebTree", () => {
     expect(
       await errorCode(await call(getWebTree, "GET", "/api/plan/webtree?term=000001"), 400),
     ).toBe("validation_failed");
+    // Only the registration term or later: a past term's list is a 400 (it would otherwise be evicted).
+    const past = (await json(
+      await call(putWebTree, "PUT", "/api/plan/webtree", {
+        body: { termCode: "202501", choices: [] },
+      }),
+      400,
+    )) as { error: { code: string; issues: { path: string }[] } };
+    expect(past.error.code).toBe("validation_failed");
+    expect(past.error.issues.map((issue) => issue.path)).toEqual(["termCode"]);
   });
 });
 
@@ -509,6 +518,18 @@ describe("manual inputs, deadlines, summer, drafts", () => {
     );
     expect(accepted.draft.status).toBe("accepted");
     expect(accepted.added.map((i) => i.courseCode)).toEqual(["CSC 221"]);
+    // One-way: a replayed Accept (or a Dismiss afterwards) is a 409.
+    for (const status of ["accepted", "dismissed"]) {
+      expect(
+        await errorCode(
+          await call(patchDraft, "PATCH", `/api/plan/drafts/${draft.id}`, {
+            params: { id: draft.id },
+            body: { status },
+          }),
+          409,
+        ),
+      ).toBe("conflict");
+    }
     expect(
       await errorCode(
         await call(patchDraft, "PATCH", `/api/plan/drafts/${draft.id}`, {
