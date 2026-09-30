@@ -26,7 +26,7 @@ export default async function AlumniPage({
     <>
       <PageHeader
         title="Alumni"
-        subtitle="Davidson alumni whose degree and public profile have both been verified, and where each fact comes from."
+        subtitle="Davidson alumni confirmed from public sources, with where each fact comes from."
       />
       <Suspense fallback={<DirectorySkeleton />}>
         <AlumniDirectory params={params} />

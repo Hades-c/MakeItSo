@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { routes } from "@/lib/routes";
-import { handshakeUrl } from "@/server/content/links";
+import { HANDSHAKE } from "@/server/content/links";
 import { OFFICES, PROGRAMS } from "@/server/content/offices";
 import { getCareer } from "@/server/content/careers";
 import { featureMetadata, requireFeature } from "@/server/features";
@@ -109,10 +109,8 @@ export default async function CareerPage({ params }: { params: Params }) {
             <Suspense fallback={<CardSkeleton className="h-48" />}>
               <CareerPrograms career={career} />
             </Suspense>
-            <HandshakeCard
-              baseUrl={handshakeUrl(career.handshakeQuery)}
-              query={career.handshakeQuery}
-            />
+            {/* The documented base URL only: Handshake publishes no keyword-search URL, so none is built. */}
+            <HandshakeCard baseUrl={HANDSHAKE.baseUrl} query={career.handshakeQuery} />
           </div>
         </div>
 

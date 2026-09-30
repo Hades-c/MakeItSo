@@ -56,8 +56,8 @@ export async function CareerAlumni({ career }: { career: Career }) {
         </ul>
       ) : (
         <p className="text-sm text-fg-2" data-testid="career-alumni-empty">
-          No verified alumni are listed on this path yet. Alumni appear only once their Davidson
-          degree and public profile are both verified.
+          No verified alumni are listed on this path yet. People appear only once public sources
+          confirm they are Davidson alumni working in this area.
         </p>
       )}
     </SectionCard>

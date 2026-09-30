@@ -63,7 +63,8 @@ export async function AlumniDirectory({ params }: { params: SearchParamsRecord }
         title="No verified alumni yet"
         description={
           <p>
-            Alumni are listed only once their Davidson degree and public profile are both verified.
+            People are listed only once public sources confirm they are Davidson alumni and their
+            LinkedIn profile is confirmed.
           </p>
         }
       />

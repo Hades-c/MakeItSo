@@ -8,6 +8,7 @@ import { routes } from "@/lib/routes";
 import type { TermCode } from "@/lib/term";
 import type { Availability } from "@/lib/types/catalog";
 import type { Career } from "@/lib/types/content";
+import { getSessionUser } from "@/server/auth/session";
 import {
   addToPlanTerms,
   courseLinkTerm,
@@ -15,7 +16,6 @@ import {
   usuallyOfferedText,
   type CareerTerms,
 } from "../_lib/availability";
-import { getSessionUser } from "@/server/auth/session";
 import { loadCareerTerms, loadCourseHistories } from "../_lib/catalog";
 import { loadPlanPresence, type PlanPresence } from "../_lib/plan";
 import { CourseAddToPlan } from "./course-add-to-plan";
