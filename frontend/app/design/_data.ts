@@ -3,6 +3,7 @@
  * Fall 2026 schedule (term 202601) used by the Lakeside mockups; plan, ratings and anything marked "sample" are
  * illustrative. Never import this outside app/design: sample content must not ship (PLAN §5).
  */
+import type { SearchResult } from "@/components/app/search-client";
 import type { AddToPlanTerm } from "@/components/domain/add-to-plan-control";
 import type { TimelineItem } from "@/components/domain/day-timeline";
 import type { FiveDayStripDay } from "@/components/domain/five-day-strip";
@@ -393,4 +394,39 @@ export const SHELL_SOURCES = [
   { id: "course-schedule" as const, lastSync: "2026-09-30T10:00:00Z" },
   { id: "ratemyprofessors" as const, lastSync: "2026-09-29T09:00:00Z" },
   { id: "registrar" as const, label: "Academic calendar", verifiedAt: "2026-09-28T16:00:00Z" },
+];
+
+/** Sample command-palette results (not real listings). */
+export const SAMPLE_SEARCH_RESULTS: SearchResult[] = [
+  {
+    kind: "course",
+    id: "202601-HIS-357",
+    title: "HIS 357 · The Civil Rights Movement",
+    subtitle: "Fall 2026 · Dan Aldridge · TTh 12:15–1:30p",
+    href: "/courses/202601/HIS-357",
+    source: "course-schedule",
+  },
+  {
+    kind: "course",
+    id: "202602-HIS-142",
+    title: "HIS 142 · The United States since 1900",
+    subtitle: "Spring 2027 · MW 8:05–9:20a",
+    href: "/courses/202602/HIS-142",
+    source: "course-schedule",
+  },
+  {
+    kind: "career",
+    id: "law",
+    title: "Law and public policy",
+    subtitle: "Career path (sample)",
+    href: "/careers/law",
+  },
+  {
+    kind: "event",
+    id: "evt-1",
+    title: "Civil rights film screening (sample)",
+    subtitle: "Thu, Oct 1 · 7:00p · Union",
+    href: "/events",
+    source: "wildcatsync",
+  },
 ];

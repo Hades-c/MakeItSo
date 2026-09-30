@@ -23,6 +23,7 @@ import {
   PLAN_PREVIEW,
   REQUIREMENTS,
   REQUIREMENTS_PLANNED,
+  SAMPLE_SEARCH_RESULTS,
   SHELL_SOURCES,
   THURSDAY_EDGE_CASES,
   THURSDAY_NOW,
@@ -319,7 +320,7 @@ export default function DesignGalleryPage() {
               ⌘K / Ctrl+K opens the real palette (it reports that search is unavailable until
               /api/search exists). This one uses sample results.
             </p>
-            <CommandPaletteDemo />
+            <CommandPaletteDemo results={SAMPLE_SEARCH_RESULTS} initialQuery="civil rights" />
           </SectionCard>
         </div>
       </div>
