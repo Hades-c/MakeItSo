@@ -256,7 +256,7 @@ describe("DELETE /api/me (delete account)", () => {
     const userId = new mongoose.Types.ObjectId(user.id);
     await resend(jsonRequest("/api/account/verify/resend"));
     await exportData(getRequest("/api/me/export"));
-    await recordLoginFailure("casey@davidson.edu", new Date("2026-09-30T16:00:00Z"));
+    await recordLoginFailure("casey@davidson.edu", "local", new Date("2026-09-30T16:00:00Z"));
     await CoursePlanV1.collection.insertOne({ userId, plannedCourses: [] });
     await RateLimit.collection.insertOne({
       key: "login:ip:203.0.113.7",
@@ -279,6 +279,7 @@ describe("DELETE /api/me (delete account)", () => {
     // Only the other account's counter and the IP counter are left.
     expect(remaining).toEqual([`export:user:${other.id}`, "login:ip:203.0.113.7"]);
     expect(remaining).not.toContain(loginBackoffKey("casey@davidson.edu"));
+    expect(remaining).not.toContain(loginBackoffKey("casey@davidson.edu", "local"));
 
     expect(await User.countDocuments({ _id: otherId })).toBe(1);
     expect(await CoursePlanV1.collection.countDocuments({ userId: otherId })).toBe(1);

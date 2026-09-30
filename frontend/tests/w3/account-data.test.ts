@@ -10,7 +10,12 @@ import {
   loadAccountDataRegistrations,
 } from "@/server/account/erasers";
 import { issueCode } from "@/server/auth/codes";
-import { loginBackoffKey, recordLoginFailure } from "@/server/auth/rate-limits";
+import {
+  knownSignInKey,
+  loginBackoffKey,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from "@/server/auth/rate-limits";
 import { getDb } from "@/server/db";
 
 let testDb: TestDb;
@@ -51,8 +56,9 @@ describe("W3 in the account data registry (PLAN §4.1.12, §9)", () => {
     await issueCode(me.id, me.email, "verify-email", at);
     await issueCode(me.id, me.email, "reset-password", at);
     await issueCode(other.id, other.email, "verify-email", at);
-    await recordLoginFailure(me.email, at);
-    await recordLoginFailure(other.email, at);
+    await recordLoginFailure(me.email, "203.0.113.7", at);
+    await recordLoginSuccess(me.email, "198.51.100.1", at);
+    await recordLoginFailure(other.email, "203.0.113.7", at);
     await RateLimit.collection.insertMany([
       counter(`export:user:${me.id}`),
       counter(`verify-resend:user:${me.id}`),
@@ -65,11 +71,18 @@ describe("W3 in the account data registry (PLAN §4.1.12, §9)", () => {
     expect((exported.verificationcodes as unknown[]).length).toBe(2);
     expect(JSON.stringify(exported.verificationcodes)).not.toContain("codeHash");
     expect((exported.ratelimits as { key: string }[]).map((r) => r.key).sort()).toEqual(
-      [`export:user:${me.id}`, loginBackoffKey(me.email), `verify-resend:user:${me.id}`].sort(),
+      [
+        `export:user:${me.id}`,
+        loginBackoffKey(me.email),
+        loginBackoffKey(me.email, "203.0.113.7"),
+        knownSignInKey(me.email, "198.51.100.1"),
+        `verify-resend:user:${me.id}`,
+      ].sort(),
     );
+    expect(JSON.stringify(exported.ratelimits)).not.toContain("203.0.113.7");
 
     const removed = await eraseAccountData(me.id);
-    expect(removed).toMatchObject({ verificationcodes: 2, ratelimits: 3 });
+    expect(removed).toMatchObject({ verificationcodes: 2, ratelimits: 5 });
     const left = (await RateLimit.collection.find({}).toArray()).map((r) => r.key).sort();
     expect(left).toEqual(
       [
@@ -77,6 +90,7 @@ describe("W3 in the account data registry (PLAN §4.1.12, §9)", () => {
         `export:user:${other.id}`,
         "login:ip:203.0.113.7",
         loginBackoffKey(other.email),
+        loginBackoffKey(other.email, "203.0.113.7"),
       ].sort(),
     );
     expect((await exportAccountData(other.id)).verificationcodes).toHaveLength(1);

@@ -134,7 +134,8 @@ describe("POST /api/auth/password-reset/confirm", () => {
       raw: { emailVerifiedAt: null, sessionVersion: 0 },
     });
     auth.session = await sessionFor(user);
-    await recordLoginFailure("casey@davidson.edu", new Date("2026-09-30T16:00:00Z"));
+    await recordLoginFailure("casey@davidson.edu", "local", new Date("2026-09-30T16:00:00Z"));
+    await recordLoginFailure("casey@davidson.edu", "203.0.113.9", new Date("2026-09-30T16:00:00Z"));
     await postRequest("casey@davidson.edu");
     const code = lastConsoleMessage("casey@davidson.edu")!.code!;
 
@@ -149,9 +150,13 @@ describe("POST /api/auth/password-reset/confirm", () => {
     expect((await User.findById(user.id).lean())?.emailVerifiedAt?.toISOString()).toBe(
       "2026-09-30T16:00:00.000Z",
     );
-    expect(
-      await RateLimit.collection.countDocuments({ key: loginBackoffKey("casey@davidson.edu") }),
-    ).toBe(0);
+    for (const key of [
+      loginBackoffKey("casey@davidson.edu"),
+      loginBackoffKey("casey@davidson.edu", "local"),
+      loginBackoffKey("casey@davidson.edu", "203.0.113.9"),
+    ]) {
+      expect(await RateLimit.collection.countDocuments({ key })).toBe(0);
+    }
     expect(await authorizeCredentials({ email: user.email, password: user.password })).toBeNull();
     expect(
       await authorizeCredentials({ email: user.email, password: "brand new passphrase" }),

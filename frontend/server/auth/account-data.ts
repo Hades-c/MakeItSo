@@ -15,8 +15,10 @@ import { getDb } from "@/server/db";
  * last by server/auth/account.ts, after every eraser succeeded.
  *
  *   verificationcodes  the account's one-time codes (the code hashes are not exported)
- *   ratelimits         counters that name the user ("<rule>:user:<id>") and the address-keyed ones
- *                      ("<rule>:email:<hash of the address>": sign-in backoff, e-mail allowances)
+ *   ratelimits         counters that name the user ("<rule>:user:<id>": code sends, the wrong-code budget,
+ *                      export...) and the address-keyed ones ("<rule>:email:<hash of the address>", optionally
+ *                      ":ip:<hash of an IP>": sign-in backoff streaks, "signed in from this IP before", e-mail
+ *                      allowances)
  * IP-keyed counters ("login:ip:…") are not personal to one account; they expire with their window.
  */
 
@@ -28,7 +30,9 @@ async function rateLimitFilter(userId: string) {
   // userId is 24 lowercase hex (checked by the caller), so it is safe inside a pattern.
   const patterns = [new RegExp(`^[a-z0-9-]+:user:${userId}$`)];
   const user = await User.findById(userId).select("email").lean();
-  if (user?.email) patterns.push(new RegExp(`^[a-z0-9-]+:email:${emailKey(user.email)}$`));
+  if (user?.email) {
+    patterns.push(new RegExp(`^[a-z0-9-]+:email:${emailKey(user.email)}(?::ip:[a-f0-9]{16})?$`));
+  }
   return { $or: patterns.map((pattern) => ({ key: pattern })) };
 }
 
@@ -37,7 +41,7 @@ registerAccountData("verificationcodes", {
     if (!isObjectId(userId)) return [];
     await getDb();
     return VerificationCode.find({ userId: new mongoose.Types.ObjectId(userId) })
-      .select("purpose email attempts lastSentAt consumedAt expiresAt createdAt -_id")
+      .select("purpose email attempts lastSentAt consumedAt codeExpiresAt expiresAt createdAt -_id")
       .lean();
   },
   async erase(userId) {
@@ -52,7 +56,15 @@ registerAccountData("ratelimits", {
     await getDb();
     return RateLimit.collection
       .find(await rateLimitFilter(userId), {
-        projection: { _id: 0, key: 1, windowStart: 1, count: 1, expiresAt: 1 },
+        projection: {
+          _id: 0,
+          key: 1,
+          windowStart: 1,
+          count: 1,
+          lastFailureAt: 1,
+          lastSignInAt: 1,
+          expiresAt: 1,
+        },
       })
       .toArray();
   },

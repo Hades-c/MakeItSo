@@ -48,15 +48,43 @@ afterEach(() => {
 const alert = () => screen.getByRole("alert");
 
 describe("signInErrorMessage", () => {
-  it("shows only known codes and our own messages", () => {
+  it("builds the text from fixed codes only", () => {
     expect(signInErrorMessage("CredentialsSignin")).toBe("Invalid email or password");
-    expect(signInErrorMessage("Too many sign-in attempts. Wait 5 minutes and try again.")).toMatch(
-      /^Too many/,
+    expect(signInErrorMessage("TooManyAttempts:300")).toBe(
+      "Too many sign-in attempts. Wait 5 minutes and try again.",
+    );
+    expect(signInErrorMessage("AddressBackoff:30")).toBe(
+      "Too many failed sign-in attempts for this address. Wait 30 seconds and try again.",
+    );
+    expect(signInErrorMessage("AddressBackoff")).toBe(
+      "Too many failed sign-in attempts for this address. Wait a few minutes and try again.",
+    );
+    expect(signInErrorMessage("SignInUnavailable")).toBe(
+      "Sign-in is temporarily unavailable. Please try again in a moment.",
     );
     expect(signInErrorMessage("Call 555-0100 to unlock your account")).toBe(
       "Sign-in failed. Please try again.",
     );
     expect(signInErrorMessage(undefined)).toBeNull();
+  });
+
+  it("never shows attacker text behind a known prefix (review regression)", () => {
+    for (const crafted of [
+      "Too many sign-in attempts. Your account is locked: call 555-0100 or go to evil.example/reset",
+      "Too many failed sign-in attempts. Your account was hacked: email help@evil.example",
+      "Sign-in is temporarily unavailable. Enter your Davidson password at evil.example instead",
+      "Too many sign-in attempts. Wait 5 minutes and try again. Then call 555-0100.",
+      "TooManyAttempts:30 call 555-0100",
+      "TooManyAttempts:99999",
+      "AddressBackoff:-5",
+    ]) {
+      const shown = signInErrorMessage(crafted) ?? "";
+      expect(shown, crafted).not.toMatch(/555|evil|hacked|locked|Davidson password/);
+      expect([
+        "Sign-in failed. Please try again.",
+        "Too many sign-in attempts. Wait a few minutes and try again.",
+      ]).toContain(shown);
+    }
   });
 });
 
@@ -87,10 +115,7 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Invalid email or password");
 
-    nextAuth.signIn.mockResolvedValueOnce({
-      ok: false,
-      error: "Too many failed sign-in attempts for this address. Wait 30 seconds and try again.",
-    });
+    nextAuth.signIn.mockResolvedValueOnce({ ok: false, error: "AddressBackoff:30" });
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     await waitFor(() => expect(alert()).toHaveTextContent(/Wait 30 seconds/));
     expect(router.replace).not.toHaveBeenCalled();

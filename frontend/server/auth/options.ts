@@ -1,15 +1,16 @@
 import "server-only";
 import type { NextAuthOptions, User as AuthUser } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { signInRefusalCode, type SignInRefusal } from "@/app/(auth)/_lib/sign-in-errors";
 import { normalizeEmail } from "@/lib/api/account";
 import User from "@/models/User";
 import { verifyPassword } from "@/server/auth/passwords";
 import {
-  clearLoginFailures,
   consumeLoginIpLimit,
-  describeWait,
   loginBackoffStatus,
   recordLoginFailure,
+  recordLoginSuccess,
+  releaseLoginIpLimit,
 } from "@/server/auth/rate-limits";
 import { now } from "@/server/clock";
 import { getDb } from "@/server/db";
@@ -26,8 +27,10 @@ import { clientIp } from "@/server/http/rate-limit";
  *   - NO domain check: legacy non-Davidson accounts keep working (PLAN §1). The address is looked up normalised
  *     (NFKC → trim → lower case), then as the legacy stored form (trim → lower case) when that differs.
  *   - Unknown address → a dummy bcrypt comparison, so both failures cost the same; one message for both.
- *   - 10 attempts per 15 minutes per client IP; per-address backoff after 5 failures (server/auth/rate-limits.ts).
- *     Refusals are SignInRefusedError, whose message the login form shows.
+ *   - 10 failed attempts per 15 minutes per client IP; per-address-and-IP backoff after 5 failures, and a looser
+ *     address-wide ceiling (server/auth/rate-limits.ts). Refusals are SignInRefusedError, whose message is a fixed
+ *     code ("TooManyAttempts:120") that the login form turns into a sentence (app/(auth)/_lib/sign-in-errors.ts),
+ *     so a crafted /login?error= link cannot put its own text on the page.
  *   - The JWT records the account's sessionVersion (`sv`); server/auth/session.ts compares it on every request.
  */
 
@@ -37,11 +40,19 @@ export const INVALID_CREDENTIALS_MESSAGE = "Invalid email or password";
 /** 14 days. */
 export const SESSION_MAX_AGE_SEC = 14 * 24 * 60 * 60;
 
-/** A sign-in refused before the password was checked (rate limit, backoff). The message is shown as is. */
+/**
+ * A sign-in refused before the password was checked (rate limit, backoff) or because the database failed. The
+ * message is the refusal code NextAuth passes to the login form (signInRefusalCode).
+ */
 export class SignInRefusedError extends Error {
-  constructor(message: string) {
-    super(message);
+  readonly kind: SignInRefusal;
+  readonly retryAfterSec: number | undefined;
+
+  constructor(kind: SignInRefusal, retryAfterSec?: number) {
+    super(signInRefusalCode(kind, retryAfterSec));
     this.name = "SignInRefusedError";
+    this.kind = kind;
+    this.retryAfterSec = retryAfterSec;
   }
 }
 
@@ -83,7 +94,7 @@ export function signInClientIp(context: AuthorizeContext = {}): string {
   return clientIp(new Request("http://sign-in.invalid/", { headers: toHeaders(context.headers) }));
 }
 
-const ACCOUNT_FIELDS = "+password name email sessionVersion emailVerifiedAt";
+const ACCOUNT_FIELDS = "+password name email sessionVersion emailVerifiedAt legacyAccount";
 
 /**
  * The account for a typed address: the normalised form first, then the raw legacy form (trimmed, lower-cased,
@@ -111,28 +122,25 @@ export async function authorizeCredentials(
 
   const email = normalizeEmail(rawEmail);
   const at = now();
+  const ip = signInClientIp(context);
 
-  const ipLimit = await consumeLoginIpLimit(signInClientIp(context), at);
-  if (!ipLimit.allowed) {
-    throw new SignInRefusedError(
-      `Too many sign-in attempts. Wait ${describeWait(ipLimit.retryAfterSec)} and try again.`,
-    );
-  }
-  const backoff = await loginBackoffStatus(email, at);
+  // Reserve an attempt from this IP; only failures keep it (a success or an unchecked refusal gives it back).
+  const ipLimit = await consumeLoginIpLimit(ip, at);
+  if (!ipLimit.allowed) throw new SignInRefusedError("ip-limit", ipLimit.retryAfterSec);
+  const backoff = await loginBackoffStatus(email, ip, at);
   if (backoff.blocked) {
-    throw new SignInRefusedError(
-      `Too many failed sign-in attempts for this address. Wait ${describeWait(backoff.retryAfterSec)} and try again.`,
-    );
+    await releaseLoginIpLimit(ip, at);
+    throw new SignInRefusedError("backoff", backoff.retryAfterSec);
   }
 
   const user = await findAccountByEmail(rawEmail);
   // verifyPassword compares against a dummy hash when there is no account (same cost either way).
   const valid = await verifyPassword(password, user?.password);
   if (!user || !valid) {
-    await recordLoginFailure(email, at);
+    await recordLoginFailure(email, ip, at);
     return null;
   }
-  await clearLoginFailures(email);
+  await Promise.all([releaseLoginIpLimit(ip, at), recordLoginSuccess(email, ip, at)]);
   return {
     id: user._id.toString(),
     email: user.email,
@@ -158,7 +166,7 @@ function buildAuthOptions(secret: string): NextAuthOptions {
             if (error instanceof SignInRefusedError) throw error;
             // Database/config problems: log the details server-side, show the user something generic.
             console.error("[auth] sign-in failed:", error);
-            throw new Error("Sign-in is temporarily unavailable. Please try again in a moment.");
+            throw new SignInRefusedError("unavailable");
           }
         },
       }),

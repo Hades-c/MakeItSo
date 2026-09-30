@@ -13,6 +13,7 @@ import {
   SignInRefusedError,
   signInClientIp,
 } from "@/server/auth/options";
+import { signInErrorMessage } from "@/app/(auth)/_lib/sign-in-errors";
 import { loginBackoffKey } from "@/server/auth/rate-limits";
 import { getDb } from "@/server/db";
 
@@ -101,16 +102,42 @@ describe("authorizeCredentials (PLAN §6.1 W3 sign-in)", () => {
     for (let i = 0; i < 5; i++) {
       expect(await authorizeCredentials({ email: user.email, password: "wrong wrong" })).toBeNull();
     }
-    await expect(
-      authorizeCredentials({ email: user.email, password: user.password }),
-    ).rejects.toThrow(/Too many failed sign-in attempts for this address\. Wait 30 seconds/);
+    const refused = await authorizeCredentials({
+      email: user.email,
+      password: user.password,
+    }).catch((e: unknown) => e);
+    expect(refused).toBeInstanceOf(SignInRefusedError);
+    expect(refused).toMatchObject({ kind: "backoff", retryAfterSec: 30 });
+    // The error value NextAuth passes on is a fixed code; the login form builds the sentence.
+    expect((refused as Error).message).toBe("AddressBackoff:30");
+    expect(signInErrorMessage((refused as Error).message)).toBe(
+      "Too many failed sign-in attempts for this address. Wait 30 seconds and try again.",
+    );
 
     stubNowPlus(31_000);
     expect(
       await authorizeCredentials({ email: user.email, password: user.password }),
     ).toMatchObject({ id: user.id });
-    // Success ends the streak.
-    expect(await RateLimit.collection.countDocuments({ key: loginBackoffKey(user.email) })).toBe(0);
+    // Success ends this IP's streak (the address-wide count stays for the ceiling).
+    expect(
+      await RateLimit.collection.countDocuments({ key: loginBackoffKey(user.email, "local") }),
+    ).toBe(0);
+  });
+
+  it("backs off the guessing IP, not the student's (review regression: sustainable lockout)", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    const user = await insertUser({ email: "casey@davidson.edu" });
+    const attacker = { headers: { "x-real-ip": "203.0.113.66" } };
+    const student = { headers: { "x-real-ip": "198.51.100.20" } };
+    for (let i = 0; i < 5; i++) {
+      await authorizeCredentials({ email: user.email, password: "wrong wrong" }, attacker);
+    }
+    await expect(
+      authorizeCredentials({ email: user.email, password: "wrong wrong" }, attacker),
+    ).rejects.toMatchObject({ kind: "backoff" });
+    expect(
+      await authorizeCredentials({ email: user.email, password: user.password }, student),
+    ).toMatchObject({ id: user.id });
   });
 
   it("backs off unknown addresses exactly like real ones (no account oracle)", async () => {
@@ -122,16 +149,26 @@ describe("authorizeCredentials (PLAN §6.1 W3 sign-in)", () => {
       password: "wrong wrong",
     }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(SignInRefusedError);
-    expect((error as Error).message).toMatch(/for this address/);
+    expect(error).toMatchObject({ kind: "backoff" });
   });
 
-  it("limits sign-in attempts to 10 per 15 minutes per client IP", async () => {
+  it("limits FAILED sign-in attempts to 10 per 15 minutes per client IP", async () => {
+    // Successful sign-ins (a campus NAT address, the register form's automatic sign-in) do not count.
+    const student = await insertUser({ email: "busy@davidson.edu" });
+    for (let i = 0; i < 25; i++) {
+      expect(
+        await authorizeCredentials({ email: student.email, password: student.password }),
+      ).toMatchObject({ id: student.id });
+    }
     for (let i = 0; i < 10; i++) {
       await authorizeCredentials({ email: `p${i}@davidson.edu`, password: "wrong wrong" });
     }
     await expect(
       authorizeCredentials({ email: "p99@davidson.edu", password: "wrong wrong" }),
-    ).rejects.toThrow(/^Too many sign-in attempts\. Wait/);
+    ).rejects.toMatchObject({
+      kind: "ip-limit",
+      message: expect.stringMatching(/^TooManyAttempts:\d+$/),
+    });
     stubNowPlus(15 * 60_000);
     expect(
       await authorizeCredentials({ email: "p99@davidson.edu", password: "wrong wrong" }),
@@ -216,7 +253,10 @@ describe("NextAuth options", () => {
     });
     await expect(
       provider.options.authorize({ email: "a@davidson.edu", password: "x y z w v u" }, {}),
-    ).rejects.toThrow("Sign-in is temporarily unavailable. Please try again in a moment.");
+    ).rejects.toThrow(/^SignInUnavailable$/);
+    expect(signInErrorMessage("SignInUnavailable")).toBe(
+      "Sign-in is temporarily unavailable. Please try again in a moment.",
+    );
     expect(logged).toHaveBeenCalled();
 
     for (let i = 0; i < 5; i++) {
@@ -224,6 +264,6 @@ describe("NextAuth options", () => {
     }
     await expect(
       provider.options.authorize({ email: "b@davidson.edu", password: "x y z w v u" }, {}),
-    ).rejects.toThrow(/Too many failed sign-in attempts/);
+    ).rejects.toThrow(/^AddressBackoff:\d+$/);
   });
 });
