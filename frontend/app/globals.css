@@ -111,3 +111,8 @@ html {
 .carousel-scroll::-webkit-scrollbar {
   display: none;
 }
+
+/* Mobile bottom nav: keep its own padding but also clear the device safe area */
+.safe-area-pb {
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+}
