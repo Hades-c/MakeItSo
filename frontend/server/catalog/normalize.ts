@@ -36,7 +36,7 @@ import type { UpstreamListingRef, UpstreamSection } from "@/server/catalog/upstr
  * - cross_listings → {crn, courseCode, section} siblings (by CRN); cross_postings → browse tags.
  * - reg_fors: upstream lists, on the class itself, the registration-only listings that exist for it in another
  *   department (CHE 430 A lists crn 20083 "REG FOR CHE 430-A" = BIO 395 A). Those listings are never in the public
- *   data. So the class keeps them as `registrationSections` (stored, see contractRequests), and `regFor` is set
+ *   data. So the class keeps them as `registrationSections` (Section contract), and `regFor` is set
  *   only on a listing that IS a registration section (its CRN is in another listing's reg_fors, or its title
  *   reads "REG FOR XXX 123-A").
  * - credits come from the API (0 for ensembles, lessons and MIL labs; 2 for HUM 103; else 1).
@@ -49,8 +49,6 @@ export interface StoredSection extends Section {
   subjectName: string;
   /** Raw upstream note codes ("PRQ", "12+", "W"), upstream order. */
   noteCodes: string[];
-  /** Hidden registration-only listings for this class (upstream reg_fors). */
-  registrationSections: CrossListing[];
   /** Folded search text: codes, titles, instructors, description (see foldForSearch). */
   searchText: string;
 }
@@ -319,6 +317,7 @@ export function normalizeSection(raw: UpstreamSection, termCode: TermCode): Norm
     crossListings,
     crossPostings,
     regFor: regForFromTitle(title),
+    registrationSections,
   };
   const parsed = SectionSchema.safeParse(candidate);
   if (!parsed.success) {
@@ -338,7 +337,6 @@ export function normalizeSection(raw: UpstreamSection, termCode: TermCode): Norm
       canonicalCode: canonicalCourseCode(section.courseCode, section.crossListings),
       subjectName: cleanText(raw.subject.description),
       noteCodes,
-      registrationSections,
       searchText: "",
     },
   };

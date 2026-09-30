@@ -8,12 +8,7 @@ import {
   type Section,
 } from "@/lib/types/catalog";
 import CatalogSection from "@/models/CatalogSection";
-import {
-  buildCourse,
-  courseLevel,
-  isTopicsCourse,
-  summarizeCourse,
-} from "@/server/catalog/courses";
+import { buildCourse, courseLevel, summarizeCourse } from "@/server/catalog/courses";
 import { getTermMeta } from "@/server/catalog/meta";
 import { codeSearchForms, foldForSearch, type StoredSection } from "@/server/catalog/normalize";
 import { onCatalogReset } from "@/server/catalog/state";
@@ -41,7 +36,7 @@ export interface IndexedCourse {
   shortHaystack: string;
   /** Folded course title. */
   foldedTitle: string;
-  /** The sections carry different titles (a topics course with a neutral course title). */
+  /** The sections carry different titles (a topics course with a neutral course title): `course.topics`. */
   topics: boolean;
   /** Each distinct section title with its folded form (the ⌘K palette names the matching topic). */
   sectionTitles: readonly { title: string; folded: string }[];
@@ -107,6 +102,7 @@ export function rowToSection(
     crossListings: row.crossListings ?? [],
     crossPostings: row.crossPostings ?? [],
     regFor: row.regFor ?? null,
+    registrationSections: row.registrationSections ?? [],
   });
   if (!parsed.success) {
     console.error(`[catalog] stored section ${String(row.termCode)}/${String(row.crn)} is invalid`);
@@ -194,7 +190,7 @@ export function buildTermIndex(
       haystack: `${shortHaystack}\n${[...searchTexts].join("\n")}`,
       shortHaystack,
       foldedTitle: foldForSearch(course.title),
-      topics: isTopicsCourse(course.sections),
+      topics: course.topics,
       sectionTitles: [...sectionTitles].map((title) => ({ title, folded: foldForSearch(title) })),
     });
   }

@@ -15,7 +15,13 @@ import { COURSE_CODE_PATTERN, CrnSchema, normalizeCourseCode } from "@/lib/types
 import CatalogSection from "@/models/CatalogSection";
 import { getCatalogFiltersImpl } from "@/server/catalog/filters";
 import { courseAvailability } from "@/server/catalog/history";
-import { assertTerm, loadTerm, readCourse, termAsOf } from "@/server/catalog/read";
+import {
+  assertTerm,
+  browseTerm as browseTermOf,
+  loadTerm,
+  readCourse,
+  termAsOf,
+} from "@/server/catalog/read";
 import { ensureTermData } from "@/server/catalog/refresh";
 import { searchIndex } from "@/server/catalog/search";
 import { inIngestWindow, resolveTermsImpl } from "@/server/catalog/terms";
@@ -48,7 +54,19 @@ export async function resolveTerms(options: ResolveTermsOptions = {}): Promise<R
   return resolveTermsImpl(options);
 }
 
-/** Search one term (default: registration term). See CatalogQuerySchema for filter semantics. */
+/**
+ * The term browsing defaults to (the /courses term selector, searchCourses without a term, the ⌘K palette, the
+ * sidebar course count): the registration term once its schedule is published (≥ 1 section), else the current
+ * term. registrationTermFrom moves to the next semester when classes start (mid-January, late August), weeks before
+ * upstream publishes that schedule; meanwhile the registration term would show nothing. Falls back to the
+ * registration term when neither has data. May cold-load those two terms (like searchCourses).
+ */
+export async function browseTerm(options: ResolveTermsOptions = {}): Promise<TermCode> {
+  const resolved = await resolveTermsImpl(options);
+  return (await browseTermOf(resolved)) ?? resolved.registration;
+}
+
+/** Search one term (default: browseTerm()). See CatalogQuerySchema for filter semantics. */
 export async function searchCourses(query: CatalogQueryInput): Promise<CatalogSearchResult> {
   const parsed = CatalogQuerySchema.safeParse(query);
   if (!parsed.success) {
@@ -61,7 +79,7 @@ export async function searchCourses(query: CatalogQueryInput): Promise<CatalogSe
   }
   const q = parsed.data;
   const resolved = await resolveTermsImpl();
-  const term = q.term ?? resolved.registration;
+  const term = q.term ?? (await browseTermOf(resolved)) ?? resolved.registration;
   const loaded = await loadTerm(term, resolved);
   if (!loaded) {
     return { term, items: [], total: 0, page: q.page, pageSize: q.pageSize, asOf: null };

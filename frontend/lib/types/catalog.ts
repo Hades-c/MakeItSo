@@ -142,8 +142,14 @@ export function crossListedCodes(
  *   "Copy for WebTree" uses the sibling's `crn`. Match siblings by CRN, never by code: "PHY 214" has sections A and
  *   B, each cross-listed with a different ENV 214 section.
  * - crossPostings: department codes the course is also browsable under ("IGEN"); browse tags only.
- * - regFor: when this listing is a registration section for another course (upstream `reg_fors`), that course's
- *   code, shown as "Registration section for <title>"; else null.
+ * - regFor: set on a listing that is itself a registration section for another course (its CRN is in that
+ *   course's upstream `reg_fors`, or its title reads "REG FOR XXX 123-A"): that course's code, shown as
+ *   "Registration section for <title>"; else null. The class keeps its hidden registration-only listings in
+ *   `registrationSections`.
+ * - registrationSections: the hidden registration-only listings of this class (upstream `reg_fors`), which are
+ *   never in the public data themselves: CHE 430 A lists crn 20083 "REG FOR CHE 430-A" = BIO 395 A. Show them as
+ *   "Also registrable as BIO 395 A (CRN 20083)", never as "Registration section for …"; "Copy for WebTree" may
+ *   offer that CRN. [] for almost every section (defaults to [] when parsing older data).
  */
 export const SectionSchema = z.object({
   crn: CrnSchema,
@@ -165,8 +171,22 @@ export const SectionSchema = z.object({
   crossListings: z.array(CrossListingSchema),
   crossPostings: z.array(z.string()),
   regFor: CourseCodeSchema.nullable(),
+  registrationSections: z.array(CrossListingSchema).default([]),
 });
 export type Section = z.infer<typeof SectionSchema>;
+
+/**
+ * The course-level title. For a topics course (no title shared by at least half of its non-lab sections, e.g.
+ * WRI 101, ECO 495) this is "<Department>: topics vary by section" ("Writing Program: topics vary by section");
+ * sections keep their own titles.
+ */
+const CourseTitleSchema = z.string();
+
+/**
+ * True exactly when the course title is the neutral topics title (see CourseTitleSchema): label it as a topics
+ * course and list the section titles instead of parsing the title. Defaults to false when parsing older data.
+ */
+const TopicsFlagSchema = z.boolean().default(false);
 
 /**
  * All sections of one course code in one term. `credits` = distinct section credit values (ascending);
@@ -175,7 +195,8 @@ export type Section = z.infer<typeof SectionSchema>;
 export const CourseSchema = z.object({
   termCode: TermCodeSchema,
   code: CourseCodeSchema,
-  title: z.string(),
+  title: CourseTitleSchema,
+  topics: TopicsFlagSchema,
   sections: z.array(SectionSchema),
   credits: z.array(z.number().min(0)),
   reqCodes: z.array(ReqCodeSchema),
@@ -186,11 +207,15 @@ export type Course = z.infer<typeof CourseSchema>;
 export const CourseSummarySchema = z.object({
   termCode: TermCodeSchema,
   code: CourseCodeSchema,
-  title: z.string(),
+  title: CourseTitleSchema,
+  topics: TopicsFlagSchema,
   credits: z.array(z.number().min(0)),
   reqCodes: z.array(ReqCodeSchema),
   sectionCount: z.number().int().min(0),
-  /** Sum over sections of max(0, remaining). */
+  /**
+   * Sum over sections of the seats registrable through each: max(0, remaining), or for a max-0 cross-listed
+   * listing ("Register as <sibling>") its CRN-matched siblings' seats (ENV 214 and PHY 214 both report 5).
+   */
   openSeats: z.number().int().min(0),
   /** "First Last" of every non-staff instructor, deduplicated, upstream order. */
   instructorNames: z.array(z.string()),
@@ -224,12 +249,15 @@ export type CourseLevel = z.infer<typeof CourseLevelSchema>;
 
 /**
  * Catalog search input (PLAN §4.1.2). Parses URL query objects (strings / repeated keys) and typed objects alike.
- * - term: omitted → the registration term.
+ * - term: omitted → the registration term once its schedule is published (≥ 1 section), else the current term
+ *   (server/catalog `browseTerm()`: the registration term moves on when classes start, weeks before upstream
+ *   publishes its schedule).
  * - q: code ("csc121", "CSC 121"), title, description or any instructor name; whitespace-only = no filter.
  * - dept / req: OR within the list, AND across filters.
  * - days: the days the student is free — a section matches when every non-TBA meeting day is in the set.
  * - after / before: every non-TBA meeting starts at/after `after` and ends at/before `before`.
- * - openOnly: at least one section with remaining > 0.
+ * - openOnly: at least one registrable section with seats: remaining > 0, where a cross-listed listing with max 0
+ *   ("Register as <sibling>") counts its CRN-matched siblings' remaining seats.
  */
 export const CatalogQuerySchema = z.object({
   term: TermCodeSchema.optional(),
@@ -318,7 +346,11 @@ export const CatalogFiltersSchema = z.object({
 });
 export type CatalogFilters = z.infer<typeof CatalogFiltersSchema>;
 
-/** `validateCourseCodes()` result: which codes exist in at least one of the given (default: ingested) terms. */
+/**
+ * `validateCourseCodes()` result: which codes have a listing of their own in at least one of the given (default:
+ * every ingested term) terms. Hidden registration-only aliases (upstream reg_fors such as BIO 395 for CHE 430 A)
+ * are invalid, so every valid code resolves with getCourse and getCourseHistory.
+ */
 export const CodeValidationSchema = z.object({
   valid: z.array(CourseCodeSchema),
   invalid: z.array(z.string()),

@@ -67,6 +67,8 @@ describe("course grouping", () => {
     expect(wri.course.title).toBe("Writing Program: topics vary by section");
     expect(wri.summary.title).toBe("Writing Program: topics vary by section");
     expect(wri.topics).toBe(true);
+    // The contract carries it too (Course.topics / CourseSummary.topics), true exactly for the neutral title.
+    expect([wri.course.topics, wri.summary.topics]).toEqual([true, true]);
     expect(wri.course.sections.find((s) => s.section === "A")?.title).toBe("According to Science");
     expect(spring.byCode.get("WRI 101")?.course.title).toBe(
       "Writing Program: topics vary by section",
@@ -88,6 +90,14 @@ describe("course grouping", () => {
     // Courses whose sections share a title keep it.
     expect(spring.byCode.get("CSC 121")?.course.title).toBe("Programming & Problem Solving");
     expect(spring.byCode.get("CSC 121")?.topics).toBe(false);
+    for (const course of [...fall.courses, ...spring.courses]) {
+      expect([course.code, course.course.topics]).toEqual([
+        course.code,
+        course.course.title.endsWith(": topics vary by section") ||
+          course.course.title === "Topics vary by section",
+      ]);
+      expect(course.summary.topics).toBe(course.course.topics);
+    }
     const wriBuilt = buildCourse(sectionsOf("202601", "WRI 101"), {
       subjectName: "Writing Program",
     });

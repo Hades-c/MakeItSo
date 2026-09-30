@@ -10,6 +10,7 @@ import {
 import CatalogMeta from "@/models/CatalogMeta";
 import CatalogSection from "@/models/CatalogSection";
 import {
+  browseTerm,
   countCourses,
   getCatalogFilters,
   getCourse,
@@ -32,7 +33,12 @@ import {
 } from "@/server/catalog/refresh";
 import { resetCatalogState } from "@/server/catalog/state";
 import { setTermsFetchForTests } from "@/server/catalog/terms";
-import { fetchFilters, fetchTermsList } from "@/server/catalog/upstream";
+import {
+  fetchFilters,
+  fetchSectionsPage,
+  fetchTermsList,
+  type FetchSectionsPage,
+} from "@/server/catalog/upstream";
 import { ApiError } from "@/server/http/errors";
 
 withCatalogDb();
@@ -45,6 +51,7 @@ describe("the frozen surface (PLAN §4.1.3)", () => {
       .map(([key]) => key)
       .sort();
     expect(functions).toEqual([
+      "browseTerm",
       "countCourses",
       "getCatalogFilters",
       "getCourse",
@@ -260,6 +267,25 @@ describe("reads", () => {
     ]);
   });
 
+  it("serves a class's hidden registration-only listings, and flags topics courses", async () => {
+    // CHE 430 A lists crn 20083 "REG FOR CHE 430-A" (BIO 395 A), a listing that is never in the public data.
+    const che = CourseSchema.parse(await getCourse("202602", "CHE 430"));
+    expect(che.sections[0]?.regFor).toBeNull();
+    expect(che.sections[0]?.registrationSections).toEqual([
+      { crn: "20083", courseCode: "BIO 395", section: "A" },
+    ]);
+    expect(che.topics).toBe(false);
+    const crn = che.sections[0]!.crn;
+    expect((await getSection("202602", crn))?.registrationSections).toHaveLength(1);
+    expect((await getCourse("202602", "CSC 121"))?.sections[0]?.registrationSections).toEqual([]);
+    // WRI 101: the sections' topics differ, so the course title is the neutral one.
+    const wri = await getCourse("202602", "WRI 101");
+    expect(wri).toMatchObject({ topics: true, title: "Writing Program: topics vary by section" });
+    const [summary] = (await searchCourses({ q: "WRI 101" })).items;
+    expect(summary).toMatchObject({ code: "WRI 101", topics: true });
+    expect((await searchCourses({ q: "CSC 121" })).items[0]?.topics).toBe(false);
+  });
+
   it("getSection finds a CRN", async () => {
     const section = SectionSchema.parse(await getSection("202602", "20001"));
     expect(section).toMatchObject({ courseCode: "AFR 101", section: "A" });
@@ -277,6 +303,24 @@ describe("reads", () => {
     await searchCourses({});
     const { terms } = await resolveTerms();
     expect(terms.find((t) => t.code === "202602")?.published).toBe(true);
+  });
+});
+
+describe("browseTerm (the default term for browsing)", () => {
+  it("is the registration term once its schedule is published, else the current term", async () => {
+    expect(await browseTerm()).toBe("202602");
+    expect(await browseTerm({ now: new Date("2026-12-20T17:00:00Z") })).toBe("202602");
+    // 2027-02-01: current Spring 2027, registration Fall 2027, whose schedule upstream answers with [] for weeks.
+    setNow("2027-02-01T10:00:00-05:00");
+    const fetchPage: FetchSectionsPage = async (term, offset, options) =>
+      term === "202701" ? [] : fetchSectionsPage(term, offset, options);
+    setIngestDepsForTests({ fetchPage });
+    expect(await resolveTerms()).toMatchObject({ current: "202602", registration: "202701" });
+    expect(await browseTerm()).toBe("202602");
+    // searchCourses without a term follows it; an explicit term is honoured.
+    const result = await searchCourses({ q: "csc 121" });
+    expect(result).toMatchObject({ term: "202602", total: 1 });
+    expect(await searchCourses({ term: "202701" })).toMatchObject({ term: "202701", total: 0 });
   });
 });
 

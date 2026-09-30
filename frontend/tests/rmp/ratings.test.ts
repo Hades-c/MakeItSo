@@ -39,6 +39,7 @@ function summary(code: string, instructorNames: string[], crossListings: string[
     termCode: "202602",
     code,
     title: "Test course",
+    topics: false,
     credits: [1],
     reqCodes: [],
     sectionCount: 1,

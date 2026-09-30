@@ -52,6 +52,7 @@ const bio331: Section = {
   crossListings: [{ crn: "10440", courseCode: "PSY 303", section: "A" }],
   crossPostings: ["IGEN", "INEU", "PBH", "PSY"],
   regFor: null,
+  registrationSections: [],
 };
 
 describe("catalog types (PLAN §4.1.2)", () => {
@@ -67,6 +68,25 @@ describe("catalog types (PLAN §4.1.2)", () => {
         reqCodes: ["NSRQ"],
       }).sections,
     ).toHaveLength(1);
+  });
+
+  it("parses older data without the additive fields (registrationSections [], topics false)", () => {
+    const { registrationSections: _omitted, ...older } = bio331;
+    expect(SectionSchema.parse(older).registrationSections).toEqual([]);
+    const che430 = {
+      ...bio331,
+      registrationSections: [{ crn: "20083", courseCode: "bio395", section: "A" }],
+    };
+    expect(SectionSchema.parse(che430).registrationSections).toEqual([
+      { crn: "20083", courseCode: "BIO 395", section: "A" },
+    ]);
+    const course = { termCode: "202601", code: "BIO 331", title: bio331.title, sections: [older] };
+    const parsed = CourseSchema.parse({ ...course, credits: [1], reqCodes: ["NSRQ"] });
+    expect(parsed.topics).toBe(false);
+    expect(parsed.sections[0]?.registrationSections).toEqual([]);
+    expect(CourseSchema.parse({ ...course, credits: [1], reqCodes: [], topics: true }).topics).toBe(
+      true,
+    );
   });
 
   it("keeps 'no requirement data' (null) distinct from NONE and never []", () => {

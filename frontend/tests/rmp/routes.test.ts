@@ -161,6 +161,7 @@ describe("GET /api/ratings", () => {
       termCode: "202602",
       code,
       title: "Other course",
+      topics: false,
       credits: [1],
       reqCodes: [],
       sectionCount: 1,
