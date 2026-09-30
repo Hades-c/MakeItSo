@@ -1,129 +1,450 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+ * MakeItSo design tokens: Lakeside.
+ *
+ * Davidson's supporting palette leads (Lake Blue, Sandstone, Deep Taupe). Davidson Red is reserved for "now" and
+ * urgent items; errors use a separate danger colour, and focus rings use Lake Blue, never red.
+ * Source: the Lakeside mockups (design-options/lakeside/*.html) and audit/merged.json → designOptions.
+ *
+ * This file is the ONLY place colours are written as raw values. Components use the Tailwind utilities generated
+ * from the @theme blocks below (bg-surface, text-fg-2, border-line, text-course-pine, ...). The default Tailwind
+ * palette, type scale, radii and shadows are cleared, so bg-red-500, text-gray-400, text-5xl and friends do not
+ * exist in this project.
+ *
+ * Theme selection:
+ *   - no data-theme on <html>        → follows prefers-color-scheme
+ *   - <html data-theme="light|dark"> → explicit choice (set by the theme toggle, applied before first paint by
+ *                                       the inline script in app/layout.tsx)
+ * The dark values appear twice (media query + explicit attribute); tests/design/tokens.test.ts checks that the
+ * two blocks stay identical and that every text pair meets WCAG AA.
+ */
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 0 65% 33%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 0 65% 33%;
-    --radius: 0.75rem;
+@import "tailwindcss";
+
+/* Breakpoints follow the Lakeside layout: 720px = bottom tabs ↔ sidebar, 900px = one ↔ two content columns,
+ * 1180px = compact ↔ full sidebar. (Tailwind's md/lg/xl names, Lakeside's values.) */
+@theme {
+  --breakpoint-md: 45rem;
+  --breakpoint-lg: 56.25rem;
+  --breakpoint-xl: 73.75rem;
+}
+
+/* `dark:` must honour both the explicit attribute and the system preference. Prefer tokens over dark: variants. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
+/* ------------------------------------------------------------------------------------------------------------ */
+/* Raw tokens                                                                                                    */
+/* ------------------------------------------------------------------------------------------------------------ */
+
+:root {
+  /* Surfaces */
+  --bg: #f4efe8; /* sandstone tint page background */
+  --surface: #fffdfa; /* cards, top bar */
+  --surface-2: #efe7dc; /* sandstone inset */
+  --overlay: rgb(21 34 56 / 0.45); /* dialog backdrop */
+
+  /* Text */
+  --fg: #152238; /* lake navy */
+  --fg-2: #485266;
+  --fg-3: #5b6475; /* meta text: still ≥ 4.5:1 on every surface */
+
+  /* Lines */
+  --line: #e4dacc; /* dividers, card borders (decorative) */
+  --line-2: #d5c8b6; /* dashed slots, kbd borders (decorative) */
+  --control: #948672; /* form-control borders: ≥ 3:1 against bg and surface */
+
+  /* Lake Blue (brand primary) */
+  --primary: #294878; /* text and accents */
+  --primary-fill: #294878; /* buttons, selected day */
+  --primary-fill-hover: #203b63;
+  --primary-wash: #e3eaf4; /* active nav, in-progress */
+  --on-primary: #ffffff;
+
+  /* Davidson Red: "now" and urgent only */
+  --urgent: #c21d1d;
+  --urgent-fill: #c21d1d;
+  --urgent-wash: #fbe3e0;
+  --on-urgent: #ffffff;
+
+  /* Status */
+  --success: #2d6a4d;
+  --success-wash: #e0efe6;
+  --warning: #8a5300;
+  --warning-wash: #faebd2;
+  --danger: #a3134d; /* errors and destructive actions: a crimson distinct from Davidson Red */
+  --danger-fill: #a3134d;
+  --danger-fill-hover: #8a0f41;
+  --danger-wash: #fbe4ec;
+  --on-danger: #ffffff;
+
+  /* Decor */
+  --taupe: #7a6650; /* Deep Taupe */
+  --sand: #e9ded3; /* Sandstone */
+
+  /* Focus ring (never red) */
+  --focus: #3c68b0;
+
+  /* Course colours by department: text on wash. See lib/course-color.ts for the mapping rule. */
+  --course-lake: #294878;
+  --course-lake-wash: #e3eaf4;
+  --course-pine: #2d6a4d;
+  --course-pine-wash: #e0efe6;
+  --course-ochre: #8a5a14;
+  --course-ochre-wash: #f5e9d3;
+  --course-plum: #6d3f73;
+  --course-plum-wash: #f1e5f2;
+  --course-teal: #1d6b75;
+  --course-teal-wash: #ddeff1;
+  --course-clay: #9a4524;
+  --course-clay-wash: #f7e4da;
+  --course-olive: #5a6118;
+  --course-olive-wash: #eceed6;
+  --course-iris: #4f4a9c;
+  --course-iris-wash: #e8e6f6;
+
+  /* Elevation */
+  --elev-card: 0 1px 2px rgb(21 34 56 / 0.05), 0 4px 16px rgb(21 34 56 / 0.04);
+  --elev-pop: 0 2px 6px rgb(21 34 56 / 0.08), 0 12px 32px rgb(21 34 56 / 0.12);
+
+  color-scheme: light;
+}
+
+/* Dark, from the system preference (no explicit choice). Keep identical to the [data-theme="dark"] block. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d131b;
+    --surface: #141c27;
+    --surface-2: #1b2532;
+    --overlay: rgb(3 6 10 / 0.7);
+    --fg: #e8edf4;
+    --fg-2: #b4becc;
+    --fg-3: #8d98a8;
+    --line: #243042;
+    --line-2: #2f3d52;
+    --control: #627390;
+    --primary: #93b6ee;
+    --primary-fill: #3c68b0;
+    --primary-fill-hover: #4775c0;
+    --primary-wash: #1a2940;
+    --on-primary: #ffffff;
+    --urgent: #ff6e66;
+    --urgent-fill: #d42121;
+    --urgent-wash: #3a1a1c;
+    --on-urgent: #ffffff;
+    --success: #7fcfa5;
+    --success-wash: #132d20;
+    --warning: #f0b75e;
+    --warning-wash: #33260f;
+    --danger: #f68fb0;
+    --danger-fill: #c2255c;
+    --danger-fill-hover: #d23a6f;
+    --danger-wash: #3b1726;
+    --on-danger: #ffffff;
+    --taupe: #c4af96;
+    --sand: #2a2521;
+    --focus: #93b6ee;
+    --course-lake: #93b6ee;
+    --course-lake-wash: #1a2940;
+    --course-pine: #7fcfa5;
+    --course-pine-wash: #132d20;
+    --course-ochre: #e6b566;
+    --course-ochre-wash: #33260f;
+    --course-plum: #d6a8db;
+    --course-plum-wash: #2c1c31;
+    --course-teal: #7ccfd8;
+    --course-teal-wash: #12303a;
+    --course-clay: #f0a583;
+    --course-clay-wash: #3a1f14;
+    --course-olive: #c8cf78;
+    --course-olive-wash: #272a10;
+    --course-iris: #b3aef2;
+    --course-iris-wash: #221f42;
+    --elev-card: none;
+    --elev-pop: 0 0 0 1px rgb(255 255 255 / 0.04), 0 16px 40px rgb(0 0 0 / 0.55);
+    color-scheme: dark;
   }
+}
+
+/* Dark, chosen explicitly. Keep identical to the media-query block above. */
+:root[data-theme="dark"] {
+  --bg: #0d131b;
+  --surface: #141c27;
+  --surface-2: #1b2532;
+  --overlay: rgb(3 6 10 / 0.7);
+  --fg: #e8edf4;
+  --fg-2: #b4becc;
+  --fg-3: #8d98a8;
+  --line: #243042;
+  --line-2: #2f3d52;
+  --control: #627390;
+  --primary: #93b6ee;
+  --primary-fill: #3c68b0;
+  --primary-fill-hover: #4775c0;
+  --primary-wash: #1a2940;
+  --on-primary: #ffffff;
+  --urgent: #ff6e66;
+  --urgent-fill: #d42121;
+  --urgent-wash: #3a1a1c;
+  --on-urgent: #ffffff;
+  --success: #7fcfa5;
+  --success-wash: #132d20;
+  --warning: #f0b75e;
+  --warning-wash: #33260f;
+  --danger: #f68fb0;
+  --danger-fill: #c2255c;
+  --danger-fill-hover: #d23a6f;
+  --danger-wash: #3b1726;
+  --on-danger: #ffffff;
+  --taupe: #c4af96;
+  --sand: #2a2521;
+  --focus: #93b6ee;
+  --course-lake: #93b6ee;
+  --course-lake-wash: #1a2940;
+  --course-pine: #7fcfa5;
+  --course-pine-wash: #132d20;
+  --course-ochre: #e6b566;
+  --course-ochre-wash: #33260f;
+  --course-plum: #d6a8db;
+  --course-plum-wash: #2c1c31;
+  --course-teal: #7ccfd8;
+  --course-teal-wash: #12303a;
+  --course-clay: #f0a583;
+  --course-clay-wash: #3a1f14;
+  --course-olive: #c8cf78;
+  --course-olive-wash: #272a10;
+  --course-iris: #b3aef2;
+  --course-iris-wash: #221f42;
+  --elev-card: none;
+  --elev-pop: 0 0 0 1px rgb(255 255 255 / 0.04), 0 16px 40px rgb(0 0 0 / 0.55);
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------------------------------------------------ */
+/* Tailwind theme                                                                                                */
+/* ------------------------------------------------------------------------------------------------------------ */
+
+/* Clear the defaults so only Lakeside tokens exist. */
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  --font-*: initial;
+
+  /*
+   * Type scale: six running-text steps with a 12px floor, plus one display step (3xl) reserved for StatNumber
+   * and the landing hero. Body is 15px.
+   */
+  --text-xs: 0.75rem; /* 12px: meta, mono labels, chips, source tags */
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem; /* 14px: secondary text, nav, buttons, inputs */
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.9375rem; /* 15px: body */
+  --text-base--line-height: 1.375rem;
+  --text-lg: 1.0625rem; /* 17px: card and section titles */
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.6875rem; /* 27px: page titles on phones, landing section titles */
+  --text-xl--line-height: 1.15;
+  --text-xl--letter-spacing: -0.02em;
+  --text-2xl: 2rem; /* 32px: page titles */
+  --text-2xl--line-height: 1.1;
+  --text-2xl--letter-spacing: -0.02em;
+  --text-3xl: 2.75rem; /* 44px: display numbers, hero */
+  --text-3xl--line-height: 1;
+  --text-3xl--letter-spacing: -0.03em;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-nav: 550; /* sidebar links */
+  --font-weight-semibold: 600;
+  --font-weight-strong: 650; /* Lakeside headings */
+  --font-weight-bold: 700;
+
+  --tracking-title: -0.01em;
+  --tracking-label: 0.08em; /* uppercase mono labels and source tags */
+
+  /* Radii */
+  --radius-xs: 5px; /* kbd, tiny marks */
+  --radius-sm: 7px; /* plan cells, checkboxes */
+  --radius-md: 10px; /* buttons, inputs, search, icon buttons */
+  --radius-lg: 12px; /* day pills, menus */
+  --radius-xl: 16px; /* cards */
+  --radius-2xl: 18px; /* index card, dialogs */
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@theme inline {
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-overlay: var(--overlay);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-control: var(--control);
+  --color-primary: var(--primary);
+  --color-primary-fill: var(--primary-fill);
+  --color-primary-fill-hover: var(--primary-fill-hover);
+  --color-primary-wash: var(--primary-wash);
+  --color-on-primary: var(--on-primary);
+  --color-urgent: var(--urgent);
+  --color-urgent-fill: var(--urgent-fill);
+  --color-urgent-wash: var(--urgent-wash);
+  --color-on-urgent: var(--on-urgent);
+  --color-success: var(--success);
+  --color-success-wash: var(--success-wash);
+  --color-warning: var(--warning);
+  --color-warning-wash: var(--warning-wash);
+  --color-danger: var(--danger);
+  --color-danger-fill: var(--danger-fill);
+  --color-danger-fill-hover: var(--danger-fill-hover);
+  --color-danger-wash: var(--danger-wash);
+  --color-on-danger: var(--on-danger);
+  --color-taupe: var(--taupe);
+  --color-sand: var(--sand);
+  --color-focus: var(--focus);
+
+  --color-course-lake: var(--course-lake);
+  --color-course-lake-wash: var(--course-lake-wash);
+  --color-course-pine: var(--course-pine);
+  --color-course-pine-wash: var(--course-pine-wash);
+  --color-course-ochre: var(--course-ochre);
+  --color-course-ochre-wash: var(--course-ochre-wash);
+  --color-course-plum: var(--course-plum);
+  --color-course-plum-wash: var(--course-plum-wash);
+  --color-course-teal: var(--course-teal);
+  --color-course-teal-wash: var(--course-teal-wash);
+  --color-course-clay: var(--course-clay);
+  --color-course-clay-wash: var(--course-clay-wash);
+  --color-course-olive: var(--course-olive);
+  --color-course-olive-wash: var(--course-olive-wash);
+  --color-course-iris: var(--course-iris);
+  --color-course-iris-wash: var(--course-iris-wash);
+
+  --shadow-card: var(--elev-card);
+  --shadow-pop: var(--elev-pop);
+}
+
+/* ------------------------------------------------------------------------------------------------------------ */
+/* Base                                                                                                          */
+/* ------------------------------------------------------------------------------------------------------------ */
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--line);
+  }
+
+  html {
+    background-color: var(--bg);
+    color: var(--fg);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings:
-      "rlig" 1,
-      "calt" 1;
+    min-height: 100dvh;
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-}
 
-@layer utilities {
-  .text-balance {
+  /* One visible, non-red focus style everywhere. Components may refine it but never remove it. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--primary-wash);
+    color: var(--fg);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
     text-wrap: balance;
   }
-  .gradient-text {
-    @apply bg-gradient-to-r from-davidson to-davidson-dark bg-clip-text text-transparent;
-  }
-  .glass {
-    @apply border border-white/50 bg-white/80 shadow-sm backdrop-blur-xl;
-  }
-  .glass-card {
-    @apply border border-gray-100 bg-white/95 shadow-sm backdrop-blur-lg;
-  }
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
-  }
-  .animate-slide-up {
-    animation: slideUp 0.4s ease-out forwards;
-  }
-  .animate-shimmer {
-    animation: shimmer 2s linear infinite;
-    background-size: 200% 100%;
+}
+
+/* Motion: everything is short and optional. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-@keyframes fadeIn {
+/* Keyframes used by Dialog, menus and Skeleton. */
+@keyframes mis-fade-in {
   from {
     opacity: 0;
   }
-  to {
-    opacity: 1;
-  }
 }
-
-@keyframes slideUp {
+@keyframes mis-pop-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: translateY(4px) scale(0.98);
   }
 }
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
+@keyframes mis-pulse {
+  50% {
+    opacity: 0.55;
   }
 }
 
-html {
-  scroll-behavior: smooth;
+@utility animate-fade-in {
+  animation: mis-fade-in 150ms var(--ease-out);
+}
+@utility animate-pop-in {
+  animation: mis-pop-in 160ms var(--ease-out);
+}
+@utility animate-skeleton {
+  animation: mis-pulse 1.6s ease-in-out infinite;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.15);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.3);
+/* The bottom tab bar reserves the iOS home-indicator area. */
+@utility pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
-::selection {
-  background: rgba(140, 29, 29, 0.12);
-  color: #8c1d1d;
-}
-
-.carousel-scroll {
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-}
-.carousel-scroll > * {
-  scroll-snap-align: start;
-}
-.carousel-scroll::-webkit-scrollbar {
-  display: none;
+/* The striped band at the foot of the "M" brand mark (Lakeside wordmark). */
+@utility brand-stripes {
+  background-image: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--on-primary) 45%, transparent) 0 3px,
+    transparent 3px 6px
+  );
 }
