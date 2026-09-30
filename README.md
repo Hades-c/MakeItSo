@@ -41,19 +41,37 @@ MakeItSo/
     │   │                      /courses, /courses/[term]/[code], /plan, /careers, /careers/[slug], /events,
     │   │                      /alumni, /profile
     │   ├── globals.css        Lakeside design tokens (the only place raw colours live)
-    │   └── api/               route handlers (auth, register, profile)
+    │   └── api/               route handlers, all built with defineRoute (auth, register, profile, search)
     ├── server/                server-only modules
-    │   ├── env.ts             zod-validated environment, read lazily
-    │   ├── db.ts              lazy MongoDB connection (getDb)
-    │   ├── http.ts            typed JSON errors for route handlers (withApi, ApiError)
-    │   └── auth/              NextAuth options, requireUser() / requireApiUser()
+    │   ├── env.ts             zod-validated environment, read lazily, with production checks
+    │   ├── db.ts              lazy MongoDB connection (getDb), sanitizeFilter on
+    │   ├── http/              defineRoute (auth, CSRF, limits, validation, caching), typed errors,
+    │   │                      fetchExternal (the only way to call outside services) + fixtures mode
+    │   ├── auth/              NextAuth options, requireUser() / requireApiUser()
+    │   ├── sync.ts            recordSync / getSourceStatuses for the Sources panel
+    │   ├── account/           per-user data registry for export and account deletion
+    │   ├── catalog/ plan/ feeds/ rmp/ programs/   service contracts (typed stubs until each workstream lands)
+    │   └── search/            global search over pluggable providers
     ├── components/ui/         Lakeside UI primitives (Button, Card, SourceTag, CourseCode, Dialog, ...)
     ├── components/app/        AppShell: TopBar, Sidebar + Sources panel, BottomTabs, theme, user menu
-    ├── lib/                   shared (client + server) helpers and data
-    ├── models/                Mongoose models
+    ├── lib/                   shared (client + server): term, sources, routes, flags, format, day-summary
+    │   ├── types/             zod schemas + types for catalog, plan, feeds, content, ratings, AI
+    │   └── api/               one contract per route (method, path, auth, schemas) + a typed client
+    ├── models/                Mongoose models (new collections; models/legacy/ is read-only)
+    ├── docs/CONTRACTS.md      the frozen contracts in one page
     ├── types/                 type augmentation (next-auth)
-    └── tests/                 Vitest unit/integration tests; tests/e2e = Playwright
+    └── tests/                 Vitest unit/integration tests; tests/e2e = Playwright;
+                               tests/fixtures/external = recorded upstream responses
 ```
+
+### Contracts
+
+Shared interfaces are frozen and documented in [`frontend/docs/CONTRACTS.md`](frontend/docs/CONTRACTS.md):
+term rules (`lib/term.ts`), source tags (`lib/sources.ts`), domain types (`lib/types/*`), route contracts
+(`lib/api/*`, served with `defineRoute` and called with `callApi`), `fetchExternal`, `recordSync`, the account
+data registry, feature flags and the service signatures. Outside services are reached only through
+`fetchExternal`; with `EXTERNAL_MODE=fixtures` (tests, e2e, CI) it serves `frontend/tests/fixtures/external`
+and never touches the network.
 
 ---
 
@@ -104,16 +122,32 @@ Open [http://localhost:3000](http://localhost:3000) and create an account.
 Set these in `frontend/.env.local` locally, or in the Vercel project settings. None of them are needed to
 **build**; they are validated on first use at runtime (`server/env.ts`), with an error that names what is missing.
 
-| Variable                | Required | Description                                                                               |
-| ----------------------- | -------- | ----------------------------------------------------------------------------------------- |
-| `MONGODB_URI`           | yes      | MongoDB connection string, e.g. `mongodb://127.0.0.1:27017/makeitso` or `mongodb+srv://…` |
-| `NEXTAUTH_SECRET`       | yes      | Session signing secret. Generate with `openssl rand -base64 32`                           |
-| `NEXTAUTH_URL`          | yes\*    | Public URL of the app, e.g. `http://localhost:3000`. \*Optional on Vercel                 |
-| `ANTHROPIC_API_KEY`     | for AI   | Anthropic API key, used by AI features when `AI_PROVIDER=anthropic`                       |
-| `AI_PROVIDER`           | no       | `anthropic` (default) or `mock` (canned output for tests and e2e; no API key needed)      |
-| `APP_TIMEZONE`          | no       | IANA time zone for "today" logic. Default `America/New_York`                              |
-| `RMP_ENABLED`           | no       | RateMyProfessors ratings on/off. Default `true`                                           |
-| `RMP_SUMMARIES_ENABLED` | no       | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)           |
+| Variable                | Required     | Description                                                                                               |
+| ----------------------- | ------------ | --------------------------------------------------------------------------------------------------------- |
+| `MONGODB_URI`           | yes          | MongoDB connection string, e.g. `mongodb://127.0.0.1:27017/makeitso` or `mongodb+srv://…`                 |
+| `NEXTAUTH_SECRET`       | yes          | Session signing secret: `openssl rand -base64 32`. In production ≥ 32 characters, not the placeholder     |
+| `NEXTAUTH_URL`          | yes\*        | Public URL of the app, e.g. `http://localhost:3000`. \*Optional on Vercel                                 |
+| `APP_ORIGIN`            | production   | Public origin checked against the `Origin` of every POST/PUT/PATCH/DELETE (not needed on Vercel previews) |
+| `ANTHROPIC_API_KEY`     | for AI       | Anthropic API key, used by AI features when `AI_PROVIDER=anthropic`                                       |
+| `AI_PROVIDER`           | no           | `anthropic` (default) or `mock` (tests and e2e; rejected on the Vercel production environment)            |
+| `AI_ENABLED`            | no           | All AI features on/off. Default `true` (AI also needs a verified @davidson.edu account and consent)       |
+| `AI_DAILY_TOKEN_BUDGET` | no           | Tokens per day across all users before AI pauses. Default `2000000`                                       |
+| `MAIL_PROVIDER`         | no           | `none`, `console` (codes in the server log; dev/test default) or `resend`. Default `none` in production   |
+| `MAIL_API_KEY`          | for `resend` | Mail provider API key                                                                                     |
+| `MAIL_FROM`             | for `resend` | Sender, e.g. `MakeItSo <noreply@example.org>`                                                             |
+| `CRON_SECRET`           | for cron     | Bearer secret Vercel Cron sends (≥ 16 characters). Cron routes answer 503 without it                      |
+| `ADMIN_EMAILS`          | no           | Comma-separated addresses allowed on admin routes (with a verified mailbox)                               |
+| `EXTERNAL_MODE`         | no           | `live` (default) or `fixtures` (serve `tests/fixtures/external`; tests, e2e, CI)                          |
+| `FEATURE_CAREERS`       | no           | Careers pages on/off. Default `true`                                                                      |
+| `FEATURE_EVENTS`        | no           | Events page and feeds on/off. Default `true`                                                              |
+| `FEATURE_ALUMNI`        | no           | Alumni directory on/off. Default `true`                                                                   |
+| `APP_TIMEZONE`          | no           | IANA time zone for "today" logic. Default `America/New_York`                                              |
+| `RMP_ENABLED`           | no           | RateMyProfessors ratings on/off. Default `true`                                                           |
+| `RMP_SUMMARIES_ENABLED` | no           | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)                           |
+
+Production (`next start` and every Vercel deployment) also checks that the Vercel production environment does not
+use `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures` or the console mailer. A bad value fails the request that needs it
+with a 500 and a server log naming the variable; it never fails the build.
 
 ### Scripts (run in `frontend/`)
 
@@ -134,8 +168,9 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 - **Unit and integration** (`npm test`): server modules are tested directly; database tests use
   [mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server) via `tests/helpers/db.ts`, so no
   MongoDB setup is needed. The first run downloads a `mongod` binary (about 100 MB) into the local cache.
+  Tests run with `EXTERNAL_MODE=fixtures`, and any real network call from a test fails.
 - **End-to-end** (`npm run test:e2e`): builds the app, then `tests/e2e/serve.mjs` starts an in-memory MongoDB and
-  `next start` on port 3210 with `AI_PROVIDER=mock` and a throwaway secret. Install the browser once with
+  `next start` on port 3210 with `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures` and a throwaway secret. Install the browser once with
   `npx playwright install chromium`. Set `E2E_SKIP_BUILD=1` to reuse an existing build, `E2E_MONGODB_URI` to use
   your own database, or `PW_CHROMIUM_EXECUTABLE` to use a Chromium you already have.
 
@@ -149,8 +184,8 @@ CI (`.github/workflows/ci.yml`) runs all of the above on every pull request and 
 1. Import the repository at [vercel.com/new](https://vercel.com/new).
 2. Set **Root Directory** to `frontend`. Vercel picks Node.js 24, the newest major allowed by
    `engines.node` (`>=22.12 <25`) in `package.json`.
-3. Add the environment variables `MONGODB_URI`, `NEXTAUTH_SECRET` and `ANTHROPIC_API_KEY` (and `NEXTAUTH_URL`
-   if you use a custom domain).
+3. Add the environment variables `MONGODB_URI`, `NEXTAUTH_SECRET`, `APP_ORIGIN`, `CRON_SECRET` and
+   `ANTHROPIC_API_KEY` (and `NEXTAUTH_URL` if you use a custom domain).
 4. Deploy.
 
 Production: https://make-it-so.vercel.app
