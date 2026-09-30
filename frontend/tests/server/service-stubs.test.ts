@@ -8,8 +8,11 @@ import * as rmp from "@/server/rmp";
 
 /**
  * The frozen service surfaces (PLAN §4.1.3–7). Until each workstream lands, every export is a typed stub that
- * throws ApiError(501, "unavailable"). This test pins the export names so a rename is a visible contract change.
+ * throws ApiError(501, "unavailable"). This test pins the export names so a rename is a visible contract change;
+ * once a surface is implemented (IMPLEMENTED) only the names are pinned, and its own tests cover behaviour.
  */
+const IMPLEMENTED = new Set<string>(["catalog"]);
+
 const SURFACES = {
   catalog: [
     catalog,
@@ -62,6 +65,7 @@ describe("service stubs", () => {
         ([, value]) => typeof value === "function",
       );
       expect(functions.map(([key]) => key).sort()).toEqual([...exports].sort());
+      if (IMPLEMENTED.has(name)) return;
       for (const [key, fn] of functions) {
         let error: unknown;
         try {
