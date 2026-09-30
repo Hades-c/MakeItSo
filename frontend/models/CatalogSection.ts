@@ -11,10 +11,24 @@ import { MEETING_DAYS, REQ_CODES } from "@/lib/types/catalog";
  * `catalogsections`, keyed by (termCode, crn). A term is replaced as a whole by the ingest, and never by an empty
  * or < 50%-size result (PLAN §5 "Catalog ingest"; see CatalogMeta).
  *
+ * Written only by server/catalog/ingest.ts (whole-term replace: upsert every section, then delete the CRNs that
+ * are gone) and read through server/catalog/store.ts, which maps a row back to the Section contract.
+ *
  * `reqCodes` is absent when upstream has no requirement data (exposed as `null`), `[ "NONE" ]` when approved for
- * none. `noteCodes` keeps the raw upstream note codes so restrictions can be re-derived without re-fetching.
- * `searchText` is a lower-cased blob (code, title, instructors, description) for W1's search.
+ * none. `restrictions.eligibleYears` is absent when the section is open to every class year (exposed as `null`).
+ * `noteCodes` keeps the raw upstream note codes so restrictions can be re-derived without re-fetching.
+ * `registrationSections` are the hidden registration-only listings upstream names in `reg_fors`.
+ * `searchText` is a folded blob (both code spellings, titles, instructors, description) for W1's search.
  */
+
+const ListingSubSchema = new Schema(
+  {
+    crn: { type: String, required: true },
+    courseCode: { type: String, required: true },
+    section: { type: String, required: true },
+  },
+  { _id: false },
+);
 
 const MeetingSubSchema = new Schema(
   {
@@ -46,6 +60,8 @@ const CatalogSectionSchema = new Schema(
     /** Cross-listing canonical code (lib/types/catalog.ts canonicalCourseCode). */
     canonicalCode: { type: String, required: true },
     subject: { type: String, required: true },
+    /** Upstream department name of `subject` ("Computer Science"). */
+    subjectName: { type: String, default: "" },
     number: { type: String, required: true },
     section: { type: String, required: true },
     title: { type: String, required: true },
@@ -69,21 +85,11 @@ const CatalogSectionSchema = new Schema(
       notIfCompMet: { type: Boolean, default: false },
     },
     /** Sibling listings (lib/types/catalog.ts CrossListing): match them by crn. */
-    crossListings: {
-      type: [
-        new Schema(
-          {
-            crn: { type: String, required: true },
-            courseCode: { type: String, required: true },
-            section: { type: String, required: true },
-          },
-          { _id: false },
-        ),
-      ],
-      default: [],
-    },
+    crossListings: { type: [ListingSubSchema], default: [] },
     crossPostings: { type: [String], default: [] },
     regFor: { type: String, default: null },
+    /** Upstream reg_fors: registration-only listings for this class in other departments (never in the data). */
+    registrationSections: { type: [ListingSubSchema], default: [] },
     searchText: { type: String, default: "" },
     /** When the ingest that wrote this row fetched it from upstream. */
     fetchedAt: { type: Date, required: true },
@@ -93,6 +99,9 @@ const CatalogSectionSchema = new Schema(
 
 CatalogSectionSchema.index({ termCode: 1, crn: 1 }, { unique: true });
 CatalogSectionSchema.index({ termCode: 1, courseCode: 1 });
+/** Course history (getCourseHistory) and code validation across terms. */
+CatalogSectionSchema.index({ courseCode: 1, termCode: 1 });
+CatalogSectionSchema.index({ "crossListings.courseCode": 1 });
 CatalogSectionSchema.index({ canonicalCode: 1, termCode: 1 });
 CatalogSectionSchema.index({ termCode: 1, subject: 1, number: 1 });
 CatalogSectionSchema.index({ termCode: 1, reqCodes: 1 });
