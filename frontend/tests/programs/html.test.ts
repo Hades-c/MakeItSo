@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cleanText,
   htmlToText,
+  MAX_HTML_LENGTH,
   MAX_TEXT_LENGTH,
   MISSING_COURSE,
   permalinkFallback,
@@ -118,6 +119,24 @@ describe("htmlToText (Acalog rich text → text)", () => {
     const long = htmlToText(`<p>${"word ".repeat(20_000)}</p>`).text;
     expect(long.length).toBe(MAX_TEXT_LENGTH);
     expect(long.endsWith("…")).toBe(true);
+  });
+});
+
+describe("htmlToText on malformed input", () => {
+  it("reads unclosed tags as text in linear time", () => {
+    for (const unit of ["<a", '<a "', "<a x='", '<p class="x']) {
+      const started = performance.now();
+      const { text } = htmlToText(unit.repeat(32_000));
+      expect(performance.now() - started, unit).toBeLessThan(1_000);
+      expect(text.length).toBeGreaterThan(0);
+    }
+    expect(htmlToText("Take <a CSC 121").text).toBe("Take <a CSC 121");
+    expect(htmlToText('<p title="a > b">kept</p>').text).toBe("kept");
+  });
+
+  it(`reads at most ${MAX_HTML_LENGTH} characters of HTML`, () => {
+    const html = `<p>${"x".repeat(MAX_HTML_LENGTH)}</p><p>after the cut</p>`;
+    expect(htmlToText(html).text).not.toContain("after the cut");
   });
 });
 

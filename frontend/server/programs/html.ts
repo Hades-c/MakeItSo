@@ -21,6 +21,9 @@ export const MISSING_COURSE = "[course]";
 /** Longest text one call returns (a whole department page is ~15 kB of text). */
 export const MAX_TEXT_LENGTH = 50_000;
 
+/** Longest HTML one call reads (the longest description in the 2026-2027 catalog is ~12 kB); the rest is cut. */
+export const MAX_HTML_LENGTH = 500_000;
+
 export interface HtmlText {
   text: string;
   missingCourseRefs: number;
@@ -73,8 +76,13 @@ const SKIPPED = new Set([
   "head",
 ]);
 
+/**
+ * One token: a comment, a tag, a run of text, or a stray "<". A tag's attribute part never contains an unquoted
+ * "<", so an unclosed tag ("<a" at the end of a truncated description, or thousands of them) is read as text at
+ * once instead of being retried against the rest of the input (which made malformed input quadratic).
+ */
 const TOKEN =
-  /<!--[\s\S]*?(?:-->|$)|<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:[^>"']|"[^"]*"|'[^']*')*)>|([^<]+)|(<)/g;
+  /<!--[\s\S]*?(?:-->|$)|<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:[^<>"']|"[^"]*"|'[^']*')*)>|([^<]+)|(<)/g;
 const ATTRIBUTE = /([^\s=/"'>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
 
 /** NBSP and friends → space; zero-width characters → nothing. */
@@ -164,7 +172,7 @@ export function htmlToText(html: string | null | undefined): HtmlText {
     lines.push(indent + content);
   };
 
-  for (const match of (html ?? "").matchAll(TOKEN)) {
+  for (const match of (html ?? "").slice(0, MAX_HTML_LENGTH).matchAll(TOKEN)) {
     const [whole, closing, rawTag, rawAttrs, text, stray] = match;
     if (whole.startsWith("<!--")) continue;
     if (text !== undefined || stray !== undefined) {
