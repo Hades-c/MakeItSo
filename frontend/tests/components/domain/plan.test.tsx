@@ -321,6 +321,8 @@ describe("AddToPlanControl", () => {
     const busy = screen.getByRole("button", { name: "Adding to Fall 2027…" });
     expect(busy).toHaveAttribute("aria-disabled", "true");
     expect(busy).toHaveAttribute("aria-busy", "true");
+    // A state to read, not a greyed-out control.
+    expect(busy).toHaveClass("aria-disabled:opacity-100");
     await user.click(busy);
     expect(onAdd).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("status")).toHaveTextContent("Adding HIS 357 to Fall 2027");
@@ -336,7 +338,9 @@ describe("AddToPlanControl", () => {
         courseCode="HIS 357"
       />,
     );
-    await user.click(screen.getByRole("button", { name: "In your plan for Fall 2027" }));
+    const inPlan = screen.getByRole("button", { name: "In your plan for Fall 2027" });
+    expect(inPlan).toHaveClass("aria-disabled:opacity-100", "border-primary", "text-fg");
+    await user.click(inPlan);
     expect(onAdd).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("status")).toHaveTextContent("HIS 357 is in your plan for Fall 2027");
   });
@@ -355,6 +359,8 @@ describe("AddToPlanControl", () => {
     );
     const button = screen.getByRole("button", { name: "Not offered in Spring 2027" });
     expect(button).toHaveAttribute("aria-disabled", "true");
+    // Blocked: dimmed (the button's aria-disabled style), unlike pending or added.
+    expect(button).not.toHaveClass("aria-disabled:opacity-100");
     await user.click(button);
     expect(onAdd).not.toHaveBeenCalled();
     expect(screen.getByTestId("add-to-plan-explanation")).toHaveTextContent(

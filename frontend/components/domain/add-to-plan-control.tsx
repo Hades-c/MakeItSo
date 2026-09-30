@@ -174,10 +174,16 @@ export function AddToPlanControl({
 
       {children ? <div className="mt-3.5">{children}</div> : null}
 
+      {/* Pending and added are states to read, not blocked controls: full contrast, still aria-disabled. Only a
+          term that cannot be chosen (or none) is dimmed. */}
       <Button
         size="lg"
         variant={added ? "secondary" : "primary"}
-        className="mt-3.5 w-full"
+        className={cn(
+          "mt-3.5 w-full",
+          (pending || added) && !blocked && "aria-disabled:opacity-100",
+          added && !pending && "border-primary text-fg [&_svg]:text-primary",
+        )}
         aria-disabled={inactive || undefined}
         aria-busy={pending || undefined}
         onClick={() => {
