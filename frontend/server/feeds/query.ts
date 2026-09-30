@@ -17,32 +17,47 @@ import FeedItem from "@/models/FeedItem";
 import { now } from "@/server/clock";
 import { getDb, trusted } from "@/server/db";
 import { readEnv } from "@/server/env";
-import { FEED_SOURCES, LIBCAL_HOURS_URL } from "@/server/feeds/config";
-import { LibCalHoursTodaySchema, libCalDate, normalizeLibraryHours } from "@/server/feeds/libcal";
-import { storeChannelItems, toFeedItem, WIRE_PROJECTION } from "@/server/feeds/store";
+import { FEED_SOURCES } from "@/server/feeds/config";
+import { toFeedItem, WIRE_PROJECTION } from "@/server/feeds/store";
 import { staleSources, syncFeeds } from "@/server/feeds/sync";
 import { escapeRegExp, foldForSearch } from "@/server/feeds/text";
-import { dateKeyInZone, DAY_MS } from "@/server/feeds/time";
+import { dateKeyInZone, DAY_MS, HOUR_MS } from "@/server/feeds/time";
 import { ApiError, zodIssues } from "@/server/http/errors";
-import { ExternalFetchError, fetchExternal } from "@/server/http/external";
 
 /**
  * Read side of the feeds service. Reads never wait for an upstream: they serve what `feeditems` holds and, when a
  * requested source is older than its freshness window (30–60 min), schedule a background refresh with next/server
  * `after()` (stale-while-revalidate; a no-op outside a request, e.g. in tests and scripts). The one exception is
- * getLibraryHours(today) with nothing stored for today yet, which fetches LibCal once, inline.
+ * getLibraryHours(today) with nothing stored for today and a library sync due (not attempted in the last 30 min):
+ * it runs that sync (single-flight, recorded with recordSync) and waits for it up to 5 s.
  */
 
 /** Kinds listEvents returns when `kinds` is empty: events and deadlines (news and hours only when asked). */
 export const DEFAULT_EVENT_KINDS: readonly FeedKind[] = ["event", "deadline"];
 export const DEFAULT_EVENTS_WINDOW_DAYS = 14;
-/** Inline LibCal fetch budget for getLibraryHours when today has no stored hours. */
-const INLINE_HOURS_TIMEOUT_MS = 5_000;
+/**
+ * An event without an end time (the Events Digest gives none) counts as running this long for window overlap, so
+ * it does not drop out of listEvents the moment it starts. Its endsAt stays null (nothing invented for display).
+ */
+export const OPEN_ENDED_EVENT_MS = 2 * HOUR_MS;
+/** How long getLibraryHours(today) waits for a due library sync when nothing is stored for today. */
+export const INLINE_HOURS_WAIT_MS = 5_000;
 
 export interface ReadOptions {
   /** Schedule a background refresh of stale sources (default true). */
   refresh?: boolean;
 }
+
+/** Keep `work` alive after the response is sent (serverless). Outside a Next.js request scope this does nothing. */
+function keepAlive(work: Promise<unknown>): void {
+  try {
+    after(() => work.then(noop, noop));
+  } catch {
+    // Not inside a request: the promise simply runs to completion.
+  }
+}
+
+function noop(): void {}
 
 /** Refresh stale sources after the response is sent. Outside a Next.js request scope this does nothing. */
 export function scheduleStaleRefresh(sources: readonly FeedSourceId[]): void {
@@ -69,15 +84,23 @@ function textFilter(q: string) {
   return tokens.map((token) => ({ searchText: trusted({ $regex: escapeRegExp(token) }) }));
 }
 
+export interface EventsPage {
+  items: FeedItemWire[];
+  /** More items match than `limit` returned. */
+  hasMore: boolean;
+}
+
 /**
- * Stored feed items overlapping [from, to) (default now → now + 14 days), soonest first. `kinds` defaults to
- * events + deadlines; `sources` to every feed source; `q` matches title, location and summary (every word, case
- * and accent insensitive). Items without a start time (undated news) never match a window.
+ * Stored feed items overlapping [from, to) (default now → now + 14 days), soonest first, plus whether the list
+ * was cut at `limit`. `kinds` defaults to events + deadlines; `sources` to every feed source; `q` matches title,
+ * location and summary (every word, case and accent insensitive). Overlap: startsAt < to, and endsAt > from, or
+ * (no end) startsAt ≥ from, or (an event without an end) startsAt > from − OPEN_ENDED_EVENT_MS. Items without a
+ * start time (undated news) never match a window.
  */
-export async function listEvents(
+export async function listEventsPage(
   query: EventsQueryInput = {},
   options: ReadOptions = {},
-): Promise<FeedItemWire[]> {
+): Promise<EventsPage> {
   const parsed = EventsQuerySchema.safeParse(query);
   if (!parsed.success) invalid(parsed.error);
   const { from: fromIso, to: toIso, sources, kinds, q, limit } = parsed.data;
@@ -105,15 +128,33 @@ export async function listEvents(
       $or: [
         { endsAt: trusted({ $gt: from }) },
         { endsAt: null, startsAt: trusted({ $gte: from }) },
+        {
+          endsAt: null,
+          kind: "event",
+          startsAt: trusted({ $gt: new Date(from.getTime() - OPEN_ENDED_EVENT_MS) }),
+        },
       ],
       ...(tokens.length ? { $and: tokens } : {}),
     },
     WIRE_PROJECTION,
   )
     .sort({ startsAt: 1, title: 1, source: 1, externalId: 1 })
-    .limit(limit)
+    .limit(limit + 1)
     .lean();
-  return docs.map(toFeedItem).filter((item): item is FeedItemWire => item !== null);
+  const hasMore = docs.length > limit;
+  const items = docs
+    .slice(0, limit)
+    .map(toFeedItem)
+    .filter((item): item is FeedItemWire => item !== null);
+  return { items, hasMore };
+}
+
+/** listEventsPage without the "cut at limit" flag (the frozen service surface). */
+export async function listEvents(
+  query: EventsQueryInput = {},
+  options: ReadOptions = {},
+): Promise<FeedItemWire[]> {
+  return (await listEventsPage(query, options)).items;
 }
 
 export const NewsQuerySchema = z.object({
@@ -195,29 +236,28 @@ async function storedHours(date: string): Promise<LibraryHours | null> {
   return hoursFromDocs(date, docs);
 }
 
-/** Fetch LibCal's hours today and store them (the same path the library sync uses). */
-async function fetchHoursToday(at: Date, timeZone: string): Promise<void> {
-  const { data } = await fetchExternal("library", LIBCAL_HOURS_URL, {
-    parse: "json",
-    schema: LibCalHoursTodaySchema,
-    timeoutMs: INLINE_HOURS_TIMEOUT_MS,
+/** Resolves when `work` settles or after `ms`, whichever comes first (rejections of `work` propagate). */
+async function waitAtMost(work: Promise<unknown>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms);
   });
-  const date = libCalDate(data, dateKeyInZone(at, timeZone));
-  const items = normalizeLibraryHours(data, {
-    source: "library",
-    channel: "hours",
-    now: at,
-    timeZone,
-    date,
-  });
-  await storeChannelItems("library", "hours", items, at, { kind: "hours", date });
+  try {
+    await Promise.race([work.then(noop), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
  * LibCal opening hours for an America/New_York date ("YYYY-MM-DD"). LibCal only publishes "today", so:
  *   - any date with a stored snapshot → that snapshot (a stale "today" also schedules a background refresh);
- *   - today with nothing stored → one inline LibCal fetch (5 s budget); if that fails → 503 unavailable;
+ *   - today with nothing stored and the library due for a sync (last attempt ≥ 30 min ago) → that sync runs
+ *     (single-flight, recordSync, the feed byte cap) and is awaited up to 5 s; still nothing → 503 unavailable;
+ *   - today with nothing stored and a recent attempt (LibCal down, or its "today" was another date around
+ *     midnight) → 503 at once, without calling LibCal again until the next window;
  *   - another date with nothing stored → 404 not_found.
+ * `refresh: false` never calls an upstream (503 when nothing is stored for today).
  */
 export async function getLibraryHours(
   date: string,
@@ -245,13 +285,12 @@ export async function getLibraryHours(
   if (parsedDate.data !== today) {
     throw new ApiError(404, "not_found", `Library hours for ${parsedDate.data} are not available.`);
   }
-  try {
-    await fetchHoursToday(at, timeZone);
+  if (options.refresh !== false && (await staleSources(["library"], at)).length > 0) {
+    const sync = syncFeeds({ sources: ["library"], onlyStale: true });
+    keepAlive(sync);
+    await waitAtMost(sync, INLINE_HOURS_WAIT_MS);
     const fresh = await storedHours(today);
     if (fresh) return fresh;
-  } catch (error) {
-    if (!(error instanceof ExternalFetchError)) throw error;
-    console.warn(`[feeds] library hours fetch failed: ${error.message}`);
   }
   throw new ApiError(503, "unavailable", "Library hours are unavailable right now.");
 }

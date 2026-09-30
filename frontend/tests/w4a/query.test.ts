@@ -3,9 +3,15 @@ import { startTestDb, type TestDb } from "../helpers/db";
 import type { SyncedSourceId } from "@/lib/sources";
 import { FeedItemSchema, LibraryHoursSchema } from "@/lib/types/feeds";
 import FeedItem from "@/models/FeedItem";
+import SourceSync from "@/models/SourceSync";
 import { getDb } from "@/server/db";
 import { getLibraryHours, listEvents, listNews, syncFeeds } from "@/server/feeds";
+import { LIBCAL_HOURS_URL } from "@/server/feeds/config";
+import type { LibCalHoursToday } from "@/server/feeds/libcal";
+import { listEventsPage } from "@/server/feeds/query";
 import { feedItemId, storeChannelItems } from "@/server/feeds/store";
+import { FEED_MAX_BYTES } from "@/server/feeds/sync";
+import type { NormalizedFeedItem } from "@/server/feeds/types";
 import { ApiError } from "@/server/http/errors";
 import type * as External from "@/server/http/external";
 import { ExternalFetchError, fetchExternal } from "@/server/http/external";
@@ -16,10 +22,14 @@ vi.mock("@/server/http/external", async (importOriginal) => {
   return { ...actual, fetchExternal: vi.fn(actual.fetchExternal) };
 });
 const fetchMock = vi.mocked(fetchExternal);
+type Fetch = (source: SyncedSourceId, url: string, options?: unknown) => Promise<unknown>;
+let realFetch: Fetch;
 
 let testDb: TestDb;
 
 beforeAll(async () => {
+  realFetch = (await vi.importActual<typeof External>("@/server/http/external"))
+    .fetchExternal as unknown as Fetch;
   testDb = await startTestDb();
   await getDb();
 });
@@ -233,24 +243,126 @@ describe("listEvents across the 2026-11-01 DST change", () => {
 });
 
 describe("getLibraryHours with nothing stored for today", () => {
+  const HOURS_URL = LIBCAL_HOURS_URL;
+  const hoursCalls = () => fetchMock.mock.calls.filter(([, url]) => url === HOURS_URL).length;
+
   beforeEach(async () => {
     await testDb.clear();
   });
 
-  it("fetches LibCal once, inline, and stores the snapshot", async () => {
+  function libCal(reply: "down" | ((data: LibCalHoursToday) => LibCalHoursToday)) {
+    fetchMock.mockImplementation((async (
+      source: SyncedSourceId,
+      url: string,
+      options?: unknown,
+    ) => {
+      if (url !== HOURS_URL) return realFetch(source, url, options);
+      if (reply === "down") {
+        throw new ExternalFetchError(source, url, "http", "Upstream answered 503", 503);
+      }
+      const real = (await realFetch(source, url, options)) as { data: LibCalHoursToday };
+      return { ...real, data: reply(real.data) };
+    }) as unknown as typeof fetchExternal);
+  }
+
+  it("runs the due library sync once, stores the snapshot and records it", async () => {
     const hours = await getLibraryHours("2026-09-30");
     expect(hours.locations).toHaveLength(11);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(hoursCalls()).toBe(1);
+    // Through the sync path: the feed byte cap, and a recordSync for the library.
+    expect(fetchMock.mock.calls.find(([, url]) => url === HOURS_URL)![2]).toMatchObject({
+      maxBytes: FEED_MAX_BYTES,
+    });
+    expect(await SourceSync.findOne({ sourceId: "library" }).lean()).toMatchObject({ ok: true });
     expect(await FeedItem.countDocuments({ kind: "hours", "hours.date": "2026-09-30" })).toBe(11);
     await getLibraryHours("2026-09-30");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(hoursCalls()).toBe(1);
   });
 
-  it("answers 503 when LibCal is down and nothing is stored", async () => {
-    fetchMock.mockImplementation((async (source: SyncedSourceId, url: string) => {
-      throw new ExternalFetchError(source, url, "timeout", "Timed out after 5000 ms");
-    }) as unknown as typeof fetchExternal);
+  it("LibCal down: one attempt per freshness window, then 503 at once (recorded as failing)", async () => {
+    libCal("down");
+    for (let i = 0; i < 3; i++) {
+      await expectApiError(getLibraryHours("2026-09-30"), 503, "unavailable");
+    }
+    expect(hoursCalls()).toBe(1);
+    expect(await FeedItem.countDocuments({ kind: "hours" })).toBe(0);
+    expect(await SourceSync.findOne({ sourceId: "library" }).lean()).toMatchObject({
+      ok: false,
+      lastError: "hours: HTTP 503 (http)",
+    });
+    vi.stubEnv("FIXTURES_NOW", "2026-09-30T12:31:00-04:00");
     await expectApiError(getLibraryHours("2026-09-30"), 503, "unavailable");
-    expect(await FeedItem.countDocuments()).toBe(0);
+    expect(hoursCalls()).toBe(2);
+  });
+
+  it("LibCal's 'today' is still yesterday around midnight: 503 without refetching on every read", async () => {
+    libCal((data) => ({
+      ...data,
+      locations: data.locations.map((l) => ({ ...l, day: "Tuesday" })),
+    }));
+    for (let i = 0; i < 3; i++) {
+      await expectApiError(getLibraryHours("2026-09-30"), 503, "unavailable");
+    }
+    expect(hoursCalls()).toBe(1);
+    const dates = await FeedItem.distinct("hours.date", { kind: "hours" });
+    expect(dates).toEqual(["2026-09-29"]);
+    expect((await getLibraryHours("2026-09-29")).date).toBe("2026-09-29");
+  });
+
+  it("refresh: false never calls LibCal", async () => {
+    await expectApiError(getLibraryHours("2026-09-30", { refresh: false }), 503, "unavailable");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("listEvents: open-ended events and paging", () => {
+  beforeAll(async () => {
+    await testDb.clear();
+    const digestEvent = (id: string, start: string): NormalizedFeedItem => ({
+      source: "events-digest",
+      channel: "events",
+      externalId: id,
+      kind: "event",
+      title: id,
+      url: `https://www.davidson.edu/events/booking/${id}`,
+      startsAt: new Date(start),
+      endsAt: null,
+      allDay: false,
+      location: null,
+      summaryText: null,
+    });
+    await storeChannelItems(
+      "events-digest",
+      "events",
+      [
+        digestEvent("cinema", "2026-10-05T21:00:00Z"),
+        digestEvent("lecture", "2026-10-05T23:00:00Z"),
+        digestEvent("concert", "2026-10-06T23:00:00Z"),
+      ],
+      FIXTURE_NOW,
+      { kind: "none" },
+    );
+  });
+
+  it("an event without an end stays listed for two hours after it starts", async () => {
+    const at = (iso: string) =>
+      listEvents({ from: iso, to: "2026-10-07T00:00:00Z" }, { refresh: false }).then((items) =>
+        items.map((i) => i.title),
+      );
+    expect(await at("2026-10-05T21:05:00Z")).toEqual(["cinema", "lecture", "concert"]);
+    expect(await at("2026-10-05T22:59:00Z")).toEqual(["cinema", "lecture", "concert"]);
+    expect(await at("2026-10-05T23:00:00Z")).toEqual(["lecture", "concert"]);
+    const item = (await listEvents({ from: "2026-10-05T21:30:00Z" }, { refresh: false }))[0]!;
+    expect(item).toMatchObject({ title: "cinema", endsAt: null });
+  });
+
+  it("listEventsPage says when the list was cut at the limit", async () => {
+    const window = { from: "2026-10-05T00:00:00Z", to: "2026-10-07T00:00:00Z" };
+    expect(await listEventsPage({ ...window, limit: 2 }, { refresh: false })).toMatchObject({
+      items: [{ title: "cinema" }, { title: "lecture" }],
+      hasMore: true,
+    });
+    const all = await listEventsPage({ ...window, limit: 3 }, { refresh: false });
+    expect([all.items.length, all.hasMore]).toEqual([3, false]);
   });
 });
