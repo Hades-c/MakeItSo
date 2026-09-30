@@ -18,21 +18,25 @@ export async function POST(req: NextRequest) {
     } catch {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const { major, graduationYear, currentYear } = body;
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
-    const email = body.email == null ? "" : normalizeEmail(body.email);
+    const davidsonOnly = () =>
+      NextResponse.json(
+        { error: "Sign-up is limited to Davidson College students. Use your @davidson.edu email." },
+        { status: 400 }
+      );
+    if (body.email != null && typeof body.email !== "string") return davidsonOnly();
+    const email = typeof body.email === "string" ? normalizeEmail(body.email) : "";
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Name, email, and password are required" }, { status: 400 });
     }
 
-    if (!DAVIDSON_EMAIL.test(email)) {
-      return NextResponse.json(
-        { error: "Sign-up is limited to Davidson College students. Use your @davidson.edu email." },
-        { status: 400 }
-      );
-    }
+    if (!DAVIDSON_EMAIL.test(email)) return davidsonOnly();
 
     if (password.length < 8) {
       return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
