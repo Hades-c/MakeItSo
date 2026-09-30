@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { withCatalogDb } from "./db";
+import { setNow, withCatalogDb } from "./db";
 import { GET } from "@/app/api/search/route";
 import { SearchResponseSchema, SearchResultSchema } from "@/lib/api/search";
 import type { Flags } from "@/lib/flags";
 import User from "@/models/User";
 import type { SessionUser } from "@/server/auth/session";
-import { searchCourses } from "@/server/catalog";
+import { countCourses, resolveTerms, searchCourses } from "@/server/catalog";
+import { browseTerm } from "@/server/catalog/read";
+import { refreshTerm, setIngestDepsForTests } from "@/server/catalog/refresh";
+import { fetchSectionsPage, type FetchSectionsPage } from "@/server/catalog/upstream";
 import type { SearchContext } from "@/server/search";
 import { search } from "@/server/search/providers/courses";
 
@@ -65,6 +68,53 @@ describe("courses search provider (⌘K)", () => {
   it("uses the registration term at the context's time", async () => {
     const later = { ...ctx, now: new Date("2026-12-20T17:00:00Z") };
     expect((await search("CSC 221", 1, later))[0]?.href).toBe("/courses/202602/CSC-221");
+  });
+
+  it("falls back to the current term while the registration term is unpublished (late January)", async () => {
+    // 2027-02-01: current Spring 2027, registration Fall 2027, whose schedule upstream answers with [] for weeks.
+    setNow("2027-02-01T10:00:00-05:00");
+    const fetchPage: FetchSectionsPage = async (term, offset, options) =>
+      term === "202701" ? [] : fetchSectionsPage(term, offset, options);
+    setIngestDepsForTests({ fetchPage });
+    const february = { ...ctx, now: new Date("2027-02-01T15:00:00Z") };
+    const results = await search("csc 121", 8, february);
+    expect(results.map((r) => [r.id, r.href, r.subtitle?.split(" · ")[0]])).toEqual([
+      ["202602:CSC 121", "/courses/202602/CSC-121", "Spring 2027"],
+    ]);
+    const resolved = await resolveTerms();
+    expect(resolved).toMatchObject({ current: "202602", registration: "202701" });
+    expect(await browseTerm(resolved)).toBe("202602");
+    expect(await countCourses("202701")).toBe(0);
+    // Once Fall 2027 is published, the palette moves to it.
+    setIngestDepsForTests({
+      fetchPage: async (term, offset, options) =>
+        fetchSectionsPage(term === "202701" ? "202602" : term, offset, options).then((items) =>
+          (items as Record<string, unknown>[]).map((item) => ({
+            ...item,
+            term: { code: Number(term) },
+          })),
+        ),
+    });
+    await refreshTerm("202701", { hot: true });
+    expect(await browseTerm(await resolveTerms())).toBe("202701");
+    expect((await search("csc 121", 8, february))[0]?.id).toBe("202701:CSC 121");
+  });
+
+  it("titles a topics course neutrally and names the matching topic in the subtitle", async () => {
+    const [wri] = await search("religion public square", 8, ctx);
+    expect(wri).toMatchObject({
+      id: "202602:WRI 101",
+      title: "WRI 101 · Writing Program: topics vary by section",
+      subtitle: expect.stringMatching(/^Spring 2027 · Religion in the Public Square/),
+    });
+    const [code] = await search("WRI 101", 8, ctx);
+    expect(code?.subtitle).not.toContain("Religion");
+  });
+
+  it("finds people by name however the apostrophe is typed", async () => {
+    const straight = await search("O'Keefe", 8, ctx);
+    expect(straight.length).toBeGreaterThan(0);
+    expect(await search("O\u2019Keefe", 8, ctx)).toEqual(straight);
   });
 });
 

@@ -38,6 +38,21 @@ export async function loadTerm(
   return { meta, index: await getTermIndex(term) };
 }
 
+/**
+ * The term browsing defaults to: the registration term once its schedule is published (≥ 1 section), else the
+ * current term. registrationTermFrom moves to the next semester when classes start (mid-January, late August),
+ * weeks before that semester's schedule comes out; meanwhile the registration term is empty and search, the ⌘K
+ * palette and the sidebar count would show nothing. Null when neither term has data.
+ */
+export async function browseTerm(resolved: ResolvedTerms): Promise<TermCode | null> {
+  const registration = await ensureTermData(resolved.registration, resolved);
+  if ((registration?.sectionCount ?? 0) > 0) return resolved.registration;
+  if (resolved.current === resolved.registration) return registration ? resolved.current : null;
+  const current = await ensureTermData(resolved.current, resolved);
+  if ((current?.sectionCount ?? 0) > 0) return resolved.current;
+  return registration ? resolved.registration : null;
+}
+
 /** A course with the term's "as of" time; null when not offered. */
 export async function readCourse(
   term: TermCode,
