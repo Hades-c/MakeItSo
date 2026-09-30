@@ -55,6 +55,9 @@ The frozen interfaces every workstream codes against. They change only through t
 - `Course.topics` / `CourseSummary.topics`: true exactly when the course title is the neutral
   "<Department>: topics vary by section" (no title shared by at least half of the non-lab sections: WRI 101,
   ECO 495); list the sections' own titles instead. Parsing older data gives `false`.
+- Both defaults make the fields required on the parsed TypeScript types, as do `AcademicProgram`'s below. A
+  hand-written `Section`, `Course` or `CourseSummary` literal (tests, fixtures) needs `registrationSections: []` /
+  `topics: false`, or is built with `SectionSchema.parse` / `CourseSchema.parse` / `CourseSummarySchema.parse`.
 - `openOnly` / `CourseSummary.openSeats`: a max-0 cross-listed listing ("Register as <sibling>") counts its
   CRN-matched siblings' seats (ENV 214 A → PHY 214 A).
 - `validateCourseCodes(codes, terms?)`: a code is valid when it has a listing of its own in one of the terms
