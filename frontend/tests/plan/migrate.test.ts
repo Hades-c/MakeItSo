@@ -18,6 +18,11 @@ import { migratePlans, type MigrationReport } from "@/server/plan/migrate";
 withPlanDb();
 
 const run = promisify(execFile);
+
+/** A minimal environment for the CLI child (no inherited MONGODB_URI, NODE_ENV "test"). */
+function childEnv(extra: Record<string, string>): NodeJS.ProcessEnv {
+  return { PATH: process.env.PATH ?? "", NODE_ENV: "test", ...extra };
+}
 const FRONTEND = fileURLToPath(new URL("../../", import.meta.url));
 
 const entry = (fields: Record<string, unknown>) => ({
@@ -168,13 +173,12 @@ describe("migratePlans", () => {
 describe("the CLI (plain Node, fixtures catalog, this test's in-memory database)", () => {
   it("prints the dry-run JSON report; --apply writes v2", async () => {
     const { alice } = await seed();
-    const env = {
-      PATH: process.env.PATH ?? "",
+    const env = childEnv({
       HOME: process.env.HOME ?? "",
       MONGODB_URI: process.env.MONGODB_URI ?? "",
       EXTERNAL_MODE: "fixtures",
       FIXTURES_NOW: "2026-09-30T12:00:00-04:00",
-    };
+    });
     const dry = await run(process.execPath, ["scripts/migrate-plans.ts"], {
       cwd: FRONTEND,
       env,
@@ -203,7 +207,7 @@ describe("the CLI (plain Node, fixtures catalog, this test's in-memory database)
   }, 180_000);
 
   it("refuses to run without MONGODB_URI or with bad flags", async () => {
-    const env = { PATH: process.env.PATH ?? "" };
+    const env = childEnv({});
     const missing = await run(process.execPath, ["scripts/migrate-plans.ts"], {
       cwd: FRONTEND,
       env,

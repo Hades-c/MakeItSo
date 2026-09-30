@@ -19,7 +19,7 @@ import {
   isStudentFacing,
   type ContentDeadline,
 } from "@/server/content/academic-calendar";
-import { slotForCode } from "@/server/content/requirements";
+import { REQUIREMENTS_DISCLAIMER, slotForCode } from "@/server/content/requirements";
 import { now } from "@/server/clock";
 import { trusted } from "@/server/db";
 import { ApiError, type ApiIssue } from "@/server/http/errors";
@@ -84,6 +84,8 @@ export interface WebTreeChoiceDetail {
 }
 
 export interface WebTreeReport {
+  /** The requirement slots shown per choice are unofficial ("Unofficial — verify in Degree Works"). */
+  disclaimer: typeof REQUIREMENTS_DISCLAIMER;
   list: WebTreeList;
   conflicts: ScheduleConflict[];
   warnings: PlanWarning[];
@@ -425,6 +427,7 @@ export async function buildWebTreeReport(input: WebTreeReportInput): Promise<Web
   }
 
   return {
+    disclaimer: REQUIREMENTS_DISCLAIMER,
     list: { termCode: list.termCode, choices: sorted(list.choices) },
     conflicts,
     warnings,

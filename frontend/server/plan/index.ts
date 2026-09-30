@@ -81,7 +81,7 @@ export type {
 
 /** The plan (v2, or the in-memory conversion of a v1 plan with `legacy: true`, or an empty plan). */
 export async function getPlan(userId: string): Promise<PlanView> {
-  const doc = await readPlanDoc(userObjectId(userId));
+  const doc = await readPlanDoc(userObjectId(userId), { drafts: 0, webtree: 0 });
   if (doc) return viewFromDoc(doc);
   const legacy = await readLegacyPlanImpl(userId);
   return {

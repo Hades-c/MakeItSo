@@ -69,6 +69,7 @@ describe("summer activities", () => {
     });
     expect(SummerActivitySchema.parse(later)).toEqual(later);
     expect((await listSummerActivities(user)).map((a) => a.id)).toEqual([sooner.id, later.id]);
+    expect(await updateSummerActivity(user, later.id, {})).toEqual(later);
     const patched = await updateSummerActivity(user, later.id, {
       title: "REU",
       organization: "",

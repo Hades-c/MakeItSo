@@ -127,14 +127,19 @@ export async function updateSummerImpl(
       unset[`summer.$[s].${key}`] = "";
     else set[`summer.$[s].${key}`] = value;
   }
-  const updated = await Plan.findOneAndUpdate(
-    { userId: oid, "summer._id": id },
-    {
-      ...(Object.keys(set).length > 0 ? { $set: set } : {}),
-      ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}),
-    },
-    { arrayFilters: [{ "s._id": id }], returnDocument: "after", projection: { summer: 1 } },
-  ).lean();
+  const changes = Object.keys(set).length + Object.keys(unset).length;
+  const updated =
+    changes > 0
+      ? await Plan.findOneAndUpdate(
+          { userId: oid, "summer._id": id },
+          {
+            ...(Object.keys(set).length > 0 ? { $set: set } : {}),
+            ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}),
+          },
+          { arrayFilters: [{ "s._id": id }], returnDocument: "after", projection: { summer: 1 } },
+        ).lean()
+      : // Nothing to change (an empty patch): answer the entry as it is.
+        await Plan.findOne({ userId: oid }, { summer: 1 }).lean();
   const raw = rawList(updated as Raw | null, "summer").find(
     (entry) => String(entry._id) === activityId,
   );

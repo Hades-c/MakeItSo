@@ -118,6 +118,7 @@ describe("the report", () => {
     await saveWebTreeList(user, LIST);
     const report = await getWebTreeReport(user);
     expect(report.list.termCode).toBe("202602");
+    expect(report.disclaimer).toBe("Unofficial — verify in Degree Works");
     expect(
       report.conflicts.map(
         (c) =>

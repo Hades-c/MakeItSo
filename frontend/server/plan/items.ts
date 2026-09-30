@@ -17,6 +17,7 @@ import {
 } from "@/lib/types/plan";
 import Plan from "@/models/Plan";
 import { now } from "@/server/clock";
+import { catalogYearForTerm, resolveGraduationRules } from "@/server/content/requirements";
 import { trusted } from "@/server/db";
 import { ApiError, zodIssues } from "@/server/http/errors";
 import {
@@ -235,18 +236,19 @@ async function itemWarnings(input: WarningInput): Promise<PlanWarning[]> {
         other.source !== "transfer" &&
         other.source !== "ap",
     );
-    if (elected.length > 3) {
+    const { passFail } = resolveGraduationRules(catalogYearForTerm(context.firstTerm)).rules;
+    if (elected.length > passFail.maxElected) {
       out.push({
         code: "pass-fail-total",
-        message: `This makes ${elected.length} Pass/Fail courses; at most 3 may be elected Pass/Fail.`,
+        message: `This makes ${elected.length} Pass/Fail courses; at most ${passFail.maxElected} may be elected Pass/Fail.`,
         ...ref,
       });
     }
     const sameTerm = elected.filter((other) => other.termCode === item.termCode);
-    if (item.termCode && sameTerm.length > 1) {
+    if (item.termCode && sameTerm.length > passFail.maxPerSemester) {
       out.push({
         code: "pass-fail-term",
-        message: `This makes ${sameTerm.length} Pass/Fail courses in ${termLabel(item.termCode)}; at most 1 per semester.`,
+        message: `This makes ${sameTerm.length} Pass/Fail courses in ${termLabel(item.termCode)}; at most ${passFail.maxPerSemester} per semester.`,
         ...ref,
       });
     }
