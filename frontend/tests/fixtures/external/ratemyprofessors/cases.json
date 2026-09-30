@@ -1,0 +1,269 @@
+{
+ "note": "SYNTHETIC. What each roster row is for; ids/legacyIds/numbers are invented. Keyed by legacyId.",
+ "cases": [
+  {
+   "legacyId": 9000001,
+   "firstName": "Fred",
+   "lastName": "Smith",
+   "department": "Economics",
+   "davidson": true,
+   "case": "exact match for API Fred Smith (ECO)"
+  },
+  {
+   "legacyId": 9000002,
+   "firstName": "Kevin",
+   "lastName": "Smith",
+   "department": "Biology",
+   "davidson": true,
+   "case": "exact match for API Kevin Smith (BIO)"
+  },
+  {
+   "legacyId": 9000003,
+   "firstName": "Mark",
+   "lastName": "Smith",
+   "department": "Psychology",
+   "davidson": true,
+   "case": "exact match for API Mark Smith (PSY/BIO)"
+  },
+  {
+   "legacyId": 9000004,
+   "firstName": "Arianna",
+   "lastName": "Smith",
+   "department": "Biology",
+   "davidson": true,
+   "case": "exact match for API Arianna Smith (BIO)"
+  },
+  {
+   "legacyId": 9000005,
+   "firstName": "Allison",
+   "lastName": "Smith",
+   "department": "Classics",
+   "davidson": true,
+   "case": "exact match with zero ratings"
+  },
+  {
+   "legacyId": 9000006,
+   "firstName": "Josh",
+   "lastName": "Smith",
+   "department": "Communications",
+   "davidson": true,
+   "case": "nickname: API Joshua Smith (COM)"
+  },
+  {
+   "legacyId": 9000007,
+   "firstName": "Jacob",
+   "lastName": "Smith",
+   "department": "Communications",
+   "davidson": true,
+   "case": "same surname and department as Josh: first name must match"
+  },
+  {
+   "legacyId": 9000008,
+   "firstName": "Shaw",
+   "lastName": "Smith",
+   "department": "Fine Arts",
+   "davidson": true,
+   "case": "distractor: not in the course schedule"
+  },
+  {
+   "legacyId": 9000009,
+   "firstName": "Sharon",
+   "lastName": "Green",
+   "department": "Fine Arts",
+   "davidson": true,
+   "case": "API Sharon Green; never Hilary Green"
+  },
+  {
+   "legacyId": 9000010,
+   "firstName": "Hilary",
+   "lastName": "Green",
+   "department": "History",
+   "davidson": false,
+   "case": "another school: reject (school.id is not Davidson)"
+  },
+  {
+   "legacyId": 9000011,
+   "firstName": "Daniel",
+   "lastName": "Layman",
+   "department": "Philosophy",
+   "davidson": true,
+   "case": "exact match (PHI)"
+  },
+  {
+   "legacyId": 9000012,
+   "firstName": "Sean",
+   "lastName": "McKeever",
+   "department": "Philosophy",
+   "davidson": true,
+   "case": "exact match (PHI)"
+  },
+  {
+   "legacyId": 9000013,
+   "firstName": "Onita",
+   "lastName": "Vaz-Hooper",
+   "department": "English",
+   "davidson": true,
+   "case": "surname subset: API Onita Vaz"
+  },
+  {
+   "legacyId": 9000014,
+   "firstName": "Tara",
+   "lastName": "Villa Keith",
+   "department": "Music",
+   "davidson": true,
+   "case": "surname subset: API Tara Keith"
+  },
+  {
+   "legacyId": 9000015,
+   "firstName": "Rachid",
+   "lastName": "El Bejjani",
+   "department": "Biology",
+   "davidson": true,
+   "case": "two-token surname"
+  },
+  {
+   "legacyId": 9000016,
+   "firstName": "Katie",
+   "lastName": "St Clair",
+   "department": "Art",
+   "davidson": true,
+   "case": "two-token surname; API St Clair"
+  },
+  {
+   "legacyId": 9000017,
+   "firstName": "Linsey",
+   "lastName": "Sainte-Claire",
+   "department": "French",
+   "davidson": true,
+   "case": "near miss for St Clair: must not match"
+  },
+  {
+   "legacyId": 9000018,
+   "firstName": "Suresh",
+   "lastName": "Gouri",
+   "department": "Economics",
+   "davidson": true,
+   "case": "swap: API Shyam Gouri Suresh (primary profile)"
+  },
+  {
+   "legacyId": 9000019,
+   "firstName": "Gouri",
+   "lastName": "Suresh",
+   "department": "Economics",
+   "davidson": true,
+   "case": "swap duplicate: API Shyam Gouri Suresh (minor profile)"
+  },
+  {
+   "legacyId": 9000020,
+   "firstName": "Andrew",
+   "lastName": "O''Geen",
+   "department": "Political Science",
+   "davidson": true,
+   "case": "doubled apostrophe: API Andrew O'Geen"
+  },
+  {
+   "legacyId": 9000021,
+   "firstName": "Alesha ",
+   "lastName": "Bond ",
+   "department": "Psychology",
+   "davidson": true,
+   "case": "trailing spaces in both names"
+  },
+  {
+   "legacyId": 9000022,
+   "firstName": "Anita",
+   "lastName": "Tripathi ",
+   "department": "Theater",
+   "davidson": true,
+   "case": "trailing space in the surname"
+  },
+  {
+   "legacyId": 9000023,
+   "firstName": "Chris",
+   "lastName": "Alexander",
+   "department": "Political Science",
+   "davidson": true,
+   "case": "nickname + department conflict -> review"
+  },
+  {
+   "legacyId": 9000024,
+   "firstName": "Hugh",
+   "lastName": "Lee",
+   "department": "Political Science",
+   "davidson": true,
+   "case": "exact match for API Hugh Lee only"
+  },
+  {
+   "legacyId": 9000025,
+   "firstName": "Timothy",
+   "lastName": "Chartier",
+   "department": "Mathematics",
+   "davidson": true,
+   "case": "nickname: API Tim Chartier"
+  },
+  {
+   "legacyId": 9000026,
+   "firstName": "Lenny",
+   "lastName": "Yong",
+   "department": "Biology",
+   "davidson": true,
+   "case": "override-only nickname: API Lengxob Yong"
+  },
+  {
+   "legacyId": 9000027,
+   "firstName": "Raghu",
+   "lastName": "Ramanujan",
+   "department": "Mathematics",
+   "davidson": true,
+   "case": "exact match; department differs from CSC by name only"
+  },
+  {
+   "legacyId": 9000028,
+   "firstName": "Karen",
+   "lastName": "Hales",
+   "department": "Science",
+   "davidson": true,
+   "case": "duplicate A (primary)"
+  },
+  {
+   "legacyId": 9000029,
+   "firstName": "Karen",
+   "lastName": "Hales",
+   "department": "Biology",
+   "davidson": true,
+   "case": "duplicate B"
+  },
+  {
+   "legacyId": 9000030,
+   "firstName": "Graham",
+   "lastName": "Bullock",
+   "department": "Political Science",
+   "davidson": true,
+   "case": "duplicate A (primary)"
+  },
+  {
+   "legacyId": 9000031,
+   "firstName": "Graham",
+   "lastName": "Bullock",
+   "department": "Environmental Studies",
+   "davidson": true,
+   "case": "duplicate B"
+  },
+  {
+   "legacyId": 9000032,
+   "firstName": "Tabitha",
+   "lastName": "Peck",
+   "department": "Mathematics",
+   "davidson": true,
+   "case": "not in the current schedule"
+  },
+  {
+   "legacyId": 9000033,
+   "firstName": "Allison",
+   "lastName": "Smith",
+   "department": "Classics",
+   "davidson": false,
+   "case": "another school: reject"
+  }
+ ]
+}

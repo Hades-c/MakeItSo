@@ -1,0 +1,40 @@
+{
+  "source": "catalog",
+  "description": "Acalog widget API for the 2026-2027 catalog (catalog id 4), captured 2026-09-30: the program list (52 programs; default pages of 20 and one page-size=100 page) and three program pages (172 Computer Science, 174 Economics, 188 Mathematics and Computer Science).",
+  "capturedAt": "2026-09-30",
+  "routes": [
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/programs",
+      "file": "programs-page-1.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/programs?page=1",
+      "file": "programs-page-1.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/programs?page=2",
+      "file": "programs-page-2.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/programs?page=3",
+      "file": "programs-page-3.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/programs?page-size=*",
+      "file": "programs.json",
+      "note": "All 52 programs in one page."
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/172",
+      "file": "program-172.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/174",
+      "file": "program-174.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/188",
+      "file": "program-188.json"
+    }
+  ]
+}

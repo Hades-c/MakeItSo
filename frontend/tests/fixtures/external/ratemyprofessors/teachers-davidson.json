@@ -1,0 +1,676 @@
+{
+ "data": {
+  "newSearch": {
+   "teachers": {
+    "didFallback": false,
+    "edges": [
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjA=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDAx",
+       "legacyId": 9000001,
+       "firstName": "Fred",
+       "lastName": "Smith",
+       "department": "Economics",
+       "avgRating": 2.0,
+       "avgDifficulty": 1.5,
+       "numRatings": 41,
+       "wouldTakeAgainPercent": 0.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjE=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDAy",
+       "legacyId": 9000002,
+       "firstName": "Kevin",
+       "lastName": "Smith",
+       "department": "Biology",
+       "avgRating": 2.7,
+       "avgDifficulty": 3.8,
+       "numRatings": 17,
+       "wouldTakeAgainPercent": 71.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjI=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDAz",
+       "legacyId": 9000003,
+       "firstName": "Mark",
+       "lastName": "Smith",
+       "department": "Psychology",
+       "avgRating": 3.4,
+       "avgDifficulty": 3.1,
+       "numRatings": 30,
+       "wouldTakeAgainPercent": 42.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjM=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDA0",
+       "legacyId": 9000004,
+       "firstName": "Arianna",
+       "lastName": "Smith",
+       "department": "Biology",
+       "avgRating": 4.1,
+       "avgDifficulty": 2.4,
+       "numRatings": 8,
+       "wouldTakeAgainPercent": 13.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjQ=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDA1",
+       "legacyId": 9000005,
+       "firstName": "Allison",
+       "lastName": "Smith",
+       "department": "Classics",
+       "avgRating": 0,
+       "avgDifficulty": 0,
+       "numRatings": 0,
+       "wouldTakeAgainPercent": -1,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjU=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDA2",
+       "legacyId": 9000006,
+       "firstName": "Josh",
+       "lastName": "Smith",
+       "department": "Communications",
+       "avgRating": 2.5,
+       "avgDifficulty": 4.0,
+       "numRatings": 2,
+       "wouldTakeAgainPercent": 55.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjY=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDA3",
+       "legacyId": 9000007,
+       "firstName": "Jacob",
+       "lastName": "Smith",
+       "department": "Communications",
+       "avgRating": 0,
+       "avgDifficulty": 0,
+       "numRatings": 0,
+       "wouldTakeAgainPercent": -1,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjc=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDA4",
+       "legacyId": 9000008,
+       "firstName": "Shaw",
+       "lastName": "Smith",
+       "department": "Fine Arts",
+       "avgRating": 3.9,
+       "avgDifficulty": 2.6,
+       "numRatings": 16,
+       "wouldTakeAgainPercent": 97.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjg=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDA5",
+       "legacyId": 9000009,
+       "firstName": "Sharon",
+       "lastName": "Green",
+       "department": "Fine Arts",
+       "avgRating": 4.6,
+       "avgDifficulty": 1.9,
+       "numRatings": 22,
+       "wouldTakeAgainPercent": 68.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjk=",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDEw",
+       "legacyId": 9000010,
+       "firstName": "Hilary",
+       "lastName": "Green",
+       "department": "History",
+       "avgRating": 2.3,
+       "avgDifficulty": 4.2,
+       "numRatings": 8,
+       "wouldTakeAgainPercent": 39.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTk5OTk5",
+        "name": "Synthetic State University"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjEw",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDEx",
+       "legacyId": 9000011,
+       "firstName": "Daniel",
+       "lastName": "Layman",
+       "department": "Philosophy",
+       "avgRating": 3.0,
+       "avgDifficulty": 3.5,
+       "numRatings": 18,
+       "wouldTakeAgainPercent": 10.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjEx",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDEy",
+       "legacyId": 9000012,
+       "firstName": "Sean",
+       "lastName": "McKeever",
+       "department": "Philosophy",
+       "avgRating": 3.7,
+       "avgDifficulty": 2.8,
+       "numRatings": 41,
+       "wouldTakeAgainPercent": 81.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjEy",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDEz",
+       "legacyId": 9000013,
+       "firstName": "Onita",
+       "lastName": "Vaz-Hooper",
+       "department": "English",
+       "avgRating": 4.4,
+       "avgDifficulty": 2.1,
+       "numRatings": 32,
+       "wouldTakeAgainPercent": 52.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjEz",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDE0",
+       "legacyId": 9000014,
+       "firstName": "Tara",
+       "lastName": "Villa Keith",
+       "department": "Music",
+       "avgRating": 2.1,
+       "avgDifficulty": 4.4,
+       "numRatings": 19,
+       "wouldTakeAgainPercent": 23.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjE0",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDE1",
+       "legacyId": 9000015,
+       "firstName": "Rachid",
+       "lastName": "El Bejjani",
+       "department": "Biology",
+       "avgRating": 2.8,
+       "avgDifficulty": 3.7,
+       "numRatings": 24,
+       "wouldTakeAgainPercent": 94.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjE1",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDE2",
+       "legacyId": 9000016,
+       "firstName": "Katie",
+       "lastName": "St Clair",
+       "department": "Art",
+       "avgRating": 3.5,
+       "avgDifficulty": 3.0,
+       "numRatings": 8,
+       "wouldTakeAgainPercent": 65.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjE2",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDE3",
+       "legacyId": 9000017,
+       "firstName": "Linsey",
+       "lastName": "Sainte-Claire",
+       "department": "French",
+       "avgRating": 4.2,
+       "avgDifficulty": 2.3,
+       "numRatings": 3,
+       "wouldTakeAgainPercent": 36.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjE3",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDE4",
+       "legacyId": 9000018,
+       "firstName": "Suresh",
+       "lastName": "Gouri",
+       "department": "Economics",
+       "avgRating": 4.9,
+       "avgDifficulty": 1.6,
+       "numRatings": 12,
+       "wouldTakeAgainPercent": 7.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjE4",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDE5",
+       "legacyId": 9000019,
+       "firstName": "Gouri",
+       "lastName": "Suresh",
+       "department": "Economics",
+       "avgRating": 2.6,
+       "avgDifficulty": 3.9,
+       "numRatings": 2,
+       "wouldTakeAgainPercent": 78.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjE5",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDIw",
+       "legacyId": 9000020,
+       "firstName": "Andrew",
+       "lastName": "O''Geen",
+       "department": "Political Science",
+       "avgRating": 3.3,
+       "avgDifficulty": 3.2,
+       "numRatings": 13,
+       "wouldTakeAgainPercent": 49.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjIw",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDIx",
+       "legacyId": 9000021,
+       "firstName": "Alesha ",
+       "lastName": "Bond ",
+       "department": "Psychology",
+       "avgRating": 0,
+       "avgDifficulty": 0,
+       "numRatings": 0,
+       "wouldTakeAgainPercent": -1,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjIx",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDIy",
+       "legacyId": 9000022,
+       "firstName": "Anita",
+       "lastName": "Tripathi ",
+       "department": "Theater",
+       "avgRating": 4.7,
+       "avgDifficulty": 1.8,
+       "numRatings": 4,
+       "wouldTakeAgainPercent": 91.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjIy",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDIz",
+       "legacyId": 9000023,
+       "firstName": "Chris",
+       "lastName": "Alexander",
+       "department": "Political Science",
+       "avgRating": 2.4,
+       "avgDifficulty": 4.1,
+       "numRatings": 10,
+       "wouldTakeAgainPercent": 62.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjIz",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDI0",
+       "legacyId": 9000024,
+       "firstName": "Hugh",
+       "lastName": "Lee",
+       "department": "Political Science",
+       "avgRating": 0,
+       "avgDifficulty": 0,
+       "numRatings": 0,
+       "wouldTakeAgainPercent": -1,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjI0",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDI1",
+       "legacyId": 9000025,
+       "firstName": "Timothy",
+       "lastName": "Chartier",
+       "department": "Mathematics",
+       "avgRating": 3.8,
+       "avgDifficulty": 2.7,
+       "numRatings": 35,
+       "wouldTakeAgainPercent": 4.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjI1",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDI2",
+       "legacyId": 9000026,
+       "firstName": "Lenny",
+       "lastName": "Yong",
+       "department": "Biology",
+       "avgRating": 4.5,
+       "avgDifficulty": 2.0,
+       "numRatings": 5,
+       "wouldTakeAgainPercent": 75.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjI2",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDI3",
+       "legacyId": 9000027,
+       "firstName": "Raghu",
+       "lastName": "Ramanujan",
+       "department": "Mathematics",
+       "avgRating": 2.2,
+       "avgDifficulty": 4.3,
+       "numRatings": 23,
+       "wouldTakeAgainPercent": 46.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjI3",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDI4",
+       "legacyId": 9000028,
+       "firstName": "Karen",
+       "lastName": "Hales",
+       "department": "Science",
+       "avgRating": 2.9,
+       "avgDifficulty": 3.6,
+       "numRatings": 39,
+       "wouldTakeAgainPercent": 17.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjI4",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDI5",
+       "legacyId": 9000029,
+       "firstName": "Karen",
+       "lastName": "Hales",
+       "department": "Biology",
+       "avgRating": 3.6,
+       "avgDifficulty": 2.9,
+       "numRatings": 1,
+       "wouldTakeAgainPercent": 88.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjI5",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDMw",
+       "legacyId": 9000030,
+       "firstName": "Graham",
+       "lastName": "Bullock",
+       "department": "Political Science",
+       "avgRating": 4.3,
+       "avgDifficulty": 2.2,
+       "numRatings": 25,
+       "wouldTakeAgainPercent": 59.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjMw",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDMx",
+       "legacyId": 9000031,
+       "firstName": "Graham",
+       "lastName": "Bullock",
+       "department": "Environmental Studies",
+       "avgRating": 2.0,
+       "avgDifficulty": 1.5,
+       "numRatings": 6,
+       "wouldTakeAgainPercent": 30.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjMx",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDMy",
+       "legacyId": 9000032,
+       "firstName": "Tabitha",
+       "lastName": "Peck",
+       "department": "Mathematics",
+       "avgRating": 2.7,
+       "avgDifficulty": 3.8,
+       "numRatings": 27,
+       "wouldTakeAgainPercent": 1.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTM5NjU=",
+        "name": "Davidson College"
+       }
+      }
+     },
+     {
+      "cursor": "YXJyYXljb25uZWN0aW9uOjMy",
+      "node": {
+       "__typename": "Teacher",
+       "id": "VGVhY2hlci05MDAwMDMz",
+       "legacyId": 9000033,
+       "firstName": "Allison",
+       "lastName": "Smith",
+       "department": "Classics",
+       "avgRating": 3.4,
+       "avgDifficulty": 3.1,
+       "numRatings": 6,
+       "wouldTakeAgainPercent": 72.5,
+       "school": {
+        "__typename": "School",
+        "id": "U2Nob29sLTk5OTk5",
+        "name": "Synthetic State University"
+       }
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "YXJyYXljb25uZWN0aW9uOjMy"
+    },
+    "resultCount": 33
+   }
+  }
+ }
+}

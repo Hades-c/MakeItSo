@@ -1,0 +1,16 @@
+{
+  "source": "wildcatsync",
+  "description": "WildcatSync (Campus Labs Engage) feeds, live samples from 2026-09-30 trimmed to 15 items; e-mail addresses, phone numbers and contact names replaced.",
+  "capturedAt": "2026-09-30",
+  "routes": [
+    {
+      "url": "https://wildcatsync.davidson.edu/events.ics",
+      "file": "events.ics",
+      "note": "Includes a 1-minute deadline event (Watson Fellowship, 19:00-19:01Z) and multi-day events."
+    },
+    {
+      "url": "https://wildcatsync.davidson.edu/news.rss",
+      "file": "news.rss"
+    }
+  ]
+}
