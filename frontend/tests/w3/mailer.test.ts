@@ -152,6 +152,10 @@ describe("account e-mails", () => {
     const pending = signupPendingEmail("casey@davidson.edu");
     expect(pending.code).toBeUndefined();
     expect(pending.text).toContain("/forgot-password");
+    expect(pending.text).toContain("/verify");
+    // A pending sign-up may be days old or never have been sent a code (created while mail was off): the
+    // message must not claim either.
+    expect(pending.text).not.toMatch(/24 hours|earlier e-mail/);
   });
 
   it("fall back to a page name when the app origin is unknown", () => {
