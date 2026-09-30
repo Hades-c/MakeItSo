@@ -86,6 +86,9 @@ describe("Lakeside tokens", () => {
       "primary-fill": "#3c68b0",
       urgent: "#ff6e66",
     });
+    // PLAN §7: the control/source-tag border colour.
+    expect(light["line-strong"]).toBe("#8a7f70");
+    expect(darkExplicit["line-strong"]).toBe("#66768e");
   });
 
   it("keeps danger distinct from Davidson Red", () => {
@@ -132,7 +135,7 @@ describe("Lakeside tokens", () => {
     });
 
     it("form-control borders and decor ≥ 3:1 (non-text)", () => {
-      for (const s of ["bg", "surface"]) {
+      for (const s of surfaces) {
         expect(contrast(t["line-strong"], t[s])).toBeGreaterThanOrEqual(3);
         expect(contrast(t.taupe, t[s])).toBeGreaterThanOrEqual(3);
       }

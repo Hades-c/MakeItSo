@@ -59,7 +59,7 @@
   /* Lines */
   --line: #e4dacc; /* dividers, card borders (decorative) */
   --line-2: #d5c8b6; /* dashed slots, kbd borders (decorative) */
-  --line-strong: #948672; /* form-control borders: ≥ 3:1 against bg and surface */
+  --line-strong: #8a7f70; /* form-control and source-tag borders: ≥ 3:1 on bg, surface and surface-2 */
 
   /* Lake Blue (brand primary) */
   --primary: #294878; /* text and accents */
@@ -129,7 +129,7 @@
     --fg-3: #8d98a8;
     --line: #243042;
     --line-2: #2f3d52;
-    --line-strong: #627390;
+    --line-strong: #66768e;
     --primary: #93b6ee;
     --primary-fill: #3c68b0;
     --primary-fill-hover: #4775c0;
@@ -184,7 +184,7 @@
   --fg-3: #8d98a8;
   --line: #243042;
   --line-2: #2f3d52;
-  --line-strong: #627390;
+  --line-strong: #66768e;
   --primary: #93b6ee;
   --primary-fill: #3c68b0;
   --primary-fill-hover: #4775c0;

@@ -12,7 +12,7 @@ export interface SourceTagProps {
 }
 
 const TAG =
-  "inline-flex items-center whitespace-nowrap rounded-xs border border-line-2 px-1.5 py-px text-xs leading-4 font-semibold uppercase tracking-label text-fg-2";
+  "inline-flex items-center whitespace-nowrap rounded-xs border border-line-strong px-1.5 py-px text-xs leading-4 font-semibold uppercase tracking-label text-fg-2";
 
 /**
  * Small uppercase tag naming where an aggregated item came from: HANDSHAKE, WILDCATSYNC, DAVIDSON ONE,

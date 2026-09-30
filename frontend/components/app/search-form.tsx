@@ -52,7 +52,7 @@ export function SearchForm({ className }: { className?: string }) {
         enterKeyHint="search"
         placeholder="Search courses"
         aria-keyshortcuts="Meta+K Control+K"
-        className="h-10 w-full rounded-md border border-line bg-bg pr-14 pl-10 text-sm text-fg placeholder:text-fg-3 [&::-webkit-search-cancel-button]:hidden"
+        className="h-10 w-full rounded-md border border-line-strong bg-bg pr-14 pl-10 text-sm text-fg placeholder:text-fg-3 [&::-webkit-search-cancel-button]:hidden"
       />
       <kbd
         aria-hidden
