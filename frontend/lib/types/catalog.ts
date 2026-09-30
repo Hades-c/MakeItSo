@@ -326,7 +326,8 @@ export const AcademicProgramSchema = z.object({
       kind: ProgramOfferingKindSchema,
       /** Official name, e.g. "Major in Computer Science (B.S. Degree)". */
       name: z.string(),
-      degree: z.enum(["B.A.", "B.S."]).nullable(),
+      /** Degree as Acalog prints it ("A.B.", "B.S.", "B.A. or B.S."); null when the offering names none. */
+      degree: z.string().nullable(),
       requirementsText: z.string(),
       courseCodes: z.array(CourseCodeSchema),
     }),

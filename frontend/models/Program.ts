@@ -18,7 +18,7 @@ const OfferingSubSchema = new Schema(
       required: true,
     },
     name: { type: String, required: true },
-    degree: { type: String, enum: ["B.A.", "B.S.", null], default: null },
+    degree: { type: String, default: null },
     requirementsText: { type: String, default: "" },
     courseCodes: { type: [String], default: [] },
     acalogCoreId: { type: Number },
