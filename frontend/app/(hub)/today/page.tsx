@@ -1,20 +1,60 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { House } from "lucide-react";
+import { DayHeadline } from "@/components/app/day-headline";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SourceTagList } from "@/components/ui/source-tag";
+import { buildDaySummary } from "@/lib/day-summary";
 import { requireUser } from "@/server/auth/session";
+import { readEnv } from "@/server/env";
 
-export const metadata: Metadata = { title: "Today · MakeItSo" };
+export const metadata: Metadata = { title: "Today" };
 
-// Placeholder (wave 0). Wave 3 builds the real Today hub: day timeline, one-sentence day summary, due soon,
-// this week on campus (with source tags), degree progress and opportunities.
+// Stub (wave 0). Wave 3 builds the real Today hub: day timeline, 5-day strip, due soon, this week on campus,
+// degree progress and opportunities, and feeds the real schedule/deadlines/events into buildDaySummary().
 export default async function TodayPage() {
   const user = await requireUser();
-  const firstName = user.name.split(" ")[0] || "there";
+  const timeZone = readEnv("APP_TIMEZONE");
+  const now = new Date();
+  const firstName = user.name.trim().split(/\s+/)[0] || "there";
+  const summary = buildDaySummary({ now, timeZone, hasSchedule: false });
 
   return (
-    <section className="space-y-2">
-      <h1 className="text-2xl font-bold tracking-tight">Welcome, {firstName}</h1>
-      <p className="text-muted-foreground">
-        MakeItSo is being rebuilt. Your Today page, course catalog and plan are coming back shortly.
-      </p>
-    </section>
+    <>
+      <DayHeadline now={now} timeZone={timeZone} summary={summary} />
+      <p className="-mt-2 mb-6 text-sm text-fg-2 md:text-base">Welcome, {firstName}.</p>
+      <EmptyState
+        icon={House}
+        title="Your day will appear here"
+        description={
+          <>
+            <p>
+              Once your courses are in MakeItSo, Today shows your class timeline, what is due soon,
+              this week on campus and your degree progress.
+            </p>
+            <p>Every item is labelled with where it came from.</p>
+          </>
+        }
+        action={
+          <Button asChild>
+            <Link href="/courses">Browse courses</Link>
+          </Button>
+        }
+      >
+        <SourceTagList
+          label="Sources Today will draw on"
+          className="justify-center"
+          sources={[
+            "course-schedule",
+            "academic-calendar",
+            "course-site",
+            "handshake",
+            "wildcatsync",
+            "davidson-one",
+          ]}
+        />
+      </EmptyState>
+    </>
   );
 }

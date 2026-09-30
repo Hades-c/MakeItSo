@@ -1,27 +1,19 @@
-import Link from "next/link";
+import { AppShell } from "@/components/app/app-shell";
 import { requireUser } from "@/server/auth/session";
-import { SignOutButton } from "./_components/sign-out-button";
+import { readEnv } from "@/server/env";
 
-// Temporary signed-in shell (wave 0). The design-system work replaces this with the Lakeside AppShell.
+/**
+ * Signed-in shell for every hub page. Server component: resolves the user once per request and passes real data
+ * to the Lakeside AppShell. Later waves add the sidebar counts (catalog size, plan progress) and the Sources panel
+ * entries (feed name + last sync) here; until a source is actually synced it is not listed.
+ */
 export default async function HubLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  const timeZone = readEnv("APP_TIMEZONE");
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-          <Link href="/today" className="text-lg font-bold tracking-tight">
-            MakeItSo
-          </Link>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-muted-foreground" data-testid="hub-user-email">
-              {user.email}
-            </span>
-            <SignOutButton />
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
-    </div>
+    <AppShell user={{ name: user.name, email: user.email }} now={new Date()} timeZone={timeZone}>
+      {children}
+    </AppShell>
   );
 }
