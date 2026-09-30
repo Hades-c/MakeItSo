@@ -46,12 +46,10 @@ export async function POST(req: NextRequest) {
     // Check cache unless regenerating (per-user cache entry)
     if (!regenerate) {
       const cached = await AiCache.findOne({ type: "roadmap", cacheKey });
-      if (cached) {
-        return NextResponse.json({
-          ...groundRoadmap(cached.data, grounding.index),
-          cached: true,
-          cachedAt: cached.updatedAt,
-        });
+      const grounded = cached ? groundRoadmap(cached.data, grounding.index, grounding.context.registration) : null;
+      // A cached plan with no semester from the registration term on is regenerated.
+      if (cached && grounded && grounded.roadmap.some((s) => !s.isSummer)) {
+        return NextResponse.json({ ...grounded, cached: true, cachedAt: cached.updatedAt });
       }
     }
 
@@ -68,9 +66,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to generate roadmap" }, { status: 500 });
     }
 
-    // Drop course codes that are not on the live schedule (generic
-    // "ELEC ---" style slots are kept as placeholders) before caching.
-    const result = groundRoadmap(raw, grounding.index);
+    // Drop semesters before the registration term and course codes that are
+    // not on the live schedule (generic "ELEC ---" style slots are kept as
+    // placeholders) before caching.
+    const result = groundRoadmap(raw, grounding.index, grounding.context.registration);
+    if (!result.roadmap.some((s) => !s.isSummer)) {
+      // Nothing usable from the registration term on: don't cache it.
+      return NextResponse.json(
+        {
+          error: `The AI plan did not start at ${grounding.context.registration.label}. Please try again.`,
+        },
+        { status: 502 }
+      );
+    }
 
     await AiCache.findOneAndUpdate(
       { type: "roadmap", cacheKey },

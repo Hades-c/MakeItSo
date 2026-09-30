@@ -8,7 +8,7 @@ import {
   normalizeCourseCode,
   type LiveCatalogEntry,
 } from "@/lib/davidson-api";
-import type { ResolvedTerms, TermInfo } from "@/lib/terms";
+import { parseTermLabel, termCodeFor, type ResolvedTerms, type TermInfo } from "@/lib/terms";
 
 export interface AiTermContext {
   today: string; // YYYY-MM-DD
@@ -92,14 +92,32 @@ export function groundCareerPlan(data: unknown, index: Map<string, LiveCatalogEn
   };
 }
 
-export function groundRoadmap(data: unknown, index: Map<string, LiveCatalogEntry>) {
+/**
+ * Term code for a roadmap label ("Fall 2026", "Summer 2027"), or null when the
+ * label is not in that form.
+ */
+function roadmapTermCode(label: unknown): string | null {
+  const m = typeof label === "string" ? /\b(fall|spring|summer)\s+(\d{4})\b/i.exec(label) : null;
+  const parsed = m ? parseTermLabel(`${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()} ${m[2]}`) : null;
+  return parsed ? termCodeFor(parsed.season, parsed.year) : null;
+}
+
+/**
+ * Roadmaps start at the registration term: semesters (and summers) before it
+ * are dropped, as are course codes that are not on the live schedule.
+ */
+export function groundRoadmap(data: unknown, index: Map<string, LiveCatalogEntry>, registration: TermInfo) {
   const obj = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
   const semesters = Array.isArray(obj.roadmap) ? obj.roadmap : [];
   return {
     ...obj,
     roadmap: semesters
       .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
-      .map((s) =>
+      .filter((s) => {
+        const code = roadmapTermCode(s.semester);
+        return code !== null && code >= registration.code;
+      })
+      .map((s): Record<string, unknown> =>
         s.isSummer
           ? { ...s, activities: Array.isArray(s.activities) ? s.activities : [] }
           : { ...s, courses: keepLiveCourses(s.courses, index, { allowPlaceholders: true }) }
