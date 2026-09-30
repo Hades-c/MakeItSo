@@ -57,8 +57,9 @@ async function seed() {
     await consumeGenerationQuota(user.id);
   }
   await writeShared("course-about", "shared-key", entry({ summary: "Shared" }));
-  await reportEntry(me.id, { feature: "course-about", key: "shared-key", reason: "Looks wrong" });
-  await reportEntry(other.id, { feature: "course-about", key: "shared-key" });
+  // Reports name the entry by the provenance.inputHash the student was shown.
+  await reportEntry(me.id, { feature: "course-about", key: "h", reason: "Looks wrong" });
+  await reportEntry(other.id, { feature: "course-about", key: "h" });
   return { me, other };
 }
 

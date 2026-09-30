@@ -13,7 +13,8 @@ import { ApiError } from "@/server/http/errors";
  *   - A report adds the student to the entry's reporters (a set: reporting twice counts once). With 3 distinct
  *     reporters the entry is hidden pending review; nobody sees it until an admin purges it (it is then
  *     regenerated on the next view) — a hidden entry is never regenerated over. One atomic update.
- *   - The key of a course-about entry is its provenance.inputHash; of a professor summary "rmp:<legacyId>".
+ *   - The client reports what it was shown: `key` is the entry's provenance.inputHash (for course-about that is
+ *     also the cache key; a professor summary is stored under "rmp:<legacyId>", which the client never sees).
  *   - Purge (admin): delete one entry or every entry of a feature (personal entries included).
  */
 
@@ -34,7 +35,7 @@ export async function reportEntry(
   const reason = input.reason?.trim() ? input.reason.trim().slice(0, 500) : null;
   const userIds = { $ifNull: ["$reports.userIds", []] };
   const doc = await AiCache.collection.findOneAndUpdate(
-    { feature: input.feature, scope: "shared", userId: null, key: input.key },
+    { feature: input.feature, scope: "shared", userId: null, inputHash: input.key },
     [
       {
         $set: {
@@ -85,11 +86,14 @@ export async function reportEntry(
   return { reports, hidden: doc.hidden === true };
 }
 
-/** Admin purge: one entry (`key`) or every entry of the feature. Returns how many were deleted. */
+/**
+ * Admin purge: one entry or every entry of the feature. `key` is a cache key ("rmp:<legacyId>", a term code…) or a
+ * provenance.inputHash (what a report names). Returns how many were deleted.
+ */
 export async function purgeEntries(input: { feature: AiFeature; key?: string }): Promise<number> {
   await getDb();
-  const filter = input.key
-    ? { feature: input.feature, key: input.key }
-    : { feature: input.feature };
-  return (await AiCache.deleteMany(filter)).deletedCount;
+  if (!input.key) return (await AiCache.deleteMany({ feature: input.feature })).deletedCount;
+  const byKey = await AiCache.deleteMany({ feature: input.feature, key: input.key });
+  const byHash = await AiCache.deleteMany({ feature: input.feature, inputHash: input.key });
+  return byKey.deletedCount + byHash.deletedCount;
 }

@@ -4,6 +4,7 @@ import { withCatalogDb } from "../catalog/db";
 import { aiRequest, bodyOf, errorOf, insertStudent, sessionFor, stubAuthEnv } from "./helpers";
 import * as cronRoute from "@/app/api/cron/ai/professor-summaries/route";
 import * as route from "@/app/api/ai/professor-summary/route";
+import * as report from "@/app/api/ai/report/route";
 import { ProfessorSummaryResultSchema } from "@/lib/api/ai";
 import { RMP_DAVIDSON_SCHOOL_ID } from "@/lib/types/ratings";
 import AiCache from "@/models/AiCache";
@@ -84,6 +85,13 @@ async function signIn() {
 }
 
 const INSTRUCTOR = { first: "Katy", last: "Williams", isStaff: false };
+async function reportIt(session: Session, key: string) {
+  const previous = auth.session;
+  auth.session = session;
+  const res = await report.POST(aiRequest("/api/ai/report", { feature: "professor-summary", key }));
+  auth.session = previous;
+  return res;
+}
 const post = (body: unknown) => route.POST(aiRequest("/api/ai/professor-summary", body));
 const ask = (instructor = INSTRUCTOR, courseCode = "CSC 221") =>
   post({ termCode: "202602", courseCode, instructor });
@@ -171,7 +179,18 @@ describe("with RMP_SUMMARIES_ENABLED on", () => {
       cached: true,
       data: { provenance: { promptVersion: "professor-summary/1" } },
     });
-    if (body.kind === "ok") expect(JSON.stringify(body.data.summary)).not.toMatch(/Katy|Williams/);
+    if (body.kind !== "ok") throw new Error("expected ok");
+    expect(JSON.stringify(body.data.summary)).not.toMatch(/Katy|Williams/);
+
+    // "Report this" names the entry by the provenance it was shown; 3 distinct reporters hide it.
+    for (let i = 0; i < 3; i++) {
+      const reporter = await insertStudent({ email: `reporter-${i}@davidson.edu` });
+      const reported = await reportIt(await sessionFor(reporter), body.data.provenance.inputHash);
+      expect(reported.status).toBe(204);
+    }
+    const hidden = await ask();
+    expect(hidden.status).toBe(503);
+    expect((await bodyOf(hidden)).message).toMatch(/hidden pending review/);
   });
 
   it("needs a matched profile with at least 5 ratings, and an instructor of that course", async () => {

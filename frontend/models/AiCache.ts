@@ -74,6 +74,7 @@ const AiCacheSchema = new Schema(
 AiCacheSchema.index({ feature: 1, scope: 1, userId: 1, key: 1 }, { unique: true });
 AiCacheSchema.index({ userId: 1 });
 AiCacheSchema.index({ "reports.userIds": 1 });
+AiCacheSchema.index({ feature: 1, inputHash: 1 });
 AiCacheSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export type AiCacheDoc = InferSchemaType<typeof AiCacheSchema>;
