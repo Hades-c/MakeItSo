@@ -218,9 +218,11 @@ async function itemWarnings(input: WarningInput): Promise<PlanWarning[]> {
       ...ref,
     });
   } else if (!item.unverified && item.reqCodes === null && item.credits > 0) {
+    const sectionsDiffer =
+      !section && (facts?.sections ?? []).some((candidate) => candidate.reqCodes !== null);
     out.push({
       code: "no-requirement-data",
-      message: `No requirement data for ${item.courseCode}${item.termCode ? ` in ${termLabel(item.termCode)}` : ""}${section ? "" : " (the sections differ or have none: pick a section)"}.`,
+      message: `No requirement data for ${item.courseCode}${item.termCode ? ` in ${termLabel(item.termCode)}` : ""}${sectionsDiffer ? " (its sections carry different requirements: pick a section)" : ""}.`,
       ...ref,
     });
   }

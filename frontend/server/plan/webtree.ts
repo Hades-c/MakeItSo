@@ -320,7 +320,7 @@ export function formatWebTreeCopy(
 
 /**
  * The academic calendar's registration windows and deadlines for `registrationTerm`: rows of the term before it
- * (registration happens then) about WebTree, or naming the term with its schedules or add/drop.
+ * (registration happens then) whose title is about WebTree, or that name the term with its schedules or add/drop.
  */
 export function registrationDeadlines(registrationTerm: TermCode): ContentDeadline[] {
   let during: TermCode;
@@ -331,16 +331,14 @@ export function registrationDeadlines(registrationTerm: TermCode): ContentDeadli
   }
   const label = termLabel(registrationTerm);
   return calendarForTerm(during)
-    .filter(
-      (event) =>
-        (event.category === "registration" || event.category === "deadline") &&
-        isStudentFacing(event) &&
-        (/webtree/i.test(`${event.title} ${event.description}`) ||
-          (`${event.title} ${event.description}`.includes(label) &&
-            /add\/drop|schedules? (?:become )?available/i.test(
-              `${event.title} ${event.description}`,
-            ))),
-    )
+    .filter((event) => {
+      if (event.category !== "registration" && event.category !== "deadline") return false;
+      if (!isStudentFacing(event)) return false;
+      // A WebTree row by its title (a description may merely cite the WebTree overview page).
+      if (/webtree/i.test(event.title)) return true;
+      const text = `${event.title} ${event.description}`;
+      return text.includes(label) && /add\/drop|schedules? (?:become )?available/i.test(text);
+    })
     .map(calendarDeadline);
 }
 
