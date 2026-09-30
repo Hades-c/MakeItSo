@@ -7,6 +7,12 @@ node_modules/
 frontend/.next/
 frontend/out/
 
+# Test output
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+
 # Environment files — NEVER commit these
 .env
 .env.local
