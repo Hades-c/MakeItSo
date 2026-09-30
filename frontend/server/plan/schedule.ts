@@ -1,6 +1,6 @@
 import "server-only";
 import { dayKey } from "@/lib/format";
-import { compareTerms, isRegularTerm, type TermCode } from "@/lib/term";
+import { compareTerms, isRegularTerm, termFromDateET, type TermCode } from "@/lib/term";
 import type { MeetingDay, ResolvedTerms, Section } from "@/lib/types/catalog";
 import type { DaySchedule, DayScheduleEntry, PlanItem, StudentDeadline } from "@/lib/types/plan";
 import { calendarForTerm, eventEndDay } from "@/server/content/academic-calendar";
@@ -41,8 +41,15 @@ interface TermDay {
   cutoff: string | null;
 }
 
-/** The term in session on `date` (regular terms first), from the resolver's Banner dates. */
+/**
+ * The term in session on `date` (regular terms first), from the resolver's Banner dates. Without any dated term
+ * (the resolver fell back to its date rules), the current term when the date falls in it by month.
+ */
 export function termOnDate(terms: ResolvedTerms, date: string): TermCode | null {
+  if (!terms.terms.some((term) => term.startDate && term.endDate)) {
+    const guess = termFromDateET(`${date}T12:00:00-05:00`);
+    return guess === terms.current ? guess : null;
+  }
   const containing = terms.terms
     .filter(
       (term) =>

@@ -194,5 +194,21 @@ describe("spring", () => {
     expect(termOnDate(resolved, "2026-09-30")).toBe("202601");
     expect(termOnDate(resolved, "2027-01-19")).toBe("202602");
     expect(termOnDate(resolved, "2027-01-01")).toBeNull();
+    // No dated terms (the resolver's date-rule fallback): the current term by month.
+    const undated = {
+      ...resolved,
+      terms: resolved.terms.map(
+        ({ code, label, isActive, isRegistration, isSummer, published }) => ({
+          code,
+          label,
+          isActive,
+          isRegistration,
+          isSummer,
+          published,
+        }),
+      ),
+    };
+    expect(termOnDate(undated, "2026-09-30")).toBe("202601");
+    expect(termOnDate(undated, "2027-02-01")).toBeNull();
   });
 });
