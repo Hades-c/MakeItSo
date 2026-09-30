@@ -20,8 +20,9 @@ export default function CareersPage() {
         title="Career paths are coming soon"
         description={
           <p>
-            Explore a career path with the real Davidson courses that relate to it, opportunities
-            from Handshake, verified alumni, and an AI-drafted plan you can edit.
+            Explore a career path with the real Davidson courses that relate to it, campus programs,
+            links to matching Handshake searches, verified alumni, and an AI-drafted plan you can
+            edit.
           </p>
         }
       >

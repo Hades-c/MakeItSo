@@ -44,7 +44,7 @@ const PROVENANCE: { what: string; source: SourceId }[] = [
   { what: "Sections, seats and meeting times", source: "course-schedule" },
   { what: "Registration windows and academic deadlines", source: "registrar" },
   { what: "Professor ratings, with the date they were checked", source: "ratemyprofessors" },
-  { what: "Club, library and campus events", source: "wildcatsync" },
+  { what: "Club and campus events", source: "wildcatsync" },
   { what: "Courses you have taken and plan to take", source: "my-plan" },
 ];
 
@@ -176,7 +176,10 @@ export default function HomePage() {
 
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-fg-3 md:flex-row md:justify-between md:px-6">
-          <span>Started at hack@DAVIDSON 2026.</span>
+          <span>
+            An independent student project, not an official Davidson College service. Started at
+            hack@DAVIDSON 2026.
+          </span>
           <span>Always confirm requirements with your advisor and in Degree Works.</span>
         </div>
       </footer>
