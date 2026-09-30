@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import Link from "next/link";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "@/components/ui/button";
 
@@ -16,7 +17,7 @@ describe("Button", () => {
   it("renders its child element instead of a button with asChild", () => {
     render(
       <Button asChild>
-        <a href="/courses">Browse courses</a>
+        <Link href="/courses">Browse courses</Link>
       </Button>,
     );
     expect(screen.getByRole("link", { name: "Browse courses" })).toHaveAttribute(
