@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ProgramOfferingKindSchema } from "@/lib/types/catalog";
 import { IsoDateSchema } from "@/lib/types/common";
 import { ACALOG_CATALOG } from "@/server/programs/catalog-info";
+import { programKey } from "@/server/programs/names";
 import { parseProgramDetail } from "@/server/programs/parse";
 import snapshotData from "@/server/programs/snapshot.json";
 import {
@@ -18,9 +19,9 @@ import {
  * Requirement text is not in it: program pages load lazily and are cached for 7 days.
  *
  * Built by `buildSnapshot()` from the live list (`/programs?page-size=100`) and every public program page, with the
- * same parser the service uses; tests/programs/snapshot.test.ts checks it against the recorded fixtures. To
- * refresh it, fetch the list and pages (EXTERNAL_MODE=live), call buildSnapshot, write the JSON and run
- * `npm run format`.
+ * same parser the service uses; tests/programs/snapshot.test.ts rebuilds it from the recorded list fixture and the
+ * recorded pages (tests/programs/recorded/) and requires the checked-in file to match. To refresh it, record the
+ * list and every page again (EXTERNAL_MODE=live), rebuild, write the JSON and run `npm run format`.
  */
 
 export const SnapshotOfferingSchema = z
@@ -41,6 +42,11 @@ export const SnapshotProgramSchema = z
     /** Acalog's `modified` stamp of the program when the snapshot was taken. */
     modified: z.string().regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/),
     offerings: z.array(SnapshotOfferingSchema),
+    /**
+     * Other program pages that also state this page's offerings (the FMDS page's Digital Studies minor, the
+     * Classics page's Greek minor): read with it, so their text can be shown next to this page's.
+     */
+    restatedBy: z.array(z.number().int().positive()),
   })
   .strict();
 export type SnapshotProgram = z.infer<typeof SnapshotProgramSchema>;
@@ -78,10 +84,13 @@ export function buildSnapshot(
 ): ProgramSnapshot {
   const publicPrograms = list.filter(isPublicProgram);
   const names = publicPrograms.map((item) => item.name);
-  const programs = publicPrograms.map((item): SnapshotProgram => {
+  const parsedPages = publicPrograms.map((item) => {
     const page = pages.get(item.id);
     if (!page) throw new Error(`buildSnapshot: no program page for ${item.id} (${item.name})`);
-    const parsed = parseProgramDetail(page, { otherProgramNames: names });
+    return { item, parsed: parseProgramDetail(page, { otherProgramNames: names }) };
+  });
+  const programs = parsedPages.map(({ item, parsed }): SnapshotProgram => {
+    const key = programKey(parsed.name);
     return {
       acalogId: item.id,
       legacyId: item["legacy-id"] ?? null,
@@ -90,6 +99,13 @@ export function buildSnapshot(
       programTypes: parsed.programTypes,
       modified: item.modified,
       offerings: parsed.offerings.map(({ kind, name, degree }) => ({ kind, name, degree })),
+      restatedBy: parsedPages
+        .filter(
+          (other) =>
+            other.item.id !== item.id &&
+            other.parsed.elsewhere.some((elsewhere) => elsewhere.subjectKey === key),
+        )
+        .map((other) => other.item.id),
     };
   });
   return ProgramSnapshotSchema.parse({

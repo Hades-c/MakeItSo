@@ -22,7 +22,8 @@
           "name": "Minor in Africana Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 162,
@@ -42,7 +43,8 @@
           "name": "Minor in Anthropology",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 163,
@@ -57,7 +59,8 @@
           "name": "Interdisciplinary Minor in Applied Mathematics",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": [195]
     },
     {
       "acalogId": 164,
@@ -77,7 +80,8 @@
           "name": "Minor in Arab Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 165,
@@ -97,7 +101,8 @@
           "name": "Minor in Art",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 166,
@@ -112,7 +117,8 @@
           "name": "Major in Biology (B.S. Degree)",
           "degree": "B.S."
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 167,
@@ -121,7 +127,8 @@
       "code": "",
       "programTypes": ["Academic Courses/Major and Minor Requirements"],
       "modified": "2026-04-13 14:17:39",
-      "offerings": []
+      "offerings": [],
+      "restatedBy": []
     },
     {
       "acalogId": 168,
@@ -136,7 +143,8 @@
           "name": "Major in Chemistry (B.S. Degree)",
           "degree": "B.S."
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 169,
@@ -156,7 +164,8 @@
           "name": "Minor in Chinese Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 170,
@@ -181,7 +190,8 @@
           "name": "Minor in Classical Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 171,
@@ -201,7 +211,8 @@
           "name": "Minor in Communication Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 172,
@@ -221,7 +232,8 @@
           "name": "Minor in Computer Science",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 173,
@@ -236,7 +248,8 @@
           "name": "Minor in Dance",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 212,
@@ -251,7 +264,8 @@
           "name": "Interdisciplinary Minor in Data Science",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 211,
@@ -266,7 +280,8 @@
           "name": "Interdisciplinary Minor in Digital Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": [213]
     },
     {
       "acalogId": 210,
@@ -286,7 +301,8 @@
           "name": "Interdisciplinary Minor in East Asian Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 174,
@@ -306,7 +322,8 @@
           "name": "Minor in Economics",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 175,
@@ -326,7 +343,8 @@
           "name": "Minor in Educational Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 176,
@@ -346,7 +364,8 @@
           "name": "Minor in English",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 177,
@@ -366,7 +385,8 @@
           "name": "Interdisciplinary Minor in Environmental Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 213,
@@ -386,7 +406,8 @@
           "name": "Minor in Film and Media Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 179,
@@ -406,7 +427,8 @@
           "name": "Minor in French and Francophone Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 205,
@@ -426,7 +448,8 @@
           "name": "Minor in Gender and Sexuality Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 180,
@@ -451,7 +474,8 @@
           "name": "Interdisciplinary Minor in Genomics",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 181,
@@ -471,7 +495,8 @@
           "name": "Minor in German Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 208,
@@ -491,7 +516,8 @@
           "name": "Interdisciplinary Minor in Global Literary Theory",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 182,
@@ -506,7 +532,8 @@
           "name": "Minor in Greek",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": [170]
     },
     {
       "acalogId": 202,
@@ -526,7 +553,8 @@
           "name": "Minor in Hispanic Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 183,
@@ -546,7 +574,8 @@
           "name": "Minor in History",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 184,
@@ -555,7 +584,8 @@
       "code": "",
       "programTypes": ["Academic Courses/Major and Minor Requirements"],
       "modified": "2026-02-24 18:13:05",
-      "offerings": []
+      "offerings": [],
+      "restatedBy": []
     },
     {
       "acalogId": 186,
@@ -570,7 +600,8 @@
           "name": "Minor in Latin",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": [170]
     },
     {
       "acalogId": 187,
@@ -590,7 +621,8 @@
           "name": "Interdisciplinary Minor in Latin American Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 216,
@@ -605,7 +637,8 @@
           "name": "Interdisciplinary Minor in Linguistics",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 188,
@@ -625,7 +658,8 @@
           "name": "Minor in Mathematics",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 190,
@@ -634,7 +668,8 @@
       "code": "",
       "programTypes": ["Academic Courses/Major and Minor Requirements"],
       "modified": "2026-02-24 18:13:05",
-      "offerings": []
+      "offerings": [],
+      "restatedBy": []
     },
     {
       "acalogId": 191,
@@ -654,7 +689,8 @@
           "name": "Minor in Music",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 192,
@@ -669,7 +705,8 @@
           "name": "Interdisciplinary Minor in Neuroscience",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 193,
@@ -689,7 +726,8 @@
           "name": "Minor in Philosophy",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 214,
@@ -704,7 +742,8 @@
           "name": "Major in Philosophy, Politics, and Economics",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 194,
@@ -713,7 +752,8 @@
       "code": "",
       "programTypes": ["Academic Courses/Major and Minor Requirements"],
       "modified": "2026-08-19 13:34:44",
-      "offerings": []
+      "offerings": [],
+      "restatedBy": []
     },
     {
       "acalogId": 195,
@@ -738,7 +778,8 @@
           "name": "Minor in Astrophysics",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 196,
@@ -753,7 +794,8 @@
           "name": "Major in Political Science (A.B. Degree)",
           "degree": "A.B."
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 197,
@@ -768,7 +810,8 @@
           "name": "Major in Psychology (B.S. Degree)",
           "degree": "B.S."
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 189,
@@ -788,7 +831,8 @@
           "name": "Interdisciplinary Minor in Public Health",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 198,
@@ -808,7 +852,8 @@
           "name": "Minor in Religious Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 199,
@@ -828,7 +873,8 @@
           "name": "Minor in Russian Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 201,
@@ -843,7 +889,8 @@
           "name": "Major in Sociology (A.B. Degree)",
           "degree": "A.B."
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 206,
@@ -858,7 +905,8 @@
           "name": "Interdisciplinary Minor in South Asian Studies",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 200,
@@ -867,7 +915,8 @@
       "code": "",
       "programTypes": ["Academic Courses/Major and Minor Requirements"],
       "modified": "2026-02-24 18:13:05",
-      "offerings": []
+      "offerings": [],
+      "restatedBy": []
     },
     {
       "acalogId": 203,
@@ -887,7 +936,8 @@
           "name": "Minor in Theatre",
           "degree": null
         }
-      ]
+      ],
+      "restatedBy": []
     },
     {
       "acalogId": 204,
@@ -896,7 +946,8 @@
       "code": "",
       "programTypes": ["Academic Courses/Major and Minor Requirements"],
       "modified": "2026-03-23 15:04:28",
-      "offerings": []
+      "offerings": [],
+      "restatedBy": []
     }
   ]
 }

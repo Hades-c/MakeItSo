@@ -16,16 +16,33 @@ import mongoose, {
  *     sync (non-200, WAF 202, empty/non-JSON body, fewer than 45 programs) writes nothing, so the last good copy
  *     stays;
  *   - a program page read (lazily, cached 7 days, or by the sync when Acalog's `modified` stamp changed) sets the
- *     detail fields (offerings with requirement sections, descriptionText, detailModified, detailFetchedAt). A
- *     failed page read only records lastDetailError/lastDetailErrorAt.
+ *     detail fields (offerings with requirement sections, pageSections, elsewhereOfferings, descriptionText,
+ *     detailModified, detailFetchedAt). A failed page read only records lastDetailError/lastDetailErrorAt, which
+ *     also holds off the next attempt for a while (server/programs/catalog-info.ts PROGRAM_DETAIL_RETRY_MS).
  * Until the first successful list sync, the program set comes from the checked-in snapshot
  * (server/programs/snapshot.json) and documents here only add page details.
  */
 
+/** A headed section of a program page; `text` is "" when the heading is itself the statement. */
 const SectionSubSchema = new Schema(
   {
-    heading: { type: String, required: true },
-    text: { type: String, required: true },
+    heading: { type: String, default: "" },
+    text: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
+/**
+ * An offering this page states but another program page owns (FMDS's "Digital Studies Minor Requirements",
+ * Classics' Greek minor): shown as a note on the owning page's offering.
+ */
+const ElsewhereSubSchema = new Schema(
+  {
+    family: { type: String, enum: ["major", "minor"], required: true },
+    /** programKey of the subject; the owning page's offering has the same family and subject key. */
+    subjectKey: { type: String, required: true },
+    name: { type: String, required: true },
+    text: { type: String, default: "" },
   },
   { _id: false },
 );
@@ -76,6 +93,12 @@ const ProgramSchema = new Schema(
 
     // ---- Program page ----
     offerings: { type: [OfferingSubSchema], default: [] },
+    /**
+     * The page's sections that belong to no offering (honors, course numbering, the department's course catalog,
+     * college-wide requirements, other pages' offerings), so nothing on the page is lost.
+     */
+    pageSections: { type: [SectionSubSchema], default: [] },
+    elsewhereOfferings: { type: [ElsewhereSubSchema], default: [] },
     descriptionText: { type: String, default: "" },
     /** Acalog's `modified` stamp of the page these offerings were parsed from. */
     detailModified: { type: String, default: null },
@@ -93,6 +116,7 @@ const ProgramSchema = new Schema(
 ProgramSchema.index({ catalogId: 1, acalogId: 1 }, { unique: true });
 ProgramSchema.index({ catalogYear: 1, name: 1 });
 ProgramSchema.index({ "offerings.kind": 1, "offerings.name": 1 });
+ProgramSchema.index({ catalogId: 1, "elsewhereOfferings.subjectKey": 1 });
 
 export type ProgramDoc = InferSchemaType<typeof ProgramSchema>;
 export type ProgramDocument = HydratedDocument<ProgramDoc>;

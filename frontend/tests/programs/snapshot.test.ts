@@ -3,8 +3,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ACALOG_CATALOG, MIN_PROGRAM_COUNT } from "@/server/programs/catalog-info";
 import { programKey } from "@/server/programs/names";
+import { parseProgramDetail } from "@/server/programs/parse";
 import { buildSnapshot, programSnapshot, ProgramSnapshotSchema } from "@/server/programs/snapshot";
 import rawSnapshot from "@/server/programs/snapshot.json";
+import { RECORDED_LIST, recordedPages } from "./recorded";
 import {
   AcalogProgramDetailSchema,
   AcalogProgramListSchema,
@@ -57,6 +59,31 @@ describe("server/programs/snapshot.json", () => {
       expect(stored?.offerings).toEqual(program.offerings);
       expect(stored?.programTypes).toEqual(program.programTypes);
     }
+  });
+
+  it("is exactly what buildSnapshot makes of the recorded list and every recorded page", () => {
+    const pages = recordedPages();
+    // The recorded pages are trimmed copies of the same capture: they parse exactly like the fixtures.
+    const names = LIST.filter(isPublicProgram).map((item) => item.name);
+    for (const [id, fixture] of PAGES) {
+      const trimmed = pages.get(id);
+      expect(trimmed && parseProgramDetail(trimmed, { otherProgramNames: names })).toEqual(
+        parseProgramDetail(fixture, { otherProgramNames: names }),
+      );
+    }
+    expect(buildSnapshot(RECORDED_LIST, pages, snapshot.capturedAt)).toEqual(snapshot);
+  });
+
+  it("knows which pages another page restates (read together so both texts can be shown)", () => {
+    const restated = snapshot.programs
+      .filter((p) => p.restatedBy.length > 0)
+      .map((p) => [p.name, p.restatedBy]);
+    expect(restated).toEqual([
+      ["Applied Mathematics", [195]],
+      ["Digital Studies", [213]],
+      ["Greek", [170]],
+      ["Latin", [170]],
+    ]);
   });
 
   it("has one official name per offering across the catalog, and majors, minors and interdisciplinary minors", () => {
