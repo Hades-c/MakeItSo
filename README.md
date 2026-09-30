@@ -31,7 +31,7 @@ alumni and campus events.
 
 ```
 MakeItSo/
-├── .github/workflows/ci.yml   CI: npm ci → typecheck → lint → test → build → e2e
+├── .github/workflows/ci.yml   CI: npm ci → typecheck → lint → format → test → build → CSS check → e2e
 ├── .nvmrc                     Node 24
 └── frontend/                  the Next.js app
     ├── app/
@@ -121,6 +121,7 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | ------------------- | -------------------------------------------------------------------------------- |
 | `npm run dev`       | Development server on port 3000                                                  |
 | `npm run build`     | Production build (needs no environment variables)                                |
+| `npm run check:css` | After a build: no font size below 12px, and CSS under 80 KB gzipped              |
 | `npm start`         | Serve the production build                                                       |
 | `npm run typecheck` | Generate Next.js route types, then `tsc --noEmit`                                |
 | `npm run lint`      | ESLint 9 (flat config: `eslint.config.mjs`)                                      |
