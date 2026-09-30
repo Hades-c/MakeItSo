@@ -40,8 +40,9 @@ import {
  *
  * Source tag (stored as `source` on every row): REGISTRAR for rows from Registrar pages (the calendar, the Academic
  * Regulations, personal leave, the Banner terms), DAVIDSON OFFICES for rows from other offices' pages (HR holidays,
- * Residence Life, CIS): see calendarSourceForUrls(), which reads a row's first source. Any other page a description quotes (the WebTree
- * overview, the self-scheduled exam procedures, the Academic Regulations) is listed after it.
+ * Residence Life, CIS): see calendarSourceForUrls(), which reads a row's first source. Any other page a
+ * description quotes (the WebTree overview, the self-scheduled exam procedures, the Academic Regulations) is listed
+ * after it.
  * Faculty/staff-only rows (textbooks, grades due, chair reviews, office closures) are kept with their audience;
  * the student views leave them out (isStudentFacing()).
  * - Religious observances are not listed: the research held one (Easter Sunday), which would single out one faith

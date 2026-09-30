@@ -191,8 +191,8 @@ export function setMailTransportForTests(transport: MailTransport | undefined): 
 }
 
 /**
- * The configured mailer, or null when mail is unavailable (MAIL_PROVIDER=none). A misconfigured provider (e.g. "resend" without MAIL_API_KEY) throws EnvError, which
- * fails the request with a 500 (PLAN §2 "Env").
+ * The configured mailer, or null when mail is unavailable (MAIL_PROVIDER=none). A misconfigured provider (e.g.
+ * "resend" without MAIL_API_KEY) throws EnvError, which fails the request with a 500 (PLAN §2 "Env").
  */
 export function getMailer(clock?: () => Date): Mailer | null {
   const provider = readEnv("MAIL_PROVIDER");
