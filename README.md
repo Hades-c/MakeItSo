@@ -34,9 +34,12 @@ MakeItSo/
 ├── .github/workflows/ci.yml   CI: npm ci → typecheck → lint → format → test → build → CSS check → e2e
 ├── .nvmrc                     Node 24
 └── frontend/                  the Next.js app
+    ├── proxy.ts               request proxy: passes the requested path to layouts, so a signed-out deep link
+    │                          goes to /login?callbackUrl=<path> and back
     ├── app/
     │   ├── page.tsx           landing page
-    │   ├── (auth)/            /login, /register
+    │   ├── (auth)/            /login, /register, /verify (mailbox code), /forgot-password
+    │   ├── (marketing)/       /privacy
     │   ├── (hub)/             signed-in pages in the AppShell (layout requires a session): /today,
     │   │                      /courses, /courses/[term]/[code], /plan, /careers, /careers/[slug], /events,
     │   │                      /alumni, /profile
@@ -47,11 +50,15 @@ MakeItSo/
     │   ├── db.ts              lazy MongoDB connection (getDb), sanitizeFilter on
     │   ├── http/              defineRoute (auth, CSRF, limits, validation, caching), typed errors,
     │   │                      fetchExternal (the only way to call outside services) + fixtures mode
-    │   ├── auth/              NextAuth options, requireUser() / requireApiUser()
+    │   ├── auth/              NextAuth options, sessions (requireUser() / requireApiUser()), Davidson-only
+    │   │                      sign-up with mailbox verification, passwords, profile, mail (console / Resend),
+    │   │                      password reset, rate limits
     │   ├── clock.ts           now(): the server's "now" (pinned by FIXTURES_NOW in fixtures mode)
     │   ├── sync.ts            recordSync / getSourceStatuses for the Sources panel
-    │   ├── account/           per-user data registry for export and account deletion
-    │   ├── catalog/ plan/ feeds/ rmp/ programs/   service contracts (typed stubs until each workstream lands)
+    │   ├── account/           per-user data registry for export and account deletion (incl. the student's
+    │   │                      own rows in the hackathon-era collections)
+    │   ├── catalog/ programs/ rmp/ feeds/ content/   the live course catalog, Acalog majors and minors,
+    │   │                      ratings, campus feeds and curated content; plan/ is a typed stub until it lands
     │   └── search/            global search over pluggable providers
     ├── components/ui/         Lakeside UI primitives (Button, Card, SourceTag, CourseCode, Dialog, ...)
     ├── components/app/        AppShell: TopBar, Sidebar + Sources panel, BottomTabs, theme, user menu

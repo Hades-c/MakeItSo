@@ -37,6 +37,7 @@ The frozen interfaces every workstream codes against. They change only through t
 | `server/features.ts`             | `requireFeature(f)`, `featureMetadata(f, meta)`: 404 while careers/events/alumni is off (Alumni also needs Careers); `featureEnabled`, `loadFlags`                                               | flagged pages: `generateMetadata` → `featureMetadata(f, …)` (no static `metadata`), page starts `await requireFeature(f)`; `loadFlags()`: shell/pages only, never throws                                                                              |
 | `server/sync.ts`                 | `recordSync(sourceId, { ok, count, error? })`, `getSourceStatuses()`                                                                                                                             | one call per source per run; the Sources panel lists only synced sources                                                                                                                                                                              |
 | `server/account/erasers.ts`      | `registerAccountData(name, { export, erase })`, `exportAccountData`, `eraseAccountData`; built-ins `courseplans-legacy`, `careergoals-legacy`, `aicaches-legacy` (the student's own legacy rows) | register per-user collections in your service entry module; ask for it to be listed in `ACCOUNT_DATA_MODULES`                                                                                                                                         |
+| `server/auth` (W3)               | sessions, sign-up, verification, passwords, profile, mail, account data; import from `@/server/auth`                                                                                             | pages `requireUser()`, routes `defineRoute` auth modes; see "Auth" below                                                                                                                                                                              |
 | `server/catalog/index.ts` (W1)   | `resolveTerms`, `browseTerm`, `searchCourses`, `getCourse`, `getSection`, `getCourseHistory`, `validateCourseCodes`, `countCourses`, `getCatalogFilters`                                         | `browseTerm()` = registration term once published, else current (the default of searchCourses, /courses, ⌘K, the sidebar count); a never-ingested hot term is cold-loaded once (8 s), else 503                                                        |
 | `server/plan/index.ts` (W5s)     | `getPlan`, `addItem`, `updateItem`, `removeItem`, `getProgress`, `getDaySchedule`, WebTree, `detectConflicts`, `readLegacyPlan`, deadlines, summer, drafts                                       | atomic mutations only                                                                                                                                                                                                                                 |
 | `server/feeds/index.ts` (W4a)    | `listEvents`, `listEventsPage` (`{items, hasMore}`), `listNews`, `getLibraryHours`, `syncFeeds({sources?, onlyStale?})`                                                                          | reads never block on upstreams (background refresh via `after()`), except `getLibraryHours(today)` with nothing stored (≤1 inline try per 30 min, waits ≤5 s); empty `kinds` = event + deadline; overlap windows; open-ended events count as 2 h      |
@@ -91,6 +92,44 @@ The frozen interfaces every workstream codes against. They change only through t
 - Every course code content quotes exists in the fixture terms (gate (a), no exemptions).
 - The alumni search result links `routes.alumnus(id)`: the directory renders each card with `id={alumnus.id}`.
 
+## Auth (`server/auth`, W3)
+
+- **Sessions**: `requireUser({ verifiedDavidson?, returnTo? })` for pages and layouts: signed out →
+  `/login?callbackUrl=<path>`; with `verifiedDavidson`, an account without a verified @davidson.edu mailbox →
+  `verifiedOnlyRedirect(path)` =
+  `/verify?reason=davidson&next=<path>`. `<path>` is `returnTo`, else the `RETURN_PATH_HEADER` (`x-mis-return-path`)
+  that `frontend/proxy.ts` sets on every page request (lib/routes.ts); `/today` is left out. Route handlers use
+  `requireApiUser()` or defineRoute's auth modes (401/403, never a redirect). `getSessionUser()` is memoised per
+  request; a JWT is revoked by `sessionVersion` (sign out everywhere, password change or reset, deletion).
+  `isEmailVerified(account)` (any address) and `isVerifiedDavidsonUser(account)` (verified AND @davidson.edu: the
+  alumni/AI gate) take a SessionUser, a lean User or a Profile.
+- **Return paths**: every untrusted path goes through `safeAppPath(value, fallback?)` / `isSafeAppPath(path)`
+  (one leading "/", never "//" or "/\\" after normalising); `lib/routes.ts safeCallbackPath` applies the same rule.
+- **Verify banner**: `verifyBannerFor(user, now())` → `{ email, replaceable, hoursLeft }` or null (only unverified
+  @davidson.edu accounts, only while mail is available); the hub layout renders `<VerifyBanner {...state} />`.
+- **Profile**: `getProfile(userId)` / `updateProfile(userId, patch)` (strict whitelist, `null` → `$unset` for
+  firstTerm/standingOverride), `grantAiConsent` / `revokeAiConsent`, `defaultFirstTerm(gradYear)`,
+  `officialNames(kind)` (see "Catalog": official Acalog names only).
+- **Passwords and mail**: `passwordProblem(password, context)` is the new-password policy (10–72 UTF-8 bytes, not
+  only spaces, not in the bundled common list, no site word with digits or symbols around it); `getMailer()` →
+  ConsoleMailer (dev/test) | ResendMailer (`MAIL_PROVIDER=resend`, through `fetchExternal("resend", …)`) | null
+  (`none`: verification and reset say they are unavailable); `isMailAvailable()` for pages and banners.
+- **Sign-in refusals**: the server sends a fixed NextAuth error code, `TooManyAttempts[:<sec>]` (10 failed
+  sign-ins per 15 min per IP), `AddressBackoff[:<sec>]` (per address and IP after 5 failures) or
+  `SignInUnavailable`; the login page shows only `signInErrorMessage(code)`'s fixed sentences (anything else is
+  "Sign-in failed. Please try again."), so a crafted `/login?error=` link cannot show arbitrary text.
+- **Codes**: 6 digits, stored as a sha256, valid 15 minutes (`VerificationCode.codeExpiresAt`, checked against
+  server `now()`), purged 24 h after sending (`expiresAt`, the TTL on the real clock), 5 attempts per code, 3 sends
+  per hour, and 10 wrong codes a day per account over all purposes (`code-fail:user:<id>`). `User.verificationSentAt`
+  starts the 24 h window after which a later sign-up of the same address may replace an unverified one (never a
+  legacy account, never before a code was sent), so turning on a mail provider does NOT need
+  `scripts/flag-legacy-accounts.ts` first.
+- **Pages and routes**: `/login`, `/register`, `/verify`, `/forgot-password` (`routes.forgotPassword()`),
+  `/privacy`; contracts in `lib/api/account.ts` (`register` and `requestPasswordReset` answer 202
+  `{status: "check-inbox", message}`, `confirmPasswordReset` 204, and the fixtures-only `testMailbox`, which is a
+  404 unless `EXTERNAL_MODE=fixtures` + `MAIL_PROVIDER=console` off Vercel) and `lib/api/profile.ts`; the AI-consent
+  endpoint's spec is still `app/(auth)/_lib/contracts.ts authExtraApi`.
+
 ## Route auth modes (`defineRoute`)
 
 | `auth`     | Who                                                                 | Failure              |
@@ -133,3 +172,8 @@ attributable, so no eraser touches them (the privacy notice says to ask).
 - Fixtures: `tests/fixtures/external/` (see its README). Use the real Fall 2026 / Spring 2027 data for catalog
   rules (reg_fors and the Staff instructor exist only in 202602) and the synthetic RMP roster (`cases.json`) for
   matching. `tests/fixtures/content/office-programs.json` indexes the 122 verified office programs.
+
+## Working in the worktrees
+
+- Never `git stash`: every worktree of the repository shares one `refs/stash`, and two agents' pops swapped each
+  other's entries (a wrapper now refuses stash push/pop). Commit work in progress on your own branch instead.
