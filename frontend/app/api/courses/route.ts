@@ -51,22 +51,9 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/courses - add a course (admin use / seeding)
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectToDatabase();
-
-    const data = await req.json();
-    const course = await Course.create(data);
-
-    return NextResponse.json({ course }, { status: 201 });
-  } catch (error) {
-    console.error("POST /api/courses error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
+// POST /api/courses used to insert arbitrary documents into the shared
+// catalog for any signed-in user. It is disabled: the catalog comes from
+// the live Davidson API.
+export async function POST() {
+  return NextResponse.json({ error: "Not found" }, { status: 404 });
 }
