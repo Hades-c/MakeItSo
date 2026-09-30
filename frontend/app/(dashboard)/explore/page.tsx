@@ -63,6 +63,8 @@ interface LiveCourse {
 
 interface CoursesResponse {
   courses: LiveCourse[];
+  /** The other live term's course codes (null if it could not be loaded). */
+  otherTerm: (TermInfo & { courseCodes: string[] }) | null;
   total: number;
   sectionCount: number;
   term: string;
@@ -281,6 +283,13 @@ export default function ExplorePage() {
   const departments = Array.from(
     new Set(liveCourses.map((c) => c.department))
   ).sort();
+
+  // Live terms (labels) with a section of a course: the viewed term, plus the
+  // other live term when its schedule loaded. Undefined when not known.
+  function offeredInFor(code: string): string[] | undefined {
+    if (!data || !data.otherTerm) return undefined;
+    return [data.term, ...(data.otherTerm.courseCodes.includes(code) ? [data.otherTerm.label] : [])];
+  }
 
   function onPlanUpdated(planned: PlanCourseSummary[]) {
     setUserPlanCourses(planned);
@@ -621,6 +630,7 @@ export default function ExplorePage() {
                 key={`${data?.termCode}-${course.code}`}
                 course={course}
                 termCode={data?.termCode}
+                offeredIn={offeredInFor(course.code)}
                 inPlan={planCourseCodes.has(course.code)}
                 onPlanUpdated={onPlanUpdated}
               />
@@ -704,6 +714,7 @@ export default function ExplorePage() {
                     <CourseCard
                       course={match}
                       termCode={data?.termCode}
+                      offeredIn={offeredInFor(match.code)}
                       aiReason={rec.reason}
                       aiCareerImpact={rec.careerImpact}
                       inPlan={planCourseCodes.has(match.code)}
@@ -729,6 +740,7 @@ export default function ExplorePage() {
                           courseCode={rec.code}
                           courseName={rec.name}
                           credits={rec.credits}
+                          offeredIn={rec.offeredIn}
                           inPlan={planCourseCodes.has(rec.code)}
                           onAdded={onPlanUpdated}
                         />
@@ -760,9 +772,14 @@ export default function ExplorePage() {
 }
 
 /* ===== Course card (live Davidson data only) ===== */
+
+// Course name the API layer uses for topics courses (sections have their own titles).
+const TOPICS_PLACEHOLDER = "Topics vary by section";
+
 function CourseCard({
   course,
   termCode,
+  offeredIn,
   aiReason,
   aiCareerImpact,
   inPlan,
@@ -770,6 +787,7 @@ function CourseCard({
 }: {
   course: LiveCourse;
   termCode?: string;
+  offeredIn?: string[];
   aiReason?: string;
   aiCareerImpact?: string[];
   inPlan: boolean;
@@ -795,6 +813,10 @@ function CourseCard({
   }, [showAiModal]);
 
   const realInstructors = course.instructors.filter((i) => i !== "Staff");
+  const topics =
+    course.name === TOPICS_PLACEHOLDER
+      ? Array.from(new Set(course.sectionList.map((s) => s.title).filter((t) => t && t !== TOPICS_PLACEHOLDER)))
+      : undefined;
   const gradReqs = course.gradRequirementLabels ?? [];
 
   async function fetchAiInsights() {
@@ -867,6 +889,8 @@ function CourseCard({
               courseCode={course.code}
               courseName={course.name}
               credits={course.credits}
+              offeredIn={offeredIn}
+              topics={topics}
               inPlan={inPlan}
               onAdded={onPlanUpdated}
             />

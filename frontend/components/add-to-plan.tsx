@@ -22,6 +22,13 @@ interface AddToPlanProps {
   inPlan: boolean;
   /** Preselect this term (e.g. a roadmap semester); otherwise the registration term. */
   defaultTermLabel?: string;
+  /**
+   * Live terms (labels) with a section of this course, when known. Choosing
+   * the current or registration term without a section shows a note.
+   */
+  offeredIn?: string[];
+  /** Section titles of a topics course; the student can pick one to save as the name. */
+  topics?: string[];
   onAdded: (plannedCourses: PlanCourseSummary[]) => void;
 }
 
@@ -29,16 +36,34 @@ interface AddToPlanProps {
  * Term picker + "Add to Plan" button. Defaults to the registration term
  * (e.g. Spring 2027), never to "Fall <calendar year>".
  */
-export function AddToPlan({ courseCode, courseName, credits, inPlan, defaultTermLabel, onAdded }: AddToPlanProps) {
+export function AddToPlan({
+  courseCode,
+  courseName,
+  credits,
+  inPlan,
+  defaultTermLabel,
+  offeredIn,
+  topics,
+  onAdded,
+}: AddToPlanProps) {
   const terms = useTerms();
   const [chosen, setChosen] = useState<string | null>(null);
+  const [topic, setTopic] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   if (inPlan) {
     return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 bg-green-50 px-2 py-1 rounded">
-        <Check className="h-3 w-3" /> In Plan
+      <span className="inline-flex flex-col items-end gap-1">
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 bg-green-50 px-2 py-1 rounded">
+          <Check className="h-3 w-3" /> In Plan
+        </span>
+        {warning && (
+          <span className="text-[11px] text-amber-700 max-w-[16rem] text-right" data-testid="add-to-plan-warning">
+            {warning}
+          </span>
+        )}
       </span>
     );
   }
@@ -51,6 +76,9 @@ export function AddToPlan({ courseCode, courseName, credits, inPlan, defaultTerm
       ? defaultTermLabel
       : terms?.registration.label ?? "";
   const selected = chosen ?? preferred;
+  const selectedIsLive = !!terms && (selected === terms.active.label || selected === terms.registration.label);
+  const notOffered = selectedIsLive && !!offeredIn && !offeredIn.includes(selected);
+  const topicChoices = topics && topics.length > 1 ? topics : null;
 
   async function add() {
     const parsed = parseTermLabel(selected);
@@ -63,7 +91,7 @@ export function AddToPlan({ courseCode, courseName, credits, inPlan, defaultTerm
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courseCode,
-          courseName,
+          courseName: topicChoices && topic ? topic : courseName,
           credits,
           semester: parsed.season,
           year: parsed.year,
@@ -75,6 +103,7 @@ export function AddToPlan({ courseCode, courseName, credits, inPlan, defaultTerm
         setError(data.error ?? "Could not add this course");
         return;
       }
+      setWarning(typeof data.warning === "string" ? data.warning : null);
       onAdded(data.plan?.plannedCourses ?? []);
     } catch {
       setError("Network error. Try again.");
@@ -113,6 +142,28 @@ export function AddToPlan({ courseCode, courseName, credits, inPlan, defaultTerm
           Add to Plan
         </button>
       </div>
+      {topicChoices && (
+        <select
+          aria-label={`Topic for ${courseCode}`}
+          data-testid="add-to-plan-topic"
+          value={topic}
+          disabled={adding}
+          onChange={(e) => setTopic(e.target.value)}
+          className="h-7 max-w-[16rem] rounded border border-gray-200 bg-white px-1.5 text-[11px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-davidson/20"
+        >
+          <option value="">Topic: decide later</option>
+          {topicChoices.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      )}
+      {notOffered && (
+        <span className="text-[11px] text-amber-700" data-testid="add-to-plan-not-offered">
+          Not on the {selected} schedule
+        </span>
+      )}
       {error && <span className="text-[11px] text-red-600">{error}</span>}
     </div>
   );

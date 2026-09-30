@@ -3,6 +3,7 @@
 // active or registration term schedule is dropped before caching or returning.
 
 import {
+  courseNameFor,
   getLiveCatalog,
   normalizeCourseCode,
   type LiveCatalogEntry,
@@ -65,7 +66,8 @@ export function keepLiveCourses<T extends { code?: unknown; name?: unknown }>(
     const grounded: Record<string, unknown> = {
       ...item,
       code: entry.code,
-      name: entry.name,
+      // Topics courses keep the model's name only if it is a live section title.
+      name: courseNameFor(entry, item.name),
       offeredIn: entry.terms.map((t) => t.label),
     };
     if ("department" in item) grounded.department = entry.department;

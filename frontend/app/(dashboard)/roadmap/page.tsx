@@ -37,6 +37,7 @@ interface Course {
   reason: string;
   /** Generic slot such as "ELEC ---" (not a real course code). */
   placeholder?: boolean;
+  offeredIn?: string[]; // live terms with a section (set by the server)
 }
 
 interface SummerActivity {
@@ -965,6 +966,7 @@ export default function RoadmapPage() {
                                         courseName={course.name}
                                         inPlan={inPlan}
                                         defaultTermLabel={sem.semester}
+                                        offeredIn={course.offeredIn}
                                         onAdded={(planned: PlanCourseSummary[]) => setUserPlanCourses(planned)}
                                       />
                                     )}

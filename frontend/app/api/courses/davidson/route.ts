@@ -23,11 +23,22 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // The other live term's course codes let the page say when a course has no
+  // section in the term a student is adding it to.
+  const other = term.code === terms.registration.code ? terms.active : terms.registration;
+  const [main, otherResult] = await Promise.allSettled([getTermCourses(term), getTermCourses(other)]);
+
   try {
-    const { data, stale } = await getTermCourses(term);
+    if (main.status === "rejected") throw main.reason;
+    const { data, stale } = main.value;
+    const otherTerm =
+      otherResult.status === "fulfilled"
+        ? { ...other, courseCodes: otherResult.value.data.courses.map((c) => c.code) }
+        : null;
     return NextResponse.json(
       {
         courses: data.courses,
+        otherTerm,
         total: data.courses.length,
         sectionCount: data.sectionCount,
         term: data.term.label,

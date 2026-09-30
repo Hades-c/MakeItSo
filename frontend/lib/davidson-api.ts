@@ -559,6 +559,28 @@ export interface LiveCatalogEntry {
   department: string;
   credits: number;
   terms: TermInfo[];
+  /** Section titles, only for topics courses (name === TOPICS_PLACEHOLDER). */
+  topicTitles?: string[];
+}
+
+function topicTitlesOf(course: LiveCourse): string[] | undefined {
+  if (course.name !== TOPICS_PLACEHOLDER) return undefined;
+  return Array.from(new Set(course.sectionList.map((s) => s.title).filter((t) => t && t !== TOPICS_PLACEHOLDER)));
+}
+
+/**
+ * Name to store or show for a course. Topics courses have no single title, so
+ * a requested name is kept only if it is one of the live section titles
+ * (e.g. WRI 101 "Other Minds"); otherwise the placeholder is used.
+ */
+export function courseNameFor(
+  course: { name: string; topicTitles?: string[] } | LiveCourse,
+  requested: unknown
+): string {
+  if (course.name !== TOPICS_PLACEHOLDER) return course.name;
+  const titles = "sectionList" in course ? topicTitlesOf(course) ?? [] : course.topicTitles ?? [];
+  const wanted = typeof requested === "string" ? requested.replace(/\s+/g, " ").trim().toLowerCase() : "";
+  return titles.find((t) => t.toLowerCase() === wanted) ?? TOPICS_PLACEHOLDER;
 }
 
 /**
@@ -576,29 +598,62 @@ export async function getLiveCatalog(): Promise<{ terms: ResolvedTerms; index: M
     const { term, courses } = r.value.data;
     for (const c of courses) {
       const existing = index.get(c.code);
-      if (existing) existing.terms.push(term);
-      else index.set(c.code, { code: c.code, name: c.name, department: c.department, credits: c.credits, terms: [term] });
+      const topicTitles = topicTitlesOf(c);
+      if (existing) {
+        existing.terms.push(term);
+        if (existing.topicTitles || topicTitles) {
+          existing.topicTitles = Array.from(new Set([...(existing.topicTitles ?? []), ...(topicTitles ?? [])]));
+        }
+      } else {
+        index.set(c.code, {
+          code: c.code,
+          name: c.name,
+          department: c.department,
+          credits: c.credits,
+          terms: [term],
+          ...(topicTitles ? { topicTitles } : {}),
+        });
+      }
     }
   }
   if (loaded === 0) throw new CourseDataUnavailableError("No live Davidson course data is available");
   return { terms, index };
 }
 
-/** Find a course in a specific live term (if it is the active or registration term), else in either. */
-export async function findLiveCourse(code: string, termCode?: string): Promise<LiveCourse | null> {
+export interface LiveCourseLookup {
+  /** The course from the preferred term's schedule, else from the other live term. */
+  course: LiveCourse | null;
+  terms: ResolvedTerms;
+  /** Live terms (active/registration) with at least one section of the course. */
+  offeredIn: TermInfo[];
+  /** Live terms whose schedule could be loaded (so "not offered" is known). */
+  checked: TermInfo[];
+}
+
+/** Look a course up in the active and registration schedules, preferring `termCode`. */
+export async function lookupLiveCourse(code: string, termCode?: string): Promise<LiveCourseLookup> {
   const wanted = normalizeCourseCode(code);
   const terms = await getTerms();
   const order = [terms.registration, terms.active].sort((a, b) =>
     a.code === termCode ? -1 : b.code === termCode ? 1 : 0
   );
-  for (const term of order) {
-    try {
-      const { data } = await getTermCourses(term);
-      const hit = data.courses.find((c) => c.code === wanted);
-      if (hit) return hit;
-    } catch {
-      // try the other term
-    }
+  const results = await Promise.allSettled(order.map((term) => getTermCourses(term)));
+  let course: LiveCourse | null = null;
+  const offeredIn: TermInfo[] = [];
+  const checked: TermInfo[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (r.status !== "fulfilled") continue;
+    checked.push(order[i]);
+    const hit = r.value.data.courses.find((c) => c.code === wanted);
+    if (!hit) continue;
+    offeredIn.push(order[i]);
+    course = course ?? hit;
   }
-  return null;
+  return { course, terms, offeredIn, checked };
+}
+
+/** Find a course in a specific live term (if it is the active or registration term), else in either. */
+export async function findLiveCourse(code: string, termCode?: string): Promise<LiveCourse | null> {
+  return (await lookupLiveCourse(code, termCode)).course;
 }

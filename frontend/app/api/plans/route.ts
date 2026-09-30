@@ -6,8 +6,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import CoursePlan from "@/models/CoursePlan";
 import Course from "@/models/Course";
 import User from "@/models/User";
-import { findLiveCourse } from "@/lib/davidson-api";
-import { termCodeFor } from "@/lib/terms";
+import { courseNameFor, lookupLiveCourse } from "@/lib/davidson-api";
+import { termCodeFor, type Season } from "@/lib/terms";
 
 // GET /api/plans - get the current user's course plan
 export async function GET() {
@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Handle course addition
-    const { courseId, courseCode, courseName, credits, semester, year, status, notes } = body;
+    // Client-sent credits are ignored: credits come from the live schedule.
+    const { courseId, courseCode, courseName, semester, year, status, notes } = body;
 
     if (!semester || !year) {
       return NextResponse.json({ error: "semester and year are required" }, { status: 400 });
@@ -100,18 +101,31 @@ export async function POST(req: NextRequest) {
 
     // Credits come from the Davidson API (usually 1; some courses 0 or 2),
     // preferring the chosen term's schedule. Davidson counts 32 courses to
-    // graduate, so the old default of 4 credits per course was wrong.
+    // graduate, so the old default of 4 credits per course was wrong. A
+    // course that is not on a live schedule (or during an outage) counts 1.
     let resolvedCredits = 1;
-    const clientCredits = Number(credits);
-    if (credits != null && Number.isFinite(clientCredits) && clientCredits >= 0 && clientCredits <= 4) {
-      resolvedCredits = clientCredits;
-    }
+    let warning: string | undefined;
+    const chosenTermCode = termCodeFor(semester as Season, Number(year));
     try {
-      const live = await findLiveCourse(String(resolvedCode), termCodeFor(semester, Number(year)));
-      if (live) {
-        resolvedCode = live.code;
-        resolvedName = live.name || resolvedName;
-        resolvedCredits = live.credits;
+      const lookup = await lookupLiveCourse(String(resolvedCode), chosenTermCode);
+      if (lookup.course) {
+        resolvedCode = lookup.course.code;
+        // Topics courses keep the chosen section title (e.g. WRI 101 "Other Minds").
+        resolvedName = courseNameFor(lookup.course, resolvedName) || resolvedName;
+        resolvedCredits = lookup.course.credits;
+      }
+      // Planning a course for the current or registration term that has no
+      // section in that term: add it, but say so.
+      const chosenLive = [lookup.terms.active, lookup.terms.registration].find((t) => t.code === chosenTermCode);
+      if (
+        chosenLive &&
+        lookup.checked.some((t) => t.code === chosenLive.code) &&
+        !lookup.offeredIn.some((t) => t.code === chosenLive.code)
+      ) {
+        const elsewhere = lookup.offeredIn.map((t) => t.label);
+        warning =
+          `${resolvedCode} is not on the ${chosenLive.label} schedule` +
+          (elsewhere.length > 0 ? ` (it has sections in ${elsewhere.join(" and ")}).` : ".");
       }
     } catch (err) {
       console.error("POST /api/plans: live course lookup failed:", err);
@@ -143,7 +157,10 @@ export async function POST(req: NextRequest) {
 
     await plan.save();
 
-    return NextResponse.json({ plan }, { status: 201 });
+    return NextResponse.json(
+      { plan, ...(warning ? { warning } : {}) },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("POST /api/plans error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -173,7 +190,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Planned course not found" }, { status: 404 });
     }
 
-    Object.assign(course, updates);
+    // Only these fields are user-editable; code, name and credits come from
+    // the live schedule when the course is added.
+    const allowed: Record<string, unknown> = {};
+    for (const key of ["status", "grade", "notes"] as const) {
+      if (updates && typeof updates === "object" && key in updates) allowed[key] = updates[key];
+    }
+    Object.assign(course, allowed);
     await plan.save();
 
     return NextResponse.json({ plan });

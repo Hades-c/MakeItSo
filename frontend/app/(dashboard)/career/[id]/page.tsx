@@ -34,7 +34,7 @@ type Tab = "overview" | "courses" | "resources" | "networking" | "roadmap";
 
 interface CareerPlan {
   recommendedMajor: string;
-  coursesToTake: { code: string; name: string; reason: string; priority: string; typicalYear: string; courseType?: string }[];
+  coursesToTake: { code: string; name: string; reason: string; priority: string; typicalYear: string; courseType?: string; offeredIn?: string[] }[];
   peopleToMeet: { role: string; type: string; reason: string; suggestedTiming: string; howToFind: string }[];
   thingsToDo: { activity: string; type: string; reason: string; timing: string; classYear: string }[];
   careerInsights: string;
@@ -408,6 +408,7 @@ export default function CareerDetailPage() {
                       <AddToPlan
                         courseCode={course.code}
                         courseName={course.title}
+                        offeredIn={offered as string[]}
                         inPlan={planCourseCodes.has(course.code)}
                         onAdded={setUserPlanCourses}
                       />
@@ -598,6 +599,7 @@ export default function CareerDetailPage() {
                             <AddToPlan
                               courseCode={course.code}
                               courseName={course.name}
+                              offeredIn={course.offeredIn}
                               inPlan={planCourseCodes.has(course.code)}
                               onAdded={setUserPlanCourses}
                             />
