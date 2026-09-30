@@ -97,8 +97,8 @@ export interface RequireUserOptions {
   /**
    * The page's own path (with its query), to come back to after signing in or verifying: /login?callbackUrl=…,
    * /verify?next=…. Without it, the RETURN_PATH_HEADER request header is used (frontend/proxy.ts overwrites it on
-   * every request that can render a page, dotted paths included), else the student lands on /today. Checked with safeAppPath either way; /today itself is left
-   * out of the URL (it is where sign-in lands anyway).
+   * every request that can render a page, dotted paths included), else the student lands on /today. Checked with
+   * safeAppPath either way; /today itself is left out of the URL (it is where sign-in lands anyway).
    */
   returnTo?: string;
 }
