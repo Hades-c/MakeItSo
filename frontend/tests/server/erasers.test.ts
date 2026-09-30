@@ -12,8 +12,10 @@ import {
 import { getDb } from "@/server/db";
 
 // A registry unit test: keep the service modules' own registrations (W3: verificationcodes, ratelimits; tested in
-// tests/w3/account-data.test.ts) out of the exact-name assertions below.
+// tests/w3/account-data.test.ts; W6: ai, tested in tests/ai/account-data.test.ts) out of the exact-name
+// assertions below.
 vi.mock("@/server/auth", () => ({}));
+vi.mock("@/server/ai", () => ({}));
 
 let testDb: TestDb;
 

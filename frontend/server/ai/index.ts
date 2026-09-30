@@ -1,4 +1,6 @@
 import "server-only";
+// Registers the "ai" account data (aicache_v2 personal entries + reports, aiusages); listed in ACCOUNT_DATA_MODULES.
+import "./account-data";
 
 /**
  * AI features on Claude Sonnet 5.5 (owner W6; PLAN §1 "AI", §5 "AI grounding", §6.1 W6, §9 "AI wire format").
@@ -9,6 +11,7 @@ import "server-only";
  *   features    generateCourseAbout, generatePlanSuggestions, generateCareerPlan, generateColdEmail (each
  *               returns an AiResult; bad ids or terms throw ApiError 400/404)
  *   jobs        pregenerateCourseAbout (GET /api/cron/ai)
+ *   shared      reportEntry ("Report this", 3 distinct reporters hide an entry), purgeEntries (admin)
  *   internals   server/ai/client.ts generate() (the only model call), mock.ts (AI_PROVIDER=mock), payloads.ts
  *               (the allow-list), prompts/*.ts (frozen system prompts with PROMPT_VERSION), grounding.ts,
  *               candidates.ts, sanitize.ts, cache.ts, usage.ts (budget + quotas)
@@ -33,3 +36,4 @@ export {
   PregenerateResultSchema,
   type PregenerateResult,
 } from "./pregenerate";
+export { purgeEntries, reportEntry, type ReportOutcome } from "./reports";
