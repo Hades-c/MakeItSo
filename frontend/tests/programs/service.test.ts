@@ -3,7 +3,6 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
 import { AcademicProgramSchema } from "@/lib/types/catalog";
-import { MAJORS } from "@/lib/utils";
 import Program from "@/models/Program";
 import { now } from "@/server/clock";
 import { getDb } from "@/server/db";
@@ -25,6 +24,7 @@ import { requirementsTextOf } from "@/server/programs/parse";
 import { getProgramWith, type ProgramsDeps } from "@/server/programs/service";
 import { programSnapshot } from "@/server/programs/snapshot";
 import { type CatalogFetcher, fetchCatalog } from "@/server/programs/upstream";
+import { HACKATHON_MAJOR_NAMES, INTERIM_MAJOR_NAMES } from "./legacy-major-names";
 import { recordedPageJson } from "./recorded";
 
 let testDb: TestDb;
@@ -158,12 +158,12 @@ describe("before any sync: the checked-in snapshot", () => {
 });
 
 describe("findProgramByName", () => {
-  it("maps the interim sign-up list (lib/utils.ts MAJORS) onto official majors", async () => {
+  it("maps the older sign-up lists (legacy User.major strings) onto official majors", async () => {
     // Differences with the Acalog catalog (reported to the orchestrator): "Interdisciplinary Studies" (the
     // Center for Interdisciplinary Studies has no major heading), "Genomics, Bioinformatics" (two majors:
     // Bioinformatics and Genomics) and "Undecided" (not a program) resolve to nothing.
     const unresolved = ["Genomics, Bioinformatics", "Interdisciplinary Studies", "Undecided"];
-    for (const legacy of MAJORS) {
+    for (const legacy of new Set([...INTERIM_MAJOR_NAMES, ...HACKATHON_MAJOR_NAMES])) {
       const match = await findProgramByName(legacy, { kinds: ["major"] });
       if (unresolved.includes(legacy)) expect(match, legacy).toBeNull();
       else expect(match?.kind, legacy).toBe("major");

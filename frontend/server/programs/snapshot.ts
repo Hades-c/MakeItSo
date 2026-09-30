@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { ProgramOfferingKindSchema } from "@/lib/types/catalog";
+import { ProgramOfferingKindSchema, type ProgramOfferingKind } from "@/lib/types/catalog";
 import { IsoDateSchema } from "@/lib/types/common";
 import { ACALOG_CATALOG } from "@/server/programs/catalog-info";
 import { programKey } from "@/server/programs/names";
@@ -68,6 +68,20 @@ let cached: ProgramSnapshot | null = null;
 export function programSnapshot(): ProgramSnapshot {
   cached ??= ProgramSnapshotSchema.parse(snapshotData);
   return cached;
+}
+
+/**
+ * Official offering names of the given kinds in the checked-in snapshot, distinct and sorted like
+ * programNames(): the database-free fallback (the profile uses it when the programs service cannot answer).
+ */
+export function snapshotOfferingNames(kinds: readonly ProgramOfferingKind[]): string[] {
+  const wanted = new Set(kinds);
+  const names = new Set<string>();
+  for (const program of programSnapshot().programs) {
+    for (const offering of program.offerings)
+      if (wanted.has(offering.kind)) names.add(offering.name);
+  }
+  return [...names].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
 }
 
 export const SNAPSHOT_SOURCE =

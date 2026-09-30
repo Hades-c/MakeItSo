@@ -69,6 +69,10 @@ The frozen interfaces every workstream codes against. They change only through t
   `officialProgramNames(kind)`, `findProgramByName(name, {kinds?})` (legacy/free text → one official offering;
   a kind named in the text is a constraint; punctuation and degree words are ignored; ambiguous → null),
   `syncPrograms()`. GET /api/programs/[id] serves canonical ids only (anything else 400).
+- Majors and minors are official Acalog names everywhere (Profile.majors/minors, AI enums): pickers list
+  `programNames().majors` / `.minors` plus, for majors, a UI-only "Undecided" that saves `majors: []`. The profile
+  validates against the same names (server/auth `officialNames`, which falls back to the checked-in Acalog
+  snapshot, never to free text). There is no other majors list (lib/utils.ts `MAJORS` is gone).
 - Cron routes are built from specs: `catalogApi.cronRefresh` (GET /api/cron/catalog, nightly) and
   `programsApi.cron` (GET /api/cron/programs, weekly), like `eventsApi.cronFeeds` and `ratingsApi.cronRoster`.
   `frontend/vercel.json` schedules each exactly once (a contract test checks it).

@@ -15,21 +15,23 @@ import {
   type ClassStandingResult,
   type TermCode,
 } from "@/lib/term";
+import type { ProgramOfferingKind } from "@/lib/types/catalog";
 import { SlugSchema } from "@/lib/types/common";
-import { MAJORS } from "@/lib/utils";
 import User, { type IUser } from "@/models/User";
 import { now } from "@/server/clock";
 import { getDb } from "@/server/db";
 import { ApiError, zodIssues } from "@/server/http/errors";
 import { officialProgramNames } from "@/server/programs";
+import { snapshotOfferingNames } from "@/server/programs/snapshot";
 
 /**
  * The student profile (lib/api/profile.ts; PLAN §6.1 W3 "Profile"). Server components call getProfile() directly;
  * GET/PATCH /api/profile and the AI-consent endpoint are thin wrappers.
  *
  * Reading (toProfile):
- *   - majors/minors are official program names: from server/programs (Acalog, W1b) once it is implemented,
- *     until then the interim lib/utils MAJORS list. Stored names are matched to the current official list by
+ *   - majors/minors are official program names: from server/programs (Acalog, W1b), or the checked-in Acalog
+ *     snapshot (server/programs/snapshot.json) when the service cannot answer. Stored names are matched to the
+ *     current official list by
  *     their core ("Computer Science" ↔ "Major in Computer Science (B.S. Degree)"); a legacy single `major` /
  *     `minor` string is mapped the same way, and dropped when it matches nothing (or is "Undecided").
  *   - graduationYear defaults to the first-year class; `standing` is derived with lib/term classStanding (a
@@ -75,11 +77,17 @@ export type ProgramKind = "major" | "minor";
 
 export interface OfficialNames {
   names: string[];
-  /** "programs" = server/programs (Acalog); "interim" = lib/utils MAJORS until W1b lands. */
-  source: "programs" | "interim";
+  /**
+   * "programs" = server/programs (Acalog, the synced list); "snapshot" = the same official names from the
+   * checked-in Acalog snapshot, used when the programs service cannot answer (e.g. the database is down).
+   */
+  source: "programs" | "snapshot";
 }
 
-const INTERIM_NAMES: readonly string[] = MAJORS.filter((name) => name !== "Undecided");
+const KINDS_OF: Readonly<Record<ProgramKind, readonly ProgramOfferingKind[]>> = {
+  major: ["major"],
+  minor: ["minor", "interdisciplinary-minor"],
+};
 
 async function namesFromPrograms(kind: ProgramKind): Promise<string[]> {
   if (kind === "major") return officialProgramNames("major");
@@ -90,18 +98,22 @@ async function namesFromPrograms(kind: ProgramKind): Promise<string[]> {
   return [...minors, ...interdisciplinary];
 }
 
-/** The official names for majors or minors (programs service first, interim list while it is unavailable). */
+/**
+ * The official names for majors or minors: the programs service first, the checked-in Acalog snapshot when it
+ * cannot answer. Both are official Acalog names, so profile validation never accepts anything else. "Undecided"
+ * is not a program: a picker may offer it as a UI-only choice that saves `majors: []`.
+ */
 export async function officialNames(kind: ProgramKind): Promise<OfficialNames> {
   try {
     const names = [...new Set(await namesFromPrograms(kind))].filter(Boolean);
     if (names.length > 0) return { names, source: "programs" };
   } catch (error) {
-    // 501 = the W1b stub; anything else is logged. Either way the interim list keeps the profile usable.
+    // 501 = a stubbed service (tests); anything else is logged. Either way the snapshot keeps the profile usable.
     if (!(error instanceof ApiError && error.status === 501)) {
-      console.error(`[profile] official ${kind} names unavailable, using the interim list:`, error);
+      console.error(`[profile] official ${kind} names unavailable, using the snapshot:`, error);
     }
   }
-  return { names: [...INTERIM_NAMES], source: "interim" };
+  return { names: snapshotOfferingNames(KINDS_OF[kind]), source: "snapshot" };
 }
 
 /** "Major in Computer Science (B.S. Degree)" → "computer science"; "French & Francophone Studies" → "french and …". */

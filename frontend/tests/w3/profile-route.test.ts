@@ -22,6 +22,7 @@ import {
   programNameCore,
 } from "@/server/auth/profile";
 import { getDb } from "@/server/db";
+import type * as ProgramsModule from "@/server/programs";
 
 const auth = vi.hoisted(() => ({ session: null as Session | null }));
 const programs = vi.hoisted(() => ({ names: null as Record<string, string[]> | null }));
@@ -34,7 +35,8 @@ vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   connection: async () => undefined,
 }));
-// server/programs is W1b's: a 501 stub today. Tests switch it "on" with official Acalog-style names.
+// server/programs is mocked: "off" (a 501, so the profile uses the checked-in Acalog snapshot's official names)
+// unless a test switches it "on" with its own official names.
 vi.mock("@/server/programs", async () => {
   const { notImplemented } = await import("@/server/http/errors");
   return {
@@ -124,8 +126,8 @@ describe("GET /api/profile", () => {
   it("maps a legacy single major/minor to official names on read (and drops unknown ones)", async () => {
     await signedIn({ major: "computer science", minor: "Economics", careerInterests: ["Law"] });
     expect(await profileOf(await get())).toMatchObject({
-      majors: ["Computer Science"],
-      minors: ["Economics"],
+      majors: ["Major in Computer Science (B.S. Degree)"],
+      minors: ["Minor in Economics"],
       interests: [],
     });
     await User.updateMany({}, { $set: { major: "Undecided", minor: "Basket weaving" } });
@@ -168,11 +170,15 @@ describe("PATCH /api/profile (strict whitelist)", () => {
     const profile = await profileOf(
       await patch({ majors: ["History", "Computer Science", "History"], minors: ["Economics"] }),
     );
+    // A name in any spelling of an official program is stored as the official name.
     expect(profile).toMatchObject({
-      majors: ["History", "Computer Science"],
-      minors: ["Economics"],
+      majors: ["Major in History (A.B. Degree)", "Major in Computer Science (B.S. Degree)"],
+      minors: ["Minor in Economics"],
     });
-    expect(await raw(user.id)).toMatchObject({ major: "History", minor: "Economics" });
+    expect(await raw(user.id)).toMatchObject({
+      major: "Major in History (A.B. Degree)",
+      minor: "Minor in Economics",
+    });
 
     const cleared = await profileOf(await patch({ majors: [], minors: [] }));
     expect(cleared).toMatchObject({ majors: [], minors: [] });
@@ -345,11 +351,17 @@ describe("the dedicated AI consent endpoint", () => {
 });
 
 describe("official program names", () => {
-  it("fall back to the interim list while server/programs is a stub", async () => {
+  it("fall back to the checked-in Acalog snapshot while server/programs cannot answer", async () => {
     const majors = await officialNames("major");
-    expect(majors.source).toBe("interim");
-    expect(majors.names).toContain("Computer Science");
+    expect(majors.source).toBe("snapshot");
+    expect(majors.names).toContain("Major in Computer Science (B.S. Degree)");
+    expect(majors.names).not.toContain("Computer Science");
     expect(majors.names).not.toContain("Undecided");
+    // The same official names programNames() serves (the zod enums of the profile and the AI).
+    const actual = await vi.importActual<typeof ProgramsModule>("@/server/programs");
+    const names = await actual.programNames();
+    expect(majors.names).toEqual(names.majors);
+    expect((await officialNames("minor")).names).toEqual(names.minors);
   });
 
   it("match by core name", () => {
