@@ -26,6 +26,11 @@ const TAG_COLORS: Record<string, string> = {
   "Work-Life Balance": "bg-teal-50 text-teal-700 border-teal-200",
 };
 
+/** "Software developers (BLS OOH: ...)" -> "Software developers" */
+function shortOccupation(occupation: string): string {
+  return occupation.replace(/\s*\([^)]*\)\s*/g, " ").trim();
+}
+
 export default function CareerPage() {
   const [activeFilter, setActiveFilter] = useState<CareerFilter>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,10 +149,13 @@ export default function CareerPage() {
                     </div>
 
                     {/* Pay: BLS median for the closest occupation (sourced) */}
-                    <p className="text-[11px] text-gray-500 mb-4">
+                    <p className="text-[11px] text-gray-500 mb-4" title={career.pay.occupation}>
                       Median pay (BLS, {career.pay.period}):{" "}
                       <span className="font-semibold text-[#111111] tabular-nums">
                         {formatUsd(career.pay.medianAnnual)}
+                      </span>
+                      <span className="block" data-testid="pay-occupation">
+                        Closest BLS occupation: {shortOccupation(career.pay.occupation)}
                       </span>
                     </p>
 
