@@ -257,7 +257,7 @@ interface SelectItemSpec {
 
 /**
  * A Lakeside Select whose trigger takes the id/aria props <Field> puts on its child, so the label, hint and error
- * are wired to the trigger.
+ * are wired to the trigger, and which shows its current choice in the server-rendered HTML.
  */
 function SelectTriggerFor({
   value,
@@ -271,10 +271,12 @@ function SelectTriggerFor({
   items: readonly SelectItemSpec[];
   placeholder?: string;
 } & React.ComponentPropsWithoutRef<typeof SelectTrigger>) {
+  // Radix fills SelectValue in only after hydration; giving it the label renders the choice on the server too.
+  const selected = items.find((item) => item.value === value)?.label;
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger {...triggerProps}>
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={placeholder}>{selected}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {items.map((item) => (
