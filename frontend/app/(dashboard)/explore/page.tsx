@@ -101,6 +101,31 @@ const AREA_DESCRIPTIONS: Record<string, string> = {
   languages: "Study world languages, cultural perspectives, and cross-cultural communication across global traditions.",
 };
 
+// Render http(s) URLs in official text as links (e.g. the WRI 101 catalog link).
+function Linkified({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s)]*[^\s).,;:!?])/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-davidson underline break-all"
+          >
+            {part}
+          </a>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
 const PAGE_SIZE = 50;
 
 function formatCredits(credits: number): string {
@@ -881,15 +906,20 @@ function CourseCard({
               )}
 
               <p className="text-sm text-[#555555] leading-relaxed" data-testid="course-description">
-                {course.description ||
-                  (course.sectionList.some((s) => s.description)
-                    ? "Topics vary by section. Each section's title and description are listed below."
-                    : "No description has been published for this course yet.")}
+                {course.description ? (
+                  <Linkified text={course.description} />
+                ) : course.sectionList.some((s) => s.description) ? (
+                  "Topics vary by section. Each section's title and description are listed below."
+                ) : (
+                  "No description has been published for this course yet."
+                )}
               </p>
 
               <div className="text-sm" data-testid="course-prerequisites">
                 <span className="font-medium text-gray-700">Prerequisites (official): </span>
-                <span className="text-[#555555]">{course.prerequisites || "None listed"}</span>
+                <span className="text-[#555555]">
+                  {course.prerequisites ? <Linkified text={course.prerequisites} /> : "None listed"}
+                </span>
               </div>
 
               {/* Every section from the Davidson API */}
@@ -911,7 +941,11 @@ function CourseCard({
                         <span>{s.enrollment.remaining} of {s.enrollment.max} seats open</span>
                       )}
                       {s.credits !== course.credits && <span>{formatCredits(s.credits)}</span>}
-                      {s.description && <p className="basis-full text-[#555555] leading-relaxed">{s.description}</p>}
+                      {s.description && (
+                        <p className="basis-full text-[#555555] leading-relaxed">
+                          <Linkified text={s.description} />
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ul>

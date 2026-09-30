@@ -194,8 +194,25 @@ export function decodeEntities(text: string): string {
   return out;
 }
 
+// Keep the target of real links ("Course Descriptions" -> "Course Descriptions
+// (https://collegecatalog.davidson.edu/...)") so the text still makes sense
+// once tags are stripped. Outlook "safelinks" wrappers and mailto: links keep
+// only their text.
+function inlineLinkTargets(html: string): string {
+  return html.replace(
+    /<a\b[^>]*?\bhref\s*=\s*("|')([^"']*)\1[^>]*>([\s\S]*?)<\/a>/gi,
+    (_match, _q: string, href: string, inner: string) => {
+      const url = decodeEntities(href).trim();
+      const text = inner.replace(/<[^>]*>/g, "").trim();
+      if (!/^https?:\/\//i.test(url) || /safelinks\.protection\.outlook\.com/i.test(url)) return inner;
+      if (!text || decodeEntities(text).includes(url)) return url;
+      return `${inner} (${url})`;
+    }
+  );
+}
+
 function htmlToLines(html: string): string[] {
-  const text = html
+  const text = inlineLinkTargets(html)
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|li|h\d)>/gi, "\n")
     .replace(/<[^>]*>/g, "");
@@ -205,18 +222,27 @@ function htmlToLines(html: string): string[] {
     .map((line) => line.replace(/[ \t\f\v]+/g, " ").trim());
 }
 
+// The Prerequisites heading comes as "<b>Prerequisites</b>" and sometimes as
+// "<b>Prerequisites:</b>" or with the colon after the tag (ECO 319, ECO 396).
+const PREREQ_HEADING = /<(?:b|strong)>\s*Prerequisites?\s*:?\s*<\/(?:b|strong)>\s*:?/i;
+// Instructor heading variants seen in the live data, typos included
+// ("Insructor" on SPA 265, "Faculty" on WRI 202).
+const INSTRUCTOR_HEADING = /^(?:instructors?|insructors?|faculty)\s*:?$/i;
+const INSTRUCTOR_INLINE = /^(?:instructors?|insructors?|faculty)\s*:\s*[^.]{1,80}$/i;
+
 /**
  * Split the API's course_description HTML into the description proper and the
- * official prerequisites text (the part after "<b>Prerequisites</b>"), dropping
- * the leading "Instructor(s)" block.
+ * official prerequisites text (the part after the "Prerequisites" heading),
+ * dropping the leading "Instructor(s)" block.
  */
 export function parseCourseDescription(html: string): { description: string; prerequisites: string } {
-  const [bodyHtml, prereqHtml = ""] = (html || "").split(/<b>\s*Prerequisites?\s*<\/b>/i);
+  const [bodyHtml, ...rest] = (html || "").split(PREREQ_HEADING);
+  const prereqHtml = rest.join(" ");
   let lines = htmlToLines(bodyHtml).filter(Boolean);
-  if (lines.length > 0 && /^instructors?\s*:?$/i.test(lines[0])) {
+  if (lines.length > 0 && INSTRUCTOR_HEADING.test(lines[0])) {
     // "Instructor" heading followed by a line of surnames
     lines = lines.slice(2);
-  } else if (lines.length > 0 && /^instructors?\s*:\s*[^.]{1,80}$/i.test(lines[0])) {
+  } else if (lines.length > 0 && INSTRUCTOR_INLINE.test(lines[0])) {
     // "Instructor: A. Name" on one line
     lines = lines.slice(1);
   }
