@@ -87,3 +87,19 @@ export function addDays(day: string, days: number): string {
   const ms = Date.parse(`${davidsonDay(day)}T00:00:00Z`) + days * 86_400_000;
   return new Date(ms).toISOString().slice(0, 10);
 }
+
+// ---- Text ----------------------------------------------------------------------------------------------------------
+
+/**
+ * Fold text for matching (search providers over content): NFKD, accents stripped, lower case, "&" read as "and",
+ * whitespace collapsed ("Tomás" → "tomas", "UX & Interaction" → "ux and interaction").
+ */
+export function foldText(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
