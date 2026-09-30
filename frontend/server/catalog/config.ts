@@ -35,8 +35,16 @@ export const COLD_FAILURE_TTL_MS = 30_000;
 export const TERMS_MEMO_MS = 60_000;
 export const META_MEMO_MS = 5_000;
 
-/** The empty / < 50% guard (PLAN §5): a refresh smaller than this share of the stored term is rejected. */
+/**
+ * The empty / < 50% guard (PLAN §5): a refresh smaller than this share of the term's baseline is rejected. The
+ * baseline is the larger of the stored count and the high-water mark of accepted counts (CatalogMeta
+ * peakSectionCount, valid for PEAK_WINDOW_MS), so a degrading upstream cannot halve a term again and again.
+ */
 export const MIN_REFRESH_RATIO = 0.5;
+/** Past terms are final: a refresh below this share of the baseline (a > 10% shrink) is rejected. */
+export const MIN_PAST_REFRESH_RATIO = 0.9;
+/** The high-water mark lapses (the baseline falls back to the stored count) when not reached for this long. */
+export const PEAK_WINDOW_MS = 30 * 24 * 60 * 60_000;
 /** More malformed upstream items than this share (and at least MIN_INVALID) fails the refresh. */
 export const MAX_INVALID_RATIO = 0.1;
 export const MIN_INVALID = 5;

@@ -20,6 +20,9 @@ export interface TermMeta {
   fetchedAt: Date | null;
   /** While a refresh holds the term's lease (real clock). */
   lockUntil: Date | null;
+  /** The guard's high-water mark (largest accepted section count) and when it was last reached. */
+  peakSectionCount: number;
+  peakAt: Date | null;
   /** Department and requirement names seen in the term's payload (getCatalogFilters fallback). */
   data: TermNames | null;
 }
@@ -68,6 +71,8 @@ function toTermMeta(doc: Record<string, unknown> & { termCode?: unknown }): Term
     lastErrorAt: date(doc.lastErrorAt),
     fetchedAt: date(doc.fetchedAt),
     lockUntil: date(doc.lockUntil),
+    peakSectionCount: typeof doc.peakSectionCount === "number" ? doc.peakSectionCount : 0,
+    peakAt: date(doc.peakAt),
     data: data && Array.isArray(data.departments) && Array.isArray(data.requirements) ? data : null,
   };
 }
@@ -133,7 +138,7 @@ export async function acquireTermLease(term: TermCode): Promise<string | null> {
         $set: { lockUntil: new Date(at.getTime() + LEASE_MS), lockOwner: owner },
         $setOnInsert: { kind: "term", termCode: term },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     ).lean();
     return doc?.lockOwner === owner ? owner : null;
   } catch (error) {

@@ -15,8 +15,9 @@ import mongoose, {
  *
  * Refresh rules (PLAN §5): past terms nightly (cron), active + registration every 15 min (stale-while-revalidate
  * via `after()`); the refresh takes a lease with an atomic `findOneAndUpdate` on `lockUntil < now` so concurrent
- * instances do not stampede upstream. Never replace a non-empty term with an empty or < 50%-size result: keep the
- * old rows, set `lastError`/`lastErrorAt` (and `rejectedCount`), and the UI shows "Schedule data as of
+ * instances do not stampede upstream. Never replace a non-empty term with an empty or < 50%-size result (measured
+ * against the larger of the stored count and `peakSectionCount`; a past term may not shrink by more than 10%):
+ * keep the old rows, set `lastError`/`lastErrorAt` (and `rejectedCount`), and the UI shows "Schedule data as of
  * <lastSuccessAt>".
  *
  * Times: `lastSuccessAt` = the last refresh upstream answered and we accepted (the "as of" time, also when the
@@ -39,6 +40,12 @@ const CatalogMetaSchema = new Schema(
     invalidCount: { type: Number, default: 0 },
     /** Size of the last result the empty/< 50% guard rejected. */
     rejectedCount: { type: Number, default: null },
+    /**
+     * High-water mark of accepted section counts (the guard's baseline, so successive partial results cannot
+     * shrink a term step by step) and when it was last reached; it lapses after PEAK_WINDOW_MS.
+     */
+    peakSectionCount: { type: Number, default: 0 },
+    peakAt: { type: Date, default: null },
     fetchedAt: { type: Date, default: null },
     lastAttemptAt: { type: Date, default: null },
     lastSuccessAt: { type: Date, default: null },

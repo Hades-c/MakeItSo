@@ -7,13 +7,22 @@ import CatalogSection from "@/models/CatalogSection";
 import {
   MAX_INVALID_RATIO,
   MIN_INVALID,
+  MIN_PAST_REFRESH_RATIO,
   MIN_REFRESH_RATIO,
+  PEAK_WINDOW_MS,
   UPSTREAM_TIMEOUT_MS,
 } from "@/server/catalog/config";
-import { invalidateTermMetas, readTermMeta, termKey, type TermNames } from "@/server/catalog/meta";
+import {
+  invalidateTermMetas,
+  readTermMeta,
+  termKey,
+  type TermMeta,
+  type TermNames,
+} from "@/server/catalog/meta";
 import { cleanText } from "@/server/catalog/html";
 import { linkSections, normalizeSection, type StoredSection } from "@/server/catalog/normalize";
 import { invalidateTermIndex } from "@/server/catalog/store";
+import { isHotTerm, resolveTermsImpl } from "@/server/catalog/terms";
 import {
   fetchAllSections,
   fetchSectionsPage,
@@ -30,9 +39,14 @@ import { recordSync } from "@/server/sync";
  * catalogsections, update CatalogMeta `term:<code>`, and recordSync("course-schedule"). Callers go through
  * server/catalog/refresh.ts (single flight + lease); this function assumes it holds the term's lease.
  *
- * Guard: a term that holds sections is never replaced by an empty result or one below 50% of its size: the rows
- * stay, `lastError` says why, the Sources panel shows the failure, and pages keep "Schedule data as of
+ * Guard: a term that holds sections is never replaced by an empty result or one below 50% of its baseline (the
+ * larger of the stored count and the high-water mark of accepted counts, so partial results cannot shrink a term
+ * step by step); a past term, whose schedule is final, is never shrunk by more than 10%. A rejected result leaves
+ * the rows, `lastError` says why, the Sources panel shows the failure, and pages keep "Schedule data as of
  * <lastSuccessAt>". A term with no rows yet (a summer, an unpublished registration term) accepts an empty result.
+ *
+ * Items must belong to the requested term: an item whose `term.code` differs counts as malformed, so an answer
+ * that ignored `term_code` (every term mixed together) fails the refresh instead of being stored under this term.
  *
  * Replacement is upsert-then-delete, so readers never see an empty term; the content hash changes last, and
  * search indexes rebuild when they see the new hash.
@@ -55,6 +69,11 @@ export interface IngestDeps {
   signal?: AbortSignal;
 }
 
+export interface IngestOptions {
+  /** A current or registration term (50% guard); else a past term (10% guard). Default: resolved now. */
+  hot?: boolean;
+}
+
 export const defaultIngestDeps: IngestDeps = {
   fetchPage: fetchSectionsPage,
   timeoutMs: UPSTREAM_TIMEOUT_MS,
@@ -69,7 +88,9 @@ export function contentHash(sections: readonly StoredSection[]): string {
 
 interface Normalised {
   sections: StoredSection[];
+  /** Items dropped: malformed, or from another term (`otherTerm` of them). */
   invalid: number;
+  otherTerm: number;
   names: TermNames;
 }
 
@@ -79,10 +100,17 @@ export function normaliseItems(items: readonly unknown[], term: TermCode): Norma
   const departments = new Map<string, string>();
   const requirements = new Map<string, string>();
   let invalid = 0;
+  let otherTerm = 0;
   for (const item of items) {
     const raw = UpstreamSectionSchema.safeParse(item);
     if (!raw.success) {
       invalid += 1;
+      continue;
+    }
+    const itemTerm = raw.data.term?.code;
+    if (itemTerm !== undefined && String(itemTerm).trim() !== term) {
+      invalid += 1;
+      otherTerm += 1;
       continue;
     }
     const result = normalizeSection(raw.data, term);
@@ -107,8 +135,47 @@ export function normaliseItems(items: readonly unknown[], term: TermCode): Norma
   return {
     sections: linkSections([...byCrn.values()]),
     invalid,
+    otherTerm,
     names: { departments: sortedNames(departments), requirements: sortedNames(requirements) },
   };
+}
+
+/**
+ * The guard's baseline: the larger of the stored count and the high-water mark, while the mark is recent
+ * (reached within PEAK_WINDOW_MS; server clock).
+ */
+export function guardBaseline(
+  stored: number,
+  meta: Pick<TermMeta, "peakSectionCount" | "peakAt"> | null,
+  at: Date,
+): number {
+  const peakValid = !!meta?.peakAt && at.getTime() - meta.peakAt.getTime() <= PEAK_WINDOW_MS;
+  return Math.max(stored, peakValid ? (meta?.peakSectionCount ?? 0) : 0);
+}
+
+/** The empty / shrink guard (see above): true when `count` must not replace the stored term. */
+export function isRejectedShrink(
+  count: number,
+  stored: number,
+  baseline: number,
+  hot: boolean,
+): boolean {
+  if (stored === 0) return false;
+  if (count === 0) return true;
+  return count < baseline * (hot ? MIN_REFRESH_RATIO : MIN_PAST_REFRESH_RATIO);
+}
+
+/** The high-water mark after accepting `count`: kept while recent and larger, else `count` reached now. */
+export function nextPeak(
+  count: number,
+  meta: Pick<TermMeta, "peakSectionCount" | "peakAt"> | null,
+  at: Date,
+): { peakSectionCount: number; peakAt: Date } {
+  const peakValid = !!meta?.peakAt && at.getTime() - meta.peakAt.getTime() <= PEAK_WINDOW_MS;
+  if (peakValid && meta?.peakAt && meta.peakSectionCount > count) {
+    return { peakSectionCount: meta.peakSectionCount, peakAt: meta.peakAt };
+  }
+  return { peakSectionCount: count, peakAt: at };
 }
 
 function errorMessage(error: unknown): string {
@@ -184,8 +251,10 @@ async function writeSections(term: TermCode, sections: readonly StoredSection[],
 export async function ingestTerm(
   term: TermCode,
   deps: IngestDeps = defaultIngestDeps,
+  options: IngestOptions = {},
 ): Promise<IngestOutcome> {
   await getDb();
+  const hot = options.hot ?? isHotTerm(term, await resolveTermsImpl());
   const attemptAt = now();
   await CatalogMeta.updateOne(
     { key: termKey(term) },
@@ -209,29 +278,32 @@ export async function ingestTerm(
     );
   }
 
-  const { sections, invalid, names } = normaliseItems(fetched.items, term);
+  const { sections, invalid, otherTerm, names } = normaliseItems(fetched.items, term);
   if (invalid > Math.max(MIN_INVALID, fetched.items.length * MAX_INVALID_RATIO)) {
+    const why = otherTerm > 0 ? ` (${otherTerm} from another term)` : "";
     return recordFailure(
       term,
       "failed",
-      `${invalid} of ${fetched.items.length} upstream sections were malformed; kept the stored data.`,
+      `${invalid} of ${fetched.items.length} upstream sections were malformed${why}; kept the stored data.`,
     );
   }
 
   const stored = await CatalogSection.countDocuments({ termCode: term });
-  if (stored > 0 && (sections.length === 0 || sections.length < stored * MIN_REFRESH_RATIO)) {
+  const previous = await readTermMeta(term);
+  const at = now();
+  const baseline = guardBaseline(stored, previous, at);
+  if (isRejectedShrink(sections.length, stored, baseline, hot)) {
+    const had = baseline > stored ? `had ${stored}, up to ${baseline} recently` : `had ${stored}`;
     return recordFailure(
       term,
       "rejected",
-      `Upstream returned ${sections.length} sections (had ${stored}); kept the stored data.`,
+      `Upstream returned ${sections.length} sections (${had}); kept the stored data.`,
       { rejectedCount: sections.length },
     );
   }
 
   const hash = contentHash(sections);
-  const previous = await readTermMeta(term);
   const unchanged = previous?.contentHash === hash && stored === sections.length;
-  const at = now();
   if (!unchanged) await writeSections(term, sections, at);
 
   const courseCount = new Set(sections.map((section) => section.courseCode)).size;
@@ -252,6 +324,7 @@ export async function ingestTerm(
         lastError: null,
         lastErrorAt: null,
         rejectedCount: null,
+        ...nextPeak(sections.length, previous, at),
         ...(unchanged ? {} : { fetchedAt: at }),
       },
     },

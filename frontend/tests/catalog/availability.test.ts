@@ -24,6 +24,8 @@ function meta(term: string, sectionCount: number, ingested = true): TermMeta {
     lastErrorAt: null,
     fetchedAt: null,
     lockUntil: null,
+    peakSectionCount: sectionCount,
+    peakAt: null,
     data: null,
   };
 }

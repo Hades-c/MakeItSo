@@ -205,6 +205,103 @@ describe("the empty / < 50% guard (PLAN §5: never replace a non-empty term)", (
     expect(accepted).toMatchObject({ status: "updated", sectionCount: 243 });
     expect((await meta())?.rejectedCount).toBeNull();
   });
+
+  it("measures against the high-water mark, so partial results cannot shrink a term step by step", async () => {
+    await ingestTerm(SPRING);
+    expect(await meta()).toMatchObject({ peakSectionCount: 485 });
+    expect((await ingestWith(springItems().slice(0, 243))).status).toBe("updated");
+    // 243 are stored now, but the baseline stays 485: 122 is still below half of it.
+    const second = await ingestWith(springItems().slice(0, 122));
+    expect(second).toMatchObject({ status: "rejected", sectionCount: 243 });
+    expect(second.error).toBe(
+      "Upstream returned 122 sections (had 243, up to 485 recently); kept the stored data.",
+    );
+    expect(await CatalogSection.countDocuments({ termCode: SPRING })).toBe(243);
+    expect(await meta()).toMatchObject({ peakSectionCount: 485, rejectedCount: 122 });
+    // Growing back is always accepted; the mark lapses after 30 days without reaching it.
+    setNow("2026-11-05T12:00:00-04:00");
+    expect((await ingestWith(springItems().slice(0, 122))).status).toBe("updated");
+    expect(await meta()).toMatchObject({ peakSectionCount: 122 });
+  });
+
+  it("halving over and over stops at the first step below half of the peak (Fall 2026, 676 sections)", async () => {
+    const fall = fixtureItems("202601");
+    await ingestTerm("202601");
+    const statuses: string[] = [];
+    let n = fall.length;
+    for (let step = 0; step < 5; step++) {
+      n = Math.ceil(n / 2);
+      const items = fall.slice(0, n);
+      statuses.push(
+        `${n}:${(await ingestTerm("202601", { fetchPage: async () => items, timeoutMs: 8000 })).status}`,
+      );
+    }
+    expect(statuses).toEqual([
+      "338:updated",
+      "169:rejected",
+      "85:rejected",
+      "43:rejected",
+      "22:rejected",
+    ]);
+    expect(await CatalogSection.countDocuments({ termCode: "202601" })).toBe(338);
+  });
+
+  it("never shrinks a past term by more than 10% (its schedule is final)", async () => {
+    const past = fixtureItems("202501"); // Fall 2025: a past term on 2026-09-30
+    await ingestTerm("202501");
+    const shrunk = past.slice(0, 110); // 85% of 130
+    const outcome = await ingestTerm("202501", { fetchPage: async () => shrunk, timeoutMs: 8000 });
+    expect(outcome).toMatchObject({ status: "rejected", sectionCount: 130 });
+    expect((await meta("202501"))?.lastError).toContain("Upstream returned 110 sections");
+    const slight = past.slice(0, 120); // 92%
+    expect(
+      (await ingestTerm("202501", { fetchPage: async () => slight, timeoutMs: 8000 })).status,
+    ).toBe("updated");
+    // Hot terms keep the 50% rule; the caller may say which kind a term is.
+    expect(
+      (
+        await ingestTerm(
+          "202501",
+          { fetchPage: async () => past.slice(0, 70), timeoutMs: 8000 },
+          { hot: true },
+        )
+      ).status,
+    ).toBe("updated");
+  });
+});
+
+describe("items from another term", () => {
+  const retermed = (items: Record<string, unknown>[], code: number) =>
+    items.map((item) => ({ ...item, term: { ...(item.term as object), code } }));
+
+  it("fails a refresh whose answer ignored term_code (every term mixed together), keeping the data", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await ingestTerm(SPRING);
+    // A term-agnostic answer: full pages of sections from other terms (here: Spring 2027 relabelled Fall 2024).
+    const foreign = retermed(springItems(), 202401);
+    const outcome = await ingestTerm(SPRING, { fetchPage: async () => foreign, timeoutMs: 8000 });
+    expect(outcome).toMatchObject({ status: "failed", sectionCount: 485 });
+    expect(outcome.error).toBe(
+      "485 of 485 upstream sections were malformed (485 from another term); kept the stored data.",
+    );
+    expect(await CatalogSection.countDocuments({ termCode: SPRING })).toBe(485);
+    // A handful of strays is dropped, the rest stored.
+    const mixed = [...springItems().slice(3), ...retermed(springItems().slice(0, 3), 202401)];
+    const few = await ingestTerm(SPRING, { fetchPage: async () => mixed, timeoutMs: 8000 });
+    expect(few).toMatchObject({ status: "updated", sectionCount: 482 });
+    expect((await meta())?.invalidCount).toBe(3);
+    warn.mockRestore();
+  });
+
+  it("accepts the recorded payloads, whose items all carry the requested term", () => {
+    for (const term of ["202501", "202601", "202602"]) {
+      const items = fixtureItems(term) as { term?: { code?: unknown } }[];
+      expect(
+        items.every((item) => String(item.term?.code) === term),
+        term,
+      ).toBe(true);
+    }
+  });
 });
 
 describe("failures", () => {
@@ -252,7 +349,12 @@ describe("failures", () => {
       ),
     );
     const started = Date.now();
-    const outcome = await ingestTerm(SPRING, { fetchPage: fetchSectionsPage, timeoutMs: 50 });
+    // hot: given, so the ingest does not resolve terms (the stubbed network would hang that request too).
+    const outcome = await ingestTerm(
+      SPRING,
+      { fetchPage: fetchSectionsPage, timeoutMs: 50 },
+      { hot: true },
+    );
     expect(Date.now() - started).toBeLessThan(5_000);
     expect(outcome).toMatchObject({ status: "failed", sectionCount: 0 });
     expect(outcome.error).toContain("Timed out after 50 ms");
@@ -285,5 +387,14 @@ describe("single flight", () => {
     expect(await refreshTerm(SPRING)).toMatchObject({ status: "updated", sectionCount: 485 });
     await releaseTermLease(SPRING, owner!);
     expect((await meta())?.lockUntil).toBeNull();
+  });
+
+  it("returns the lease in a current shape (returnDocument 'after', not the deprecated `new`)", async () => {
+    const spy = vi.spyOn(CatalogMeta, "findOneAndUpdate");
+    const owner = await acquireTermLease(SPRING);
+    expect(owner).toMatch(/^[a-f0-9]{8}:\d+$/);
+    expect(spy.mock.calls[0]?.[2]).toMatchObject({ upsert: true, returnDocument: "after" });
+    expect(spy.mock.calls[0]?.[2]).not.toHaveProperty("new");
+    await releaseTermLease(SPRING, owner!);
   });
 });
