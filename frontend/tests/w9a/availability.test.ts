@@ -5,6 +5,7 @@ import {
   courseLinkTerm,
   defaultAddTerm,
   joinTermLabels,
+  unpublishedTermNote,
   usuallyOfferedText,
   type CareerTerms,
 } from "@/app/(hub)/careers/_lib/availability";
@@ -26,7 +27,7 @@ describe("careerTermCodes", () => {
 });
 
 describe("addToPlanTerms", () => {
-  it("maps each term's catalog status, with section counts and the usual season", () => {
+  it("maps each term's catalog status, with section counts; an unpublished tile keeps its own words", () => {
     const terms = addToPlanTerms(
       history(
         { termCode: "202501", status: "offered", sectionCount: 2 },
@@ -43,13 +44,11 @@ describe("addToPlanTerms", () => {
     expect(terms).toEqual([
       { code: "202601", label: "Fall 2026", availability: "offered", sectionCount: 3 },
       { code: "202602", label: "Spring 2027", availability: "not-offered" },
-      {
-        code: "202701",
-        label: "Fall 2027",
-        availability: "not-yet-published",
-        note: "Usually offered in Fall",
-      },
+      // No `note`: AddToPlanControl then says "Not yet published" (PLAN §5); the "usually" claim is a line of its
+      // own (unpublishedTermNote).
+      { code: "202701", label: "Fall 2027", availability: "not-yet-published" },
     ]);
+    expect(terms.every((term) => term.note === undefined)).toBe(true);
   });
 
   it("never turns an unpublished term into a bare offered, and says nothing without a claim", () => {
@@ -84,19 +83,32 @@ describe("defaultAddTerm", () => {
   });
 
   it("starts on the registration term when it can be chosen", () => {
-    expect(defaultAddTerm([offered("202601"), offered("202602")], "202602")).toBe("202602");
+    expect(defaultAddTerm([offered("202601"), offered("202602")], TERMS)).toBe("202602");
+    expect(
+      defaultAddTerm([offered("202601"), offered("202602"), unpublished("202701")], TERMS),
+    ).toBe("202602");
   });
 
-  it("falls back to the first term that can be chosen", () => {
+  it("falls back to the next, unpublished term: never the current one, which is under way", () => {
+    // Offered now, not in Spring 2027 (e.g. CSC 351): Fall 2027, not Fall 2026.
     expect(
-      defaultAddTerm([notOffered("202601"), notOffered("202602"), unpublished("202701")], "202602"),
+      defaultAddTerm([offered("202601"), notOffered("202602"), unpublished("202701")], TERMS),
     ).toBe("202701");
-    expect(defaultAddTerm([offered("202601"), notOffered("202602")], "202602")).toBe("202601");
+    expect(
+      defaultAddTerm([notOffered("202601"), notOffered("202602"), unpublished("202701")], TERMS),
+    ).toBe("202701");
+  });
+
+  it("chooses nothing rather than the current term", () => {
+    expect(defaultAddTerm([offered("202601"), notOffered("202602")], TERMS)).toBeNull();
+    expect(
+      defaultAddTerm([offered("202601"), notOffered("202602"), notOffered("202701")], TERMS),
+    ).toBeNull();
   });
 
   it("is null when no term can be chosen", () => {
-    expect(defaultAddTerm([notOffered("202601"), notOffered("202602")], "202602")).toBeNull();
-    expect(defaultAddTerm([], "202602")).toBeNull();
+    expect(defaultAddTerm([notOffered("202601"), notOffered("202602")], TERMS)).toBeNull();
+    expect(defaultAddTerm([], TERMS)).toBeNull();
   });
 });
 
@@ -123,6 +135,25 @@ describe("usuallyOfferedText", () => {
     expect(
       usuallyOfferedText({ termCode: "202602", status: "offered", sectionCount: 1 }),
     ).toBeNull();
+  });
+});
+
+describe("unpublishedTermNote", () => {
+  it("names the unpublished term, then the claim with its basis", () => {
+    expect(
+      unpublishedTermNote({
+        termCode: "202701",
+        status: "not-yet-published",
+        usually: { season: "Fall", basedOn: ["202401", "202501", "202601"] },
+      }),
+    ).toBe(
+      "Fall 2027 isn’t published yet. Usually offered in Fall (based on Fall 2024, Fall 2025 and Fall 2026)",
+    );
+  });
+
+  it("is null without a claim or for a published term", () => {
+    expect(unpublishedTermNote({ termCode: "202701", status: "not-yet-published" })).toBeNull();
+    expect(unpublishedTermNote({ termCode: "202602", status: "not-offered" })).toBeNull();
   });
 });
 

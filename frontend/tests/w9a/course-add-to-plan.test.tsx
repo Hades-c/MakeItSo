@@ -14,12 +14,7 @@ import { ApiClientError } from "@/lib/api/client";
 const TERMS: AddToPlanTerm[] = [
   { code: "202601", label: "Fall 2026", availability: "offered", sectionCount: 2 },
   { code: "202602", label: "Spring 2027", availability: "offered", sectionCount: 1 },
-  {
-    code: "202701",
-    label: "Fall 2027",
-    availability: "not-yet-published",
-    note: "Usually offered in Fall",
-  },
+  { code: "202701", label: "Fall 2027", availability: "not-yet-published" },
 ];
 
 type Call = { url: string; init: RequestInit };
@@ -110,7 +105,7 @@ describe("CourseAddToPlan", () => {
     });
   });
 
-  it("adds a current-term course as in progress, and shows the service's warnings", async () => {
+  it("adds a current-term course as in progress only after saying so, and shows the service's warnings", async () => {
     stubFetch([
       201,
       {
@@ -122,12 +117,54 @@ describe("CourseAddToPlan", () => {
     ]);
     const user = userEvent.setup();
     renderControl();
+    // Not on the registration term: no word about the current term.
+    expect(screen.queryByTestId("current-term-note")).toBeNull();
     await user.click(screen.getByRole("radio", { name: "Fall 2026" }));
-    await user.click(screen.getByRole("button", { name: "Add to Fall 2026" }));
+    // Before the add, above the button: the term is under way and what the add records.
+    const note = screen.getByTestId("current-term-note");
+    expect(note).toHaveTextContent(
+      "Fall 2026 is already under way: adding CSC 221 there records it as a class you’re taking this term.",
+    );
+    const button = screen.getByRole("button", { name: "Add to Fall 2026" });
+    expect(note.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.click(button);
     expect(
       await screen.findByText("Already completed in Fall 2025 — plan a retake?"),
     ).toBeVisible();
     expect(JSON.parse(String(calls[0]!.init.body)).status).toBe("in-progress");
+    // Added: nothing left to warn about.
+    expect(screen.queryByTestId("current-term-note")).toBeNull();
+  });
+
+  it("shows the unpublished term's usual season with the term choice, above the button", () => {
+    stubFetch();
+    renderControl({
+      unpublishedNote:
+        "Fall 2027 isn’t published yet. Usually offered in Fall (based on Fall 2024 and Fall 2025)",
+    });
+    const note = screen.getByTestId("usually-offered");
+    const button = screen.getByRole("button", { name: "Add to Spring 2027" });
+    expect(note.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The tile itself keeps "Not yet published" (PLAN §5).
+    expect(screen.getByRole("radio", { name: "Fall 2027" })).toHaveAccessibleDescription(
+      "Not yet published",
+    );
+  });
+
+  it("starts on no term when neither the registration nor the next term can be chosen", () => {
+    stubFetch();
+    renderControl({
+      initialTerm: null,
+      terms: [
+        { code: "202601", label: "Fall 2026", availability: "offered", sectionCount: 1 },
+        { code: "202602", label: "Spring 2027", availability: "not-offered" },
+      ],
+    });
+    expect(screen.getByRole("radio", { name: "Fall 2026" })).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "Choose a term" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 
   it("says the plan is not available yet while the plan route is missing (404) or a stub (501)", async () => {
@@ -252,11 +289,12 @@ describe("CareerCourseItem", () => {
       "course-schedule",
     );
     expect(within(article).getByRole("radio", { name: "Spring 2027" })).toBeChecked();
+    // PLAN §5: the unpublished term says "Not yet published", plus the usual season and its basis.
     expect(within(article).getByRole("radio", { name: "Fall 2027" })).toHaveAccessibleDescription(
-      "Usually offered in Fall",
+      "Not yet published",
     );
     expect(within(article).getByTestId("usually-offered")).toHaveTextContent(
-      "Usually offered in Fall (based on Fall 2024, Fall 2025 and Fall 2026)",
+      "Fall 2027 isn’t published yet. Usually offered in Fall (based on Fall 2024, Fall 2025 and Fall 2026)",
     );
   });
 
@@ -271,16 +309,39 @@ describe("CareerCourseItem", () => {
       terms,
       null,
     );
-    expect(view.initialTerm).toBe("202601");
+    // Offered this term, not in Spring 2027 (CSC 351 on Software Engineering): the next term, never Fall 2026.
+    expect(view.initialTerm).toBe("202701");
     stubFetch();
     render(
       <CareerCourseItem view={view} currentTerm="202601" planHref="/plan" loginHref="/login" />,
     );
     expect(screen.getByRole("radio", { name: "Spring 2027" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Fall 2026" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Fall 2027" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Fall 2027" })).toHaveAccessibleDescription(
       "Not yet published",
     );
+    expect(screen.getByRole("button", { name: "Add to Fall 2027" })).toBeVisible();
+    expect(screen.queryByTestId("current-term-note")).toBeNull();
     expect(screen.queryByTestId("usually-offered")).toBeNull();
+  });
+
+  it("chooses no term when only the current one is open", () => {
+    const view = courseView(
+      course,
+      [
+        { termCode: "202601", status: "offered", sectionCount: 1 },
+        { termCode: "202602", status: "not-offered" },
+      ],
+      terms,
+      null,
+    );
+    expect(view.initialTerm).toBeNull();
+    stubFetch();
+    render(
+      <CareerCourseItem view={view} currentTerm="202601" planHref="/plan" loginHref="/login" />,
+    );
+    expect(screen.getByRole("button", { name: "Choose a term" })).toBeVisible();
   });
 
   it("lists the course without availability when the catalog cannot answer (no guess)", () => {

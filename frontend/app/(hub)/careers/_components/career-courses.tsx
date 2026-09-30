@@ -13,7 +13,7 @@ import {
   addToPlanTerms,
   courseLinkTerm,
   defaultAddTerm,
-  usuallyOfferedText,
+  unpublishedTermNote,
   type CareerTerms,
 } from "../_lib/availability";
 import { loadCareerTerms, loadCourseHistories } from "../_lib/catalog";
@@ -35,7 +35,7 @@ export interface CareerCourseView {
   terms: AddToPlanTerm[] | null;
   initialTerm: TermCode | null;
   inPlanTerms: string[];
-  /** "Usually offered in Fall (based on …)" for the unpublished term, or null. */
+  /** "Fall 2027 isn’t published yet. Usually offered in Fall (based on …)", or null. */
   usually: string | null;
   /** The course page to link, or null when the course ran in no known term. */
   href: string | null;
@@ -63,8 +63,8 @@ export function courseView(
   return {
     ...base,
     terms: choices.length > 0 ? choices : null,
-    initialTerm: defaultAddTerm(choices, terms.registration),
-    usually: next ? usuallyOfferedText(next) : null,
+    initialTerm: defaultAddTerm(choices, terms),
+    usually: next ? unpublishedTermNote(next) : null,
     href: linkTerm ? routes.course(linkTerm, course.code) : null,
   };
 }
@@ -102,22 +102,16 @@ export function CareerCourseItem({
       <p className="mt-1 text-sm text-fg-2">{view.why}</p>
       <div className="mt-auto pt-3">
         {view.terms && currentTerm ? (
-          <>
-            <CourseAddToPlan
-              courseCode={view.code}
-              terms={view.terms}
-              initialTerm={view.initialTerm}
-              inPlanTerms={view.inPlanTerms}
-              currentTerm={currentTerm}
-              planHref={planHref}
-              loginHref={loginHref}
-            />
-            {view.usually ? (
-              <p className="mt-2 text-xs text-fg-3" data-testid="usually-offered">
-                {view.usually}
-              </p>
-            ) : null}
-          </>
+          <CourseAddToPlan
+            courseCode={view.code}
+            terms={view.terms}
+            initialTerm={view.initialTerm}
+            inPlanTerms={view.inPlanTerms}
+            currentTerm={currentTerm}
+            unpublishedNote={view.usually}
+            planHref={planHref}
+            loginHref={loginHref}
+          />
         ) : (
           <p
             className="flex items-center gap-1.5 text-sm text-fg-2"

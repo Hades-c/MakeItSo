@@ -4,9 +4,10 @@ import type { Availability } from "@/lib/types/catalog";
 
 /**
  * Per-term availability of a career's course (PLAN §5 "Availability"), for the career page: the current term
- * (Fall 2026), the registration term (Spring 2027, the default for Add to plan) and the one after it (Fall 2027,
- * "Not yet published", plus "Usually offered in <season> (based on <terms>)" when the catalog says so). Pure: the
- * catalog's getCourseHistory() answer comes in, AddToPlanControl terms go out.
+ * (Fall 2026), the registration term (Spring 2027, the default for Add to plan) and the one after it (Fall 2027:
+ * its tile always says "Not yet published", and a line below adds "Usually offered in <season> (based on
+ * <terms>)" when the catalog says so). Pure: the catalog's getCourseHistory() answer comes in, AddToPlanControl
+ * terms go out.
  */
 
 export interface CareerTerms {
@@ -28,7 +29,7 @@ export function joinTermLabels(codes: readonly TermCode[]): string {
   return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
 }
 
-/** "Usually offered in Fall (based on Fall 2024 and Fall 2026)", or null without a claim. */
+/** "Usually offered in Fall (based on Fall 2024 and Fall 2026)" for an unpublished term, or null without a claim. */
 export function usuallyOfferedText(entry: Availability): string | null {
   if (entry.status !== "not-yet-published" || !entry.usually) return null;
   const basis =
@@ -37,9 +38,19 @@ export function usuallyOfferedText(entry: Availability): string | null {
 }
 
 /**
+ * The line under the term choice for an unpublished term with a "usually offered" claim, naming the term so it
+ * reads on its own: "Fall 2027 isn’t published yet. Usually offered in Fall (based on …)". Null without a claim.
+ */
+export function unpublishedTermNote(entry: Availability): string | null {
+  const usually = usuallyOfferedText(entry);
+  return usually ? `${termLabel(entry.termCode)} isn’t published yet. ${usually}` : null;
+}
+
+/**
  * The AddToPlanControl terms for one course. A term the history does not report (never ingested: nothing is
  * known about it) is left out rather than guessed; a published term is "offered" (with its section count) or
- * "not-offered"; an unpublished one is never a bare "offered".
+ * "not-offered"; an unpublished one is never a bare "offered" and carries no `note`, so its tile keeps saying
+ * "Not yet published" (the "usually offered" claim goes in unpublishedTermNote()).
  */
 export function addToPlanTerms(
   history: readonly Availability[],
@@ -58,9 +69,6 @@ export function addToPlanTerms(
     if (entry.status === "offered" && entry.sectionCount !== undefined) {
       term.sectionCount = entry.sectionCount;
     }
-    if (entry.status === "not-yet-published" && entry.usually) {
-      term.note = `Usually offered in ${entry.usually.season}`;
-    }
     out.push(term);
   }
   return out;
@@ -68,14 +76,20 @@ export function addToPlanTerms(
 
 /**
  * The term Add to plan starts on: the registration term when it can be chosen (PLAN §3: the registration term is
- * the default), else the first term that can, else none.
+ * the default), else the next, unpublished term when it can, else none ("Choose a term"). Never the current term:
+ * it is already under way, and adding there records the course as one the student is taking now, so that is only
+ * ever the student's own choice (the control says so before the add).
  */
 export function defaultAddTerm(
   choices: readonly AddToPlanTerm[],
-  registration: TermCode,
+  terms: Pick<CareerTerms, "registration" | "next">,
 ): TermCode | null {
-  const selectable = choices.filter((term) => term.availability !== "not-offered");
-  return selectable.find((term) => term.code === registration)?.code ?? selectable[0]?.code ?? null;
+  const selectable = new Set(
+    choices.filter((term) => term.availability !== "not-offered").map((term) => term.code),
+  );
+  if (selectable.has(terms.registration)) return terms.registration;
+  if (selectable.has(terms.next)) return terms.next;
+  return null;
 }
 
 /** Where the course page link goes: the first term (registration, then current) that offers it. */

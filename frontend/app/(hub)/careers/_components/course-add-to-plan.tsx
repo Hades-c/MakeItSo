@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { Info } from "lucide-react";
 import { AddToPlanControl, type AddToPlanTerm } from "@/components/domain/add-to-plan-control";
 import { ApiClientError, callApi } from "@/lib/api/client";
 import { planApi } from "@/lib/api/plan";
@@ -10,6 +11,11 @@ import { cn } from "@/lib/utils";
 /**
  * Add a career's course to the plan (client island over AddToPlanControl). The term choice shows the live
  * availability the server resolved; the button calls POST /api/plan/items through callApi (lib/api/plan.ts).
+ *
+ * Starts on the registration term (else the next one; never the current term, see defaultAddTerm). Choosing the
+ * current term is allowed (a class the student is taking now), and the control says before the add that it is
+ * under way and what the add records ("in-progress"). The unpublished term's "usually offered" line sits with the
+ * term choice, above the button.
  *
  * The plan service lands separately (W5s). Until it does, the route is missing (404) or answers 501/503: that is
  * said in words ("isn't available yet"), nothing is pretended. A 409 means the course is already in the plan for
@@ -34,6 +40,8 @@ export interface CourseAddToPlanProps {
   inPlanTerms: readonly string[];
   /** The current term: an add there is "in-progress", elsewhere "planned". */
   currentTerm: string;
+  /** "Fall 2027 isn’t published yet. Usually offered in Fall (based on …)", shown with the term choice. */
+  unpublishedNote?: string | null;
   /** Where "Open My plan" goes. */
   planHref: string;
   /** Where "Sign in" goes when the session has ended. */
@@ -76,6 +84,7 @@ export function CourseAddToPlan({
   initialTerm,
   inPlanTerms,
   currentTerm,
+  unpublishedNote = null,
   planHref,
   loginHref,
   className,
@@ -115,6 +124,34 @@ export function CourseAddToPlan({
     }
   };
 
+  const added = value !== null && inPlan.has(value);
+  const chosen = terms.find((term) => term.code === value);
+  // Only for a term that can be added to: a not-offered term already says why it cannot.
+  const underway =
+    value === currentTerm &&
+    !added &&
+    chosen !== undefined &&
+    chosen.availability !== "not-offered";
+  const notes =
+    unpublishedNote || underway ? (
+      <div className="flex flex-col gap-1.5 text-sm">
+        {unpublishedNote ? (
+          <p className="text-fg-2" data-testid="usually-offered">
+            {unpublishedNote}
+          </p>
+        ) : null}
+        {underway ? (
+          <p className="flex items-start gap-1.5 text-fg" data-testid="current-term-note">
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+            <span>
+              {labelOf(terms, currentTerm)} is already under way: adding {courseCode} there records
+              it as a class you’re taking this term.
+            </span>
+          </p>
+        ) : null}
+      </div>
+    ) : null;
+
   return (
     <div className={className}>
       <AddToPlanControl
@@ -126,9 +163,11 @@ export function CourseAddToPlan({
         }}
         onAdd={(code) => void onAdd(code)}
         pending={pending}
-        added={value !== null && inPlan.has(value)}
+        added={added}
         courseCode={courseCode}
-      />
+      >
+        {notes}
+      </AddToPlanControl>
       <div aria-live="polite" data-testid="add-to-plan-notice">
         {notice ? (
           <div
