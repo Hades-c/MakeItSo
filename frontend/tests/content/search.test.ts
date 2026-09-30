@@ -102,7 +102,7 @@ describe("alumni search provider", () => {
         kind: "alumnus",
         id: "stephen-curry",
         title: "Stephen Curry",
-        subtitle: "Class of 2022 · Golden State Warriors",
+        subtitle: "Class of 2022 · Guard, Golden State Warriors",
         href: "/alumni",
       },
     ]);
@@ -114,12 +114,30 @@ describe("alumni search provider", () => {
     expect((await alumni("Qualtrics", 8, context)).map((r) => r.id)).toEqual(["neil-patel"]);
   });
 
+  it("shows a role next to its organization, so a former employer does not read as current", async () => {
+    const { context } = ctx();
+    const expected = {
+      kind: "alumnus",
+      id: "stephen-p-macmillan",
+      title: "Stephen P. MacMillan",
+      subtitle: "Class of 1985 · Retired; former Chairman, President & CEO, Hologic",
+      href: "/alumni",
+    };
+    expect(valid(await alumni("macmillan", 8, context))).toEqual([expected]);
+    expect(await alumni("hologic", 8, context)).toEqual([expected]);
+    // Organization alone when the title is LinkedIn-only.
+    expect((await alumni("shames", 8, context))[0]?.subtitle).toBe(
+      "Class of 1996 · Publicis Groupe",
+    );
+  });
+
   it("never searches or shows fields hidden as 'see LinkedIn'", async () => {
     const { context } = ctx();
-    // Sophie Eldridge's and Max Shackelford's McKinsey roles are LinkedIn-only.
+    // Max Shackelford's McKinsey role is LinkedIn-only (Sophie Eldridge is held for the owner).
     expect(await alumni("mckinsey", 8, context)).toEqual([]);
     expect(await alumni("goosehead", 8, context)).toEqual([]);
     expect(await alumni("microsoft", 8, context)).toEqual([]);
+    expect(await alumni("eldridge", 8, context)).toEqual([]);
   });
 
   it("returns nothing unless the viewer is verified and the flag is on", async () => {
@@ -129,6 +147,10 @@ describe("alumni search provider", () => {
     expect(await alumni("curry", 8, off.context)).toEqual([]);
     // The flag is checked first: no verification lookup for a surface that is off.
     expect(off.isVerifiedDavidson).not.toHaveBeenCalled();
+    // Alumni lives under Careers (PLAN §9 featureEnabled): Careers off hides Alumni too.
+    const careersOff = ctx({ careers: false, alumni: true });
+    expect(await alumni("curry", 8, careersOff.context)).toEqual([]);
+    expect(careersOff.isVerifiedDavidson).not.toHaveBeenCalled();
     expect(await alumni("curry", 0, ctx().context)).toEqual([]);
   });
 });
@@ -191,6 +213,17 @@ describe("GET /api/search with the content providers", () => {
   it("keeps alumni from a verified legacy non-Davidson account", async () => {
     await signIn("legacy@gmail.com", true);
     expect((await results("?q=curry")).filter((r) => r.kind === "alumnus")).toEqual([]);
+  });
+
+  it("drops alumni when only FEATURE_CAREERS is off (Alumni needs Careers)", async () => {
+    vi.stubEnv("FEATURE_CAREERS", "false");
+    vi.stubEnv("FEATURE_ALUMNI", "true");
+    await signIn("sam@davidson.edu", true);
+    const found = await results("?q=curry&limit=20");
+    expect(found.filter((r) => r.kind === "career" || r.kind === "alumnus")).toEqual([]);
+    vi.unstubAllEnvs();
+    // Both on again: the same verified viewer finds him.
+    expect((await results("?q=curry")).filter((r) => r.kind === "alumnus")).toHaveLength(1);
   });
 
   it("drops flagged-off surfaces", async () => {
