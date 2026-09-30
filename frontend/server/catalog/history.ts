@@ -20,16 +20,18 @@ async function sectionCountsByTerm(code: string): Promise<Map<TermCode, number>>
 
 /**
  * Availability of a (normalised) course code in `terms` (default: the course-history window, see
- * defaultHistoryTerms). The current and registration terms are loaded first (cold load if needed); window terms
- * that were never ingested are queued for a background backfill and reported once they are.
+ * defaultHistoryTerms). The current and registration terms are loaded first, in parallel (cold load if needed);
+ * window terms that were never ingested are queued for a background backfill and reported once they are.
  */
 export async function courseAvailability(
   code: string,
   terms?: readonly TermCode[],
 ): Promise<Availability[]> {
   const resolved = await resolveTermsImpl();
-  await ensureTermData(resolved.current, resolved);
-  await ensureTermData(resolved.registration, resolved);
+  await Promise.all([
+    ensureTermData(resolved.current, resolved),
+    ensureTermData(resolved.registration, resolved),
+  ]);
   const metas = await listTermMetas();
   const missing = ingestWindow(resolved).filter((term) => {
     const meta = metas.get(term) ?? null;

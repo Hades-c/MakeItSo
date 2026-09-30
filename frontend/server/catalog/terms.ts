@@ -31,7 +31,8 @@ import { MissingFixtureError } from "@/server/http/fixtures";
 /**
  * Terms (PLAN §5 "Terms"). The upstream list (`/api/public/v2/terms?limit=500`) is cached in CatalogMeta `terms`
  * and refreshed in the background when older than 6 h; when upstream fails the last good list keeps serving, and
- * when no list was ever fetched the date rules take over (lib/term.ts termFromDateET). Current and registration
+ * when no list was ever fetched the date rules answer at once (lib/term.ts termFromDateET) while the list is
+ * fetched in the background, so a cold start spends its one synchronous upstream request on the courses. Current and registration
  * terms always come from the lib/term.ts resolvers (registration = the first regular term after current, NOT the
  * upstream is_next flag, which points at the summer during spring).
  */
@@ -165,7 +166,7 @@ function elapsed(since: Date | null | undefined, at: Date): number {
   return since ? at.getTime() - since.getTime() : Number.POSITIVE_INFINITY;
 }
 
-/** The cached terms list (memoised), refreshing it as needed; null when none is available at all. */
+/** The cached terms list (memoised), refreshing it as needed; null when none is stored (yet). */
 async function loadTermsList(): Promise<TermsList | null> {
   if (memo && Date.now() - memo.checkedAt < TERMS_MEMO_MS) {
     return memo.entries.length > 0 ? memo : null;
@@ -182,14 +183,8 @@ async function loadTermsList(): Promise<TermsList | null> {
     memo = { entries, asOf: doc?.lastSuccessAt ?? null, checkedAt: Date.now() };
     return memo;
   }
-  if (canRetry) {
-    const fresh = await refreshTermsList();
-    if (fresh) {
-      const stored = await CatalogMeta.findOne({ key: TERMS_KEY }).lean();
-      memo = { entries: fresh, asOf: stored?.lastSuccessAt ?? at, checkedAt: Date.now() };
-      return memo;
-    }
-  }
+  // Never fetched (or only failures): answer from the date rules now, fetch the list in the background.
+  if (canRetry && !refreshing) runInBackground("terms list", refreshTermsList);
   memo = { entries: [], asOf: null, checkedAt: Date.now() };
   return null;
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { TermCodeSchema } from "@/lib/types/common";
 import type { TermCode } from "@/lib/term";
-import { getCatalogFiltersImpl } from "@/server/catalog/filters";
+import { warmFilters } from "@/server/catalog/filters";
 import { listTermMetas } from "@/server/catalog/meta";
 import { isFresh, isRefreshDue, refreshTerm } from "@/server/catalog/refresh";
 import {
@@ -80,7 +80,10 @@ export async function runCatalogCron({
       terms.push({ term, status: "skipped" });
       continue;
     }
-    const outcome = await refreshTerm(term);
+    const outcome = await refreshTerm(term, {
+      hot: hotTerm,
+      due: (latest) => isRefreshDue(latest, hotTerm),
+    });
     terms.push({
       term,
       status: outcome.status,
@@ -88,11 +91,10 @@ export async function runCatalogCron({
       ...(outcome.error ? { error: outcome.error } : {}),
     });
   }
-  // Warm the canonical filter lists of the hot terms (best effort; each falls back on its own).
-  const freshMetas = await listTermMetas();
+  // Warm the canonical filter lists of the hot terms (best effort; reads fall back on their own).
   for (const term of hot) {
     try {
-      await getCatalogFiltersImpl(term, resolved, freshMetas.get(term) ?? null);
+      await warmFilters(term, resolved);
     } catch (error) {
       if (error instanceof MissingFixtureError) throw error;
       console.error(`[catalog] cron: filters ${term} failed:`, error);

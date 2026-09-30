@@ -7,7 +7,15 @@ import CatalogSection from "@/models/CatalogSection";
 import SourceSync from "@/models/SourceSync";
 import { ingestTerm } from "@/server/catalog/ingest";
 import { acquireTermLease, releaseTermLease, termKey } from "@/server/catalog/meta";
-import { refreshTerm, setIngestDepsForTests } from "@/server/catalog/refresh";
+import { searchCourses } from "@/server/catalog";
+import { drainBackground } from "@/server/catalog/background";
+import {
+  isLockedElsewhere,
+  isRefreshDue,
+  refreshTerm,
+  setIngestDepsForTests,
+} from "@/server/catalog/refresh";
+import { resetCatalogState } from "@/server/catalog/state";
 import { rowToSection } from "@/server/catalog/store";
 import {
   COURSES_PAGE_SIZE,
@@ -380,10 +388,16 @@ describe("single flight", () => {
     expect(owner).not.toBeNull();
     expect(await acquireTermLease(SPRING)).toBeNull();
     expect(await refreshTerm(SPRING)).toMatchObject({ status: "locked" });
+    expect(isLockedElsewhere(SPRING)).toBe(true);
     await CatalogMeta.updateOne(
       { key: termKey(SPRING) },
       { $set: { lockUntil: new Date(Date.now() - 1000) } },
     );
+    // The held lease is remembered for at most 15 s; after that the expired lease is taken over.
+    const realNow = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(realNow + 16_000);
+    expect(isLockedElsewhere(SPRING)).toBe(false);
+    clock.mockRestore();
     expect(await refreshTerm(SPRING)).toMatchObject({ status: "updated", sectionCount: 485 });
     await releaseTermLease(SPRING, owner!);
     expect((await meta())?.lockUntil).toBeNull();
@@ -395,6 +409,40 @@ describe("single flight", () => {
     expect(owner).toMatch(/^[a-f0-9]{8}:\d+$/);
     expect(spy.mock.calls[0]?.[2]).toMatchObject({ upsert: true, returnDocument: "after" });
     expect(spy.mock.calls[0]?.[2]).not.toHaveProperty("new");
+    await releaseTermLease(SPRING, owner!);
+  });
+
+  it("skips the fetch when another instance refreshed the term just before the lease was taken", async () => {
+    await ingestTerm(SPRING);
+    setNow("2026-09-30T12:20:00-04:00"); // stale by this instance's (memoised) view…
+    const fetchPage = vi.fn(async () => springItems());
+    setIngestDepsForTests({ fetchPage });
+    // … but another instance refreshed it a moment ago and released its lease.
+    await CatalogMeta.updateOne(
+      { key: termKey(SPRING) },
+      { $set: { lastSuccessAt: new Date("2026-09-30T16:20:00Z") } },
+    );
+    const outcome = await refreshTerm(SPRING, {
+      hot: true,
+      due: (latest) => isRefreshDue(latest, true),
+    });
+    expect(outcome).toMatchObject({ status: "fresh", sectionCount: 485 });
+    expect(fetchPage).not.toHaveBeenCalled();
+    expect((await meta())?.lockUntil).toBeNull();
+  });
+
+  it("does not retry the lease on every read while another instance holds it", async () => {
+    await searchCourses({}); // load Spring 2027
+    const owner = await acquireTermLease(SPRING); // another instance starts refreshing it
+    resetCatalogState();
+    setNow("2026-09-30T12:20:00-04:00"); // stale: every read wants a background refresh
+    const attempts = vi.spyOn(CatalogMeta, "findOneAndUpdate");
+    for (let i = 0; i < 50; i++) {
+      await searchCourses({ q: "CSC 121" });
+      await drainBackground();
+    }
+    expect(attempts).toHaveBeenCalledTimes(1);
+    expect(isLockedElsewhere(SPRING)).toBe(true);
     await releaseTermLease(SPRING, owner!);
   });
 });

@@ -73,8 +73,15 @@ describe("normalising the upstream list", () => {
   });
 });
 
+/** A first read (date rules) starts the background list fetch; the next read resolves from the stored list. */
+async function warmTermsList() {
+  await resolveTerms();
+  await drainBackground();
+}
+
 describe("resolveTerms", () => {
   it("resolves the fixture list on 2026-09-30: current Fall 2026, registration Spring 2027", async () => {
+    await warmTermsList();
     const resolved = ResolvedTermsSchema.parse(await resolveTerms());
     expect(resolved.current).toBe("202601");
     expect(resolved.registration).toBe("202602");
@@ -119,9 +126,31 @@ describe("resolveTerms", () => {
     expect(terms.find((t) => t.code === "202601")?.published).toBe(false);
   });
 
+  it("answers a cold start from the date rules at once and fetches the list in the background", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const slow = vi.fn(async (options?: Parameters<typeof fetchTermsList>[0]) => {
+      await gate; // upstream takes its time: the read must not wait for it
+      return fetchTermsList(options);
+    });
+    setTermsFetchForTests(slow);
+    const cold = await resolveTerms();
+    expect(cold).toMatchObject({ current: "202601", registration: "202602", asOf: null });
+    expect(slow).toHaveBeenCalledTimes(1);
+    await resolveTerms(); // single flight: no second request while the first runs
+    expect(slow).toHaveBeenCalledTimes(1);
+    release();
+    await drainBackground();
+    const warm = await resolveTerms();
+    expect(warm.asOf).toBe("2026-09-30T16:00:00.000Z");
+    expect(warm.terms.find((t) => t.code === "202601")?.startDate).toBe("2026-08-24");
+  });
+
   it("caches the list in CatalogMeta for 6 h and refreshes it in the background after", async () => {
     const fetches = countTermsFetches();
-    await resolveTerms();
+    await warmTermsList();
     await resolveTerms();
     expect(fetches).toHaveBeenCalledTimes(1);
     const stored = await CatalogMeta.findOne({ key: TERMS_KEY }).lean();
@@ -146,7 +175,7 @@ describe("resolveTerms", () => {
   });
 
   it("keeps serving the last good list when upstream fails", async () => {
-    await resolveTerms();
+    await warmTermsList();
     resetCatalogState();
     setNow("2026-10-01T12:00:00-04:00");
     const failing = failTermsFetches();
@@ -166,6 +195,7 @@ describe("resolveTerms", () => {
     const failing = failTermsFetches();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const resolved = ResolvedTermsSchema.parse(await resolveTerms());
+    await drainBackground();
     expect(resolved).toMatchObject({ current: "202601", registration: "202602", asOf: null });
     expect(resolved.terms.map((t) => t.code)).toEqual([
       "202201",
@@ -189,6 +219,7 @@ describe("resolveTerms", () => {
     resetCatalogState();
     setTermsFetchForTests(failing);
     await resolveTerms();
+    await drainBackground();
     expect(failing).toHaveBeenCalledTimes(1);
   });
 });

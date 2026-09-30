@@ -25,9 +25,15 @@ export const RETRY_AFTER_MS = 5 * 60_000;
 export const UPSTREAM_TIMEOUT_MS = 8_000;
 /** A refresh lease outlives the slowest refresh (a few pages of 8 s each). */
 export const LEASE_MS = 3 * 60_000;
-/** A cold read that finds another instance loading the term waits at most this long for it. */
-export const COLD_WAIT_MS = 9_000;
+/**
+ * A cold read (a term never ingested) answers within this deadline: the one synchronous upstream fetch (8 s
+ * timeout) plus the write, or the wait for another instance loading the term. Past it the read answers 503 and
+ * the load finishes in the background.
+ */
+export const COLD_DEADLINE_MS = 9_000;
 export const COLD_POLL_MS = 250;
+/** After finding a term's lease held elsewhere, skip further lease attempts for at most this long. */
+export const LOCK_MEMO_MS = 15_000;
 /** After a failed cold load, reads of that term fail fast (503) for this long instead of retrying upstream. */
 export const COLD_FAILURE_TTL_MS = 30_000;
 

@@ -22,10 +22,17 @@ import {
 import { drainBackground } from "@/server/catalog/background";
 import { UNAVAILABLE_MESSAGE } from "@/server/catalog/config";
 import { runCatalogCron } from "@/server/catalog/cron";
+import { refreshFilters, setFiltersFetchForTests } from "@/server/catalog/filters";
 import { ingestTerm } from "@/server/catalog/ingest";
 import { acquireTermLease, releaseTermLease, termKey } from "@/server/catalog/meta";
-import { refreshTerm, setIngestDepsForTests } from "@/server/catalog/refresh";
+import {
+  refreshTerm,
+  setColdDeadlineForTests,
+  setIngestDepsForTests,
+} from "@/server/catalog/refresh";
 import { resetCatalogState } from "@/server/catalog/state";
+import { setTermsFetchForTests } from "@/server/catalog/terms";
+import { fetchFilters, fetchTermsList } from "@/server/catalog/upstream";
 import { ApiError } from "@/server/http/errors";
 
 withCatalogDb();
@@ -69,6 +76,70 @@ describe("cold start", () => {
     const result = await pending;
     expect(result.items.map((i) => i.code)).toEqual(["CSC 121"]);
     expect(fetchPage).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 within one deadline when upstream hangs, and finishes the load in the background", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    setColdDeadlineForTests(300);
+    // The terms list hangs too: a cold start must not wait for it (the date rules answer).
+    setTermsFetchForTests((options) =>
+      new Promise((resolve) => setTimeout(resolve, 1_500)).then(() => fetchTermsList(options)),
+    );
+    const fetchPage = vi.fn(
+      (term: string) =>
+        new Promise<unknown[]>((resolve) => setTimeout(() => resolve(fixtureItems(term)), 1_500)),
+    );
+    setIngestDepsForTests({ fetchPage });
+    const started = Date.now();
+    const error = await searchCourses({ q: "CSC 121" }).catch((e: unknown) => e);
+    expect(Date.now() - started).toBeLessThan(1_200);
+    expect(error).toMatchObject({ status: 503, message: UNAVAILABLE_MESSAGE });
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    // A second read joins the running load instead of fetching again …
+    await searchCourses({ q: "CSC 121" }).catch(() => undefined);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    // … which completes after the responses; then the term is served.
+    await drainBackground();
+    const result = await searchCourses({ q: "CSC 121" });
+    expect(result.items.map((i) => i.code)).toEqual(["CSC 121"]);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    log.mockRestore();
+  });
+
+  it("cold-loads the current and registration terms in parallel for a course history", async () => {
+    let running = 0;
+    let peak = 0;
+    const fetchPage = vi.fn(async (term: string) => {
+      running += 1;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      running -= 1;
+      return fixtureItems(term);
+    });
+    setIngestDepsForTests({ fetchPage });
+    await getCourseHistory("CSC 121");
+    expect(
+      fetchPage.mock.calls
+        .slice(0, 2)
+        .map(([term]) => term)
+        .sort(),
+    ).toEqual(["202601", "202602"]);
+    expect(peak).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shares one wait per term among cold reads while another instance loads it", async () => {
+    const owner = await acquireTermLease("202602"); // the other instance
+    const reads = vi.spyOn(CatalogMeta, "findOne");
+    const pending = Promise.all(Array.from({ length: 10 }, () => searchCourses({ q: "CSC 121" })));
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const polls = reads.mock.calls.filter(
+      ([filter]) => (filter as { key?: string } | undefined)?.key === termKey("202602"),
+    ).length;
+    expect(polls).toBeLessThanOrEqual(5); // ~1 poll per 250 ms, not 10
+    await ingestTerm("202602");
+    await releaseTermLease("202602", owner!);
+    const results = await pending;
+    expect(results.every((r) => r.items[0]?.code === "CSC 121")).toBe(true);
   });
 
   it("never fetches a term outside 202201 … registration", async () => {
@@ -240,6 +311,10 @@ describe("validateCourseCodes", () => {
 
 describe("getCatalogFilters", () => {
   it("serves the upstream lists for the hot terms, cached in CatalogMeta", async () => {
+    // A cold cache never blocks the page: the ingest's names now, the upstream lists once fetched.
+    const first = CatalogFiltersSchema.parse(await getCatalogFilters("202602"));
+    expect(first.departments).toContainEqual({ code: "AFR", name: "Africana Studies" });
+    await drainBackground();
     const filters = CatalogFiltersSchema.parse(await getCatalogFilters("202602"));
     expect(filters.departments).toContainEqual({ code: "AFR", name: "Africana Studies" });
     expect(filters.departments).toContainEqual({ code: "IGEN", name: "Genomics" });
@@ -261,6 +336,44 @@ describe("getCatalogFilters", () => {
     expect(await CatalogMeta.findOne({ key: "filters:202602" }).lean()).toMatchObject({
       kind: "filters",
     });
+  });
+
+  it("fetches the upstream lists once, however many reads arrive (cold and stale)", async () => {
+    await searchCourses({}); // load the term first
+    let calls = 0;
+    setFiltersFetchForTests(async (term, options) => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      return fetchFilters(term, options);
+    });
+    const cold = await Promise.all(Array.from({ length: 20 }, () => getCatalogFilters("202602")));
+    await drainBackground();
+    expect(calls).toBe(1);
+    expect(cold.every((f) => f.term === "202602")).toBe(true);
+    // A day later: stale, one background refresh for 20 concurrent reads, and none from another instance.
+    resetCatalogState();
+    setFiltersFetchForTests(async (term, options) => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      return fetchFilters(term, options);
+    });
+    setNow("2026-10-01T13:00:00-04:00");
+    const stale = await Promise.all(Array.from({ length: 20 }, () => getCatalogFilters("202602")));
+    expect(stale.every((f) => f.departments.some((d) => d.code === "IGEN"))).toBe(true);
+    await drainBackground();
+    expect(calls).toBe(2);
+    // The claim is in the database: a second instance within 5 minutes does not ask upstream again.
+    resetCatalogState();
+    setFiltersFetchForTests(async (term, options) => {
+      calls += 1;
+      return fetchFilters(term, options);
+    });
+    await CatalogMeta.updateOne(
+      { key: "filters:202602" },
+      { $set: { lastSuccessAt: new Date("2026-09-29T00:00:00Z") } },
+    );
+    expect(await refreshFilters("202602")).toBeNull();
+    expect(calls).toBe(2);
   });
 
   it("derives past terms' lists from their sections (no upstream call)", async () => {

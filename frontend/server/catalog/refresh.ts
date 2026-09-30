@@ -3,10 +3,11 @@ import type { TermCode } from "@/lib/term";
 import type { ResolvedTerms } from "@/lib/types/catalog";
 import { runInBackground } from "@/server/catalog/background";
 import {
+  COLD_DEADLINE_MS,
   COLD_FAILURE_TTL_MS,
   COLD_POLL_MS,
-  COLD_WAIT_MS,
   HOT_TERM_TTL_MS,
+  LOCK_MEMO_MS,
   PAST_TERM_TTL_MS,
   RETRY_AFTER_MS,
   scheduleUnavailable,
@@ -32,28 +33,48 @@ import { now } from "@/server/clock";
 /**
  * When a term is (re)fetched (PLAN §5 "Refresh"):
  * - cold: a term in the ingest window with no successful ingest yet is fetched synchronously once (8 s upstream
- *   timeout); if that fails the read answers 503 "Schedule data is temporarily unavailable" (and fails fast for
- *   30 s) instead of hanging;
+ *   timeout) within one deadline (COLD_DEADLINE_MS, also bounding the wait for another instance's load); past
+ *   the deadline or on failure the read answers 503 "Schedule data is temporarily unavailable" instead of hanging
+ *   (a failure then fails fast for 30 s; a load still running finishes in the background);
  * - hot (current + registration terms) older than 15 min: served stale, refreshed in the background (after());
  * - past terms: refreshed by the nightly cron (server/catalog/cron.ts), never on a read.
  * Refreshes are single flight: one in-process promise per term, plus a CatalogMeta lease so concurrent instances
- * don't stampede upstream.
+ * don't stampede upstream. Whoever takes the lease re-reads the term's meta first and skips the fetch when another
+ * instance refreshed it meanwhile; a lease found held elsewhere is remembered (until it expires, at most 15 s), so
+ * reads don't retry it on every request, and cold readers share one wait per term.
  */
 
-export type RefreshStatus = IngestOutcome["status"] | "locked";
+export type RefreshStatus = IngestOutcome["status"] | "locked" | "fresh" | "waiting";
 
 export interface RefreshOutcome extends Omit<IngestOutcome, "status"> {
   status: RefreshStatus;
 }
 
+export interface RefreshOptions {
+  /** Current or registration term (ingest guard strictness). Default: resolved by the ingest. */
+  hot?: boolean;
+  /**
+   * Checked against the term's meta once the lease is held: when false, another instance already did the work
+   * and the refresh reports "fresh" (or "waiting", after its failure) without fetching. Default: always due.
+   */
+  due?: (meta: TermMeta | null) => boolean;
+}
+
 const inflight = new Map<TermCode, Promise<RefreshOutcome>>();
 const coldFailures = new Map<TermCode, number>();
+/** Real-clock ms until which another instance is known to hold the term's lease. */
+const lockedUntil = new Map<TermCode, number>();
+const waits = new Map<TermCode, Promise<TermMeta | null>>();
 let ingestDeps: IngestDeps = defaultIngestDeps;
+let coldDeadlineMs = COLD_DEADLINE_MS;
 
 onCatalogReset(() => {
   inflight.clear();
   coldFailures.clear();
+  lockedUntil.clear();
+  waits.clear();
   ingestDeps = defaultIngestDeps;
+  coldDeadlineMs = COLD_DEADLINE_MS;
 });
 
 /** Tests: replace how pages are fetched (pagination, guard and timeout tests). Reset by resetCatalogState(). */
@@ -61,21 +82,56 @@ export function setIngestDepsForTests(deps: Partial<IngestDeps>): void {
   ingestDeps = { ...defaultIngestDeps, ...deps };
 }
 
+/** Tests: shorten the cold-read deadline (hanging-upstream tests). Reset by resetCatalogState(). */
+export function setColdDeadlineForTests(ms: number): void {
+  coldDeadlineMs = ms;
+}
+
+/** Another instance holds the term's lease (as last seen here). */
+export function isLockedElsewhere(term: TermCode): boolean {
+  const until = lockedUntil.get(term);
+  if (until === undefined) return false;
+  if (Date.now() < until) return true;
+  lockedUntil.delete(term);
+  return false;
+}
+
+function lockedOutcome(term: TermCode, meta: TermMeta | null): RefreshOutcome {
+  return { term, status: "locked", sectionCount: meta?.sectionCount ?? 0 };
+}
+
 /** Refresh one term now: single flight in this process, and only while holding the term's lease. */
-export function refreshTerm(term: TermCode): Promise<RefreshOutcome> {
+export function refreshTerm(term: TermCode, options: RefreshOptions = {}): Promise<RefreshOutcome> {
   const running = inflight.get(term);
   if (running) return running;
   const promise = (async (): Promise<RefreshOutcome> => {
+    if (isLockedElsewhere(term)) return lockedOutcome(term, await getTermMeta(term));
     const owner = await acquireTermLease(term);
     if (!owner) {
-      return {
-        term,
-        status: "locked",
-        sectionCount: (await readTermMeta(term))?.sectionCount ?? 0,
-      };
+      const meta = await readTermMeta(term);
+      const until = Math.min(meta?.lockUntil?.getTime() ?? 0, Date.now() + LOCK_MEMO_MS);
+      if (until > Date.now()) lockedUntil.set(term, until);
+      return lockedOutcome(term, meta);
     }
+    lockedUntil.delete(term);
     try {
-      return await ingestTerm(term, ingestDeps);
+      if (options.due) {
+        // The meta memo may be seconds old: another instance may have refreshed the term meanwhile.
+        const latest = await readTermMeta(term);
+        if (!options.due(latest)) {
+          return {
+            term,
+            status:
+              latest?.lastSuccessAt && isFresh(latest, options.hot ?? true) ? "fresh" : "waiting",
+            sectionCount: latest?.sectionCount ?? 0,
+          };
+        }
+      }
+      return await ingestTerm(
+        term,
+        ingestDeps,
+        options.hot === undefined ? {} : { hot: options.hot },
+      );
     } finally {
       await releaseTermLease(term, owner).catch((error: unknown) => {
         console.error(`[catalog] could not release the ${term} lease:`, error);
@@ -115,9 +171,7 @@ export function isFresh(meta: TermMeta | null, hot: boolean, at: Date = now()): 
   );
 }
 
-/** Another instance holds the lease: wait (bounded) for its result instead of fetching a second time. */
-async function waitForOtherInstance(term: TermCode): Promise<TermMeta | null> {
-  const deadline = Date.now() + COLD_WAIT_MS;
+async function pollOtherInstance(term: TermCode, deadline: number): Promise<TermMeta | null> {
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, COLD_POLL_MS));
     const meta = await readTermMeta(term);
@@ -128,12 +182,66 @@ async function waitForOtherInstance(term: TermCode): Promise<TermMeta | null> {
   return null;
 }
 
-async function coldLoad(term: TermCode): Promise<TermMeta> {
+/**
+ * Another instance holds the lease of a term that was never ingested: wait (until `deadline`) for its result
+ * instead of fetching a second time. One poll per term, shared by every waiting read.
+ */
+function waitForOtherInstance(term: TermCode, deadline: number): Promise<TermMeta | null> {
+  let wait = waits.get(term);
+  if (!wait) {
+    const started = pollOtherInstance(term, deadline);
+    wait = started;
+    waits.set(term, started);
+    const settle = () => {
+      if (waits.get(term) === started) waits.delete(term);
+    };
+    started.then(settle, settle);
+  }
+  return wait;
+}
+
+const TIMED_OUT = Symbol("timed out");
+
+/** `promise`'s value, or TIMED_OUT once the real-clock `deadline` passes (the promise keeps running). */
+async function beforeDeadline<T>(
+  promise: Promise<T>,
+  deadline: number,
+): Promise<T | typeof TIMED_OUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<typeof TIMED_OUT>((resolve) => {
+    timer = setTimeout(() => resolve(TIMED_OUT), Math.max(0, deadline - Date.now()));
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function coldLoad(term: TermCode, resolved: ResolvedTerms): Promise<TermMeta> {
   const failedUntil = coldFailures.get(term) ?? 0;
   if (Date.now() < failedUntil) throw scheduleUnavailable();
-  const outcome = await refreshTerm(term);
+  const deadline = Date.now() + coldDeadlineMs;
+  const refresh = refreshTerm(term, {
+    hot: isHotTerm(term, resolved),
+    due: (meta) => !meta?.lastSuccessAt,
+  });
+  const outcome = await beforeDeadline(refresh, deadline);
+  if (outcome === TIMED_OUT) {
+    // Keep the load alive past the response (after()); the next read joins it or finds the term loaded, and
+    // fails fast for a while if it ends up failing.
+    runInBackground(`cold load ${term}`, async () => {
+      const late = await refresh;
+      if (late.status === "failed" || late.status === "rejected") {
+        coldFailures.set(term, Date.now() + COLD_FAILURE_TTL_MS);
+      }
+    });
+    throw scheduleUnavailable();
+  }
   const meta =
-    outcome.status === "locked" ? await waitForOtherInstance(term) : await readTermMeta(term);
+    outcome.status === "locked"
+      ? await waitForOtherInstance(term, deadline)
+      : await readTermMeta(term);
   if (meta?.lastSuccessAt) {
     invalidateTermMetas();
     return meta;
@@ -153,10 +261,12 @@ export async function ensureTermData(
 ): Promise<TermMeta | null> {
   const meta = await getTermMeta(term);
   if (!inIngestWindow(term, resolved)) return meta?.lastSuccessAt ? meta : null;
-  if (!meta?.lastSuccessAt) return coldLoad(term);
+  if (!meta?.lastSuccessAt) return coldLoad(term, resolved);
   const hot = isHotTerm(term, resolved);
-  if (hot && isRefreshDue(meta, true)) {
-    runInBackground(`refresh ${term}`, () => refreshTerm(term));
+  if (hot && isRefreshDue(meta, true) && !inflight.has(term) && !isLockedElsewhere(term)) {
+    runInBackground(`refresh ${term}`, () =>
+      refreshTerm(term, { hot: true, due: (latest) => isRefreshDue(latest, true) }),
+    );
   }
   return meta;
 }
@@ -178,7 +288,12 @@ export function scheduleBackfill(resolved: ResolvedTerms, missing: readonly Term
   if (terms.length === 0) return;
   runInBackground("history backfill", async () => {
     backfilling ??= (async () => {
-      for (const term of terms) await refreshTerm(term);
+      for (const term of terms) {
+        await refreshTerm(term, {
+          hot: isHotTerm(term, resolved),
+          due: (meta) => !meta?.lastSuccessAt,
+        });
+      }
     })().finally(() => {
       backfilling = null;
     });
