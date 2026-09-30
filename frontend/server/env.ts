@@ -285,7 +285,7 @@ const RULES: readonly EnvRule[] = [
     check: (env) =>
       env.RATE_LIMITS === "off" &&
       (env.VERCEL_ENV === "production" || env.EXTERNAL_MODE !== "fixtures")
-        ? 'RATE_LIMITS=off is a test setting: it needs EXTERNAL_MODE=fixtures and is rejected on Vercel production'
+        ? "RATE_LIMITS=off is a test setting: it needs EXTERNAL_MODE=fixtures and is rejected on Vercel production"
         : null,
   },
   {
