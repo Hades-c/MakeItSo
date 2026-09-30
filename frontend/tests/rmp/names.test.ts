@@ -195,20 +195,22 @@ describe("matchName: the surname AND the given name must match", () => {
     expect(matchName({ first: "Linsey", last: "St Clair" }, rmp("Katie", "St Clair"))).toBeNull();
   });
 
-  it("first/last swap: exchanged names, and a compound surname stored as RMP first + last", () => {
+  it("first/last swap: both names exchanged, never a surname read as first + last", () => {
     expect(matchName({ first: "Wei", last: "Zhang" }, rmp("Zhang", "Wei"))).toEqual({
       kind: { form: "swap" },
       strength: "medium",
     });
-    expect(matchName({ first: "Shyam", last: "Gouri Suresh" }, rmp("Suresh", "Gouri"))).toEqual({
-      kind: { form: "compound-surname" },
+    expect(matchName({ first: "Tim", last: "Chartier" }, rmp("Chartier", "Timothy"))).toEqual({
+      kind: { form: "swap" },
       strength: "medium",
     });
-    expect(matchName({ first: "Shyam", last: "Gouri Suresh" }, rmp("Gouri", "Suresh"))).toEqual({
-      kind: { form: "compound-surname" },
-      strength: "medium",
-    });
-    // A two-token surname whose second token is a particle is not a compound: "El" + "Bejjani" is surname-only.
+    // A two-word surname stored as RMP first + last carries no given name: surname-only, never a match (the
+    // real Shyam Gouri Suresh is an override).
+    expect(matchName({ first: "Shyam", last: "Gouri Suresh" }, rmp("Suresh", "Gouri"))).toBeNull();
+    expect(matchName({ first: "Shyam", last: "Gouri Suresh" }, rmp("Gouri", "Suresh"))).toBeNull();
+    expect(
+      matchName({ first: "Zebulon", last: "Gouri Suresh" }, rmp("Suresh", "Gouri")),
+    ).toBeNull();
     expect(matchName({ first: "Rachid", last: "El Bejjani" }, rmp("El", "Bejjani"))).toBeNull();
     // A one-token surname never swaps with a different given name.
     expect(matchName({ first: "Wei", last: "Zhang" }, rmp("Zhang", "Li"))).toBeNull();

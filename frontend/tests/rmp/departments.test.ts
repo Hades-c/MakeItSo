@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyDepartment,
   departmentRelation,
   departmentsCompatible,
   departmentSubjects,
+  hasSpecificSubject,
   NEUTRAL_SUBJECTS,
   normalizeDepartment,
 } from "@/server/rmp/departments";
@@ -31,12 +33,96 @@ describe("RMP department → Davidson subject codes (PLAN §9: map before flaggi
     ["Art", ["ART"]],
     ["Art History", ["ART", "HIS"]],
     ["Health Science", ["PBH"]],
+    ["Medicine", ["BIO", "PBH"]],
+    ["Math & Computer Science", ["CSC", "DAT", "MAT"]],
+    ["Languages", ["ARB", "CHI", "FRE", "GER", "LNG", "MLNG", "RUS", "SIL", "SPA"]],
+    ["Theology", ["REL"]],
+    ["International Relations", ["POL"]],
+    // Catch-alls and unknowns cover nothing.
+    ["Interdisciplinary Studies", []],
+    ["International Studies", []],
+    ["Humanities", []],
     ["Physical Education", []],
     ["Not Specified", []],
+    ["Other", []],
     ["", []],
     ["Underwater Basket Weaving", []],
   ])("%s → %j", (department, subjects) => {
     expect(departmentSubjects(department)).toEqual(subjects);
+  });
+
+  it("tells catch-all departments from unrecognised ones", () => {
+    for (const generic of [
+      "Interdisciplinary Studies",
+      "International Studies",
+      "Humanities",
+      "Not Specified",
+      "Other",
+      "Physical Education",
+      "",
+      "  ",
+      null,
+    ]) {
+      expect(classifyDepartment(generic), String(generic)).toEqual({
+        kind: "generic",
+        subjects: [],
+      });
+    }
+    expect(classifyDepartment("Underwater Basket Weaving")).toEqual({
+      kind: "unrecognised",
+      subjects: [],
+    });
+    expect(classifyDepartment("Medicine")).toEqual({ kind: "specific", subjects: ["BIO", "PBH"] });
+  });
+
+  it("knows every department name on the real Davidson roster (none is unrecognised)", () => {
+    // The department names (only) of the Davidson RMP roster captured on 2026-09-30 (477 profiles).
+    const real = [
+      "Anthropology",
+      "Art",
+      "Art History",
+      "Biology",
+      "Chemistry",
+      "Chinese",
+      "Classics",
+      "Communication",
+      "Communications",
+      "Computer Science",
+      "Economics",
+      "Education",
+      "English",
+      "Environmental Studies",
+      "Film",
+      "Fine Arts",
+      "French",
+      "German",
+      "History",
+      "Humanities",
+      "Interdisciplinary Studies",
+      "International Studies",
+      "Languages",
+      "Math & Computer Science",
+      "Mathematics",
+      "Medicine",
+      "Military Science",
+      "Music",
+      "Not Specified",
+      "Philosophy",
+      "Physical Education",
+      "Physics",
+      "Political Science",
+      "Psychology",
+      "Religion",
+      "Russian",
+      "Science",
+      "Sociology",
+      "Spanish",
+      "Theater",
+      "Theology",
+    ];
+    for (const department of real) {
+      expect(classifyDepartment(department).kind, department).not.toBe("unrecognised");
+    }
   });
 
   it("normalises case, accents, ampersands and punctuation", () => {
@@ -80,8 +166,7 @@ describe("RMP department → Davidson subject codes (PLAN §9: map before flaggi
       "Linguistics",
       "Military Science",
       "South Asian Studies",
-      "Humanities",
-      "Interdisciplinary Studies",
+      "Medicine",
       "Film",
       "Data Science",
       "German",
@@ -115,20 +200,48 @@ describe("departmentRelation", () => {
     expect(departmentRelation("Political Science", ["ENV", "POL"])).toBe("agree");
   });
 
-  it("is neutral for unknown departments, unknown subjects and interdisciplinary programs", () => {
-    expect(departmentRelation("", ["CHE"])).toBe("neutral");
-    expect(departmentRelation("Underwater Basket Weaving", ["CHE"])).toBe("neutral");
-    expect(departmentRelation("Political Science", [])).toBe("neutral");
-    expect(departmentRelation("Political Science", ["HUM", "WRI"])).toBe("neutral");
-    expect(departmentRelation("Economics", ["PPE"])).toBe("neutral");
-    expect(departmentRelation("Economics", ["SOU"])).toBe("neutral");
+  it("never conflicts for catch-all or unrecognised departments", () => {
+    expect(departmentRelation("", ["CHE"])).toBe("generic");
+    expect(departmentRelation("Interdisciplinary Studies", ["ENV", "POL"])).toBe("generic");
+    expect(departmentRelation("International Studies", ["ARB"])).toBe("generic");
+    expect(departmentRelation("Humanities", ["REL"])).toBe("generic");
+    expect(departmentRelation("Underwater Basket Weaving", ["CHE"])).toBe("unrecognised");
   });
 
-  it("conflicts only when a known department covers none of the section's specific subjects", () => {
+  it("has nothing to compare with in an all-interdisciplinary or unknown section: unknown", () => {
+    expect(departmentRelation("Political Science", [])).toBe("unknown");
+    expect(departmentRelation("Political Science", ["HUM", "WRI"])).toBe("unknown");
+    expect(departmentRelation("Economics", ["PPE"])).toBe("unknown");
+    expect(departmentRelation("Economics", ["SOU"])).toBe("unknown");
+    // Agreement with an interdisciplinary subject still counts.
+    expect(departmentRelation("Film", ["FMS"])).toBe("agree");
+    expect(departmentRelation("English", ["WRI"])).toBe("agree");
+  });
+
+  it("then uses the instructor's other sections (home subjects)", () => {
+    expect(departmentRelation("Political Science", ["WRI"], ["CHE"])).toBe("conflict");
+    expect(departmentRelation("Political Science", ["WRI"], ["CHE", "POL"])).toBe("agree");
+    expect(departmentRelation("Political Science", ["WRI"], ["WRI", "HUM"])).toBe("unknown");
+    expect(departmentRelation("Political Science", ["WRI"], [])).toBe("unknown");
+    expect(departmentRelation("Political Science", ["WRI"], null)).toBe("unknown");
+    expect(departmentRelation("Film", ["WRI"], ["DIG"])).toBe("agree");
+    // A section with a specific subject is decided by the section alone.
+    expect(departmentRelation("Political Science", ["CHE"], ["POL"])).toBe("conflict");
+    expect(departmentRelation("Chemistry", ["CHE"], ["POL"])).toBe("agree");
+  });
+
+  it("conflicts only when a specific department covers none of the section's specific subjects", () => {
     expect(departmentRelation("Political Science", ["CHE"])).toBe("conflict");
     expect(departmentRelation("Psychology", ["BIO", "INEU"])).toBe("conflict");
     expect(departmentRelation("Political Science", ["PBH"])).toBe("conflict");
     expect(departmentRelation("Political Science", ["HUM", "CHE"])).toBe("conflict");
+    expect(departmentRelation("Medicine", ["CHE"])).toBe("conflict");
+  });
+
+  it("hasSpecificSubject", () => {
+    expect(hasSpecificSubject(["HUM", "WRI"])).toBe(false);
+    expect(hasSpecificSubject([])).toBe(false);
+    expect(hasSpecificSubject(["WRI", "che"])).toBe(true);
   });
 });
 
@@ -138,6 +251,7 @@ describe("departmentsCompatible (could two RMP profiles be one person?)", () => 
     expect(departmentsCompatible("Mathematics", "Computer Science")).toBe(true);
     expect(departmentsCompatible("Economics", "Economics")).toBe(true);
     expect(departmentsCompatible("", "Chemistry")).toBe(true);
+    expect(departmentsCompatible("Interdisciplinary Studies", "Chemistry")).toBe(true);
     expect(departmentsCompatible("Weird Dept", "Weird Dept")).toBe(true);
   });
 

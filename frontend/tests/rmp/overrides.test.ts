@@ -6,8 +6,9 @@ import { overrideTargets } from "@/server/rmp/match";
 import { normalizeName } from "@/server/rmp/normalize";
 import type * as OverridesModule from "@/server/rmp/overrides";
 import { type RmpOverride, RmpOverrideSchema } from "@/server/rmp/overrides";
-import { instructor } from "./helpers";
+import { FIXTURE_TERMS, fixtureTeachings, instructor } from "./helpers";
 import { syntheticRoster } from "./roster-fixture";
+import { SYNTHETIC_OVERRIDES } from "./synthetic-overrides";
 
 // getRatings reads RMP_OVERRIDES: replace the table with test entries (plus the real ones).
 const table = vi.hoisted(() => ({ extra: [] as RmpOverride[] }));
@@ -35,14 +36,42 @@ describe("the override table", () => {
     }
   });
 
-  it("every name-based entry resolves to exactly one row of the fixture roster", () => {
-    const roster = syntheticRoster();
+  it("targets real RMP profiles by legacyId (or none), citing each profile and the course API", () => {
+    expect(RMP_OVERRIDES.length).toBeGreaterThan(0);
     for (const entry of RMP_OVERRIDES) {
-      if (entry.rmp && "firstName" in entry.rmp) {
-        expect(overrideTargets(entry.rmp, roster), JSON.stringify(entry.instructor)).toHaveLength(
-          1,
+      const label = `${entry.instructor.first} ${entry.instructor.last}`;
+      expect(entry.rmp === null || "legacyId" in entry.rmp, label).toBe(true);
+      if (entry.rmp && "legacyId" in entry.rmp) {
+        // Real ids, never the synthetic fixture's 9xxxxxx range.
+        expect(entry.rmp.legacyId, label).toBeLessThan(9_000_000);
+        expect(entry.source, label).toContain(
+          `https://www.ratemyprofessors.com/professor/${entry.rmp.legacyId} `,
         );
       }
+      expect(entry.source, label).toContain("Davidson course API");
+      expect(entry.source, label).not.toMatch(/tests\/fixtures|cases\.json|synthetic/i);
+    }
+  });
+
+  it("keys every entry on a name form the course API really sends", () => {
+    const names = new Set<string>();
+    for (const term of FIXTURE_TERMS) {
+      for (const { instructor: who } of fixtureTeachings(term))
+        names.add(`${who.first}|${who.last}`);
+    }
+    for (const entry of RMP_OVERRIDES) {
+      const key = `${entry.instructor.first}|${entry.instructor.last}`;
+      expect(names.has(key), key).toBe(true);
+    }
+  });
+
+  it("the synthetic test table resolves each entry to exactly one fixture row", () => {
+    const roster = syntheticRoster();
+    for (const entry of SYNTHETIC_OVERRIDES) {
+      RmpOverrideSchema.parse(entry);
+      expect(entry.rmp && overrideTargets(entry.rmp, roster), JSON.stringify(entry)).toHaveLength(
+        1,
+      );
     }
   });
 

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Instructor } from "@/lib/types/catalog";
 import { matchInstructor, type MatchStatus, type RosterTeacher } from "@/server/rmp/match";
-import type { RmpOverride } from "@/server/rmp/overrides";
+import { RMP_OVERRIDES, type RmpOverride } from "@/server/rmp/overrides";
 import { rosterCases } from "./helpers";
 import { syntheticRoster } from "./roster-fixture";
+import { SYNTHETIC_OVERRIDES } from "./synthetic-overrides";
 
 const roster = syntheticRoster();
 const person = (first: string, last: string, isStaff = false): Instructor => ({
@@ -16,13 +17,27 @@ function match(
   first: string,
   last: string,
   subjects: string[],
-  options: { roster?: readonly RosterTeacher[]; overrides?: readonly RmpOverride[] } = {},
+  options: {
+    roster?: readonly RosterTeacher[];
+    overrides?: readonly RmpOverride[];
+    homeSubjects?: readonly string[] | null;
+  } = {},
 ) {
   return matchInstructor(person(first, last), options.roster ?? roster, {
     subjects,
-    ...(options.overrides ? { overrides: options.overrides } : {}),
+    // The synthetic roster's ids: the production table targets real RMP profiles.
+    overrides: options.overrides ?? SYNTHETIC_OVERRIDES,
+    ...(options.homeSubjects !== undefined ? { homeSubjects: options.homeSubjects } : {}),
   });
 }
+
+let nextId = 9_300_000;
+const row = (
+  firstName: string,
+  lastName: string,
+  department: string,
+  numRatings = 10,
+): RosterTeacher => ({ legacyId: nextId++, firstName, lastName, department, numRatings });
 
 type Expected = number | Exclude<MatchStatus, "matched">;
 
@@ -122,11 +137,56 @@ describe("matchInstructor: the synthetic collision roster", () => {
 describe("never surname-only", () => {
   it("an unrelated first name never matches any roster row, whatever the subject", () => {
     for (const teacher of roster) {
-      for (const subjects of [[], ["HUM"], ["BIO"], ["ECO"]]) {
-        const result = match("Zebulon", teacher.lastName, subjects);
-        expect(result.status, `Zebulon ${teacher.lastName}`).toBe("unmatched");
+      // The row's surname, and its whole name read as a (two-word) surname: "Zebulon Gouri Suresh".
+      for (const last of [
+        teacher.lastName,
+        `${teacher.firstName} ${teacher.lastName}`,
+        `${teacher.lastName} ${teacher.firstName}`,
+      ]) {
+        for (const subjects of [[], ["HUM"], ["WRI"], ["BIO"], ["ECO"]]) {
+          const result = match("Zebulon", last, subjects);
+          expect(result.status, `Zebulon ${last} ${subjects.join("/")}`).toBe("unmatched");
+          expect(match("Zebulon", last, subjects, { homeSubjects: ["ECO"] }).status).toBe(
+            "unmatched",
+          );
+        }
       }
     }
+  });
+
+  it("a two-word surname is never matched by RMP's first + last words alone", () => {
+    expect(match("Zebulon", "Gouri Suresh", ["ECO"]).status).toBe("unmatched");
+    expect(match("Zebulon", "Suresh Gouri", ["WRI"]).status).toBe("unmatched");
+    // Without its override, the real Shyam Gouri Suresh has no rule-based match either (RMP has no "Shyam").
+    expect(match("Shyam", "Gouri Suresh", ["ECO"], { overrides: [] }).status).toBe("unmatched");
+    // Two BIO faculty sharing a hyphenated surname; RMP's "Thurtle Schmidt" row answers for neither by rule.
+    const thurtle = [
+      row("Debbie", "Thurtle-Schmidt", "Biology"),
+      row("Thurtle", "Schmidt", "Biology"),
+    ];
+    expect(match("Bryan", "Thurtle-Schmidt", ["BIO"], { roster: thurtle }).status).toBe(
+      "unmatched",
+    );
+    expect(match("Debbie", "Thurtle-Schmidt", ["BIO"], { roster: thurtle }).teacher?.legacyId).toBe(
+      thurtle[0]!.legacyId,
+    );
+    const garcia = [row("Garcia", "Lopez", "Chemistry")];
+    expect(match("Maria", "Garcia Lopez", ["WRI"], { roster: garcia }).status).toBe("unmatched");
+    expect(match("Maria", "Garcia Lopez", ["CHE"], { roster: garcia }).status).toBe("unmatched");
+  });
+
+  it("standalone given names are not nicknames: Nathan ≠ Nathaniel, Liam ≠ William", () => {
+    const physics = [
+      row("Nathaniel", "Ward", "Physics"),
+      row("William", "Hart", "Physics"),
+      row("Leonard", "Kim", "Physics"),
+    ];
+    expect(match("Nathan", "Ward", ["PHY"], { roster: physics }).status).toBe("unmatched");
+    expect(match("Liam", "Hart", ["PHY"], { roster: physics }).status).toBe("unmatched");
+    expect(match("Leo", "Kim", ["PHY"], { roster: physics }).status).toBe("unmatched");
+    // Real nicknames still match.
+    expect(match("Nate", "Ward", ["PHY"], { roster: physics }).status).toBe("matched");
+    expect(match("Bill", "Hart", ["PHY"], { roster: physics }).status).toBe("matched");
   });
 
   it("a prefix is not a nickname: Christina / Timo / Dan never match", () => {
@@ -180,8 +240,6 @@ describe("departments and ambiguity", () => {
     // Graham Bullock: Political Science agrees with POL; Environmental Studies with ENV.
     expect(match("Graham", "Bullock", ["POL"]).teacher?.legacyId).toBe(9000030);
     expect(match("Graham", "Bullock", ["ENV"]).teacher?.legacyId).toBe(9000031);
-    // Both Gouri Suresh swap profiles are Economics: the primary one (12 ratings) wins.
-    expect(match("Shyam", "Gouri Suresh", ["ECO"]).teacher?.legacyId).toBe(9000018);
   });
 
   it("duplicates in disjoint departments where none agrees → review", () => {
@@ -206,6 +264,132 @@ describe("departments and ambiguity", () => {
     expect(match("Tim", "Chartier", []).status).toBe("review");
     expect(match("Christopher", "Alexander", []).status).toBe("review");
     expect(match("Onita", "Vaz", []).status).toBe("review");
+  });
+
+  it("an interdisciplinary section never lets a nickname through to a specific department (WRI, HUM, ...)", () => {
+    // Christopher Alexander teaches CHE; RMP's Chris Alexander is Political Science.
+    for (const subjects of [
+      ["WRI"],
+      ["HUM"],
+      ["HUM", "WRI"],
+      ["INEU"],
+      ["DAT"],
+      ["SIL"],
+      ["GSS"],
+      ["CIS"],
+      ["LAS"],
+      ["XPL"],
+      ["IGEN"],
+    ]) {
+      const first = match("Christopher", "Alexander", subjects);
+      expect(first.teacher, subjects.join("/")).toBeNull();
+      expect(first).toMatchObject({
+        status: "review",
+        reason: "no-department-evidence",
+        needsHomeSubjects: true,
+      });
+      // His other sections are CHE: a true conflict.
+      expect(match("Christopher", "Alexander", subjects, { homeSubjects: ["CHE"] })).toMatchObject({
+        status: "review",
+        reason: "department-conflict",
+        needsHomeSubjects: false,
+      });
+      // Other sections that settle nothing (none, or interdisciplinary only) → still review.
+      for (const homeSubjects of [null, [], ["WRI", "HUM"]]) {
+        expect(match("Christopher", "Alexander", subjects, { homeSubjects }).status).toBe("review");
+      }
+    }
+    // Other sections in Political Science would settle it.
+    expect(
+      match("Christopher", "Alexander", ["WRI"], { homeSubjects: ["POL"] }).teacher?.legacyId,
+    ).toBe(9000023);
+  });
+
+  it("uses the instructor's other sections for an all-interdisciplinary course", () => {
+    expect(match("Tim", "Chartier", ["WRI"])).toMatchObject({
+      status: "review",
+      needsHomeSubjects: true,
+    });
+    expect(
+      match("Tim", "Chartier", ["WRI"], { homeSubjects: ["MAT", "WRI"] }).teacher?.legacyId,
+    ).toBe(9000025);
+    // Graham Bullock's two disjoint profiles: his other sections pick the person (then most ratings).
+    expect(match("Graham", "Bullock", ["HUM"]).needsHomeSubjects).toBe(true);
+    expect(
+      match("Graham", "Bullock", ["HUM"], { homeSubjects: ["ENV", "POL"] }).teacher?.legacyId,
+    ).toBe(9000030);
+    // Exact names and agreeing departments never need them.
+    expect(match("Sharon", "Green", ["HUM"]).needsHomeSubjects).toBe(false);
+    expect(match("Onita", "Vaz", ["WRI"])).toMatchObject({
+      status: "matched",
+      needsHomeSubjects: false,
+    });
+    // A section with a specific subject is decided by it alone.
+    expect(match("Christopher", "Alexander", ["CHE"]).needsHomeSubjects).toBe(false);
+    expect(match("Christopher", "Alexander", ["CHE"], { homeSubjects: ["POL"] }).status).toBe(
+      "review",
+    );
+  });
+
+  it("maps Medicine to PBH/BIO and treats unrecognised departments cautiously", () => {
+    const medicine = [row("Chris", "Alexander", "Medicine")];
+    expect(match("Christopher", "Alexander", ["CHE"], { roster: medicine })).toMatchObject({
+      status: "review",
+      reason: "department-conflict",
+    });
+    expect(match("Christopher", "Alexander", ["PBH"], { roster: medicine }).status).toBe("matched");
+    const unknown = [row("Chris", "Alexander", "Underwater Basket Weaving")];
+    expect(match("Christopher", "Alexander", ["CHE"], { roster: unknown })).toMatchObject({
+      status: "review",
+      reason: "no-department-evidence",
+    });
+    // An exact name is accepted whatever the department says.
+    const exact = [row("Christopher", "Alexander", "Underwater Basket Weaving")];
+    expect(match("Christopher", "Alexander", ["CHE"], { roster: exact }).status).toBe("matched");
+  });
+
+  it("catch-all RMP departments (Interdisciplinary/International Studies, Humanities) never conflict", () => {
+    const generic = [
+      row("Bradley", "Johnson", "Interdisciplinary Studies", 7),
+      row("Katie", "Horowitz", "Interdisciplinary Studies", 17),
+      row("Rebecca", "Joubin", "International Studies", 14),
+      row("Anne", "Wills", "Humanities", 36),
+      row("Vanessa", "Castañeda", "International Studies", 4),
+    ];
+    const ids = (first: string, last: string, subjects: string[]) =>
+      match(first, last, subjects, { roster: generic }).teacher?.legacyId;
+    expect(ids("Brad", "Johnson", ["ENV"])).toBe(generic[0]!.legacyId);
+    expect(ids("Brad", "Johnson", ["ENV", "POL"])).toBe(generic[0]!.legacyId);
+    expect(ids("Katherine", "Horowitz", ["COM", "GSS"])).toBe(generic[1]!.legacyId);
+    expect(ids("Katherine", "Horowitz", ["WRI"])).toBe(generic[1]!.legacyId);
+    expect(ids("Becky", "Joubin", ["ARB"])).toBe(generic[2]!.legacyId);
+    expect(ids("Anne", "Wills", ["REL"])).toBe(generic[3]!.legacyId);
+    expect(ids("Vanessa", "Castaneda", ["LAS", "AFR"])).toBe(generic[4]!.legacyId);
+    // Still no nickname match without any subject.
+    expect(match("Brad", "Johnson", [], { roster: generic }).status).toBe("review");
+    // One person's generic profile never hides a conflicting profile of the same name.
+    const both = [
+      row("Chris", "Alexander", "Interdisciplinary Studies", 3),
+      row("Chris", "Alexander", "Political Science", 10),
+    ];
+    expect(match("Christopher", "Alexander", ["CHE"], { roster: both })).toMatchObject({
+      status: "review",
+      reason: "department-conflict",
+    });
+  });
+
+  it("judges one person on their strongest name: the same answer in every course", () => {
+    // Real 202601 case: Maggie McCarthy teaches FMS 220 (FMS/COM/FMD/GSS) and GER 302; RMP has both forms.
+    const mccarthy = [
+      row("Maggie", "McCarthy", "German", 5),
+      row("Margaret", "McCarthy", "German", 13),
+    ];
+    for (const subjects of [["FMS", "COM", "FMD", "GSS"], ["GER"], ["FMD", "GER"], ["WRI"]]) {
+      expect(
+        match("Maggie", "McCarthy", subjects, { roster: mccarthy }).teacher?.legacyId,
+        subjects.join("/"),
+      ).toBe(mccarthy[1]!.legacyId);
+    }
   });
 
   it("a classic first/last swap matches like a nickname", () => {
@@ -262,11 +446,22 @@ describe("overrides (server/rmp/overrides.ts)", () => {
       ...partial,
     }) satisfies RmpOverride;
 
-  it("the default table resolves the nickname no table can know (Lengxob → Lenny Yong)", () => {
-    const result = match("Lengxob", "Yong", ["BIO"]);
-    expect(result).toMatchObject({ status: "matched", reason: "override" });
-    expect(result.teacher?.legacyId).toBe(9000026);
+  it("resolves names no rule can know (Lengxob → Lenny Yong; Shyam Gouri Suresh → Suresh Gouri)", () => {
+    const yong = match("Lengxob", "Yong", ["BIO"]);
+    expect(yong).toMatchObject({ status: "matched", reason: "override" });
+    expect(yong.teacher?.legacyId).toBe(9000026);
     expect(match("Lengxob", "Yong", ["BIO"], { overrides: [] }).status).toBe("unmatched");
+    // Both Gouri Suresh profiles exist; the override names the primary one, in any subject.
+    for (const subjects of [["ECO"], ["SOU"], ["WRI"]]) {
+      expect(match("Shyam", "Gouri Suresh", subjects).teacher?.legacyId).toBe(9000018);
+    }
+  });
+
+  it("the production table points at real profiles, absent from the synthetic roster → unmatched", () => {
+    expect(match("Lengxob", "Yong", ["BIO"], { overrides: RMP_OVERRIDES })).toMatchObject({
+      status: "unmatched",
+      reason: "override-missing",
+    });
   });
 
   it("an explicit no-match beats an exact name", () => {

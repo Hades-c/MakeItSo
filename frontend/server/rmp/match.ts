@@ -4,6 +4,7 @@ import {
   type DepartmentRelation,
   departmentRelation,
   departmentsCompatible,
+  hasSpecificSubject,
 } from "@/server/rmp/departments";
 import { areNicknames } from "@/server/rmp/nicknames";
 import {
@@ -21,22 +22,29 @@ import { RMP_OVERRIDES, type RmpOverride } from "@/server/rmp/overrides";
  * An instructor from the course API is matched against Davidson roster rows (already filtered to Davidson's
  * school id at ingest):
  *   1. "Staff" → staff (no lookup).
- *   2. An override (server/rmp/overrides.ts) decides alone: a profile, or an explicit no-match.
+ *   2. An override (server/rmp/overrides.ts) decides alone: a profile, or an explicit no-match. Names no rule can
+ *      derive without matching on the surname alone live there (Lengxob ↔ RMP "Lenny"; Shyam Gouri Suresh ↔ RMP
+ *      "Suresh Gouri").
  *   3. Candidates: rows whose name matches. The SURNAME must match (exact, or token subset: Vaz ↔ Vaz-Hooper,
  *      Keith ↔ Villa Keith, St Clair ↔ St. Clair, but never through a particle alone and never Sainte-Claire) AND
  *      the GIVEN name must match (exact, a nickname-table pair such as Chris ↔ Christopher, a leading-name match
- *      such as Jia ↔ Jia Yi, or an initial) — never surname-only, never a mere prefix (Chris ↔ Christina). Two
- *      swap forms count too: first/last exchanged, and a compound surname stored as RMP first + last (API
- *      "Shyam Gouri Suresh" ↔ RMP "Suresh Gouri" / "Gouri Suresh").
- *   4. Each candidate's RMP department is compared with the section's subjects AFTER mapping the department to
- *      subject codes (server/rmp/departments.ts): agree / neutral / conflict.
+ *      such as Jia ↔ Jia Yi, or an initial); or both names match exchanged (Wei Zhang ↔ RMP "Zhang Wei"). Never
+ *      surname-only, never a mere prefix (Chris ↔ Christina).
+ *   4. Each candidate's RMP department is mapped to subject codes (server/rmp/departments.ts) and compared with the
+ *      section's subjects or, when those are all interdisciplinary programs (WRI, HUM, SIL, ...) or unknown, with
+ *      the subjects the instructor teaches elsewhere in the term (`homeSubjects`): agree / conflict / unknown /
+ *      generic / unrecognised.
  *   5. If any candidate agrees, only agreeing candidates are kept. The kept candidates must describe ONE person
- *      (mutually matching names; compatible departments when none agrees), else → review. The pick is the one
- *      with the most ratings (then the stronger name match, then the lower legacyId).
- *   6. The pick is accepted when its department agrees; when neutral, with an exact first + last name, or a
- *      medium match (nickname, surname subset, swap) when the section's subjects are known; when it conflicts,
- *      only with an exact first + last name. Otherwise → review (e.g. API Christopher Alexander in CHE vs RMP
- *      Chris Alexander in Political Science). 'review' shows nothing until a person adds an override.
+ *      (mutually matching names; compatible departments when none agrees), else → review. That person is judged
+ *      on the strongest name among the kept rows and the most telling department among them (one row's conflict
+ *      outweighs another row's generic department); the profile shown is the most-rated kept row (then the
+ *      stronger name, then the lower legacyId), so one instructor gets one answer in every course.
+ *   6. Accepted: an exact first + last name whatever the department (Mark Smith, Psychology, teaching BIO); any
+ *      name match whose department agrees; a medium match (nickname, leading name, surname subset, swap) whose RMP
+ *      department is generic ("Interdisciplinary Studies") when some subject is known. Everything else → review:
+ *      a conflict (API Christopher Alexander in CHE vs RMP Chris Alexander, Political Science), and a specific RMP
+ *      department with nothing specific to compare it with (the same Christopher Alexander in a WRI section,
+ *      unless his other sections settle it). 'review' shows nothing until a person adds an override.
  */
 
 /** The fields of a roster row the matcher reads (RmpTeacher documents have them). */
@@ -55,9 +63,7 @@ export type SurnameMatch = "exact" | "subset";
 export type NameMatchKind =
   | { form: "direct"; given: GivenMatch; surname: SurnameMatch }
   /** RMP first = instructor's last and RMP last = instructor's first. */
-  | { form: "swap" }
-  /** RMP first + last = the instructor's multi-token surname. */
-  | { form: "compound-surname" };
+  | { form: "swap" };
 
 export type MatchStrength = "strong" | "medium" | "weak";
 
@@ -79,6 +85,7 @@ export type MatchReason =
   | "name"
   | "ambiguous"
   | "department-conflict"
+  | "no-department-evidence"
   | "weak-name";
 
 export interface MatchOutcome<T extends RosterTeacher = RosterTeacher> {
@@ -88,14 +95,26 @@ export interface MatchOutcome<T extends RosterTeacher = RosterTeacher> {
   reason: MatchReason;
   /** Name-matched candidates that were considered (empty for staff and overrides). */
   candidates: readonly MatchCandidate<T>[];
+  /**
+   * True when the section's subjects say nothing specific about the instructor's department and the subjects of
+   * their other sections (MatchContext.homeSubjects, not given yet) could change this answer. getRatings then
+   * asks the catalog and matches again.
+   */
+  needsHomeSubjects: boolean;
 }
 
 export interface MatchContext {
   /**
    * Subject codes of the instructor's section(s): the subject, then cross-listed siblings' subjects and
-   * cross-postings ("ENV", "POL"). Empty = unknown (department never conflicts).
+   * cross-postings ("ENV", "POL"). Empty = unknown: only exact names are accepted.
    */
   subjects?: readonly string[];
+  /**
+   * Subjects the instructor teaches in the term's other sections (from the catalog; cross-listings included).
+   * Consulted only when `subjects` are all NEUTRAL_SUBJECTS programs or empty. undefined = not looked up; null or
+   * [] = looked up, nothing found.
+   */
+  homeSubjects?: readonly string[] | null;
   /** Override table (default RMP_OVERRIDES). */
   overrides?: readonly RmpOverride[];
 }
@@ -150,18 +169,11 @@ export function matchSurnames(a: readonly string[], b: readonly string[]): Surna
 }
 
 function strengthOf(kind: NameMatchKind): MatchStrength {
-  if (kind.form !== "direct") return "medium";
+  if (kind.form === "swap") return "medium";
   if (kind.given === "exact" && kind.surname === "exact") return "strong";
   if (kind.given === "initial") return "weak";
   if (kind.given === "exact" || kind.surname === "exact") return "medium";
   return "weak";
-}
-
-function sameTokenSet(a: readonly string[], b: readonly string[]): boolean {
-  if (a.length !== b.length) return false;
-  const sa = [...a].sort();
-  const sb = [...b].sort();
-  return sa.every((token, i) => token === sb[i]);
 }
 
 interface NameParts {
@@ -193,17 +205,6 @@ function matchParts(
     return { kind: { form: "swap" }, strength: "medium" };
   }
 
-  // A compound surname stored as RMP first + last: every token of the RMP name is one of the instructor's
-  // surname tokens and vice versa, and the surname has at least two distinctive tokens.
-  const distinctive = instructor.surname.filter(
-    (token) => token.length >= 2 && !SURNAME_PARTICLES.has(token),
-  );
-  if (
-    distinctive.length >= 2 &&
-    sameTokenSet(instructor.surname, [...teacher.given, ...teacher.surname])
-  ) {
-    return { kind: { form: "compound-surname" }, strength: "medium" };
-  }
   return null;
 }
 
@@ -216,6 +217,13 @@ export function matchName(
     parts(instructor.first, instructor.last),
     parts(teacher.firstName, teacher.lastName),
   );
+}
+
+function sameTokenSet(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort();
+  const sb = [...b].sort();
+  return sa.every((token, i) => token === sb[i]);
 }
 
 /** True when two roster rows could be the same person by name (duplicate RMP profiles). */
@@ -267,6 +275,14 @@ export function overrideTargets<T extends RosterTeacher>(
 
 const STRENGTH_RANK: Readonly<Record<MatchStrength, number>> = { strong: 0, medium: 1, weak: 2 };
 
+/** Relations of one person's profiles when none agrees, most telling first (a conflict of any row decides). */
+const RELATION_RANK: Readonly<Record<Exclude<DepartmentRelation, "agree">, number>> = {
+  conflict: 0,
+  unknown: 1,
+  unrecognised: 2,
+  generic: 3,
+};
+
 function byPreference<T extends RosterTeacher>(a: MatchCandidate<T>, b: MatchCandidate<T>): number {
   return (
     b.teacher.numRatings - a.teacher.numRatings ||
@@ -290,13 +306,28 @@ function onePerson<T extends RosterTeacher>(
   return true;
 }
 
+/** Whether a name match of this strength is enough with this department evidence (see step 6 above). */
+function accepts(strength: MatchStrength, relation: DepartmentRelation, subjectsKnown: boolean) {
+  if (strength === "strong" || relation === "agree") return true;
+  return strength === "medium" && relation === "generic" && subjectsKnown;
+}
+
 function outcome<T extends RosterTeacher>(
   status: MatchStatus,
   reason: MatchReason,
-  candidates: readonly MatchCandidate<T>[] = [],
-  teacher: T | null = null,
+  extra: {
+    candidates?: readonly MatchCandidate<T>[];
+    teacher?: T;
+    needsHomeSubjects?: boolean;
+  } = {},
 ): MatchOutcome<T> {
-  return { status, teacher, reason, candidates };
+  return {
+    status,
+    teacher: extra.teacher ?? null,
+    reason,
+    candidates: extra.candidates ?? [],
+    needsHomeSubjects: extra.needsHomeSubjects ?? false,
+  };
 }
 
 /** Match one catalog instructor against the Davidson roster. */
@@ -314,7 +345,7 @@ export function matchInstructor<T extends RosterTeacher>(
   if (override) {
     if (override.rmp === null) return outcome("unmatched", "override-no-match");
     const targets = overrideTargets(override.rmp, roster);
-    if (targets.length === 1) return outcome("matched", "override", [], targets[0]!);
+    if (targets.length === 1) return outcome("matched", "override", { teacher: targets[0]! });
     return targets.length === 0
       ? outcome("unmatched", "override-missing")
       : outcome("review", "ambiguous");
@@ -331,27 +362,45 @@ export function matchInstructor<T extends RosterTeacher>(
     candidates.push({
       teacher,
       ...match,
-      department: departmentRelation(teacher.department, subjects),
+      department: departmentRelation(teacher.department, subjects, context.homeSubjects),
     });
   }
   if (candidates.length === 0) return outcome("unmatched", "no-candidate");
 
+  // The instructor's other sections can only help when this section says nothing specific.
+  const needsHomeSubjects =
+    context.homeSubjects === undefined &&
+    !hasSpecificSubject(subjects) &&
+    candidates.some((candidate) => candidate.department === "unknown");
+
   const agreeing = candidates.filter((candidate) => candidate.department === "agree");
   const kept = agreeing.length > 0 ? agreeing : candidates;
-  if (!onePerson(kept, agreeing.length === 0)) return outcome("review", "ambiguous", candidates);
-
-  const pick = [...kept].sort(byPreference)[0]!;
-  switch (pick.department) {
-    case "agree":
-      return outcome("matched", "name", candidates, pick.teacher);
-    case "neutral":
-      // Without any subject to check, only an exact first + last name is accepted.
-      return pick.strength === "strong" || (pick.strength === "medium" && subjects.length > 0)
-        ? outcome("matched", "name", candidates, pick.teacher)
-        : outcome("review", "weak-name", candidates);
-    case "conflict":
-      return pick.strength === "strong"
-        ? outcome("matched", "name", candidates, pick.teacher)
-        : outcome("review", "department-conflict", candidates);
+  if (!onePerson(kept, agreeing.length === 0)) {
+    return outcome("review", "ambiguous", { candidates, needsHomeSubjects });
   }
+
+  // One person: the strongest name among their rows, the most telling department, the most-rated profile.
+  const shown = [...kept].sort(byPreference)[0]!;
+  const strength = kept.reduce<MatchStrength>(
+    (best, candidate) =>
+      STRENGTH_RANK[candidate.strength] < STRENGTH_RANK[best] ? candidate.strength : best,
+    "weak",
+  );
+  const relation: DepartmentRelation =
+    agreeing.length > 0
+      ? "agree"
+      : kept
+          .map((candidate) => candidate.department as Exclude<DepartmentRelation, "agree">)
+          .sort((a, b) => RELATION_RANK[a] - RELATION_RANK[b])[0]!;
+  const subjectsKnown = subjects.length > 0 || (context.homeSubjects?.length ?? 0) > 0;
+  if (accepts(strength, relation, subjectsKnown)) {
+    return outcome("matched", "name", { candidates, teacher: shown.teacher });
+  }
+  const reason: MatchReason =
+    relation === "conflict"
+      ? "department-conflict"
+      : strength === "weak"
+        ? "weak-name"
+        : "no-department-evidence";
+  return outcome("review", reason, { candidates, needsHomeSubjects });
 }

@@ -56,14 +56,27 @@ export interface FixtureTeaching {
   section: string;
 }
 
+/** Every course-schedule snapshot term: full 202601/202602, subsets for the older terms. */
+export const FIXTURE_TERMS = [
+  "202201",
+  "202202",
+  "202301",
+  "202302",
+  "202401",
+  "202402",
+  "202501",
+  "202502",
+  "202601",
+  "202602",
+] as const;
+export type FixtureTerm = (typeof FIXTURE_TERMS)[number];
+
 /**
- * Every (instructor, section) pair of a full-term snapshot, instructors mapped the way the catalog does
+ * Every (instructor, section) pair of a term snapshot, instructors mapped the way the catalog does
  * (Instructor {first, last, isStaff}); subjects = the section's subject, cross-listed siblings' subjects and
  * cross-postings (upstream `departments`).
  */
-export function fixtureTeachings(
-  term: "202501" | "202502" | "202601" | "202602",
-): FixtureTeaching[] {
+export function fixtureTeachings(term: FixtureTerm): FixtureTeaching[] {
   const sections = z
     .array(RawSectionSchema)
     .parse(readFixtureJson("course-schedule", `courses-${term}.json`));
@@ -134,3 +147,29 @@ export const instructor = (first: string, last: string, isStaff = false): Instru
   last,
   isStaff,
 });
+
+const teachingKey = (instructor: Instructor) => `${instructor.first}|${instructor.last}`;
+
+/**
+ * Per instructor ("First|Last"), every subject they teach in the term: what the catalog search gives
+ * server/rmp/course.ts catalogHomeSubjects in production.
+ */
+export function homeSubjectsByInstructor(
+  teachings: readonly FixtureTeaching[],
+): ReadonlyMap<string, readonly string[]> {
+  const map = new Map<string, Set<string>>();
+  for (const { instructor, subjects } of teachings) {
+    const key = teachingKey(instructor);
+    let set = map.get(key);
+    if (!set) map.set(key, (set = new Set()));
+    for (const subject of subjects) set.add(subject);
+  }
+  return new Map([...map].map(([key, set]) => [key, [...set].sort()]));
+}
+
+export function homeSubjectsOf(
+  home: ReadonlyMap<string, readonly string[]>,
+  instructor: Instructor,
+): readonly string[] {
+  return home.get(teachingKey(instructor)) ?? [];
+}

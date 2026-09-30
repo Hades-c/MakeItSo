@@ -8,12 +8,20 @@ import type * as ExternalModule from "@/server/http/external";
 import { fetchExternal } from "@/server/http/external";
 import { getRatings, syncRoster } from "@/server/rmp";
 import { courseInstructors, getCourseRatings } from "@/server/rmp/course";
+import type * as OverridesModule from "@/server/rmp/overrides";
 import { instructor, makeCourse, makeSection } from "./helpers";
 
 // Wrap fetchExternal so the tests can prove getRatings never calls RateMyProfessors per view.
 vi.mock("@/server/http/external", async (importOriginal) => {
   const actual = await importOriginal<typeof ExternalModule>();
   return { ...actual, fetchExternal: vi.fn(actual.fetchExternal) };
+});
+
+// The stored roster is the synthetic fixture: use the override table written for its ids.
+vi.mock("@/server/rmp/overrides", async (importOriginal) => {
+  const actual = await importOriginal<typeof OverridesModule>();
+  const { SYNTHETIC_OVERRIDES } = await import("./synthetic-overrides");
+  return { ...actual, RMP_OVERRIDES: SYNTHETIC_OVERRIDES };
 });
 
 let testDb: TestDb;
@@ -97,9 +105,13 @@ describe("getRatings", () => {
     expect(hales?.rmp?.legacyId).toBe(9000028);
   });
 
-  it("applies the override table (Lengxob Yong → Lenny Yong)", async () => {
-    const [yong] = await getRatings([instructor("Lengxob", "Yong")], { subject: "BIO" });
+  it("applies the override table (Lengxob Yong → Lenny Yong, loaded by legacyId)", async () => {
+    const [yong, gouri] = await getRatings(
+      [instructor("Lengxob", "Yong"), instructor("Shyam", "Gouri Suresh")],
+      { subject: "BIO", relatedSubjects: ["SOU"] },
+    );
     expect(yong).toMatchObject({ status: "matched", rmp: { legacyId: 9000026 } });
+    expect(gouri).toMatchObject({ status: "matched", rmp: { legacyId: 9000018 } });
   });
 
   it("finds candidates by any surname token and by the one-word surname", async () => {
