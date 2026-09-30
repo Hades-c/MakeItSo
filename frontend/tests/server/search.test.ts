@@ -7,7 +7,13 @@ import User from "@/models/User";
 import type { SessionUser } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 import { MissingFixtureError } from "@/server/http/fixtures";
-import { interleave, search, type SearchContext, type SearchProvider } from "@/server/search";
+import {
+  interleave,
+  matchStrength,
+  search,
+  type SearchContext,
+  type SearchProvider,
+} from "@/server/search";
 import { search as pages } from "@/server/search/providers/pages";
 
 const session = vi.hoisted(() => ({ user: null as SessionUser | null }));
@@ -74,6 +80,42 @@ describe("search aggregator", () => {
       4,
     );
     expect(merged.map((r) => r.id)).toEqual(["a", "x", "b", "p"]);
+  });
+
+  it("tiers titles by how they match the query: exact, whole words, prefix, inside, other", () => {
+    expect(matchStrength("CSC 221 · Data Structures", "csc 221")).toBe("exact");
+    expect(matchStrength("CSC 221 · Data Structures", "Data  Structures")).toBe("exact");
+    expect(matchStrength("Today", "TODAY")).toBe("exact");
+    expect(matchStrength("My plan", "plan")).toBe("words");
+    expect(matchStrength("Stephen Curry", "curry")).toBe("words");
+    expect(matchStrength("Tomás Pérez", "tomas")).toBe("words");
+    expect(matchStrength("Law & Policy", "law and policy")).toBe("exact");
+    expect(matchStrength("Architecture & Urban Planning", "plan")).toBe("prefix");
+    expect(matchStrength("CSC 221 · Data Structures", "csc 2")).toBe("prefix");
+    expect(matchStrength("Transplant Biology", "plan")).toBe("inside");
+    expect(matchStrength("ECO 101 · Introductory Economics", "dan")).toBe("other");
+    expect(matchStrength("anything", "   ")).toBe("other");
+  });
+
+  it("merges by match strength, then round-robin in provider order within a strength", () => {
+    const titled = (kind: SearchResult["kind"], id: string, title: string): SearchResult => ({
+      kind,
+      id,
+      title,
+      href: `/${id}`,
+    });
+    const lists = [
+      [
+        titled("course", "c1", "URB 210 · Urban Planning"),
+        titled("course", "c2", "ECO 101 · Micro"),
+      ],
+      [titled("career", "k1", "Planning Ahead")],
+      [titled("page", "p1", "My plan"), titled("page", "p2", "4-year plan")],
+    ];
+    expect(interleave(lists, 10, "plan").map((r) => r.id)).toEqual(["p1", "p2", "c1", "k1", "c2"]);
+    expect(interleave(lists, 3, "plan").map((r) => r.id)).toEqual(["p1", "p2", "c1"]);
+    // Without a query: plain round-robin.
+    expect(interleave(lists, 10).map((r) => r.id)).toEqual(["c1", "k1", "p1", "c2", "p2"]);
   });
 
   it("skips failing and slow providers, but never hides a missing fixture", async () => {

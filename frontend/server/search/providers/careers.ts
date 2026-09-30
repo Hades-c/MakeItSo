@@ -10,10 +10,10 @@ import type { SearchContext } from "@/server/search/types";
  * Ranking (ties keep list order): the name starts with the query; a word of the name starts with it; the name
  * contains it; the cluster, slug, departments, related programs or Handshake keywords contain it.
  *
- * Fragments shorter than PARTIAL_MIN letters match only the start of the name or whole words: the aggregator
- * interleaves providers instead of comparing scores, so a short app word such as "plan" must not put "Urban
- * Planning" ahead of the My plan page. Summaries are not searched (their verbs, "plan", "design", "build", match
- * almost every career).
+ * Fragments shorter than PARTIAL_MIN letters match only the start of the name or whole words, so a short app word
+ * such as "plan" does not list "Urban Planning" at all (the aggregator also ranks the My plan page, a whole-word
+ * match, above prefix matches: server/search matchStrength). Summaries are not searched (their verbs, "plan",
+ * "design", "build", match almost every career).
  */
 
 const INDEX = CAREERS.map((career, index) => {

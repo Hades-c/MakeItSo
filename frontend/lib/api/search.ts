@@ -12,7 +12,8 @@ import { AppPathSchema, queryInt, queryText, SourceIdSchema } from "@/lib/types/
  * - auth: signed in (401 otherwise); Cache-Control: private, no-store.
  * - q: trimmed, whitespace collapsed, ≤ 200 chars; empty/whitespace-only → `results: []`.
  * - limit: 1–20, default 8; above 20 → 400 validation_failed.
- * - results are interleaved across providers (server/search/providers/*), best first; `href` is an app path.
+ * - results are merged across providers (server/search/providers/*), best title match first (server/search
+ *   matchStrength), then provider order; `href` is an app path.
  * - alumni results appear only for verified @davidson.edu accounts (PLAN §1); flagged-off surfaces never appear.
  */
 
