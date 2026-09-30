@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("CareerCard", () => {
-  it("links the career, shows the summary and the BLS pay with its period and source", () => {
+  it("links the career, shows the summary and the BLS pay with its period, occupation and source", () => {
     render(<CareerCard career={SE} offered={<p>slot</p>} />);
     const card = screen.getByRole("article", { name: "Software Engineering" });
     expect(within(card).getByRole("link", { name: "Software Engineering" })).toHaveAttribute(
@@ -30,13 +30,40 @@ describe("CareerCard", () => {
       "/careers/software-engineering",
     );
     expect(card).toHaveTextContent(SE.summary);
-    expect(within(card).getByTestId("career-card-pay")).toHaveTextContent(
-      `$135,980 median pay (${SE.pay!.period}) · BLS`,
+    const pay = within(card).getByTestId("career-card-pay");
+    expect(pay).toHaveTextContent(`$135,980 median pay (${SE.pay!.period})`);
+    expect(within(card).getByTestId("career-card-occupation")).toHaveTextContent(
+      "BLS occupation: Software developers · Source",
     );
-    const bls = within(card).getByRole("link", { name: /BLS Occupational Outlook Handbook/ });
+    const bls = within(card).getByRole("link", {
+      name: "Source: BLS Occupational Outlook Handbook, Software developers",
+    });
     expect(bls).toHaveAttribute("href", SE.pay!.url);
     expect(bls).toHaveAttribute("rel", "noopener noreferrer");
+    // Above the whole-card link, and a 44px target on phones.
+    expect(bls).toHaveClass("relative", "z-10", "min-h-11", "md:min-h-0");
     expect(within(card).getByText("slot")).toBeVisible();
+  });
+
+  it("names the occupation a proxy figure is for, not the career", () => {
+    const ib = getCareer("investment-banking")!;
+    expect(ib.pay!.occupation).toMatch(
+      /^Securities, commodities, and financial services sales agents \(/,
+    );
+    render(<CareerCard career={ib} />);
+    const card = screen.getByRole("article", { name: "Investment Banking" });
+    expect(within(card).getByTestId("career-card-pay")).toHaveTextContent(
+      "$78,660 median pay (May 2025)",
+    );
+    expect(within(card).getByTestId("career-card-occupation")).toHaveTextContent(
+      "BLS occupation: Securities, commodities, and financial services sales agents · Source",
+    );
+    const bls = within(card).getByRole("link", { name: /^Source: BLS/ });
+    expect(bls).toHaveAccessibleName(
+      "Source: BLS Occupational Outlook Handbook, Securities, commodities, and financial services sales agents",
+    );
+    // No OOH page is named after the career itself.
+    expect(bls).not.toHaveAccessibleName(/Investment Banking/);
   });
 
   it("shows no pay line without pay data", () => {
@@ -356,7 +383,41 @@ describe("career page sections", () => {
     const fallback = screen.getByText("Mathematics minor").closest("li")!;
     expect(fallback).not.toHaveAttribute("data-aggregated");
     expect(within(fallback).queryByRole("link")).toBeNull();
-    expect(screen.getByText(/2026–2027 Davidson catalog/)).toBeVisible();
+    // Mixed: only the tagged names are claimed as official.
+    expect(screen.getByTestId("programs-note")).toHaveTextContent(
+      "Tagged names are official, from the 2026–2027 Davidson catalog; the others are from the career guide.",
+    );
+  });
+
+  it("claims official catalog names only when every name is the catalog's", () => {
+    const official = {
+      acalogId: 172,
+      name: "Major in Computer Science (B.S. Degree)",
+      kind: "major" as const,
+      url: "https://catalog.davidson.edu/preview_program.php?catoid=28&poid=1799",
+      official: true,
+    };
+    const { rerender } = render(
+      <ProgramsList departments={[]} catalogYear="2026-2027" programs={[official]} />,
+    );
+    expect(screen.getByTestId("programs-note")).toHaveTextContent(
+      "Official names from the 2026–2027 Davidson catalog, where the requirements are.",
+    );
+    // The catalog could not be read: the career guide's names, and no claim they are official.
+    rerender(
+      <ProgramsList
+        departments={[]}
+        catalogYear="2026-2027"
+        programs={[
+          { acalogId: 1, name: "Economics major", kind: "major", url: null, official: false },
+        ]}
+      />,
+    );
+    const note = screen.getByTestId("programs-note");
+    expect(note).toHaveTextContent(
+      "Program names from the career guide; see the 2026–2027 Davidson catalog for the official names and requirements.",
+    );
+    expect(note).not.toHaveTextContent(/^Official names/);
   });
 
   it("keeps the AI panels' slot empty on this branch", () => {

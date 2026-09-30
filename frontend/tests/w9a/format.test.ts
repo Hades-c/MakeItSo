@@ -3,6 +3,7 @@ import {
   formatContentDate,
   formatMonthYear,
   formatUsd,
+  occupationName,
   pluralize,
   shortUrl,
 } from "@/app/(hub)/careers/_lib/format";
@@ -16,6 +17,22 @@ describe("careers formatting", () => {
   it("formats BLS pay in whole dollars", () => {
     expect(formatUsd(135980)).toBe("$135,980");
     expect(formatUsd(62200)).toBe("$62,200");
+  });
+
+  it("names a BLS occupation without the content's asides (the card's short form)", () => {
+    expect(
+      occupationName(
+        "Securities, commodities, and financial services sales agents (the OOH page describes investment bankers within this occupation)",
+      ),
+    ).toBe("Securities, commodities, and financial services sales agents");
+    expect(occupationName("Top executives (BLS pay data exclude self-employed workers)")).toBe(
+      "Top executives",
+    );
+    expect(occupationName("Meeting, Convention, and Event Planners")).toBe(
+      "Meeting, Convention, and Event Planners",
+    );
+    // Nothing but an aside: keep the text rather than show nothing.
+    expect(occupationName("(unnamed)")).toBe("(unnamed)");
   });
 
   it("formats content dates as calendar days, never shifted by the time zone", () => {

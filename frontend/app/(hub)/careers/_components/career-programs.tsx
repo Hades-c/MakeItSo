@@ -12,6 +12,22 @@ import { ExternalLink } from "./external-link";
  * with their catalog pages (tag COURSE CATALOG). Presentational part first (tested), loader below.
  */
 
+/**
+ * Where the program names come from, said truthfully: the catalog only when every name is the catalog's (a
+ * program falls back to the career guide's own name when the catalog cannot be read or does not list it).
+ */
+export function programsNote(programs: readonly RelatedProgramView[], catalogYear: string): string {
+  const year = catalogYear.replace("-", "–");
+  const official = programs.filter((program) => program.official).length;
+  if (official === programs.length) {
+    return `Official names from the ${year} Davidson catalog, where the requirements are.`;
+  }
+  if (official === 0) {
+    return `Program names from the career guide; see the ${year} Davidson catalog for the official names and requirements.`;
+  }
+  return `Tagged names are official, from the ${year} Davidson catalog; the others are from the career guide.`;
+}
+
 export function ProgramsList({
   departments,
   programs,
@@ -65,9 +81,8 @@ export function ProgramsList({
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-fg-3">
-            Official names from the {catalogYear.replace("-", "–")} Davidson catalog, where the
-            requirements are.
+          <p className="mt-2 text-xs text-fg-3" data-testid="programs-note">
+            {programsNote(programs, catalogYear)}
           </p>
         </div>
       ) : null}

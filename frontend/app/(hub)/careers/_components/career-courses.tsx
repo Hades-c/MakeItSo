@@ -90,10 +90,16 @@ export function CareerCourseItem({
         <CourseCode code={view.code} variant="chip" size="md" />
         <SourceTag source="course-schedule" />
       </div>
-      <h3 id={titleId} className="mt-2 text-base font-strong tracking-title text-fg">
+      <h3 id={titleId} className="mt-1 text-base font-strong tracking-title text-fg md:mt-2">
         {view.href ? (
-          <Link href={view.href} className="hover:underline">
-            {view.title} <span className="sr-only">({view.code})</span>
+          // 44px tall below 720px (PLAN §7 tap targets); one inline box inside, so the text wraps as before.
+          <Link
+            href={view.href}
+            className="inline-flex min-h-11 items-center rounded-sm hover:underline md:inline md:min-h-0"
+          >
+            <span>
+              {view.title} <span className="sr-only">({view.code})</span>
+            </span>
           </Link>
         ) : (
           view.title

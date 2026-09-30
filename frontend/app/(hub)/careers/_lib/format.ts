@@ -51,6 +51,19 @@ export function formatMonthYear(day: string): string {
   return date ? MONTH_YEAR.format(date) : day;
 }
 
+/**
+ * A BLS occupation without the content's "( … )" asides, for places with room for a name only (the /careers
+ * card): "Securities, commodities, and financial services sales agents (the OOH page describes …)" →
+ * "Securities, commodities, and financial services sales agents". The career page shows the full text.
+ */
+export function occupationName(occupation: string): string {
+  const name = occupation
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return name || occupation.trim();
+}
+
 /** "1 section" / "3 sections". */
 export function pluralize(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;

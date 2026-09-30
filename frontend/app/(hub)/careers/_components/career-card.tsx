@@ -3,12 +3,41 @@ import Link from "next/link";
 import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import type { Career } from "@/lib/types/content";
-import { formatUsd } from "../_lib/format";
+import { formatUsd, occupationName } from "../_lib/format";
 
 /**
- * One career on /careers: name (the card's link), summary, BLS median pay with its period (linked to the OOH
- * page), and a slot for the number of its courses on the registration term's schedule (streamed in; empty when
- * the catalog cannot answer). The whole card is the link's target area; the BLS link stays its own link.
+ * The card's pay: the BLS median with its period and the BLS occupation it is the median for (often not the
+ * career's own name: Investment Banking's figure is for securities, commodities and financial services sales
+ * agents), linked to that Occupational Outlook Handbook page. The link sits above the card's whole-card link and
+ * is 44px tall below 720px, so a tap near it does not open the career instead.
+ */
+export function CardPay({ pay }: { pay: NonNullable<Career["pay"]> }) {
+  const occupation = occupationName(pay.occupation);
+  return (
+    <div className="flex flex-col gap-0.5 text-sm" data-testid="career-card-pay">
+      <p className="text-fg">
+        <span className="font-semibold tabular-nums">{formatUsd(pay.medianAnnual)}</span> median pay
+        ({pay.period})
+      </p>
+      <p className="text-fg-2" data-testid="career-card-occupation">
+        BLS occupation: {occupation} ·{" "}
+        <a
+          href={pay.url}
+          rel="noopener noreferrer"
+          className="relative z-10 inline-flex min-h-11 min-w-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0 md:min-w-0"
+        >
+          Source
+          <span className="sr-only">: BLS Occupational Outlook Handbook, {occupation}</span>
+        </a>
+      </p>
+    </div>
+  );
+}
+
+/**
+ * One career on /careers: name (the card's link), summary, BLS median pay with its period and occupation (linked
+ * to the OOH page), and a slot for the number of its courses on the registration term's schedule (streamed in;
+ * empty when the catalog cannot answer). The whole card is the link's target area; the BLS link stays its own link.
  */
 export function CareerCard({
   career,
@@ -35,19 +64,7 @@ export function CareerCard({
       </h3>
       <p className="mt-1.5 line-clamp-4 text-sm text-fg-2">{career.summary}</p>
       <div className="mt-auto flex flex-col gap-2 pt-4">
-        {career.pay ? (
-          <p className="text-sm text-fg" data-testid="career-card-pay">
-            <span className="font-semibold tabular-nums">{formatUsd(career.pay.medianAnnual)}</span>{" "}
-            median pay ({career.pay.period}) ·{" "}
-            <a
-              href={career.pay.url}
-              rel="noopener noreferrer"
-              className="relative z-10 rounded-sm font-semibold text-primary hover:underline"
-            >
-              BLS <span className="sr-only">Occupational Outlook Handbook for {career.name}</span>
-            </a>
-          </p>
-        ) : null}
+        {career.pay ? <CardPay pay={career.pay} /> : null}
         {offered}
       </div>
     </article>

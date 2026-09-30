@@ -58,6 +58,9 @@ function CardSkeleton({ className }: { className?: string }) {
   );
 }
 
+/** Breadcrumb links: 44px tall below 720px (PLAN §7 tap targets), compact from there. */
+const CRUMB =
+  "inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0";
 const GRID = "grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]";
 const STACK = "flex min-w-0 flex-col gap-5";
 
@@ -71,19 +74,16 @@ export default async function CareerPage({ params }: { params: Params }) {
 
   return (
     <>
-      <nav aria-label="Breadcrumb" className="mb-2">
+      <nav aria-label="Breadcrumb" className="mb-1 md:mb-2">
         <ol className="flex flex-wrap items-center gap-1.5 text-sm text-fg-3">
           <li>
-            <Link href={routes.careers()} className="font-semibold text-primary hover:underline">
+            <Link href={routes.careers()} className={CRUMB}>
               Careers
             </Link>
           </li>
           <li aria-hidden>/</li>
           <li>
-            <Link
-              href={careersHref({ cluster: career.cluster })}
-              className="font-semibold text-primary hover:underline"
-            >
+            <Link href={careersHref({ cluster: career.cluster })} className={CRUMB}>
               {career.cluster}
             </Link>
           </li>
