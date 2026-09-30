@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
+import { normalizeEmail } from "@/lib/email";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -19,7 +20,12 @@ export const authOptions: NextAuthOptions = {
 
         await connectToDatabase();
 
-        const user = await User.findOne({ email: credentials.email.toLowerCase() }).select("+password");
+        // Same normalization as sign-up; also try the legacy lowercase form so
+        // accounts stored before normalization keep working. No domain check
+        // here: existing non-davidson.edu accounts must still sign in.
+        const normalized = normalizeEmail(credentials.email);
+        const legacy = credentials.email.toLowerCase().trim();
+        const user = await User.findOne({ email: { $in: Array.from(new Set([normalized, legacy])) } }).select("+password");
 
         if (!user || !user.password) {
           throw new Error("No account found with that email");

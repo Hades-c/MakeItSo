@@ -52,7 +52,7 @@ export default function RegisterPage() {
       }
 
       await signIn("credentials", {
-        email: form.email,
+        email: data.email ?? form.email,
         password: form.password,
         redirect: false,
       });
@@ -123,8 +123,12 @@ export default function RegisterPage() {
                   value={form.email}
                   onChange={(e) => update("email", e.target.value)}
                   required
+                  aria-describedby="email-hint"
                   className="h-11"
                 />
+                <p id="email-hint" className="text-xs text-muted-foreground">
+                  Use your @davidson.edu email. Sign-up is open to Davidson College students only.
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="password">Password</Label>
