@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { AuthCard } from "@/app/(auth)/_components/auth-card";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
+import { STANDALONE_LINK } from "@/app/(auth)/_lib/styles";
 import { SUPPORT_CONTACT } from "@/app/(auth)/_lib/support";
 import { routes } from "@/lib/routes";
 import { isMailAvailable } from "@/server/auth/mailer";
@@ -24,7 +25,7 @@ export default async function ForgotPasswordPage() {
       title="Forgot your password?"
       description="Password reset by email is not available yet."
       footer={
-        <Link href={routes.login()} className="font-semibold text-primary hover:underline">
+        <Link href={routes.login()} className={STANDALONE_LINK}>
           Back to sign in
         </Link>
       }

@@ -6,7 +6,11 @@ import { routes } from "@/lib/routes";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col items-center px-4 py-10 md:justify-center md:py-16">
-      <Link href={routes.home()} aria-label="MakeItSo home" className="mb-8 rounded-md">
+      <Link
+        href={routes.home()}
+        aria-label="MakeItSo home"
+        className="mb-8 inline-flex min-h-11 items-center rounded-md"
+      >
         <Wordmark subline="always" />
       </Link>
       <main className="w-full max-w-md">{children}</main>

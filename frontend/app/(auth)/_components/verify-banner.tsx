@@ -5,7 +5,7 @@ import { routes } from "@/lib/routes";
 
 export interface VerifyBannerProps {
   email: string;
-  /** A new, unverified sign-up: a later sign-up of the same address may replace it after 24 hours. */
+  /** A new, unverified sign-up that was sent a code: a later sign-up of the address may replace it. */
   replaceable: boolean;
   /** Hours left of those 24 (null when not replaceable). */
   hoursLeft: number | null;
@@ -32,9 +32,8 @@ export function VerifyBanner({ email, replaceable, hoursLeft }: VerifyBannerProp
             Verify your Davidson email
           </h2>
           <p className="mt-0.5 text-fg-2">
-            Enter the code we sent to{" "}
-            <span className="font-semibold break-all text-fg">{email}</span> to open the alumni
-            network and AI features.
+            Confirm that <span className="font-semibold break-all text-fg">{email}</span> is yours
+            with a 6-digit code by email to open the alumni network and AI features.
             {replaceable ? (
               <>
                 {" "}
@@ -49,7 +48,7 @@ export function VerifyBanner({ email, replaceable, hoursLeft }: VerifyBannerProp
         </div>
       </div>
       <Button asChild className="w-full md:w-auto">
-        <Link href={routes.verify()}>Enter code</Link>
+        <Link href={routes.verify()}>Get a code</Link>
       </Button>
     </section>
   );

@@ -151,6 +151,18 @@ describe("RegisterForm", () => {
     expect(calls).toHaveLength(0);
   });
 
+  it("announces field errors in an alert and focuses the first invalid field (review regression)", async () => {
+    stubFetch();
+    render(<RegisterForm classYears={CLASS_YEARS} mailAvailable />);
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    const summary = await screen.findByRole("alert");
+    expect(summary).toHaveTextContent("Check the highlighted fields");
+    expect(summary).toHaveTextContent(/Full name: /);
+    expect(summary).toHaveTextContent(/Email: /);
+    expect(summary).toHaveTextContent(/Password: /);
+    await waitFor(() => expect(screen.getByLabelText("Full name")).toHaveFocus());
+  });
+
   it("registers, signs in and continues to /verify", async () => {
     stubFetch([202, { status: "check-inbox", message: "Check your Davidson inbox." }]);
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
@@ -204,7 +216,25 @@ describe("RegisterForm", () => {
     ]);
     render(<RegisterForm classYears={CLASS_YEARS} mailAvailable />);
     await fillRegister("casey@davidson.edu", "basketball1");
-    expect(await screen.findByText(/commonly used passwords/)).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Password: This password is on a list of commonly used passwords.",
+    );
+    await waitFor(() => expect(screen.getByLabelText("Password")).toHaveFocus());
+  });
+
+  it("without mail, says it could not sign in and never mentions an inbox (review regression)", async () => {
+    stubFetch([202, { status: "check-inbox", message: "If that address was free, ..." }]);
+    nextAuth.signIn.mockResolvedValue({ ok: false, error: "CredentialsSignin" });
+    render(<RegisterForm classYears={CLASS_YEARS} mailAvailable={false} />);
+    await fillRegister();
+    expect(
+      await screen.findByRole("heading", { name: "We couldn't sign you in" }),
+    ).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/inbox|spam/i);
+    expect(screen.getByRole("link", { name: /MakeItSo project on GitHub/ })).toHaveAttribute(
+      "rel",
+      "noopener noreferrer",
+    );
   });
 
   it("reports a rate limit in an alert", async () => {
@@ -226,7 +256,7 @@ describe("RegisterForm", () => {
 describe("VerifyForm", () => {
   it("verifies the code and continues", async () => {
     stubFetch([200, { verified: true, emailVerifiedAt: "2026-09-30T16:00:00.000Z" }]);
-    render(<VerifyForm email="casey@davidson.edu" next="/alumni" />);
+    render(<VerifyForm email="casey@davidson.edu" next="/alumni" codeSent />);
     expect(screen.getByText("casey@davidson.edu")).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Verification code"), "123 456");
     await userEvent.click(screen.getByRole("button", { name: "Verify" }));
@@ -248,20 +278,38 @@ describe("VerifyForm", () => {
       ],
       [202, { sent: true }],
     );
-    render(<VerifyForm email="casey@davidson.edu" next="/today" notice="Why you are here." />);
+    render(
+      <VerifyForm email="casey@davidson.edu" next="/today" notice="Why you are here." codeSent />,
+    );
     expect(screen.getAllByRole("status")[0]).toHaveTextContent("Why you are here.");
     await userEvent.type(screen.getByLabelText("Verification code"), "000000");
     await userEvent.click(screen.getByRole("button", { name: "Verify" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("4 attempts left");
     await userEvent.click(screen.getByRole("button", { name: "Send a new code" }));
     expect(
-      await screen.findByText("We sent a new code to casey@davidson.edu."),
+      await screen.findByText(
+        "We sent a 6-digit code to casey@davidson.edu. It works for 15 minutes.",
+      ),
     ).toBeInTheDocument();
+  });
+
+  it("does not claim a code was sent when none is live; 'Email me a code' comes first (review regression)", async () => {
+    stubFetch([202, { sent: true }]);
+    render(<VerifyForm email="legacy@davidson.edu" next="/today" codeSent={false} />);
+    expect(document.body).not.toHaveTextContent(/We sent/);
+    expect(document.body).toHaveTextContent("We'll email a 6-digit code to legacy@davidson.edu");
+    expect(screen.queryByLabelText("Verification code")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Email me a code" }));
+    expect(await screen.findByLabelText("Verification code")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "We sent a 6-digit code to legacy@davidson.edu",
+    );
+    expect(calls[0]?.url).toBe("/api/account/verify/resend");
   });
 
   it("checks the format before sending", async () => {
     stubFetch();
-    render(<VerifyForm email="casey@davidson.edu" next="/today" />);
+    render(<VerifyForm email="casey@davidson.edu" next="/today" codeSent />);
     await userEvent.type(screen.getByLabelText("Verification code"), "12ab");
     await userEvent.click(screen.getByRole("button", { name: "Verify" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Enter the 6-digit code");
@@ -295,6 +343,32 @@ describe("ForgotPasswordForm", () => {
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/today"));
     expect(calls[1]?.url).toBe("/api/auth/password-reset/confirm");
   });
+
+  it("announces a wrong reset code in an alert and focuses the code field (review regression)", async () => {
+    stubFetch(
+      [202, { status: "check-inbox", message: "If an account uses that address, ..." }],
+      [
+        400,
+        {
+          error: {
+            code: "validation_failed",
+            message: "Some fields are invalid.",
+            issues: [{ path: "code", message: "That code is not right, has expired, ..." }],
+          },
+        },
+      ],
+    );
+    render(<ForgotPasswordForm />);
+    await userEvent.type(screen.getByLabelText("Email"), "casey@davidson.edu");
+    await userEvent.click(screen.getByRole("button", { name: "Send reset code" }));
+    await userEvent.type(await screen.findByLabelText("Reset code"), "123456");
+    await userEvent.type(screen.getByLabelText("New password"), "brand new passphrase");
+    await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Reset code: That code is not right",
+    );
+    await waitFor(() => expect(screen.getByLabelText("Reset code")).toHaveFocus());
+  });
 });
 
 describe("VerifyBanner", () => {
@@ -303,7 +377,9 @@ describe("VerifyBanner", () => {
       <VerifyBanner email="casey@davidson.edu" replaceable hoursLeft={19} />,
     );
     expect(screen.getByRole("heading", { name: "Verify your Davidson email" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Enter code" })).toHaveAttribute("href", "/verify");
+    expect(screen.getByRole("link", { name: "Get a code" })).toHaveAttribute("href", "/verify");
+    // It never claims a code was sent (review regression).
+    expect(screen.getByTestId("verify-banner")).not.toHaveTextContent(/we sent|enter the code/i);
     expect(screen.getByTestId("verify-banner")).toHaveTextContent(
       "replace this account in 19 hours",
     );

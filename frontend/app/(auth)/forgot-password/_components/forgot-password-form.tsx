@@ -5,9 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { AuthCard } from "@/app/(auth)/_components/auth-card";
+import {
+  FieldErrorSummary,
+  useFocusFirstInvalid,
+  type FieldSpecs,
+} from "@/app/(auth)/_components/field-errors";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { authExtraApi, CodeSchema } from "@/app/(auth)/_lib/contracts";
 import { GENERIC_ERROR, NETWORK_ERROR } from "@/app/(auth)/_lib/messages";
+import { STANDALONE_LINK } from "@/app/(auth)/_lib/styles";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -16,6 +22,16 @@ import { ApiClientError, callApi } from "@/lib/api/client";
 import { routes } from "@/lib/routes";
 
 type Errors = Partial<Record<"email" | "code" | "newPassword" | "form", string>>;
+
+const EMAIL_FIELDS: FieldSpecs<"email"> = { email: { id: "email", label: "Email" } };
+const RESET_FIELDS: FieldSpecs<"code" | "newPassword"> = {
+  code: { id: "code", label: "Reset code" },
+  newPassword: { id: "new-password", label: "New password" },
+};
+const ALL_FIELDS: FieldSpecs<"email" | "code" | "newPassword"> = {
+  ...EMAIL_FIELDS,
+  ...RESET_FIELDS,
+};
 
 function errorsFrom(caught: unknown): Errors {
   if (!(caught instanceof ApiClientError)) return { form: GENERIC_ERROR };
@@ -40,6 +56,7 @@ export function ForgotPasswordForm() {
   const [errors, setErrors] = useState<Errors>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  useFocusFirstInvalid(errors, ALL_FIELDS);
 
   async function requestCode(event: React.FormEvent) {
     event.preventDefault();
@@ -87,7 +104,7 @@ export function ForgotPasswordForm() {
   }
 
   const footer = (
-    <Link href={routes.login()} className="font-semibold text-primary hover:underline">
+    <Link href={routes.login()} className={STANDALONE_LINK}>
       Back to sign in
     </Link>
   );
@@ -101,7 +118,8 @@ export function ForgotPasswordForm() {
       >
         <form onSubmit={requestCode} className="flex flex-col gap-4" noValidate>
           {errors.form ? <FormAlert>{errors.form}</FormAlert> : null}
-          <Field id="email" label="Email" error={errors.email}>
+          <FieldErrorSummary errors={errors} fields={EMAIL_FIELDS} />
+          <Field id={EMAIL_FIELDS.email.id} label={EMAIL_FIELDS.email.label} error={errors.email}>
             <Input
               type="email"
               value={email}
@@ -134,7 +152,8 @@ export function ForgotPasswordForm() {
       <form onSubmit={reset} className="flex flex-col gap-4" noValidate>
         {notice ? <FormAlert tone="info">{notice}</FormAlert> : null}
         {errors.form ? <FormAlert>{errors.form}</FormAlert> : null}
-        <Field id="code" label="Reset code" error={errors.code}>
+        <FieldErrorSummary errors={errors} fields={RESET_FIELDS} />
+        <Field id={RESET_FIELDS.code.id} label={RESET_FIELDS.code.label} error={errors.code}>
           <Input
             value={code}
             onChange={(e) => setCode(e.target.value)}
@@ -148,8 +167,8 @@ export function ForgotPasswordForm() {
           />
         </Field>
         <Field
-          id="new-password"
-          label="New password"
+          id={RESET_FIELDS.newPassword.id}
+          label={RESET_FIELDS.newPassword.label}
           hint="At least 10 characters. Not your Davidson password, and nothing common."
           error={errors.newPassword}
         >

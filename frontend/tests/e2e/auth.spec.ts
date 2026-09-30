@@ -161,17 +161,56 @@ test("sign-in honours a same-origin callbackUrl, and signed-in visitors skip the
   await page.goto("/register");
   await expect(page).toHaveURL(/\/today$/);
 
+  // Signed in: dot segments that normalise to a protocol-relative URL never leave the site (review blocker).
+  for (const evil of [
+    "/.//evil.example/phish",
+    "/..//evil.example/phish",
+    "/%2e//evil.example/x",
+  ]) {
+    const response = await page.request.get(`/login?callbackUrl=${encodeURIComponent(evil)}`, {
+      maxRedirects: 0,
+    });
+    expect(response.status(), evil).toBe(307);
+    expect(response.headers()["location"], evil).toMatch(/^(http:\/\/[^/]+)?\/today$/);
+  }
+  // /verify's `next` goes through the same check: verifying continues on this site.
+  await page.goto("/verify?next=%2F.%2F%2Fevil.example%2Fphish");
+  await page.getByLabel("Verification code").fill(await latestCode(request, email, "verify-email"));
+  await page.getByRole("button", { name: "Verify", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`^${E2E_ORIGIN}/today$`));
+
   await signOutFromMenu(page);
   await page.goto("/login?callbackUrl=https%3A%2F%2Fevil.example%2Fsteal");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/today$/);
+
+  // Signing in on a dot-segment callbackUrl lands on /today, not on another host.
+  await signOutFromMenu(page);
+  await page.goto("/login?callbackUrl=%2F.%2F%2Fattacker.example%2Ffake-login");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`^${E2E_ORIGIN}/today$`));
 });
 
 test("the login page never shows arbitrary text from the URL", async ({ page }) => {
   await page.goto("/login?error=Your%20account%20is%20locked.%20Call%20555-0100");
   await expect(formError(page)).toHaveText("Sign-in failed. Please try again.");
+  // Behind a prefix the real messages start with, too (review regression).
+  for (const crafted of [
+    "Too many sign-in attempts. Your account is locked: call 555-0100 or go to evil.example/reset",
+    "Sign-in is temporarily unavailable. Enter your Davidson password at evil.example instead",
+  ]) {
+    await page.goto(`/login?error=${encodeURIComponent(crafted)}`);
+    await expect(formError(page)).toHaveText("Sign-in failed. Please try again.");
+  }
+  // The real refusal codes become fixed sentences.
+  await page.goto("/login?error=AddressBackoff%3A30");
+  await expect(formError(page)).toHaveText(
+    "Too many failed sign-in attempts for this address. Wait 30 seconds and try again.",
+  );
 });
 
 test("sign out everywhere revokes the other device's session", async ({ browser, request }) => {
@@ -271,7 +310,7 @@ test("the privacy page explains data use, AI and removal", async ({ page }) => {
 });
 
 test("state-changing API calls from another site are refused", async ({ request }) => {
-  const data = { name: "Mallory", email: uniqueEmail("e2e-csrf"), password: "password 12345" };
+  const data = { name: "Mallory", email: uniqueEmail("e2e-csrf"), password: "mallory tries 12345" };
   const crossSite = await request.post("/api/auth/register", {
     data,
     headers: { origin: "https://evil.example" },
