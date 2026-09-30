@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { SourceId } from "@/lib/sources";
 import {
   ClockTimeSchema,
   CourseCodeSchema,
@@ -192,9 +193,37 @@ export type CalendarEvent = z.infer<typeof CalendarEventSchema>;
 
 // ---- Offices and their programs ----------------------------------------------------------------------------------
 
+/** Source ids an office program can carry (curated kind). */
+export const PROGRAM_SOURCES = [
+  "matthews-center",
+  "hurt-hub-programs",
+  "registrar",
+  "davidson-offices",
+] as const satisfies readonly SourceId[];
+export type ProgramSource = (typeof PROGRAM_SOURCES)[number];
+
+/**
+ * The truthful source tag for a program run by the office `officeSlug` (PLAN §5: tag text always comes from the
+ * item's stored source): MATTHEWS CENTER, HURT HUB PROGRAMS and REGISTRAR for those offices, DAVIDSON OFFICES for
+ * every other office (the card shows the office's own name, Office.name, beside it).
+ */
+export function programSourceForOffice(officeSlug: string): ProgramSource {
+  switch (officeSlug) {
+    case "matthews-center":
+      return "matthews-center";
+    case "hurt-hub":
+      return "hurt-hub-programs";
+    case "registrar":
+      return "registrar";
+    default:
+      return "davidson-offices";
+  }
+}
+
 /**
  * A curated opportunity program run by an office (grants, fellowships, courses...). Free-text `deadlineText` is
- * shown verbatim; `deadlines` holds the dates W4b could pin to a year (Due soon uses only these).
+ * shown verbatim; `deadlines` holds the dates W4b could pin to a year (Due soon uses only these). `source` must be
+ * `programSourceForOffice(officeSlug)`.
  */
 export const ProgramSchema = SourcedSchema.extend({
   slug: SlugSchema,
@@ -206,9 +235,14 @@ export const ProgramSchema = SourcedSchema.extend({
   deadlineText: z.string().nullable(),
   deadlines: z.array(z.object({ label: z.string().min(1), date: IsoDateSchema }).strict()),
   audience: z.string().nullable(),
-  /** Source tag for the item (curated kind). */
-  source: z.enum(["matthews-center", "hurt-hub-programs", "registrar"]),
-}).strict();
+  /** Source tag for the item (curated kind): always programSourceForOffice(officeSlug). */
+  source: z.enum(PROGRAM_SOURCES),
+})
+  .strict()
+  .refine((program) => program.source === programSourceForOffice(program.officeSlug), {
+    path: ["source"],
+    message: "must be programSourceForOffice(officeSlug): the tag names the office that runs it",
+  });
 export type Program = z.infer<typeof ProgramSchema>;
 
 export const OfficeSchema = SourcedSchema.extend({

@@ -36,6 +36,7 @@ export const SOURCE_IDS = [
   "registrar",
   "matthews-center",
   "hurt-hub-programs",
+  "davidson-offices",
   // link
   "handshake",
   "davidson-one",
@@ -122,6 +123,14 @@ export const SOURCES: Readonly<Record<SourceId, SourceInfo>> = {
     "Hurt Hub programs",
     "curated",
     "https://www.davidson.edu/offices-and-services/jay-hurt-hub-innovation-and-entrepreneurship",
+  ),
+  // Programs of every other Davidson office (fellowships, civic engagement, education abroad, ...): the card shows
+  // the office's own name next to the tag (lib/types/content.ts programSourceForOffice).
+  "davidson-offices": source(
+    "davidson-offices",
+    "Davidson offices",
+    "curated",
+    "https://www.davidson.edu/offices-and-services",
   ),
   handshake: source("handshake", "Handshake", "link", "https://davidson.joinhandshake.com/"),
   "davidson-one": source(

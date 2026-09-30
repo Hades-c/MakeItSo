@@ -35,7 +35,12 @@ describe("source registry (PLAN §4.1.13)", () => {
       "events-digest",
       "davidson-news",
     ]);
-    expect(byKind("curated")).toEqual(["registrar", "matthews-center", "hurt-hub-programs"]);
+    expect(byKind("curated")).toEqual([
+      "registrar",
+      "matthews-center",
+      "hurt-hub-programs",
+      "davidson-offices",
+    ]);
     expect(byKind("link")).toEqual(["handshake", "davidson-one", "athletics"]);
     expect(byKind("student")).toEqual(["my-plan"]);
     expect(byKind("ai")).toEqual(["ai"]);
