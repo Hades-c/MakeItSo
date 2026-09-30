@@ -42,13 +42,33 @@ const MONTHS = [
   "December",
 ];
 
+/**
+ * Programs filed under the office that runs them rather than the office page that lists them (the contracts'
+ * index still has the listing office; W4b contractRequest to update tests/fixtures/content/office-programs.json).
+ */
+const RUN_BY: Readonly<Record<string, string>> = {
+  "Greater Charlotte Law School Fair": "matthews-center",
+  "Law school application fee grant (Matthews Center professional development funding)":
+    "matthews-center",
+};
+
 describe("offices and programs", () => {
   it("holds the 20 offices and 122 programs of the verified index, as published", () => {
     expect(OFFICES).toHaveLength(20);
     expect(PROGRAMS).toHaveLength(122);
     expect(PROGRAMS.map((p) => [p.officeSlug, p.name, p.url, p.sources[0], p.amount])).toEqual(
-      index.programs.map((p) => [p.officeSlug, p.name, p.url, p.sourceUrl, p.amount]),
+      index.programs.map((p) => [
+        RUN_BY[p.name] ?? p.officeSlug,
+        p.name,
+        p.url,
+        p.sourceUrl,
+        p.amount,
+      ]),
     );
+    for (const [name, office] of Object.entries(RUN_BY)) {
+      expect(index.programs.find((p) => p.name === name)?.officeSlug).toBe("prelaw");
+      expect(PROGRAMS.find((p) => p.name === name)?.officeSlug).toBe(office);
+    }
     expect(PROGRAMS.map((p) => p.deadlineText !== null)).toEqual(
       index.programs.map((p) => p.hasDeadline),
     );
@@ -72,9 +92,17 @@ describe("offices and programs", () => {
 
   it("tags programs with the office that runs them", () => {
     const count = (tag: string) => PROGRAMS.filter((p) => sourceTag(p.source) === tag).length;
-    expect(count("MATTHEWS CENTER")).toBe(30);
+    expect(count("MATTHEWS CENTER")).toBe(32);
     expect(count("HURT HUB PROGRAMS")).toBe(12);
-    expect(count("DAVIDSON OFFICES")).toBe(80);
+    expect(count("DAVIDSON OFFICES")).toBe(78);
+    // The law school fair and fee grant are the Matthews Center's, not Prelaw Advising's.
+    expect(getProgram("greater-charlotte-law-school-fair")?.source).toBe("matthews-center");
+    expect(
+      getProgram("law-school-application-fee-grant-matthews-center-professional-development")
+        ?.source,
+    ).toBe("matthews-center");
+    expect(programsForOffice("prelaw")).toEqual([]);
+    expect(getOffice("prelaw")?.services.join(" ")).toMatch(/run by the Matthews Center/);
     for (const program of PROGRAMS) {
       expect(program.source).toBe(programSourceForOffice(program.officeSlug));
     }
@@ -119,6 +147,43 @@ describe("offices and programs", () => {
     for (const text of texts) {
       expect(text).not.toMatch(/calendar\.json|content-prep|\(sic\)|Wildcat Wellness/);
     }
+  });
+
+  it("writes deadlines as dates, not 'today' or 'already past'", () => {
+    const watson = getProgram("thomas-j-watson-fellowship");
+    expect(watson?.description).toMatch(
+      /The Davidson nomination deadline is September 30, 2026 at 3 p\.m\. EDT\.$/,
+    );
+    expect(watson?.deadlines).toEqual([
+      { label: "Davidson nomination application (3 p.m. EDT)", date: "2026-09-30" },
+    ]);
+    const fellowships = getOffice("office-of-fellowships")?.services.join(" ") ?? "";
+    expect(fellowships).toMatch(/2026-27 internal deadlines \(3 p\.m\. each\): Fulbright/);
+    expect(fellowships).not.toMatch(/already past/);
+    expect(getProgram("building-a-lean-startup-course")?.description).not.toMatch(/under way/);
+  });
+
+  it("names the CTL's Moodle pages without linking Moodle (PLAN §1)", () => {
+    const ctl = getOffice("center-teaching-learning");
+    expect(ctl?.services.join(" ")).not.toMatch(/moodle\.davidson\.edu/);
+    expect(ctl?.services.join(" ")).toMatch(/CTL Tutor Moodle page \(Davidson login\)/);
+  });
+
+  it("cites the Matthews Center pages its office text quotes", () => {
+    const sources = getOffice("matthews-center")?.sources ?? [];
+    expect(sources[0]).toBe(
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development",
+    );
+    expect(sources).toEqual(
+      expect.arrayContaining([
+        // "Knobloch Campus Center, Suite 201"
+        "https://www.davidson.edu/offices-and-services/matthews-center-career-development/staff",
+        // "we don't use WildcatSync to advertise our events and programs because we use Handshake"
+        "https://wildcatsync.davidson.edu/organization/careerdevelopment",
+        // "roadmap page: 8:30 a.m.-5 p.m., Monday-Friday"
+        "https://www.davidson.edu/offices-and-services/matthews-center-career-development/student-career-planning-roadmap",
+      ]),
+    );
   });
 });
 

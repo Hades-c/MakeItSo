@@ -471,6 +471,7 @@ const PROGRAM_RECORDS = [
     source: "matthews-center",
     sources: [
       "https://www.davidson.edu/academic-departments/political-science/internships-careers-and-graduate-school/davidson-washington",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -487,7 +488,10 @@ const PROGRAM_RECORDS = [
     audience:
       "First-years, sophomores and juniors of all majors; not eligible if receiving credit for Explorer 099 or an independent study",
     source: "matthews-center",
-    sources: ["https://www.davidson.edu/academic-departments/chinese-studies/internships"],
+    sources: [
+      "https://www.davidson.edu/academic-departments/chinese-studies/internships",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships",
+    ],
     verifiedAt: "2026-09-30",
   },
   {
@@ -729,7 +733,7 @@ const PROGRAM_RECORDS = [
     name: "Building a Lean Startup (course)",
     url: "https://hurthub.davidson.edu/event/building-a-lean-startup-fall-2026/",
     description:
-      "7-session non-credit course on Lean Startup methodology taught by Rebecca Weeks Watson, offered twice a year; free to participants. Fall 2026: Wednesdays, Sept 23-Nov 11, 6:45-8:15 pm, Room 208, no class October 14 (already under way). Also available online through DavidsonX.",
+      "7-session non-credit course on Lean Startup methodology taught by Rebecca Weeks Watson, offered twice a year; free to participants. Fall 2026: Wednesdays, Sept 23-Nov 11, 6:45-8:15 pm, Room 208, no class October 14. Also available online through DavidsonX.",
     amount: null,
     deadlineText: null,
     deadlines: [],
@@ -1096,6 +1100,7 @@ const PROGRAM_RECORDS = [
     source: "davidson-offices",
     sources: [
       "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/luce-scholarships",
+      "https://wildcatsync.davidson.edu/event/12464801",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -1167,6 +1172,7 @@ const PROGRAM_RECORDS = [
     source: "davidson-offices",
     sources: [
       "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/schwarzman-scholars",
+      "https://wildcatsync.davidson.edu/event/12464795",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -1194,7 +1200,7 @@ const PROGRAM_RECORDS = [
     name: "Thomas J. Watson Fellowship",
     url: "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/watson-fellowship",
     description:
-      "One year of purposeful independent exploration outside the U.S.; awarded to graduating seniors nominated by one of 41 partner colleges. REQUIRES Davidson nomination (up to four seniors). The Davidson nomination deadline is today (2026-09-30).",
+      "One year of purposeful independent exploration outside the U.S.; awarded to graduating seniors nominated by one of 41 partner colleges. REQUIRES Davidson nomination (up to four seniors). The Davidson nomination deadline is September 30, 2026 at 3 p.m. EDT.",
     amount: "$40,000",
     deadlineText: "September 30, 2026 at 3 p.m. EDT (Davidson nomination application)",
     deadlines: [
@@ -1495,6 +1501,7 @@ const PROGRAM_RECORDS = [
     source: "davidson-offices",
     sources: [
       "https://www.davidson.edu/offices-and-services/human-resources/work-davidson/fellows-program",
+      "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -1757,6 +1764,7 @@ const PROGRAM_RECORDS = [
     source: "davidson-offices",
     sources: [
       "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/leonard-fund",
+      "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -1784,6 +1792,7 @@ const PROGRAM_RECORDS = [
     source: "davidson-offices",
     sources: [
       "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/robert-t-stone-fund",
+      "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -1811,6 +1820,7 @@ const PROGRAM_RECORDS = [
     source: "davidson-offices",
     sources: [
       "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/ruth-pittard-fund-love-action",
+      "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -1881,7 +1891,9 @@ const PROGRAM_RECORDS = [
   },
   {
     slug: "greater-charlotte-law-school-fair",
-    officeSlug: "prelaw",
+    // Run by the Matthews Center ("hosted each fall semester by the Betty and B. Frank Matthews II '49 Center for
+    // Career Development"), so it carries the MATTHEWS CENTER tag; the Prelaw office lists it in its services.
+    officeSlug: "matthews-center",
     name: "Greater Charlotte Law School Fair",
     url: "https://www.davidson.edu/academic-departments/prelaw/law-school-fair",
     description:
@@ -1890,13 +1902,19 @@ const PROGRAM_RECORDS = [
     deadlineText: null,
     deadlines: [],
     audience: "All students and alumni",
-    source: "davidson-offices",
-    sources: ["https://wildcatsync.davidson.edu/event/12807625"],
+    source: "matthews-center",
+    sources: [
+      "https://wildcatsync.davidson.edu/event/12807625",
+      "https://www.davidson.edu/academic-departments/prelaw/law-school-fair",
+      "https://www.davidson.edu/academic-departments/prelaw",
+    ],
     verifiedAt: "2026-09-30",
   },
   {
     slug: "law-school-application-fee-grant-matthews-center-professional-development",
-    officeSlug: "prelaw",
+    // Matthews Center professional development funding (law-school-resources: "The Matthews Center for Career
+    // Development offers professional development grant funding"), so it carries the MATTHEWS CENTER tag.
+    officeSlug: "matthews-center",
     name: "Law school application fee grant (Matthews Center professional development funding)",
     url: "https://www.davidson.edu/academic-departments/prelaw/law-school-resources",
     description:
@@ -1905,7 +1923,7 @@ const PROGRAM_RECORDS = [
     deadlineText: null,
     deadlines: [],
     audience: "Current students applying to law school",
-    source: "davidson-offices",
+    source: "matthews-center",
     sources: ["https://www.davidson.edu/academic-departments/prelaw/law-school-resources"],
     verifiedAt: "2026-09-30",
   },
@@ -2139,7 +2157,10 @@ const PROGRAM_RECORDS = [
     deadlines: [],
     audience: "Current students",
     source: "davidson-offices",
-    sources: ["https://www.davidson.edu/catalyst/xpl-199-internship-credit"],
+    sources: [
+      "https://www.davidson.edu/catalyst/xpl-199-internship-credit",
+      "https://www.davidson.edu/offices-and-services/registrar/academic-calendars/2026-2027",
+    ],
     verifiedAt: "2026-09-30",
   },
   {
@@ -2156,6 +2177,7 @@ const PROGRAM_RECORDS = [
     source: "davidson-offices",
     sources: [
       "https://www.davidson.edu/offices-and-services/sustainability-office/sustainability-scholars",
+      "https://www.davidson.edu/catalyst",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -2355,8 +2377,21 @@ const OFFICE_RECORDS = [
       "professional-development-funding-tony-snow-77-professional-development-fund",
       "scholarships-for-tuck-business-bridge-dartmouth-and-vanderbilt-summer-business",
       "health-careers-fair",
+      "greater-charlotte-law-school-fair",
+      "law-school-application-fee-grant-matthews-center-professional-development",
     ],
-    sources: ["https://www.davidson.edu/offices-and-services/matthews-center-career-development"],
+    sources: [
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/staff",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/student-career-planning-roadmap",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/student-career-planning-roadmap/guidance-resources",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/career-exploration-and-assessment",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/campus-recruiting",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/campus-recruiting/recruiting-policies-students",
+      "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/technical-skill-building-partnerships",
+      "https://wildcatsync.davidson.edu/organization/careerdevelopment",
+    ],
     verifiedAt: "2026-09-30",
   },
   {
@@ -2391,6 +2426,7 @@ const OFFICE_RECORDS = [
     ],
     sources: [
       "https://www.davidson.edu/offices-and-services/jay-hurt-hub-innovation-and-entrepreneurship",
+      "https://hurthub.davidson.edu/students/",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -2405,7 +2441,7 @@ const OFFICE_RECORDS = [
       "Fellowships Toolkit and Deadlines & Events (Davidson login required): https://sites.google.com/davidson.edu/fellowshipstoolkit/home",
       "Opportunities Guide (Davidson login required): https://fellowships.davidson.edu/OppsGuide",
       "Davidson endorsement/nomination committees for Beinecke, Goldwater, Truman, Udall, Gaither, Boren Fellowship, Churchill, Fulbright, Marshall, McCall MacBain, Rhodes and Watson",
-      "Fellowship deadline listings (internal endorsement/nomination deadlines as well as national deadlines) and info webinars on WildcatSync, cross-listed under Catalyst. 2026-27 internal deadlines already past: Fulbright endorsement Aug 26, U.S. Rhodes and Marshall endorsement Aug 31 (extended), Churchill nomination Sept 28, Watson nomination Sept 30, 2026 (3 p.m. each)",
+      "Fellowship deadline listings (internal endorsement/nomination deadlines as well as national deadlines) and info webinars on WildcatSync, cross-listed under Catalyst. 2026-27 internal deadlines (3 p.m. each): Fulbright endorsement Aug 26, U.S. Rhodes and Marshall endorsement Aug 31 (extended), Churchill nomination Sept 28, Watson nomination Sept 30, 2026",
     ],
     programSlugs: [
       "critical-language-scholarship-cls-program",
@@ -2538,12 +2574,14 @@ const OFFICE_RECORDS = [
       "Law school admission panels, alumni connections and law firm recruiting events",
       "Guides to researching and financing law schools (Davidson Google site)",
       "Law-related student organizations such as the Pre-Law Society and Mock Trial Association",
+      "The Greater Charlotte Law School Fair (each fall) and the law school application fee grant are run by the Matthews Center and listed with its programs",
     ],
-    programSlugs: [
-      "greater-charlotte-law-school-fair",
-      "law-school-application-fee-grant-matthews-center-professional-development",
+    programSlugs: [],
+    sources: [
+      "https://www.davidson.edu/academic-departments/prelaw",
+      "https://www.davidson.edu/academic-departments/prelaw/law-school-fair",
+      "https://www.davidson.edu/academic-departments/prelaw/law-school-resources",
     ],
-    sources: ["https://www.davidson.edu/academic-departments/prelaw"],
     verifiedAt: "2026-09-30",
   },
   {
@@ -2553,10 +2591,10 @@ const OFFICE_RECORDS = [
     description:
       "Free peer tutoring and academic support for all Davidson students (and teaching resources for faculty). 704-894-2294.",
     services: [
-      "Peer tutoring in all subjects, free; request appointments through the CTL Tutor Moodle (https://moodle.davidson.edu/course/index.php?categoryid=97); many courses have Embedded Tutors (ETs), who should be your first stop",
+      "Peer tutoring in all subjects, free; request appointments through the CTL Tutor Moodle page (Davidson login); many courses have Embedded Tutors (ETs), who should be your first stop",
       "Drop-in tutoring Sunday-Thursday 8-10 p.m.: Math, Science and Economics Center (Wall 210), Speaking Center (Chambers 1015), Writing Center (Chambers 1046), Research Consultants (Chambers 1027)",
-      "Writing Center: consultants by appointment on the Writing Center Moodle (https://moodle.davidson.edu/course/view.php?id=11404) for any stage of writing, including cover letters",
-      "Speaking Center: Communication Consultants support speaking across the curriculum, from selecting a topic to delivering a speech, in person or virtually (https://moodle.davidson.edu/course/view.php?id=11403)",
+      "Writing Center: consultants by appointment on the Writing Center Moodle page (Davidson login) for any stage of writing, including cover letters",
+      "Speaking Center: Communication Consultants support speaking across the curriculum, from selecting a topic to delivering a speech, in person or virtually (via the Speaking Center Moodle page, Davidson login)",
       "Data CATS: data analytics and statistics consulting; drop-in Sunday-Thursday 2-4 p.m. and 7-9 p.m. in Chambers 3146",
       "Multilingual student writing support with the Multilingual Assistant Professor of Practice via the Multilingual Writing Support Moodle (login required)",
       "Library research and digital-media consultants (see Library)",
@@ -2685,6 +2723,7 @@ const OFFICE_RECORDS = [
     ],
     sources: [
       "https://www.davidson.edu/offices-and-services/dean-rusk-international-studies-program",
+      "https://www.davidson.edu/offices-and-services/dean-rusk-international-studies-program/international-travel-grants/student-grants",
     ],
     verifiedAt: "2026-09-30",
   },

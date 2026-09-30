@@ -15,14 +15,27 @@ import { defineContent, defineContentObject, latestVerifiedAt } from "@/server/c
  * Chromium, the T&I and Handshake help-center APIs).
  * - `source` is set only on the platforms with a tag (HANDSHAKE, DAVIDSON ONE, ATHLETICS): those tags appear
  *   only on these curated deep links (PLAN §5 Sources).
- * - Handshake is linked by its documented base URL only. No keyword-search URL is documented (Handshake's help
+ * - Handshake is linked by its documented base URL. No keyword-search URL is documented (Handshake's help
  *   articles describe search through the in-app search bar only, and /job-search sits behind a Cloudflare
- *   challenge), so `HANDSHAKE.jobSearchUrlTemplate` is null and handshakeUrl() returns the base URL. The
- *   "Davidson Student Login" SAML path is not linked: it embeds an id Davidson has not published as a link.
+ *   challenge), so `HANDSHAKE.jobSearchUrlTemplate` is null and handshakeUrl() returns the base URL. The one
+ *   other Handshake URL, /appointments (career advising), is the deep link the Matthews Center publishes on its
+ *   student-career-planning-roadmap page, not a constructed one (HANDSHAKE_DOCUMENTED_PATHS; orchestrator to
+ *   confirm, see the W4b report). The "Davidson Student Login" SAML path is not linked: it embeds an id Davidson
+ *   has not published as a link.
  * - Banner Self-Service and WebTree were verified to their redirects (their :8443 hosts are campus-only);
  *   Degree Works has no URL of its own, so it links Banner.
- * - Moodle is a plain link-out to the LMS home: no course-site items (PLAN §1).
+ * - No Moodle URLs: Moodle is out of scope until T&I approves (PLAN §1, §8). Texts may name Moodle (Davidson One
+ *   links to it; Duo guards it) but link nothing on moodle.davidson.edu.
  */
+
+/**
+ * Handshake URLs other than the base that content may link, each with the Davidson page that publishes it. Every
+ * other davidson.joinhandshake.com URL in server/content is refused by the CI gate (tests/content.test.ts).
+ */
+export const HANDSHAKE_DOCUMENTED_PATHS: Readonly<Record<string, string>> = Object.freeze({
+  "/appointments":
+    "https://www.davidson.edu/offices-and-services/matthews-center-career-development/student-career-planning-roadmap",
+});
 
 const LINK_RECORDS = [
   {
@@ -79,18 +92,6 @@ const LINK_RECORDS = [
     sources: [
       "https://www.davidson.edu/offices-and-services/registrar/student-schedules-grades-adddrop/degreeworks",
     ],
-    verifiedAt: "2026-09-30",
-  },
-  {
-    slug: "moodle",
-    name: "Moodle",
-    url: "https://moodle.davidson.edu/",
-    description:
-      "Davidson's learning management system: class materials, assignments and submissions, quizzes, forums and the gradebook. Sign in with your Davidson email and Duo. The site root opens a guest dashboard, and courses need sign-in. Since Feb. 1, 2021, Davidson's Moodle does not support the Moodle mobile app; T&I says to use the Open LMS app (https://apps.apple.com/us/app/open-lms/id1553337282) or a mobile browser.",
-    requiresLogin: true,
-    category: "academics",
-    source: null,
-    sources: ["https://support.ti.davidson.edu/hc/en-us/articles/4588057604247-Moodle-Overview"],
     verifiedAt: "2026-09-30",
   },
   {

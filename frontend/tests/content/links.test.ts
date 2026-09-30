@@ -3,6 +3,7 @@ import { PORTAL_LINK_CATEGORIES } from "@/lib/types/content";
 import {
   getLink,
   HANDSHAKE,
+  HANDSHAKE_DOCUMENTED_PATHS,
   handshakeUrl,
   linkForSource,
   LINKS_VERIFIED_AT,
@@ -11,9 +12,12 @@ import {
 } from "@/server/content/links";
 
 describe("portal links", () => {
-  it("holds the verified links minus the Handshake SSO path", () => {
-    expect(PORTAL_LINKS).toHaveLength(38);
+  it("holds the verified links minus the Handshake SSO path and Moodle", () => {
+    expect(PORTAL_LINKS).toHaveLength(37);
     expect(getLink("handshake-sso")).toBeUndefined();
+    // Moodle is out of scope until T&I approves (PLAN §1).
+    expect(getLink("moodle")).toBeUndefined();
+    for (const link of PORTAL_LINKS) expect(new URL(link.url).hostname).not.toMatch(/moodle/);
     expect(getLink("handshake")?.url).toBe("https://davidson.joinhandshake.com/");
     expect(getLink("davidsonian")?.url).toBe("https://thedavidsonian.news/");
     expect(LINKS_VERIFIED_AT).toBe("2026-09-30");
@@ -38,6 +42,16 @@ describe("portal links", () => {
       if (link.source === "handshake")
         expect(link.url).toMatch(/^https:\/\/davidson\.joinhandshake\.com\//);
     }
+  });
+
+  it("links Handshake only at its base URL or a path a Davidson page publishes", () => {
+    const handshake = PORTAL_LINKS.filter((link) =>
+      new URL(link.url).hostname.endsWith("joinhandshake.com"),
+    );
+    expect(handshake.map((link) => new URL(link.url).pathname)).toEqual(["/", "/appointments"]);
+    const appointments = getLink("handshake-appointments");
+    expect(appointments?.sources).toContain(HANDSHAKE_DOCUMENTED_PATHS["/appointments"]);
+    expect(Object.isFrozen(HANDSHAKE_DOCUMENTED_PATHS)).toBe(true);
   });
 
   it("never links the spam davidsonian.com domain or plain http", () => {
