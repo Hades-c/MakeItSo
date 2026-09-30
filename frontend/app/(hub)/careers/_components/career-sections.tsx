@@ -5,7 +5,7 @@ import { SourceTag } from "@/components/ui/source-tag";
 import { StatNumber } from "@/components/ui/stat-number";
 import type { Career, ResourceLink } from "@/lib/types/content";
 import { formatContentDate, formatUsd } from "../_lib/format";
-import type { ResolvedResource } from "../_lib/resources";
+import { normalizeUrl, type ResolvedResource } from "../_lib/resources";
 import { CopyTextButton } from "./copy-text-button";
 import { ExternalLink } from "./external-link";
 
@@ -53,23 +53,45 @@ export function PayCard({ pay }: { pay: Career["pay"] }) {
   );
 }
 
-function ResourceFacts({ program }: { program: NonNullable<ResolvedResource["program"]> }) {
+function ResourceFacts({
+  program,
+  resourceUrl,
+}: {
+  program: NonNullable<ResolvedResource["program"]>;
+  resourceUrl: string;
+}) {
   if (program.amount === null && program.deadlineText === null) return null;
+  const elsewhere = normalizeUrl(program.url) !== normalizeUrl(resourceUrl);
   return (
-    <dl className="mt-2 flex flex-col gap-1 text-sm">
-      {program.amount !== null ? (
-        <div className="flex flex-wrap gap-x-2">
-          <dt className="font-semibold text-fg">Amount</dt>
-          <dd className="text-fg-2">{program.amount}</dd>
-        </div>
+    <div className="mt-2 text-sm" data-testid="resource-facts">
+      <dl className="flex flex-col gap-1">
+        {program.named ? null : (
+          <div className="flex flex-wrap gap-x-2">
+            <dt className="font-semibold text-fg">Program</dt>
+            <dd className="text-fg-2">{program.name}</dd>
+          </div>
+        )}
+        {program.amount !== null ? (
+          <div className="flex flex-wrap gap-x-2">
+            <dt className="font-semibold text-fg">Amount</dt>
+            <dd className="text-fg-2">{program.amount}</dd>
+          </div>
+        ) : null}
+        {program.deadlineText !== null ? (
+          <div className="flex flex-wrap gap-x-2">
+            <dt className="font-semibold text-fg">Deadlines</dt>
+            <dd className="text-fg-2">{program.deadlineText}</dd>
+          </div>
+        ) : null}
+      </dl>
+      {elsewhere ? (
+        <p className="mt-1">
+          <ExternalLink href={program.url} className="text-sm">
+            Where this is published
+          </ExternalLink>
+        </p>
       ) : null}
-      {program.deadlineText !== null ? (
-        <div className="flex flex-wrap gap-x-2">
-          <dt className="font-semibold text-fg">Deadlines</dt>
-          <dd className="text-fg-2">{program.deadlineText}</dd>
-        </div>
-      ) : null}
-    </dl>
+    </div>
   );
 }
 
@@ -91,8 +113,11 @@ export function DavidsonResourcesCard({
           <li
             key={resource.url + resource.name}
             className="py-3 first:pt-0 last:pb-0"
-            data-aggregated={resource.source ?? undefined}
+            // Every item is marked, tagged or not: an untagged one names its exemption, which expectAllTagged
+            // checks against UNTAGGED_EXEMPTIONS (so a new untagged kind fails instead of passing unnoticed).
+            data-aggregated={resource.source ?? "untagged"}
             data-source={resource.source ?? undefined}
+            data-untagged={resource.source ? undefined : (resource.untagged ?? "")}
           >
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <ExternalLink href={resource.url}>{resource.name}</ExternalLink>
@@ -100,9 +125,14 @@ export function DavidsonResourcesCard({
               {resource.officeName ? (
                 <span className="text-xs text-fg-3">{resource.officeName}</span>
               ) : null}
+              {resource.untagged === "davidson-web" ? (
+                <span className="text-xs text-fg-3">davidson.edu page</span>
+              ) : null}
             </div>
             <p className="mt-1 text-sm text-fg-2">{resource.description}</p>
-            {resource.program ? <ResourceFacts program={resource.program} /> : null}
+            {resource.program ? (
+              <ResourceFacts program={resource.program} resourceUrl={resource.url} />
+            ) : null}
           </li>
         ))}
       </ul>

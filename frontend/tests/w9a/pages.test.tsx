@@ -139,6 +139,52 @@ describe("/careers/[slug]", () => {
     expect(document.body).not.toHaveTextContent(/AI · verify/);
   });
 
+  it("shows an office program's published deadline when the resource links the program's parent page", async () => {
+    render(await careerPage.default(slug("international-development")));
+    const resources = screen.getByRole("region", { name: "At Davidson" });
+    const rusk = within(resources)
+      .getByRole("link", { name: "Dean Rusk Travel Grants" })
+      .closest("li")!;
+    // Tomorrow (2026-10-01) is the winter-break deadline: exactly as published.
+    expect(rusk).toHaveTextContent(
+      "DeadlinesWinter Break: Applications must be submitted by October 1.",
+    );
+    expect(within(rusk).getByRole("link", { name: "Where this is published" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/\/dean-rusk-travel-grants\/application-process$/),
+    );
+  });
+
+  it("shows the named program's amount on a page several programs share", async () => {
+    render(await careerPage.default(slug("nonprofit")));
+    const resources = screen.getByRole("region", { name: "At Davidson" });
+    const fellows = within(resources)
+      .getByRole("link", { name: /^Nonprofit Leadership Fellows/ })
+      .closest("li")!;
+    expect(fellows).toHaveTextContent("Amount$3,500 stipend + housing");
+  });
+
+  it("marks every Davidson resource: a tag, or an allowed exemption said in words", async () => {
+    render(await careerPage.default(slug("arts-museum-curation")));
+    const items = screen.getByRole("region", { name: "At Davidson" }).querySelectorAll("li");
+    expect(items.length).toBe(getCareer("arts-museum-curation")!.davidsonResources.length);
+    for (const item of items) {
+      const source = item.getAttribute("data-aggregated");
+      expect(source).toBeTruthy();
+      if (source === "untagged") {
+        expect(item).toHaveAttribute("data-untagged", "davidson-web");
+        expect(item).toHaveTextContent("davidson.edu page");
+      } else {
+        expect(item.querySelector(`[data-source="${source}"]`)).toHaveTextContent(/^Source:/);
+      }
+    }
+    // The galleries' page is an offices-and-services page: DAVIDSON OFFICES, not untagged.
+    const galleries = screen
+      .getByRole("link", { name: /^Van Every\/Smith Galleries/ })
+      .closest("li");
+    expect(galleries).toHaveAttribute("data-aggregated", "davidson-offices");
+  });
+
   it("answers 404 for a slug that is not one of the 24", async () => {
     for (const value of [
       "astronaut",

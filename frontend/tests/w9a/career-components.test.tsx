@@ -138,34 +138,60 @@ describe("career page sections", () => {
         url: "https://www.davidson.edu/try-it",
         description: "Small grants.",
         source: "hurt-hub-programs",
+        untagged: null,
         officeName: null,
         program: {
           slug: "try-it-fund",
+          name: "Try It Fund",
+          named: true,
+          url: "https://www.davidson.edu/try-it/",
           amount: "Up to $500",
           deadlineText: "Rolling",
           verifiedAt: "2026-09-30",
         },
       },
       {
-        name: "Fellows",
+        name: "Travel Grants",
         url: "https://www.davidson.edu/fellows",
         description: "A fellowship.",
         source: "davidson-offices",
+        untagged: null,
         officeName: "Mulliss Center for Civic Engagement",
         program: {
           slug: "fellows",
+          name: "Travel Grants",
+          named: true,
+          url: "https://www.davidson.edu/fellows/application-process",
           amount: null,
-          deadlineText: "March 1",
+          deadlineText: "Winter Break: by October 1",
           verifiedAt: "2026-09-30",
         },
       },
       {
         name: "Department research",
-        url: "https://www.davidson.edu/dept",
+        url: "https://www.davidson.edu/academic-departments/dept",
         description: "Research.",
         source: null,
+        untagged: "davidson-web",
         officeName: null,
         program: null,
+      },
+      {
+        name: "Law School Resources (Prelaw)",
+        url: "https://www.davidson.edu/prelaw/resources",
+        description: "Resources.",
+        source: "davidson-offices",
+        untagged: null,
+        officeName: "Prelaw Advising",
+        program: {
+          slug: "fee-grant",
+          name: "Law school application fee grant",
+          named: false,
+          url: "https://www.davidson.edu/prelaw/resources",
+          amount: "$500",
+          deadlineText: null,
+          verifiedAt: "2026-09-30",
+        },
       },
     ];
     render(<DavidsonResourcesCard resources={resources} verifiedAt="2026-09-30" />);
@@ -177,18 +203,58 @@ describe("career page sections", () => {
     );
     expect(items[0]).toHaveTextContent("AmountUp to $500");
     expect(items[0]).toHaveTextContent("DeadlinesRolling");
+    // Same page (a trailing slash apart): no second link, no "Program" line.
+    expect(within(items[0]!).getAllByRole("link")).toHaveLength(1);
+    expect(items[0]).not.toHaveTextContent("Program");
+
     expect(within(items[1]!).getByText("Davidson offices")).toHaveAttribute(
       "data-source",
       "davidson-offices",
     );
     expect(items[1]).toHaveTextContent("Mulliss Center for Civic Engagement");
     expect(items[1]).not.toHaveTextContent("Amount");
-    expect(items[2]).not.toHaveAttribute("data-aggregated");
+    expect(items[1]).toHaveTextContent("DeadlinesWinter Break: by October 1");
+    // The deadline is published on another page: it is linked.
+    expect(
+      within(items[1]!).getByRole("link", { name: "Where this is published" }),
+    ).toHaveAttribute("href", "https://www.davidson.edu/fellows/application-process");
+
+    // Untagged only with its exemption, in plain words (no tag).
+    expect(items[2]).toHaveAttribute("data-aggregated", "untagged");
+    expect(items[2]).toHaveAttribute("data-untagged", "davidson-web");
     expect(items[2]!.querySelector("[data-source]")).toBeNull();
+    expect(items[2]).toHaveTextContent("davidson.edu page");
+
+    // Facts of a program the resource's name does not say: the program is named.
+    expect(items[3]).toHaveTextContent("ProgramLaw school application fee grant");
+    expect(items[3]).toHaveTextContent("Amount$500");
+
     for (const link of screen.getAllByRole("link")) {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
     }
     expect(screen.getByText(/checked/)).toHaveTextContent("checked Sep 30, 2026");
+  });
+
+  it("marks an untagged item without an exemption so expectAllTagged fails on it", () => {
+    render(
+      <DavidsonResourcesCard
+        verifiedAt="2026-09-30"
+        resources={[
+          {
+            name: "Somewhere",
+            url: "https://example.org/",
+            description: "?",
+            source: null,
+            untagged: null,
+            officeName: null,
+            program: null,
+          },
+        ]}
+      />,
+    );
+    const item = screen.getByRole("listitem");
+    expect(item).toHaveAttribute("data-aggregated", "untagged");
+    expect(item).toHaveAttribute("data-untagged", "");
   });
 
   it("links Handshake by its base URL with words to copy (no invented search URL)", async () => {
