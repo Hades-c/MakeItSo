@@ -7,8 +7,12 @@ import mongoose, {
 
 /**
  * Mailbox verification codes, collection `verificationcodes` (PLAN §1, §6.1 W3; owner W3). The 6-digit code is
- * stored only as a sha256 hash; 15-minute TTL (`expiresAt`), 5 attempts, 3 sends per hour. One live code per
- * (userId, purpose); a new send replaces it.
+ * stored only as a sha256 hash. One live code per (userId, purpose); a new send replaces it.
+ * - Lifetime: 15 minutes. `expiresAt` is checked in code, and the TTL index then deletes the document.
+ * - Attempts: 5 per code (`attempts`, reset by a new send).
+ * - Sends: 3 per hour per user, enforced with `consumeRateLimit("verify-resend:user:<userId>", 3, 3600)` in the
+ *   ratelimits collection (server/http/rate-limit.ts). NOT counted here: this document disappears with its
+ *   15-minute code, so a counter in it would reset every 15 minutes and allow about 12 sends an hour.
  */
 const VerificationCodeSchema = new Schema(
   {
@@ -18,8 +22,7 @@ const VerificationCodeSchema = new Schema(
     purpose: { type: String, enum: ["verify-email"], required: true, default: "verify-email" },
     codeHash: { type: String, required: true },
     attempts: { type: Number, default: 0 },
-    /** Sends in the current hour (for the 3/h resend limit). */
-    sendCount: { type: Number, default: 1 },
+    /** When this code was sent (shown as "sent at …"; the resend limit lives in ratelimits). */
     lastSentAt: { type: Date, required: true },
     consumedAt: { type: Date, default: null },
     expiresAt: { type: Date, required: true },
