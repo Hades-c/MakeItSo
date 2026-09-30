@@ -41,12 +41,12 @@
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202501",
       "file": "courses-202501.json",
-      "note": "subset: 130 sections across every department, incl. HUM 103/104, WRI 101, every cross-listed section with its siblings (by CRN), TBA meetings, 0-credit MUS/MIL, every note code used that term, the one NSCI section (PHY 395 A), the RMP collision instructors. Upstream has no reg_fors or Staff sections in 202501/202502: test those with 202602"
+      "note": "subset: 133 sections across every department (130 plus SOC 226 A, ENV 201 A and XPL 099 A, quoted by curated content), incl. HUM 103/104, WRI 101, every cross-listed section with its siblings (by CRN), TBA meetings, 0-credit MUS/MIL, every note code used that term, the one NSCI section (PHY 395 A), the RMP collision instructors. Upstream has no reg_fors or Staff sections in 202501/202502: test those with 202602"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202502",
       "file": "courses-202502.json",
-      "note": "subset: 133 sections across every department, incl. HUM 103/104, WRI 101, every cross-listed section with its siblings (by CRN), TBA meetings, 0-credit MUS/MIL, every note code used that term, the RMP collision instructors. Upstream has no NSCI, reg_fors or Staff sections in 202502: test those with 202501/202602"
+      "note": "subset: 139 sections across every department (133 plus ECO 329 A, ART 348 A, CSC 353 A, ENV 201 A, XPL 099 A and PSY 234 A, quoted by curated content), incl. HUM 103/104, WRI 101, every cross-listed section with its siblings (by CRN), TBA meetings, 0-credit MUS/MIL, every note code used that term, the RMP collision instructors. Upstream has no NSCI, reg_fors or Staff sections in 202502: test those with 202501/202602"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202601",

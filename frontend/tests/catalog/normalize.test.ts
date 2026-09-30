@@ -106,7 +106,7 @@ describe("meetings (PLAN §5 Sections)", () => {
         }
       }
     }
-    expect(tba).toBe(262);
+    expect(tba).toBe(264);
     const study = fixtureSection("202601", "CSC 395", "A");
     expect(study.meetings).toEqual([
       { days: [], start: null, end: null, kind: "class", tba: true },

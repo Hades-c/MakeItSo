@@ -318,7 +318,7 @@ describe("every recorded description", () => {
         if (prerequisitesText) withPrerequisites += 1;
       }
     }
-    expect(count).toBe(1669);
+    expect(count).toBe(1678);
     expect(withPrerequisites).toBeGreaterThan(1000);
   });
 });

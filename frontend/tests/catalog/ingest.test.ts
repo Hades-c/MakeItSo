@@ -257,11 +257,12 @@ describe("the empty / < 50% guard (PLAN §5: never replace a non-empty term)", (
   it("never shrinks a past term by more than 10% (its schedule is final)", async () => {
     const past = fixtureItems("202501"); // Fall 2025: a past term on 2026-09-30
     await ingestTerm("202501");
-    const shrunk = past.slice(0, 110); // 85% of 130
+    expect(past).toHaveLength(133);
+    const shrunk = past.slice(0, 110); // 83% of 133
     const outcome = await ingestTerm("202501", { fetchPage: async () => shrunk, timeoutMs: 8000 });
-    expect(outcome).toMatchObject({ status: "rejected", sectionCount: 130 });
+    expect(outcome).toMatchObject({ status: "rejected", sectionCount: 133 });
     expect((await meta("202501"))?.lastError).toContain("Upstream returned 110 sections");
-    const slight = past.slice(0, 120); // 92%
+    const slight = past.slice(0, 120); // 90%
     expect(
       (await ingestTerm("202501", { fetchPage: async () => slight, timeoutMs: 8000 })).status,
     ).toBe("updated");

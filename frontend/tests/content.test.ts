@@ -129,16 +129,10 @@ const ALL_STRINGS = EXPORTED_DATA.flatMap(([name, value]) => [...strings(value, 
 /**
  * Real courses that texts quote (official prerequisite wording, an office's program name) whose sections are in
  * the live course API but not in the fixture subsets. Each is listed with the live section that proves it; remove
- * an entry once the fixtures carry that term's section (W4b contractRequest).
+ * an entry once the fixtures carry that term's section. Empty: the fixture subsets now carry every quoted course
+ * (CSC 353, ENV 201, PSY 234, XPL 099, and SOC 226 / ECO 329 / ART 348 in careers).
  */
-const QUOTED_OUTSIDE_FIXTURES: Readonly<Record<string, string>> = {
-  "CSC 353": "Database Systems, 202502 CRN 20142 (quoted in a data-science prerequisite)",
-  "ENV 201":
-    "Environmental Science +Lab, 202501 CRN 10208 / 202502 CRN 20219 (quoted prerequisite)",
-  "PSY 234":
-    "Child Psychopathology, 202502 CRN 20402 (quoted catalog prerequisite, 'PSY 231 or 234')",
-  "XPL 099": "Internship, 202501 CRN 10684 / 202502 CRN 20634 (Matthews Center program name)",
-};
+const QUOTED_OUTSIDE_FIXTURES: Readonly<Record<string, string>> = {};
 
 /** Tokens shaped like a course code that are not courses. Anything else shaped like one is checked. */
 const NOT_COURSE_CODES: Readonly<Record<string, string>> = {
@@ -266,7 +260,19 @@ describe("(a) course codes exist in the fixture catalog", () => {
   });
 
   it("keeps the exception lists minimal and in use", () => {
+    expect(Object.keys(QUOTED_OUTSIDE_FIXTURES)).toEqual([]);
     const quoted = new Set(ALL_STRINGS.flatMap(([, text]) => codesIn(text)));
+    for (const code of [
+      "CSC 353",
+      "ENV 201",
+      "PSY 234",
+      "XPL 099",
+      "SOC 226",
+      "ECO 329",
+      "ART 348",
+    ]) {
+      expect([code, fixtureCodes.has(code), quoted.has(code)]).toEqual([code, true, true]);
+    }
     for (const code of Object.keys(QUOTED_OUTSIDE_FIXTURES)) {
       expect([code, fixtureCodes.has(code), quoted.has(code)]).toEqual([code, false, true]);
     }

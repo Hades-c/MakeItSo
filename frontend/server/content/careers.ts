@@ -13,11 +13,8 @@ import { defineContent } from "@/server/content/define";
  *   minor / interdisciplinary-minor type from each program's cores).
  * - `pay` is the BLS Occupational Outlook Handbook median (May 2025) and 2025-35 projection, with its own URL.
  * - Every Davidson and external resource URL answered HTTP 200 and says what the entry claims.
- * - Held back until the course-schedule fixtures include them (they are real, verified courses, but the offline
- *   CI gate in tests/content.test.ts can only confirm codes present in the fixture terms):
- *   sports-management: SOC 226 Sociology of Sport (live term 202501): Examines sport as a social institution, from youth and college sports (including Title IX and pay for college athletes) to professional sports, media portrayals, and sport activism.
- *   sports-management: ECO 329 Sports Economics (live term 202502): Covers the structure of the professional sports industry, public finance of stadiums and team ownership, labor markets in pro sports, and the economics of NCAA athletics; requires ECO 202 and ECO 205.
- *   arts-museum-curation: ART 348 Buying and Collecting Art (live term 202502): A project-based course in curatorial and collection practice: students research artworks, work with gallery owners, acquire works under the Galleries' acquisition policy, and mount an exhibition; requires two art history courses.
+ * - SOC 226 (Fall 2025), ECO 329 and ART 348 (Spring 2026) were held back until the course-schedule fixture
+ *   subsets carried their sections, which they now do, so the offline CI gate (tests/content.test.ts) confirms them.
  */
 
 const RECORDS = [
@@ -3751,6 +3748,16 @@ const RECORDS = [
         title: "Social Media Communication",
         why: "Examines how social media platforms work and their effects on culture, media, politics, and business; intended for Communication Studies majors or minors who have taken earlier Communication Studies electives.",
       },
+      {
+        code: "SOC 226",
+        title: "Sociology of Sport",
+        why: "Examines sport as a social institution, from youth and college sports (including Title IX and pay for college athletes) to professional sports, media portrayals, and sport activism.",
+      },
+      {
+        code: "ECO 329",
+        title: "Sports Economics",
+        why: "Covers the structure of the professional sports industry, public finance of stadiums and team ownership, labor markets in pro sports, and the economics of NCAA athletics; requires ECO 202 and ECO 205.",
+      },
     ],
     pay: {
       occupation: "Meeting, Convention, and Event Planners",
@@ -4095,6 +4102,11 @@ const RECORDS = [
         code: "THE 210",
         title: "Leadrshp&Mgt in Arts",
         why: "Introduces the management of non-profit cultural institutions, including leadership, marketing, fundraising, financial management, and board governance.",
+      },
+      {
+        code: "ART 348",
+        title: "Buying and Collecting Art",
+        why: "A project-based course in curatorial and collection practice: students research artworks, work with gallery owners, acquire works under the Galleries' acquisition policy, and mount an exhibition; requires two art history courses.",
       },
     ],
     pay: {

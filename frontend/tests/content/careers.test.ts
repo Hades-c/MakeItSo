@@ -82,11 +82,20 @@ describe("careers", () => {
     }
   });
 
-  it("holds back the three verified courses the fixture terms do not carry", () => {
+  it("carries the three verified courses once held back for the fixtures (now in the fixture terms)", () => {
     const all = careerCourseCodes();
-    for (const code of ["SOC 226", "ECO 329", "ART 348"]) expect(all).not.toContain(code);
-    expect(getCareer("sports-management")!.courses).toHaveLength(6);
-    expect(getCareer("arts-museum-curation")!.courses).toHaveLength(6);
+    for (const code of ["SOC 226", "ECO 329", "ART 348"]) expect(all).toContain(code);
+    expect(
+      getCareer("sports-management")!
+        .courses.map((c) => c.code)
+        .slice(-2),
+    ).toEqual(["SOC 226", "ECO 329"]);
+    expect(getCareer("sports-management")!.courses).toHaveLength(8);
+    expect(getCareer("arts-museum-curation")!.courses.at(-1)).toMatchObject({
+      code: "ART 348",
+      title: "Buying and Collecting Art",
+    });
+    expect(getCareer("arts-museum-curation")!.courses).toHaveLength(7);
   });
 
   it("groups careers by cluster in the contract's order", () => {
