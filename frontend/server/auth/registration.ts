@@ -1,6 +1,6 @@
 import "server-only";
 import type { Types } from "mongoose";
-import type { CheckInboxResponse } from "@/app/(auth)/_lib/contracts";
+import type { CheckInboxResponse } from "@/lib/api/account";
 import User from "@/models/User";
 import { eraseAccountData } from "@/server/account/erasers";
 import { issueCode, CODE_SENDS_PER_HOUR, markCodeSent } from "@/server/auth/codes";

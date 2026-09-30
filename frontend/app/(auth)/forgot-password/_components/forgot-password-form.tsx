@@ -11,13 +11,12 @@ import {
   type FieldSpecs,
 } from "@/app/(auth)/_components/field-errors";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
-import { authExtraApi, CodeSchema } from "@/app/(auth)/_lib/contracts";
 import { GENERIC_ERROR, NETWORK_ERROR } from "@/app/(auth)/_lib/messages";
 import { STANDALONE_LINK } from "@/app/(auth)/_lib/styles";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { EmailSchema, PasswordSchema } from "@/lib/api/account";
+import { accountApi, EmailSchema, PasswordSchema, VerificationCodeSchema } from "@/lib/api/account";
 import { ApiClientError, callApi } from "@/lib/api/client";
 import { routes } from "@/lib/routes";
 
@@ -68,7 +67,7 @@ export function ForgotPasswordForm() {
     }
     setLoading(true);
     try {
-      const result = await callApi(authExtraApi.requestPasswordReset, {
+      const result = await callApi(accountApi.requestPasswordReset, {
         body: { email: parsed.data },
       });
       setNotice(result.message);
@@ -82,7 +81,7 @@ export function ForgotPasswordForm() {
   async function reset(event: React.FormEvent) {
     event.preventDefault();
     const next: Errors = {};
-    const codeCheck = CodeSchema.safeParse(code.replace(/\s+/g, ""));
+    const codeCheck = VerificationCodeSchema.safeParse(code.replace(/\s+/g, ""));
     if (!codeCheck.success) next.code = codeCheck.error.issues[0]?.message;
     const passwordCheck = PasswordSchema.safeParse(newPassword);
     if (!passwordCheck.success) next.newPassword = passwordCheck.error.issues[0]?.message;
@@ -90,7 +89,7 @@ export function ForgotPasswordForm() {
     if (!codeCheck.success || !passwordCheck.success) return;
     setLoading(true);
     try {
-      await callApi(authExtraApi.confirmPasswordReset, {
+      await callApi(accountApi.confirmPasswordReset, {
         body: { email, code: codeCheck.data, newPassword },
       });
       const result = await signIn("credentials", { email, password: newPassword, redirect: false });

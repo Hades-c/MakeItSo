@@ -1,4 +1,4 @@
-import { authExtraApi } from "@/app/(auth)/_lib/contracts";
+import { accountApi } from "@/lib/api/account";
 import { consoleOutbox } from "@/server/auth/mailer";
 import { readEnv } from "@/server/env";
 import { ApiError, defineRoute } from "@/server/http";
@@ -23,7 +23,7 @@ function testMailboxEnabled(): boolean {
   }
 }
 
-export const GET = defineRoute(authExtraApi.testMailbox, async ({ query }) => {
+export const GET = defineRoute(accountApi.testMailbox, async ({ query }) => {
   if (!testMailboxEnabled()) throw new ApiError(404, "not_found", "Not found.");
   const messages = consoleOutbox()
     .filter((message) => message.to === query.email)

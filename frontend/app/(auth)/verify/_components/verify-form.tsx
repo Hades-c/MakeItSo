@@ -5,13 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthCard } from "@/app/(auth)/_components/auth-card";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
-import { CodeSchema } from "@/app/(auth)/_lib/contracts";
 import { GENERIC_ERROR, NETWORK_ERROR } from "@/app/(auth)/_lib/messages";
 import { STANDALONE_LINK } from "@/app/(auth)/_lib/styles";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { accountApi } from "@/lib/api/account";
+import { accountApi, VerificationCodeSchema } from "@/lib/api/account";
 import { ApiClientError, callApi } from "@/lib/api/client";
 import { routes } from "@/lib/routes";
 
@@ -50,7 +49,7 @@ export function VerifyForm({ email, next, codeSent, notice = null }: VerifyFormP
     event.preventDefault();
     setError(null);
     setStatus(null);
-    const parsed = CodeSchema.safeParse(code.replace(/\s+/g, ""));
+    const parsed = VerificationCodeSchema.safeParse(code.replace(/\s+/g, ""));
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Enter the 6-digit code");
       codeInput.current?.focus();

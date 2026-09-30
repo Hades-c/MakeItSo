@@ -115,6 +115,32 @@ describe("lib/api route contracts (PLAN §4.1.16)", () => {
     });
   });
 
+  it("account: enumeration-safe answers are 202 check-inbox; reset and test-mailbox routes have contracts", () => {
+    for (const spec of [accountApi.register, accountApi.requestPasswordReset]) {
+      expect(spec.status).toBe(202);
+      expect(spec.response.parse({ status: "check-inbox", message: "Check your inbox." })).toEqual({
+        status: "check-inbox",
+        message: "Check your inbox.",
+      });
+      expect(spec.response.safeParse({ message: "Check your inbox." }).success).toBe(false);
+    }
+    const reset = { email: " Casey@Davidson.edu ", code: "123456", newPassword: "long enough pw" };
+    expect(accountApi.confirmPasswordReset.body.parse(reset).email).toBe("casey@davidson.edu");
+    expect(
+      accountApi.confirmPasswordReset.body.safeParse({ ...reset, code: "12345" }).success,
+    ).toBe(false);
+    expect(accountApi.confirmPasswordReset.response).toBeNull();
+    // Legacy accounts may reset too: any address, not only @davidson.edu.
+    expect(accountApi.requestPasswordReset.body.safeParse({ email: "a@gmail.com" }).success).toBe(
+      true,
+    );
+    expect(accountApi.testMailbox).toMatchObject({
+      method: "GET",
+      path: "/api/auth/test-mailbox",
+      auth: "public",
+    });
+  });
+
   it("fills path parameters", () => {
     expect(buildPath(planApi.updateItem.path, { id: "abc" })).toBe("/api/plan/items/abc");
     expect(buildPath(catalogApi.course.path, { term: "202602", code: "CSC-221" })).toBe(

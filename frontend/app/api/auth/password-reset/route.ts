@@ -1,4 +1,4 @@
-import { authExtraApi } from "@/app/(auth)/_lib/contracts";
+import { accountApi } from "@/lib/api/account";
 import { requestPasswordReset } from "@/server/auth";
 import { RESET_REQUEST_RULE } from "@/server/auth/rate-limits";
 import { defineRoute } from "@/server/http";
@@ -8,6 +8,6 @@ import { defineRoute } from "@/server/http";
  * happens after the response); 503 while no mail provider is configured; 5 per hour per client IP.
  */
 export const POST = defineRoute(
-  { ...authExtraApi.requestPasswordReset, rateLimit: RESET_REQUEST_RULE },
+  { ...accountApi.requestPasswordReset, rateLimit: RESET_REQUEST_RULE },
   async ({ body }) => requestPasswordReset(body.email),
 );

@@ -3,9 +3,9 @@ import { apiRoute } from "@/lib/api/spec";
 import { IsoDateTimeSchema, ObjectIdSchema } from "@/lib/types/common";
 
 /**
- * Account and registration contracts (W3: app/api/{auth,account,me}/**; PLAN §1 "Sign-up", §6.1 W3). The route
- * that exists today (POST /api/auth/register) keeps its wave-0 behaviour until W3 moves it to these schemas; the
- * notes below say what changes. The profile lives in lib/api/profile.ts.
+ * Account and registration contracts (W3: app/api/{auth,account,me}/**; PLAN §1 "Sign-up", §6.1 W3). Every
+ * endpoint that could reveal whether an address has an account answers the same 202 "check your inbox". The
+ * profile lives in lib/api/profile.ts.
  */
 
 // ---- E-mail and passwords ----------------------------------------------------------------------------------------
@@ -63,8 +63,22 @@ export const PasswordSchema = z
 // ---- Registration and verification -------------------------------------------------------------------------------
 
 /**
- * POST /api/auth/register (W3 target). Always answers 202 "Check your Davidson inbox" (no account enumeration).
- * Wave-0 behaviour until W3: any e-mail, password ≥ 8, 201 `{ message, userId }`.
+ * What every enumeration-safe "we e-mailed you" endpoint answers (202): registration and "Forgot password". The
+ * answer is the same whether or not the address has an account; `message` says what to do next (it differs only
+ * by whether mail can be sent at all).
+ */
+export const CheckInboxResponseSchema = z.object({
+  status: z.literal("check-inbox"),
+  message: z.string(),
+});
+export type CheckInboxResponse = z.infer<typeof CheckInboxResponseSchema>;
+
+/** A 6-digit one-time code (mailbox verification, password reset). */
+export const VerificationCodeSchema = z.string().regex(/^\d{6}$/, "Enter the 6-digit code");
+
+/**
+ * POST /api/auth/register: new accounts are @davidson.edu only (PLAN §1). Always answers 202
+ * `{ status: "check-inbox", message }` (no account enumeration).
  */
 export const RegisterBodySchema = z
   .object({
@@ -74,12 +88,10 @@ export const RegisterBodySchema = z
     graduationYear: z.number().int().min(2000).max(2100).optional(),
   })
   .strict();
-export const RegisterResponseSchema = z.object({ message: z.string() });
+export const RegisterResponseSchema = CheckInboxResponseSchema;
 
 /** 6-digit mailbox verification code (15 min TTL, 5 attempts, 3 resends per hour). */
-export const VerifyBodySchema = z
-  .object({ code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code") })
-  .strict();
+export const VerifyBodySchema = z.object({ code: VerificationCodeSchema }).strict();
 export const VerifyResponseSchema = z.object({
   verified: z.literal(true),
   emailVerifiedAt: IsoDateTimeSchema,
@@ -90,6 +102,32 @@ export const ChangePasswordBodySchema = z
   .strict();
 
 export const DeleteAccountBodySchema = z.object({ password: z.string().min(1).max(200) }).strict();
+
+/** POST /api/auth/password-reset: always 202 (no account enumeration); 503 while no mail provider exists. */
+export const PasswordResetRequestBodySchema = z.object({ email: EmailSchema }).strict();
+
+/** POST /api/auth/password-reset/confirm: the code from the e-mail + the new password → 204. */
+export const PasswordResetConfirmBodySchema = z
+  .object({ email: EmailSchema, code: VerificationCodeSchema, newPassword: PasswordSchema })
+  .strict();
+
+/**
+ * GET /api/auth/test-mailbox?email= (FIXTURES ONLY: EXTERNAL_MODE=fixtures + MAIL_PROVIDER=console, never on
+ * Vercel; 404 everywhere else): the console mailer's recent messages to one address, so e2e can read codes.
+ */
+export const TestMailboxQuerySchema = z.object({ email: EmailSchema });
+export const TestMailboxResponseSchema = z.object({
+  messages: z.array(
+    z.object({
+      kind: z.string(),
+      to: z.string(),
+      subject: z.string(),
+      text: z.string(),
+      code: z.string().nullable(),
+      sentAt: IsoDateTimeSchema,
+    }),
+  ),
+});
 
 /** GET /api/me: who is signed in and what they may use. */
 export const MeResponseSchema = z.object({
@@ -160,5 +198,30 @@ export const accountApi = {
     path: "/api/account/sessions",
     auth: "user",
     response: null,
+  }),
+  /** POST /api/auth/password-reset: e-mail a reset code if an account uses the address; always 202. */
+  requestPasswordReset: apiRoute({
+    method: "POST",
+    path: "/api/auth/password-reset",
+    auth: "public",
+    body: PasswordResetRequestBodySchema,
+    response: CheckInboxResponseSchema,
+    status: 202,
+  }),
+  /** POST /api/auth/password-reset/confirm: address + code + new password → 204 (signs out other sessions). */
+  confirmPasswordReset: apiRoute({
+    method: "POST",
+    path: "/api/auth/password-reset/confirm",
+    auth: "public",
+    body: PasswordResetConfirmBodySchema,
+    response: null,
+  }),
+  /** GET /api/auth/test-mailbox?email= — fixtures-only e2e hook (see TestMailboxQuerySchema); 404 elsewhere. */
+  testMailbox: apiRoute({
+    method: "GET",
+    path: "/api/auth/test-mailbox",
+    auth: "public",
+    query: TestMailboxQuerySchema,
+    response: TestMailboxResponseSchema,
   }),
 } as const;

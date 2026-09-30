@@ -1,4 +1,4 @@
-import { authExtraApi } from "@/app/(auth)/_lib/contracts";
+import { accountApi } from "@/lib/api/account";
 import { confirmPasswordReset } from "@/server/auth";
 import { RESET_CONFIRM_RULE } from "@/server/auth/rate-limits";
 import { defineRoute } from "@/server/http";
@@ -8,7 +8,7 @@ import { defineRoute } from "@/server/http";
  * 400, whether or not the address has an account; 10 per 15 minutes per client IP.
  */
 export const POST = defineRoute(
-  { ...authExtraApi.confirmPasswordReset, rateLimit: RESET_CONFIRM_RULE },
+  { ...accountApi.confirmPasswordReset, rateLimit: RESET_CONFIRM_RULE },
   async ({ body }) => {
     await confirmPasswordReset(body.email, body.code, body.newPassword);
     return null;
