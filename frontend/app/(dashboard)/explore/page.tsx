@@ -1,125 +1,85 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  AlertCircle,
   ArrowRight,
   BookOpen,
   Brain,
   Briefcase,
-  Check,
   ChevronDown,
   ChevronRight,
-  Filter,
+  Clock,
   GraduationCap,
   Lightbulb,
   Loader2,
-  MessageSquare,
-  Plus,
-  RefreshCw,
+  MapPin,
   Search,
   Sparkles,
-  Star,
-  ThumbsUp,
-  TrendingUp,
-  Users,
   X,
-  Zap,
 } from "lucide-react";
 import { SUBJECT_AREAS } from "@/lib/utils";
-import { DAVIDSON_COURSES, CATALOG_MAJOR_REQUIREMENTS, type SeedCourse, type ProfessorRMPData } from "@/lib/davidson-courses";
-// Major name -> abbreviation map
-const MAJOR_ABBREV: Record<string, string> = {
-  "Computer Science": "CSC",
-  Mathematics: "MAT",
-  Economics: "ECO",
-  Biology: "BIO",
-  Chemistry: "CHE",
-  Physics: "PHY",
-  Psychology: "PSY",
-  "Political Science": "POL",
-  English: "ENG",
-  History: "HIS",
-  Sociology: "SOC",
-  Philosophy: "PHI",
-  Anthropology: "ANT",
-  Art: "ART",
-  Music: "MUS",
-  Theatre: "THE",
-  "Religious Studies": "REL",
-  "Environmental Studies": "ENV",
-  "Educational Studies": "EDU",
-  "Communication Studies": "COM",
-  "French & Francophone Studies": "FRE",
-  "German Studies": "GER",
-  "Hispanic Studies": "SPA",
-  "Africana Studies": "AFR",
-  "Gender & Sexuality Studies": "GSS",
-  "Public Health": "PBH",
-  "Chinese Studies": "CHI",
-  Classics: "CLA",
-  Dance: "DAN",
-  "Digital Studies": "DIG",
-};
+import { AddToPlan, type PlanCourseSummary } from "@/components/add-to-plan";
+import type { TermInfo } from "@/lib/terms";
 
-function formatMajorReq(majors: string[]): string {
-  return (
-    majors
-      .map(
-        (m) =>
-          MAJOR_ABBREV[m] || m.split(" ")[0].toUpperCase().slice(0, 3)
-      )
-      .join("/") + " Req."
-  );
+// Course as returned by /api/courses/davidson (live Davidson API data only).
+// Static enrichment from lib/davidson-courses.ts and the static RateMyProfessors
+// overlay were removed: they attached other courses' prerequisites and other
+// professors' ratings to live courses.
+interface CourseSection {
+  section: string;
+  crn?: number;
+  title: string;
+  instructors: string[];
+  schedule: string;
+  location: string;
+  credits: number;
+  enrollment: { current: number; max: number; remaining: number };
 }
 
 interface LiveCourse {
   code: string;
   name: string;
   description: string;
+  prerequisites: string;
   department: string;
   deptCode: string;
   professor: string;
   instructors: string[];
   sections: number;
+  sectionList: CourseSection[];
   enrollment: { current: number; max: number };
   gradRequirements: string[];
+  gradRequirementLabels: string[];
   schedule: string;
   location: string;
+  credits: number;
 }
 
-// Enriched course: live data as primary, optionally enriched with static metadata
-interface EnrichedCourse {
-  // Core fields (from live API, or static fallback)
+interface CoursesResponse {
+  courses: LiveCourse[];
+  total: number;
+  sectionCount: number;
+  term: string;
+  termCode: string;
+  terms: { active: TermInfo; registration: TermInfo };
+  fetchedAt: string;
+  stale: boolean;
+}
+
+interface Recommendation {
   code: string;
   name: string;
-  description: string;
   department: string;
-  deptCode?: string;
-  professor: string;
-  instructors: string[];
-  sections: number;
-  enrollment?: { current: number; max: number };
-  gradRequirements: string[];
-  schedule?: string;
-  location?: string;
-  // Static enrichment (from DAVIDSON_COURSES fuzzy match)
-  credits?: number;
-  prerequisites: string[];
-  offered: ("Fall" | "Spring" | "Summer")[];
-  tags?: string[];
-  majorRequirements?: string[];
-  difficulty?: number;
-  professorInfo?: ProfessorRMPData;
-  courseInsights?: { keyTopics?: string[]; skillsGained?: string[] };
-  careerRelevance: { field: string; relevance: number }[];
-  // Source tracking
-  isLive: boolean;        // true if from live API
-  hasStaticMatch: boolean; // true if enriched with static data
+  credits: number;
+  reason: string;
+  careerImpact: string[];
+  priority: string;
+  offeredIn?: string[];
 }
 
 const AREA_TAG_COLORS: Record<string, string> = {
@@ -140,58 +100,10 @@ const AREA_DESCRIPTIONS: Record<string, string> = {
   languages: "Study world languages, cultural perspectives, and cross-cultural communication across global traditions.",
 };
 
-// Map Davidson grad requirement codes to readable labels
-const GRAD_REQ_LABELS: Record<string, string> = {
-  NSRQ: "Natural Science",
-  SSRQ: "Social Science",
-  HURQ: "Humanities",
-  LTRQ: "Literary Studies",
-  HARQ: "Historical Analysis",
-  CPRQ: "Cultural Pluralism",
-  JSRQ: "Justice, Equality & Community",
-  QRRQ: "Quantitative Reasoning",
-};
+const PAGE_SIZE = 50;
 
-// Build a professor RMP lookup by last name for live courses
-const PROF_RMP_BY_LAST_NAME: Record<string, ProfessorRMPData> = {};
-for (const c of DAVIDSON_COURSES) {
-  if (c.professorInfo?.rmpRating != null) {
-    const parts = c.professorInfo.name.replace(/^Dr\.\s*/i, "").trim().split(/\s+/);
-    const lastName = parts[parts.length - 1].toLowerCase();
-    if (lastName && !PROF_RMP_BY_LAST_NAME[lastName]) {
-      PROF_RMP_BY_LAST_NAME[lastName] = c.professorInfo;
-    }
-  }
-}
-
-function lookupProfRMP(professorName: string): ProfessorRMPData | undefined {
-  const parts = professorName.replace(/^Dr\.\s*/i, "").trim().split(/\s+/);
-  const lastName = parts[parts.length - 1].toLowerCase();
-  return lastName ? PROF_RMP_BY_LAST_NAME[lastName] : undefined;
-}
-
-// Find a static course by code, with fuzzy fallback (same dept prefix, closest number)
-function findStaticCourse(code: string): SeedCourse | undefined {
-  // Exact match first
-  const exact = DAVIDSON_COURSES.find((c) => c.code === code);
-  if (exact) return exact;
-  // Fuzzy: match dept prefix + closest course number
-  const match = code.match(/^([A-Z]{2,4})\s*(\d+)/);
-  if (!match) return undefined;
-  const [, prefix, numStr] = match;
-  const num = parseInt(numStr, 10);
-  const sameDept = DAVIDSON_COURSES.filter((c) => c.code.startsWith(prefix + " "));
-  if (sameDept.length === 0) return undefined;
-  // Find closest by course number
-  let best = sameDept[0];
-  let bestDist = Infinity;
-  for (const c of sameDept) {
-    const cNum = parseInt(c.code.replace(/\D+/g, ""), 10);
-    const dist = Math.abs(cNum - num);
-    if (dist < bestDist) { bestDist = dist; best = c; }
-  }
-  // Only match if within 15 of the requested number (e.g. 111 matches 112 but not 220)
-  return bestDist <= 15 ? best : undefined;
+function formatCredits(credits: number): string {
+  return credits === 1 ? "1 credit" : `${credits} credits`;
 }
 
 function getDeptColor(dept: string): { bg: string; text: string; border: string } {
@@ -230,37 +142,32 @@ export default function ExplorePage() {
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(false);
-  const [liveCourses, setLiveCourses] = useState<LiveCourse[]>([]);
-  const [liveLoading, setLiveLoading] = useState(false);
-  const [recommendations, setRecommendations] = useState<{
-    recommendations: Array<{
-      code: string;
-      name: string;
-      department: string;
-      credits: number;
-      reason: string;
-      careerImpact: string[];
-      difficulty: number;
-      priority: string;
-      prerequisites: string[];
-    }>;
-  } | null>(null);
+  const [recError, setRecError] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<{ recommendations: Recommendation[] } | null>(null);
+
+  // Live schedule for the selected term (default: registration term)
+  const [termCode, setTermCode] = useState<string | null>(null);
+  const [data, setData] = useState<CoursesResponse | null>(null);
+  const [liveLoading, setLiveLoading] = useState(true);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const termCache = useRef<Map<string, CoursesResponse>>(new Map());
+  const [terms, setTerms] = useState<{ active: TermInfo; registration: TermInfo } | null>(null);
 
   // Plan state for "Add to Plan" buttons
-  const [userPlanCourses, setUserPlanCourses] = useState<{ courseCode: string; courseName: string; status: string; semester: string; year: number }[]>([]);
-  const [addingToPlan, setAddingToPlan] = useState<string | null>(null);
+  const [userPlanCourses, setUserPlanCourses] = useState<PlanCourseSummary[]>([]);
   const planCourseCodes = new Set(userPlanCourses.map((c) => c.courseCode));
 
   const fetchUserPlan = useCallback(async () => {
     try {
       const res = await fetch("/api/plans");
       if (res.ok) {
-        const data = await res.json();
-        setUserPlanCourses(data.plan?.plannedCourses ?? []);
+        const json = await res.json();
+        setUserPlanCourses(json.plan?.plannedCourses ?? []);
       }
     } catch {
-      // silent
+      // plan badges are supplementary
     }
   }, []);
 
@@ -268,50 +175,48 @@ export default function ExplorePage() {
     fetchUserPlan();
   }, [fetchUserPlan]);
 
-  async function addCourseToPlan(courseCode: string, courseName: string) {
-    setAddingToPlan(courseCode);
-    try {
-      const currentYear = new Date().getFullYear();
-      const res = await fetch("/api/plans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseCode,
-          courseName,
-          semester: "Fall",
-          year: currentYear,
-          status: "planned",
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUserPlanCourses(data.plan?.plannedCourses ?? []);
-      }
-    } catch {
-      // silent
-    } finally {
-      setAddingToPlan(null);
-    }
-  }
-
-  // Fetch live courses from Davidson API
   useEffect(() => {
-    async function fetchLive() {
-      setLiveLoading(true);
-      try {
-        const res = await fetch("/api/courses/davidson");
-        if (res.ok) {
-          const data = await res.json();
-          setLiveCourses(data.courses || []);
-        }
-      } catch {
-        // Fall back to static data
-      } finally {
-        setLiveLoading(false);
-      }
+    let cancelled = false;
+    const cached = termCode ? termCache.current.get(termCode) : undefined;
+    if (cached) {
+      setData(cached);
+      setLiveError(null);
+      setLiveLoading(false);
+      return;
     }
-    fetchLive();
-  }, []);
+    setLiveLoading(true);
+    setLiveError(null);
+    fetch(`/api/courses/davidson${termCode ? `?term=${encodeURIComponent(termCode)}` : ""}`)
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (json?.terms) setTerms({ active: json.terms.active, registration: json.terms.registration });
+        if (!res.ok || !json?.courses) {
+          setLiveError(json?.error ?? "Could not load the Davidson course schedule. Please try again.");
+          setData(null);
+          return;
+        }
+        const resp = json as CoursesResponse;
+        termCache.current.set(resp.termCode, resp);
+        setData(resp);
+        if (!termCode) setTermCode(resp.termCode);
+      })
+      .catch(() => {
+        if (!cancelled) setLiveError("Could not reach the server. Check your connection and try again.");
+      })
+      .finally(() => {
+        if (!cancelled) setLiveLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [termCode]);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [termCode, searchQuery, selectedAreas, selectedDepartments]);
+
+  const liveCourses = data?.courses ?? [];
 
   const toggleArea = (id: string) => {
     setSelectedAreas((prev) =>
@@ -319,83 +224,45 @@ export default function ExplorePage() {
     );
   };
 
-  // Build enriched courses: only courses from the live schedule, enriched with static metadata
-  const allCourses: EnrichedCourse[] = liveCourses.map((lc) => {
-    const staticMatch = findStaticCourse(lc.code);
-    const isExactMatch = staticMatch?.code === lc.code;
-
-    // Resolve professor: prefer live non-Staff, then exact static match only
-    // Fuzzy matches (e.g. ECO 211→ECO 202) have wrong professors, so skip those
-    const prof = lc.professor && lc.professor !== "Staff"
-      ? lc.professor
-      : (isExactMatch ? staticMatch?.professor : undefined) || lc.professor;
-
-    // Resolve professor RMP info — only from exact static match or live professor lookup
-    const profInfo = (isExactMatch ? staticMatch?.professorInfo : undefined)
-      ?? (prof && prof !== "Staff" ? lookupProfRMP(prof) : undefined);
-
-    return {
-      code: lc.code,
-      name: lc.name,
-      description: (isExactMatch ? staticMatch?.description : undefined) || lc.description,
-      department: lc.department,
-      deptCode: lc.deptCode,
-      professor: prof,
-      instructors: lc.instructors,
-      sections: lc.sections,
-      enrollment: lc.enrollment,
-      gradRequirements: lc.gradRequirements,
-      schedule: lc.schedule,
-      location: lc.location,
-      credits: staticMatch?.credits,
-      prerequisites: staticMatch?.prerequisites ?? [],
-      offered: staticMatch?.offered ?? [],
-      tags: staticMatch?.tags,
-      majorRequirements: CATALOG_MAJOR_REQUIREMENTS[lc.code],
-      difficulty: staticMatch?.difficulty,
-      professorInfo: profInfo,
-      courseInsights: isExactMatch ? staticMatch?.courseInsights : undefined,
-      careerRelevance: (isExactMatch ? staticMatch?.careerRelevance : undefined) ?? [],
-      isLive: true,
-      hasStaticMatch: !!staticMatch,
-    };
-  });
-
   // Departments available from selected areas
   const areaDepartments: string[] = SUBJECT_AREAS.filter((a) =>
     selectedAreas.includes(a.id)
   ).flatMap((a) => [...a.departments]);
 
-  const filteredCourses = allCourses.filter((c) => {
+  const filteredCourses = liveCourses.filter((c) => {
     const matchesDept = selectedDepartments.length > 0
       ? selectedDepartments.includes(c.department)
       : areaDepartments.length > 0
         ? areaDepartments.includes(c.department)
         : true;
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = searchQuery
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = q
       ? c.code.toLowerCase().includes(q) ||
+        c.code.replace(" ", "").toLowerCase().includes(q.replace(/\s+/g, "")) ||
         c.name.toLowerCase().includes(q) ||
         c.department.toLowerCase().includes(q) ||
-        (c.professor ? c.professor.toLowerCase().includes(q) : false)
+        c.instructors.some((i) => i.toLowerCase().includes(q))
       : true;
     return matchesDept && matchesSearch;
   }).sort((a, b) => {
-    // Major requirements first, then by course number
-    const aIsMajorReq = a.majorRequirements && a.majorRequirements.length > 0 ? 1 : 0;
-    const bIsMajorReq = b.majorRequirements && b.majorRequirements.length > 0 ? 1 : 0;
-    if (aIsMajorReq !== bIsMajorReq) return bIsMajorReq - aIsMajorReq;
     const aNum = parseInt(a.code.replace(/\D+/g, ""), 10) || 0;
     const bNum = parseInt(b.code.replace(/\D+/g, ""), 10) || 0;
-    return aNum - bNum;
+    return aNum - bNum || a.code.localeCompare(b.code);
   });
 
+  const filteredSectionCount = filteredCourses.reduce((n, c) => n + c.sections, 0);
+
   const departments = Array.from(
-    new Set(allCourses.map((c) => c.department))
+    new Set(liveCourses.map((c) => c.department))
   ).sort();
+
+  function onPlanUpdated(planned: PlanCourseSummary[]) {
+    setUserPlanCourses(planned);
+  }
 
   async function getRecommendations() {
     setLoading(true);
+    setRecError(null);
     try {
       const areaLabels = SUBJECT_AREAS.filter((a) =>
         selectedAreas.includes(a.id)
@@ -403,6 +270,7 @@ export default function ExplorePage() {
       const interests = areaLabels.length > 0 ? areaLabels : [...selectedDepartments];
 
       if (interests.length === 0) {
+        setRecError("Pick at least one interest area or department first.");
         setLoading(false);
         return;
       }
@@ -419,16 +287,22 @@ export default function ExplorePage() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setRecommendations(data.recommendations);
+        const json = await res.json();
+        setRecommendations(json.recommendations);
         setStep("recommendations");
+      } else {
+        const json = await res.json().catch(() => null);
+        setRecError(json?.error ?? "Could not get recommendations right now.");
       }
     } catch (err) {
       console.error("Failed to get recommendations:", err);
+      setRecError("Could not reach the server.");
     } finally {
       setLoading(false);
     }
   }
+
+  const termButtons = terms ? [terms.active, terms.registration] : [];
 
   return (
     <motion.div
@@ -438,19 +312,59 @@ export default function ExplorePage() {
       transition={{ duration: 0.4 }}
     >
       {/* Header */}
-      <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
-          Explore Courses
-        </h1>
-        <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
-          Discover Davidson&apos;s course catalog and see how courses connect to your career goals.{" "}
-          {liveCourses.length > 0 && (
-            <span className="text-gray-400">· {liveCourses.length} live courses loaded</span>
-          )}
-          {liveLoading && (
-            <Loader2 className="inline h-3 w-3 animate-spin text-gray-400 ml-1" />
-          )}
-        </p>
+      <div className="space-y-3">
+        <div>
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-[#111111]">
+            Explore Courses
+          </h1>
+          <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
+            Browse Davidson&apos;s live course schedule with official descriptions and prerequisites.
+          </p>
+        </div>
+
+        {/* Term switch */}
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Term" data-testid="term-switch">
+          {termButtons.map((t) => {
+            const isSelected = (termCode ?? terms?.registration.code) === t.code;
+            const tag = terms && t.code === terms.registration.code ? "registration" : "current term";
+            return (
+              <button
+                key={t.code}
+                type="button"
+                aria-pressed={isSelected}
+                data-term={t.code}
+                onClick={() => setTermCode(t.code)}
+                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                  isSelected
+                    ? "bg-davidson text-white border-davidson"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                {t.label}
+                <span className={`ml-1.5 text-[11px] font-normal ${isSelected ? "text-white/80" : "text-gray-500"}`}>
+                  {tag}
+                </span>
+              </button>
+            );
+          })}
+          <span className="text-xs text-gray-500" data-testid="term-summary">
+            {liveLoading ? (
+              <Loader2 className="inline h-3.5 w-3.5 animate-spin text-gray-400" />
+            ) : data ? (
+              <>
+                {data.term}: {data.total} courses · {data.sectionCount} sections
+                {data.stale && " · showing the last saved copy (Davidson API not responding)"}
+              </>
+            ) : null}
+          </span>
+        </div>
+
+        {liveError && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            {liveError}
+          </div>
+        )}
       </div>
 
       {/* Step indicator — tabs appear progressively */}
@@ -464,8 +378,7 @@ export default function ExplorePage() {
             key={s.key}
             onClick={() => {
               if (s.key === "interests") setStep("interests");
-              else if (s.key === "browse" && selectedAreas.length > 0)
-                setStep("browse");
+              else if (s.key === "browse") setStep("browse");
               else if (s.key === "recommendations" && recommendations)
                 setStep("recommendations");
             }}
@@ -490,20 +403,34 @@ export default function ExplorePage() {
       {/* Step 1: Interest Selection */}
       {step === "interests" && (
         <div className="space-y-6">
-          <div>
-            <h2 className="font-serif text-lg font-semibold text-[#111111] mb-1">
-              What areas interest you?
-            </h2>
-            <p className="text-sm text-[#555555]">
-              Select one or more subject areas to filter the catalog.
-            </p>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-serif text-lg font-semibold text-[#111111] mb-1">
+                What areas interest you?
+              </h2>
+              <p className="text-sm text-[#555555]">
+                Select one or more subject areas to filter the catalog, or browse everything.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedAreas([]);
+                setSelectedDepartments([]);
+                setStep("browse");
+              }}
+              className="border-gray-200"
+            >
+              Browse all {data ? `${data.total} ` : ""}courses
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {SUBJECT_AREAS.map((area) => {
               const isSelected = selectedAreas.includes(area.id);
               const depts: string[] = [...area.departments];
-              const courseCount = allCourses.filter((c) => depts.includes(c.department)).length;
+              const courseCount = liveCourses.filter((c) => depts.includes(c.department)).length;
               const tagColor = AREA_TAG_COLORS[area.id] || "bg-gray-50 text-gray-600 border-gray-200";
               return (
                 <div
@@ -559,7 +486,7 @@ export default function ExplorePage() {
           </div>
 
           {(selectedAreas.length > 0 || selectedDepartments.length > 0) && (
-            <div className="flex gap-3 pt-1">
+            <div className="flex flex-wrap gap-3 pt-1">
               <Button
                 onClick={() => setStep("browse")}
                 className="bg-davidson hover:bg-davidson-dark text-white"
@@ -587,6 +514,7 @@ export default function ExplorePage() {
               </Button>
             </div>
           )}
+          {recError && <p className="text-sm text-red-600">{recError}</p>}
         </div>
       )}
 
@@ -594,57 +522,61 @@ export default function ExplorePage() {
       {step === "browse" && (
         <div className="space-y-5">
           {/* Search and filter bar */}
-          <div className="flex gap-3">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by name, code, department, or professor..."
+                placeholder="Search by name, code, department, or instructor..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 border-gray-200 focus:ring-gray-300 focus:border-gray-400"
               />
             </div>
-            <div className="relative">
-              <select
-                value={selectedDepartments.length === 1 ? selectedDepartments[0] : ""}
-                onChange={(e) =>
-                  setSelectedDepartments(e.target.value ? [e.target.value] : [])
-                }
-                className="appearance-none h-10 rounded-lg border border-gray-200 bg-white pl-3 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-400 cursor-pointer"
+            <div className="flex gap-3">
+              <div className="relative flex-1 sm:flex-none min-w-0">
+                <select
+                  value={selectedDepartments.length === 1 ? selectedDepartments[0] : ""}
+                  onChange={(e) =>
+                    setSelectedDepartments(e.target.value ? [e.target.value] : [])
+                  }
+                  className="appearance-none w-full h-10 rounded-lg border border-gray-200 bg-white pl-3 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:border-gray-400 cursor-pointer"
+                >
+                  <option value="">All Departments</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              </div>
+              <Button
+                variant="outline"
+                onClick={getRecommendations}
+                disabled={loading || (selectedAreas.length === 0 && selectedDepartments.length === 0)}
+                className="shrink-0 border-navy/30 text-navy hover:bg-navy hover:text-white"
               >
-                <option value="">All Departments</option>
-                {departments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    AI Picks
+                  </>
+                )}
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              onClick={getRecommendations}
-              disabled={loading}
-              className="shrink-0 border-navy/30 text-navy hover:bg-navy hover:text-white"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  AI Picks
-                </>
-              )}
-            </Button>
           </div>
+          {recError && <p className="text-sm text-red-600">{recError}</p>}
 
           {/* Results count */}
-          <p className="text-xs text-gray-400">
-            {filteredCourses.length} course
-            {filteredCourses.length !== 1 ? "s" : ""}
+          <p className="text-xs text-gray-500" data-testid="results-count">
+            {filteredCourses.length} course{filteredCourses.length !== 1 ? "s" : ""} ·{" "}
+            {filteredSectionCount} section{filteredSectionCount !== 1 ? "s" : ""}
+            {data ? ` in ${data.term}` : ""}
             {selectedDepartments.length > 0 && (
               <>
-                {" "}in{" "}
+                {" "}·{" "}
                 <span className="text-gray-600">{selectedDepartments.join(", ")}</span>
                 <button
                   onClick={() => setSelectedDepartments([])}
@@ -658,14 +590,29 @@ export default function ExplorePage() {
 
           {/* Course list */}
           <div className="space-y-2">
-            {filteredCourses.slice(0, 50).map((course) => (
-              <CourseCard key={course.code} course={course} planCourseCodes={planCourseCodes} addingToPlan={addingToPlan} onAddToPlan={addCourseToPlan} />
+            {filteredCourses.slice(0, visibleCount).map((course) => (
+              <CourseCard
+                key={`${data?.termCode}-${course.code}`}
+                course={course}
+                termCode={data?.termCode}
+                inPlan={planCourseCodes.has(course.code)}
+                onPlanUpdated={onPlanUpdated}
+              />
             ))}
-            {filteredCourses.length > 50 && (
-              <p className="text-sm text-gray-400 text-center py-6">
-                Showing 50 of {filteredCourses.length} courses. Use search to
-                narrow results.
+            {!liveLoading && !liveError && filteredCourses.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-6">
+                No courses match. Try a different search or department.
               </p>
+            )}
+            {filteredCourses.length > visibleCount && (
+              <div className="text-center py-4 space-y-2">
+                <p className="text-sm text-gray-500">
+                  Showing {visibleCount} of {filteredCourses.length} courses.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}>
+                  Show {Math.min(PAGE_SIZE, filteredCourses.length - visibleCount)} more
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -681,9 +628,11 @@ export default function ExplorePage() {
               </h2>
               <p className="text-xs text-[#555555] mt-0.5">
                 Based on:{" "}
-                {SUBJECT_AREAS.filter((a) => selectedAreas.includes(a.id))
-                  .map((a) => a.label)
-                  .join(", ")}
+                {(selectedAreas.length > 0
+                  ? SUBJECT_AREAS.filter((a) => selectedAreas.includes(a.id)).map((a) => a.label)
+                  : selectedDepartments
+                ).join(", ")}
+                . Only courses on the {terms ? `${terms.active.label} or ${terms.registration.label}` : "current"} schedule are shown.
               </p>
             </div>
             <Button
@@ -697,14 +646,12 @@ export default function ExplorePage() {
           </div>
 
           <div className="space-y-2">
+            {recommendations.recommendations.length === 0 && (
+              <p className="text-sm text-gray-500">No recommendations matched the live schedule. Try other interests.</p>
+            )}
             {recommendations.recommendations.map((rec, i) => {
-              // Find matching enriched course by exact code or fuzzy match
-              const match = allCourses.find((c) => c.code === rec.code)
-                || allCourses.find((c) => {
-                  const rm = rec.code.match(/^([A-Z]{2,4})\s*(\d+)/);
-                  const cm = c.code.match(/^([A-Z]{2,4})\s*(\d+)/);
-                  return rm && cm && rm[1] === cm[1] && Math.abs(parseInt(rm[2]) - parseInt(cm[2])) <= 5;
-                });
+              // Exact code match only (no "closest course number" guessing)
+              const match = liveCourses.find((c) => c.code === rec.code);
 
               return (
                 <div key={i} className="relative">
@@ -716,7 +663,7 @@ export default function ExplorePage() {
                           ? "bg-davidson text-white"
                           : rec.priority === "medium"
                             ? "bg-white text-gray-600 border border-gray-200"
-                            : "bg-gray-50 text-gray-400 border border-gray-100"
+                            : "bg-gray-50 text-gray-500 border border-gray-100"
                       }`}
                     >
                       {rec.priority === "high"
@@ -730,22 +677,36 @@ export default function ExplorePage() {
                   {match ? (
                     <CourseCard
                       course={match}
+                      termCode={data?.termCode}
                       aiReason={rec.reason}
                       aiCareerImpact={rec.careerImpact}
-                      planCourseCodes={planCourseCodes}
-                      addingToPlan={addingToPlan}
-                      onAddToPlan={addCourseToPlan}
+                      inPlan={planCourseCodes.has(match.code)}
+                      onPlanUpdated={onPlanUpdated}
                     />
                   ) : (
-                    /* Fallback for courses not in our data */
-                    <div className="bg-white rounded-lg border border-gray-100 p-5 hover:border-gray-200 transition-all">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-gray-50 text-gray-600">
-                          {rec.code}
-                        </span>
+                    /* Offered in the other live term only */
+                    <div className="bg-white rounded-lg border border-gray-100 p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-gray-50 text-gray-600">
+                              {rec.code}
+                            </span>
+                            {rec.offeredIn && rec.offeredIn.length > 0 && (
+                              <span className="text-xs text-gray-500">Offered {rec.offeredIn.join(", ")}</span>
+                            )}
+                          </div>
+                          <h3 className="font-medium text-[15px] text-[#111111] mb-1">{rec.name}</h3>
+                          <p className="text-sm text-[#555555] mb-2">{rec.reason}</p>
+                        </div>
+                        <AddToPlan
+                          courseCode={rec.code}
+                          courseName={rec.name}
+                          credits={rec.credits}
+                          inPlan={planCourseCodes.has(rec.code)}
+                          onAdded={onPlanUpdated}
+                        />
                       </div>
-                      <h3 className="font-medium text-[15px] text-[#111111] mb-1">{rec.name}</h3>
-                      <p className="text-sm text-[#555555] mb-2">{rec.reason}</p>
                       {rec.careerImpact?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {rec.careerImpact.map((career) => (
@@ -772,27 +733,22 @@ export default function ExplorePage() {
   );
 }
 
-function RatingBar({
-  value,
-  max,
-  color,
+/* ===== Course card (live Davidson data only) ===== */
+function CourseCard({
+  course,
+  termCode,
+  aiReason,
+  aiCareerImpact,
+  inPlan,
+  onPlanUpdated,
 }: {
-  value: number;
-  max: number;
-  color: string;
+  course: LiveCourse;
+  termCode?: string;
+  aiReason?: string;
+  aiCareerImpact?: string[];
+  inPlan: boolean;
+  onPlanUpdated: (planned: PlanCourseSummary[]) => void;
 }) {
-  return (
-    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-      <div
-        className={`h-full rounded-full ${color}`}
-        style={{ width: `${(value / max) * 100}%` }}
-      />
-    </div>
-  );
-}
-
-/* ===== Unified course card (live-first with static enrichment) ===== */
-function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingToPlan, onAddToPlan }: { course: EnrichedCourse; aiReason?: string; aiCareerImpact?: string[]; planCourseCodes?: Set<string>; addingToPlan?: string | null; onAddToPlan?: (code: string, name: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [aiInsights, setAiInsights] = useState<{
     courseHighlights?: string;
@@ -801,97 +757,43 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
     careerApplications?: string[];
   } | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
   const [showAiModal, setShowAiModal] = useState(false);
-  const [showProfModal, setShowProfModal] = useState(false);
-  const [profSummary, setProfSummary] = useState<{
-    summary?: string;
-    strengths?: string[];
-    considerations?: string[];
-    tipForSuccess?: string;
-  } | null>(null);
-  const [loadingProfSummary, setLoadingProfSummary] = useState(false);
 
   // Lock body scroll when modal is open
   useEffect(() => {
-    if (showAiModal || showProfModal) {
+    if (showAiModal) {
       document.body.style.overflow = "hidden";
       return () => { document.body.style.overflow = ""; };
     }
-  }, [showAiModal, showProfModal]);
+  }, [showAiModal]);
 
-  // Professor resolution: already merged in EnrichedCourse
-  const professorName = course.professor && course.professor !== "Staff" ? course.professor : null;
-  const prof = course.professorInfo ?? (professorName ? lookupProfRMP(professorName) : undefined);
   const realInstructors = course.instructors.filter((i) => i !== "Staff");
-  // Grad requirements (from live API)
-  const gradReqs = course.gradRequirements
-    .filter((r) => r !== "NONE" && r !== "" && GRAD_REQ_LABELS[r])
-    .map((r) => GRAD_REQ_LABELS[r] || r);
+  const gradReqs = course.gradRequirementLabels ?? [];
 
-  async function fetchAiInsights(regenerate = false) {
-    if ((aiInsights && !regenerate) || loadingInsights) return;
+  async function fetchAiInsights() {
+    if (aiInsights || loadingInsights) return;
     setLoadingInsights(true);
+    setInsightsError(null);
     try {
+      // The server builds the prompt from its own copy of the live catalog;
+      // shared insights cannot be regenerated by students.
       const res = await fetch("/api/ai/course-insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseCode: course.code,
-          courseName: course.name,
-          description: course.description,
-          department: course.department,
-          extraContext: {
-            professor: prof?.name,
-            rmpRating: prof?.rmpRating,
-            rmpDifficulty: prof?.rmpDifficulty,
-            knownTopics: course.courseInsights?.keyTopics,
-            knownSkills: course.courseInsights?.skillsGained,
-            careerRelevance: course.careerRelevance?.map((cr) => ({
-              field: cr.field,
-              relevance: cr.relevance,
-            })),
-          },
-          regenerate,
-        }),
+        body: JSON.stringify({ courseCode: course.code, termCode }),
       });
+      const json = await res.json().catch(() => null);
       if (res.ok) {
-        const data = await res.json();
-        setAiInsights(data.insights);
+        setAiInsights(json.insights);
+      } else {
+        setInsightsError(json?.error ?? "AI insights are not available right now.");
       }
     } catch (err) {
       console.error("Failed to get AI insights:", err);
+      setInsightsError("Could not reach the server.");
     } finally {
       setLoadingInsights(false);
-    }
-  }
-
-  async function fetchProfSummary(regenerate = false) {
-    if ((profSummary && !regenerate) || loadingProfSummary || !prof) return;
-    setLoadingProfSummary(true);
-    try {
-      const res = await fetch("/api/ai/professor-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          professorName: prof.name,
-          courseCode: course.code,
-          courseName: course.name,
-          rmpRating: prof.rmpRating,
-          rmpDifficulty: prof.rmpDifficulty,
-          rmpNumRatings: prof.rmpNumRatings,
-          rmpWouldTakeAgain: prof.rmpWouldTakeAgain,
-          rmpTags: prof.rmpTags,
-          regenerate,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProfSummary(data.summary);
-      }
-    } catch (err) {
-      console.error("Failed to get professor summary:", err);
-    } finally {
-      setLoadingProfSummary(false);
     }
   }
 
@@ -900,52 +802,57 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
   return (
     <div
       onClick={() => { if (!expanded) setExpanded(true); }}
+      data-testid="course-card"
+      data-code={course.code}
       className={`bg-white rounded-lg border-l-[3px] border border-gray-100 transition-all ${expanded ? "shadow-sm border-gray-200" : "cursor-pointer hover:border-gray-200"} ${deptColor.border.replace("border-", "border-l-")}`}
     >
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4">
+      <div className="p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className={`font-mono text-xs font-semibold px-2.5 py-1 rounded ${deptColor.bg} ${deptColor.text}`}>
                 {course.code}
               </span>
-              {course.majorRequirements && course.majorRequirements.length > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded bg-davidson-light text-davidson font-medium">
-                  {formatMajorReq(course.majorRequirements)}
-                </span>
-              )}
               {gradReqs.length > 0 && (
                 <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-[#555555] font-medium">
                   {gradReqs.join(", ")}
                 </span>
               )}
-              {prof?.rmpRating != null && (
-                <span className="flex items-center gap-0.5 text-xs text-gray-500">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                  {prof.rmpRating}
-                </span>
-              )}
-              {course.sections > 1 && (
-                <span className="text-xs text-gray-400">
-                  {course.sections} sections
-                </span>
-              )}
+              <span className="text-xs text-gray-500">{formatCredits(course.credits)}</span>
+              <span className="text-xs text-gray-500">
+                {course.sections} section{course.sections !== 1 ? "s" : ""}
+              </span>
             </div>
             <h3 className="font-medium text-[15px] text-[#111111] mb-1">
               {course.name}
             </h3>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
               <span>{course.department}</span>
-              {professorName && <span>· {professorName}</span>}
-              {course.offered.length > 0 && <span>· {course.offered.join(", ")}</span>}
+              {realInstructors.length > 0 && (
+                <span>
+                  · {realInstructors.slice(0, 2).join(", ")}
+                  {realInstructors.length > 2 ? ` +${realInstructors.length - 2}` : ""}
+                </span>
+              )}
             </div>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            className="shrink-0 p-1 rounded hover:bg-gray-100 transition-colors"
-          >
-            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-start">
+            <AddToPlan
+              courseCode={course.code}
+              courseName={course.name}
+              credits={course.credits}
+              inPlan={inPlan}
+              onAdded={onPlanUpdated}
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+              aria-label={expanded ? "Collapse course details" : "Expand course details"}
+              aria-expanded={expanded}
+              className="shrink-0 p-1 rounded hover:bg-gray-100 transition-colors"
+            >
+              <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
+            </button>
+          </div>
         </div>
 
         {expanded && (
@@ -972,401 +879,38 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
                 </div>
               )}
 
-              <p className="text-sm text-[#555555] leading-relaxed">
-                {course.description}
+              <p className="text-sm text-[#555555] leading-relaxed" data-testid="course-description">
+                {course.description || "No description has been published for this course yet."}
               </p>
 
-              {/* Professor Section with RMP Data */}
-              {professorName && (
-                <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm font-medium text-gray-700">
-                      {professorName}
-                    </span>
-                  </div>
-                  {prof?.title && (
-                    <p className="text-xs text-gray-400 ml-6">{prof.title}</p>
-                  )}
-                  {prof?.rmpRating != null && (
-                    <div className="ml-6 space-y-2">
-                      <div className="flex flex-wrap items-center gap-3 text-xs">
-                        <span className="flex items-center gap-1">
-                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                          <span className="font-semibold text-sm text-[#111111]">
-                            {prof.rmpRating}
-                          </span>
-                          <span className="text-gray-400">/5</span>
-                        </span>
-                        {prof.rmpWouldTakeAgain != null && (
-                          <span className="flex items-center gap-1 text-[#555555]">
-                            <ThumbsUp className="h-3 w-3" />
-                            {prof.rmpWouldTakeAgain}% would take again
-                          </span>
-                        )}
-                        {prof.rmpDifficulty != null && (
-                          <span className="flex items-center gap-1 text-[#555555]">
-                            <Zap className="h-3 w-3" />
-                            {prof.rmpDifficulty} difficulty
-                          </span>
-                        )}
-                        {prof.rmpNumRatings != null && (
-                          <span className="flex items-center gap-1 text-gray-400">
-                            <Users className="h-3 w-3" />
-                            {prof.rmpNumRatings} ratings
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400 w-14">
-                            Quality
-                          </span>
-                          <RatingBar
-                            value={prof.rmpRating}
-                            max={5}
-                            color={
-                              prof.rmpRating >= 4
-                                ? "bg-emerald-500"
-                                : prof.rmpRating >= 3
-                                  ? "bg-amber-400"
-                                  : "bg-red-400"
-                            }
-                          />
-                        </div>
-                        {prof.rmpDifficulty != null && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-400 w-14">
-                              Difficulty
-                            </span>
-                            <RatingBar
-                              value={prof.rmpDifficulty}
-                              max={5}
-                              color={
-                                prof.rmpDifficulty <= 2.5
-                                  ? "bg-emerald-500"
-                                  : prof.rmpDifficulty <= 3.5
-                                    ? "bg-amber-400"
-                                    : "bg-orange-500"
-                              }
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {prof.rmpTags && prof.rmpTags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {prof.rmpTags.slice(0, 5).map((tag) => (
-                              <span
-                                key={tag}
-                                className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-600 border-gray-200"
-                              >
-                                <MessageSquare className="h-2.5 w-2.5" />
-                                {tag}
-                              </span>
-                            ))}
-                        </div>
-                      )}
-
-                      {realInstructors.length > 1 && (
-                        <p className="text-xs text-gray-400">
-                          All instructors: {realInstructors.join(", ")}
-                        </p>
-                      )}
-
-                      {/* AI Professor Summary Button */}
-                      <div className="pt-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!profSummary && !loadingProfSummary) fetchProfSummary();
-                            setShowProfModal(true);
-                          }}
-                          disabled={loadingProfSummary}
-                          className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg bg-davidson-light text-davidson hover:bg-davidson-light/80 disabled:text-gray-300 transition-colors"
-                        >
-                          {loadingProfSummary ? (
-                            <>
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Analyzing reviews...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="h-3 w-3" />
-                              AI Professor Summary
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Professor Summary Modal — portaled to body */}
-                      {typeof document !== "undefined" && createPortal(
-                      <AnimatePresence>
-                        {showProfModal && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[100]"
-                          >
-                            <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100]" onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} />
-                            <div className="fixed inset-0 md:left-[240px] z-[101] overflow-y-auto p-4 md:p-8 py-[6vh]">
-                            <div className="max-w-5xl mx-auto">
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.98, y: 12 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.98, y: 12 }}
-                              className="relative bg-[#F8F9FB] rounded-2xl shadow-2xl border border-gray-200 w-full max-h-[85vh] overflow-y-auto"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {/* Modal header */}
-                              <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
-                                <div>
-                                  <div className="flex items-center gap-2.5 mb-1">
-                                    <GraduationCap className="h-5 w-5 text-davidson" />
-                                    <h2 className="font-serif font-semibold text-lg text-[#111111]">Professor Summary</h2>
-                                  </div>
-                                  <p className="text-sm text-[#555555]">{prof.name} · {course.code} {course.name}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {profSummary && !loadingProfSummary && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); fetchProfSummary(true); }}
-                                      className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-davidson px-3 py-1.5 rounded-lg border border-gray-200 hover:border-davidson/30 hover:bg-davidson-light transition-colors"
-                                    >
-                                      <RefreshCw className="h-3.5 w-3.5" />
-                                      Regenerate
-                                    </button>
-                                  )}
-                                  <button onClick={(e) => { e.stopPropagation(); setShowProfModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                                    <X className="h-5 w-5" />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Modal content */}
-                              <div className="px-6 py-5 space-y-5">
-                                {/* RMP stats bar */}
-                                <div className="bg-white rounded-xl border border-gray-100 p-5">
-                                  <div className="flex flex-wrap items-center gap-6 text-sm">
-                                    <span className="flex items-center gap-1.5">
-                                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                                      <span className="font-bold text-lg text-[#111111]">{prof.rmpRating}</span>
-                                      <span className="text-gray-400">/5</span>
-                                    </span>
-                                    {prof.rmpWouldTakeAgain != null && (
-                                      <span className="flex items-center gap-1.5 text-[#555555]">
-                                        <ThumbsUp className="h-4 w-4" />
-                                        {prof.rmpWouldTakeAgain}% would take again
-                                      </span>
-                                    )}
-                                    {prof.rmpDifficulty != null && (
-                                      <span className="flex items-center gap-1.5 text-[#555555]">
-                                        <Zap className="h-4 w-4" />
-                                        {prof.rmpDifficulty} difficulty
-                                      </span>
-                                    )}
-                                    {prof.rmpNumRatings != null && (
-                                      <span className="flex items-center gap-1.5 text-gray-400">
-                                        <Users className="h-4 w-4" />
-                                        {prof.rmpNumRatings} ratings
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {loadingProfSummary ? (
-                                  <div className="flex flex-col items-center justify-center py-16">
-                                    <Loader2 className="h-8 w-8 animate-spin text-davidson mb-3" />
-                                    <p className="text-sm text-[#555555]">Analyzing professor reviews...</p>
-                                  </div>
-                                ) : profSummary ? (
-                                  <>
-                                    {profSummary.summary && (
-                                      <div className="bg-white rounded-xl border border-gray-100 p-6">
-                                        <h3 className="text-sm font-semibold text-[#111111] mb-3 flex items-center gap-2">
-                                          <Sparkles className="h-4 w-4 text-davidson" />
-                                          Overview
-                                        </h3>
-                                        <p className="text-base text-[#555555] leading-relaxed">{profSummary.summary}</p>
-                                      </div>
-                                    )}
-
-                                    <div className="grid sm:grid-cols-2 gap-4">
-                                      {profSummary.strengths && profSummary.strengths.length > 0 && (
-                                        <div className="bg-white rounded-xl border border-gray-100 p-6">
-                                          <h3 className="text-sm font-semibold text-emerald-600 mb-3">Strengths</h3>
-                                          <ul className="space-y-2">
-                                            {profSummary.strengths.map((s, i) => (
-                                              <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                                                <span className="text-emerald-500 mt-0.5 shrink-0 font-bold">+</span> {s}
-                                              </li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
-                                      {profSummary.considerations && profSummary.considerations.length > 0 && (
-                                        <div className="bg-white rounded-xl border border-gray-100 p-6">
-                                          <h3 className="text-sm font-semibold text-amber-600 mb-3">Considerations</h3>
-                                          <ul className="space-y-2">
-                                            {profSummary.considerations.map((c, i) => (
-                                              <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                                                <span className="text-amber-500 mt-0.5 shrink-0 font-bold">!</span> {c}
-                                              </li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {profSummary.tipForSuccess && (
-                                      <div className="bg-white rounded-xl border border-gray-100 p-6 flex items-start gap-3">
-                                        <Lightbulb className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                                        <div>
-                                          <h3 className="text-sm font-semibold text-[#111111] mb-1">Tip for Success</h3>
-                                          <p className="text-sm text-[#555555] leading-relaxed">{profSummary.tipForSuccess}</p>
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* RMP Tags */}
-                                    {prof.rmpTags && prof.rmpTags.length > 0 && (
-                                      <div className="bg-white rounded-xl border border-gray-100 p-6">
-                                        <h3 className="text-sm font-semibold text-[#111111] mb-3">Student Tags</h3>
-                                        <div className="flex flex-wrap gap-2">
-                                          {prof.rmpTags.map((tag) => (
-                                              <span key={tag} className="text-sm px-3 py-1 rounded-lg border bg-gray-50 text-gray-600 border-gray-200">
-                                                {tag}
-                                              </span>
-                                            ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </>
-                                ) : (
-                                  <div className="flex flex-col items-center justify-center py-16">
-                                    <GraduationCap className="h-8 w-8 text-gray-300 mb-3" />
-                                    <p className="text-sm text-gray-400">No summary available yet</p>
-                                  </div>
-                                )}
-                              </div>
-                            </motion.div>
-                            </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>, document.body)}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Course Insights - Static data */}
-              {course.courseInsights && (
-                <div className="space-y-3">
-                  {course.courseInsights.keyTopics &&
-                    course.courseInsights.keyTopics.length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
-                          <BookOpen className="h-3 w-3" /> Topics
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {course.courseInsights.keyTopics.map((topic) => (
-                            <span
-                              key={topic}
-                              className="text-[11px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
-                            >
-                              {topic}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                  {course.courseInsights.skillsGained &&
-                    course.courseInsights.skillsGained.length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
-                          <Lightbulb className="h-3 w-3" /> Skills
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {course.courseInsights.skillsGained.map((skill) => (
-                            <span
-                              key={skill}
-                              className="text-[11px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                </div>
-              )}
-
-              {/* Prerequisites, schedule, and offering info */}
-              <div className="flex flex-wrap gap-4">
-                {course.prerequisites.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-xs text-[#555555]">
-                      Prerequisites: {course.prerequisites.join(", ")}
-                    </span>
-                  </div>
-                )}
-                {course.offered.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-xs text-[#555555]">
-                      Offered: {course.offered.join(", ")}
-                    </span>
-                  </div>
-                )}
-                {course.schedule && course.schedule !== "TBA" && (
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-xs text-[#555555]">
-                      {course.schedule}
-                    </span>
-                  </div>
-                )}
-                {course.location && course.location !== "TBA" && (
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-xs text-[#555555]">
-                      {course.location}
-                    </span>
-                  </div>
-                )}
+              <div className="text-sm" data-testid="course-prerequisites">
+                <span className="font-medium text-gray-700">Prerequisites (official): </span>
+                <span className="text-[#555555]">{course.prerequisites || "None listed"}</span>
               </div>
 
-              {/* Career Relevance */}
-              {course.careerRelevance.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
-                    <TrendingUp className="h-3 w-3" /> Career Relevance
-                  </p>
-                  <div className="space-y-1.5">
-                    {course.careerRelevance.map(({ field, relevance }) => (
-                      <div key={field} className="flex items-center gap-2">
-                        <span className="text-xs text-gray-600 w-40 truncate">
-                          {field}
-                        </span>
-                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-davidson"
-                            style={{ width: `${relevance * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-400 w-8 text-right">
-                          {Math.round(relevance * 100)}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Every section from the Davidson API */}
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
+                  <GraduationCap className="h-3 w-3" /> Sections
+                </p>
+                <ul className="divide-y divide-gray-100 rounded-lg border border-gray-100" data-testid="section-list">
+                  {course.sectionList.map((s, i) => (
+                    <li key={`${s.section}-${s.crn ?? i}`} className="px-3 py-2 text-xs text-[#555555] flex flex-wrap gap-x-4 gap-y-1">
+                      <span className="font-semibold text-gray-700">Section {s.section || "?"}</span>
+                      {s.title && s.title !== course.name && <span className="text-gray-700">{s.title}</span>}
+                      <span>{s.instructors.length > 0 ? s.instructors.join(", ") : "Staff"}</span>
+                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{s.schedule}</span>
+                      {s.location !== "TBA" && (
+                        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{s.location}</span>
+                      )}
+                      {s.enrollment.max > 0 && (
+                        <span>{s.enrollment.remaining} of {s.enrollment.max} seats open</span>
+                      )}
+                      {s.credits !== course.credits && <span>{formatCredits(s.credits)}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
               {/* AI Deep Dive Button */}
               <div className="pt-1">
@@ -1414,47 +958,23 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
                     >
                       {/* Modal header */}
                       <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2.5 mb-1">
                             <Sparkles className="h-5 w-5 text-davidson" />
                             <h2 className="font-serif font-semibold text-lg text-[#111111]">AI Deep Dive</h2>
                           </div>
-                          <p className="text-sm text-[#555555]">{course.code} · {course.name}</p>
+                          <p className="text-sm text-[#555555] truncate">{course.code} · {course.name}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {onAddToPlan && (
-                            planCourseCodes?.has(course.code) ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
-                                <Check className="h-3.5 w-3.5" /> In Plan
-                              </span>
-                            ) : (
-                              <button
-                                disabled={addingToPlan === course.code}
-                                onClick={(e) => { e.stopPropagation(); onAddToPlan(course.code, course.name); }}
-                                className="inline-flex items-center gap-1 text-xs font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                              >
-                                {addingToPlan === course.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                                Add to Plan
-                              </button>
-                            )
-                          )}
-                          {aiInsights && !loadingInsights && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); fetchAiInsights(true); }}
-                              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-davidson px-3 py-1.5 rounded-lg border border-gray-200 hover:border-davidson/30 hover:bg-davidson-light transition-colors"
-                            >
-                              <RefreshCw className="h-3.5 w-3.5" />
-                              Regenerate
-                            </button>
-                          )}
-                          <button onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                            <X className="h-5 w-5" />
-                          </button>
-                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); setShowAiModal(false); }} aria-label="Close" className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                          <X className="h-5 w-5" />
+                        </button>
                       </div>
 
                       {/* Modal content */}
                       <div className="px-6 py-5 space-y-5">
+                        <p className="text-xs text-gray-500">
+                          AI-generated from the official course description. Check details with the department.
+                        </p>
                         {loadingInsights ? (
                           <div className="flex flex-col items-center justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin text-davidson mb-3" />
@@ -1528,7 +1048,7 @@ function CourseCard({ course, aiReason, aiCareerImpact, planCourseCodes, addingT
                         ) : (
                           <div className="flex flex-col items-center justify-center py-16">
                             <Brain className="h-8 w-8 text-gray-300 mb-3" />
-                            <p className="text-sm text-gray-400">No insights available yet</p>
+                            <p className="text-sm text-gray-500">{insightsError ?? "No insights available yet"}</p>
                           </div>
                         )}
                       </div>
