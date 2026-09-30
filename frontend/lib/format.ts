@@ -81,6 +81,16 @@ export function formatShortDate(
   return formatter(timeZone, { month: "short", day: "numeric" }).format(toDate(value));
 }
 
+/** "Sep 30, 2026". */
+export function formatMediumDate(
+  value: Date | string | number,
+  timeZone = DEFAULT_TIME_ZONE,
+): string {
+  return formatter(timeZone, { month: "short", day: "numeric", year: "numeric" }).format(
+    toDate(value),
+  );
+}
+
 /** "Thursday". */
 export function formatWeekday(value: Date | string | number, timeZone = DEFAULT_TIME_ZONE): string {
   return formatter(timeZone, { weekday: "long" }).format(toDate(value));

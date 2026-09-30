@@ -422,7 +422,7 @@ describe("SeatBar", () => {
 describe("RatingSummary", () => {
   const RMP = "https://www.ratemyprofessors.com/professor/123456";
 
-  it("shows the rating, count, an RMP source tag with its date, and a safe link", () => {
+  it("shows the rating, count, an RMP source tag, the sync date as text, and a safe link", () => {
     render(
       <RatingSummary
         status="matched"
@@ -441,7 +441,11 @@ describe("RatingSummary", () => {
       selector: "[data-source] *, [data-source]",
     });
     expect(tag.closest("[data-source]")).toHaveAttribute("data-source", "ratemyprofessors");
-    expect(tag.closest("[data-source]")).toHaveTextContent("as of Sep 30, 9:00 AM");
+    // The date is printed, not hidden in a hover/focus tooltip (phones can see it), and the tag is not a tab stop.
+    const asOf = screen.getByText("as of Sep 30, 2026");
+    expect(asOf).toBeVisible();
+    expect(asOf.closest(".sr-only")).toBeNull();
+    expect(tag.closest("[data-source]")).not.toHaveAttribute("tabindex");
     const link = screen.getByRole("link", { name: /RateMyProfessors: Daniel Aldridge’s page/ });
     expect(link).toHaveAttribute("href", RMP);
     expect(link).toHaveAttribute("target", "_blank");
@@ -462,7 +466,31 @@ describe("RatingSummary", () => {
     expect(screen.getByText("No ratings yet")).toBeInTheDocument();
   });
 
-  it("has a compact form and never renders a non-RMP link", () => {
+  it("has a compact form with the date and a short RMP link", () => {
+    render(
+      <RatingSummary
+        status="matched"
+        avgRating={4.6}
+        numRatings={1}
+        size="sm"
+        asOf="2026-09-29T09:00:00Z"
+        url={RMP}
+        instructorName="Daniel Aldridge"
+        timeZone="America/New_York"
+      />,
+    );
+    expect(screen.getByText(/1 rating/)).toHaveTextContent(
+      "1 rating for Daniel Aldridge · as of Sep 29, 2026",
+    );
+    const link = screen.getByRole("link", { name: /^RMP: Daniel Aldridge on RateMyProfessors/ });
+    expect(link).toHaveAttribute("href", RMP);
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link).toHaveAttribute("target", "_blank");
+    // A 44px target on phones.
+    expect(link).toHaveClass("max-md:min-h-11");
+  });
+
+  it("never renders a non-RMP link", () => {
     render(
       <RatingSummary
         status="matched"

@@ -1,5 +1,6 @@
 import { ArrowUpRight } from "lucide-react";
 import { SourceTag } from "@/components/ui/source-tag";
+import { DEFAULT_TIME_ZONE, formatMediumDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type RatingStatus = "matched" | "unmatched" | "staff" | "disabled" | "review";
@@ -13,7 +14,7 @@ export interface RatingSummaryProps {
   /** 1–5. */
   avgRating?: number;
   numRatings?: number;
-  /** When the roster was synced ("as of" on the source tag). */
+  /** When the roster was synced: printed as "as of Sep 30, 2026" beside the source tag. */
   asOf?: Date | string | null;
   /** The professor's RateMyProfessors page. Only https://www.ratemyprofessors.com/ links are rendered. */
   url?: string;
@@ -38,6 +39,13 @@ export function safeRmpUrl(url: string | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+/** "as of Sep 30, 2026", or null for a missing or unreadable date. */
+function asOfText(asOf: Date | string | null | undefined, timeZone: string): string | null {
+  if (!asOf) return null;
+  const date = new Date(asOf);
+  return Number.isNaN(date.getTime()) ? null : `as of ${formatMediumDate(date, timeZone)}`;
 }
 
 function ratingsCount(n: number): string {
@@ -70,9 +78,9 @@ function RatingDots({ value, small }: { value: number; small?: boolean }) {
 }
 
 /**
- * A professor's RateMyProfessors rating: the average, how many ratings, when it was synced (source tag) and a
- * link to RMP. Nothing else from RMP is shown (PLAN §5). Unmatched, staff, disabled and under-review instructors
- * get nothing, or a quiet "No rating" when asked.
+ * A professor's RateMyProfessors rating: the average, how many ratings, when it was synced (as visible text, so
+ * phones see it too) with the RATEMYPROFESSORS source tag, and a link to RMP. Nothing else from RMP is shown
+ * (PLAN §5). Unmatched, staff, disabled and under-review instructors get nothing, or a quiet "No rating" when asked.
  */
 export function RatingSummary({
   status,
@@ -83,7 +91,7 @@ export function RatingSummary({
   instructorName,
   empty = "hide",
   size = "lg",
-  timeZone,
+  timeZone = DEFAULT_TIME_ZONE,
   className,
 }: RatingSummaryProps) {
   const count =
@@ -106,6 +114,7 @@ export function RatingSummary({
   const shown = rating.toFixed(1);
   const href = safeRmpUrl(url);
   const who = instructorName ? ` for ${instructorName}` : "";
+  const synced = asOfText(asOf, timeZone);
   const link = href ? (
     <a
       href={href}
@@ -135,8 +144,23 @@ export function RatingSummary({
         <span>
           {ratingsCount(count)}
           <span className="sr-only">{who}</span>
+          {synced ? ` · ${synced}` : null}
         </span>{" "}
-        <SourceTag source="ratemyprofessors" asOf={asOf} timeZone={timeZone} />
+        <SourceTag source="ratemyprofessors" />
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-0.5 rounded-xs font-semibold text-primary hover:underline max-md:min-h-11 max-md:px-1"
+          >
+            RMP
+            <ArrowUpRight aria-hidden className="size-3.5" />
+            <span className="sr-only">
+              : {instructorName ?? "this professor"} on RateMyProfessors (opens in a new tab)
+            </span>
+          </a>
+        ) : null}
       </p>
     );
   }
@@ -162,7 +186,8 @@ export function RatingSummary({
         </p>
       </div>
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <SourceTag source="ratemyprofessors" asOf={asOf} timeZone={timeZone} />
+        <SourceTag source="ratemyprofessors" />
+        {synced ? <span className="text-xs text-fg-2">{synced}</span> : null}
         {link}
       </p>
     </div>
