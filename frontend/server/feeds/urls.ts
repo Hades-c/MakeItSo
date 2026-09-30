@@ -22,7 +22,8 @@ const MAX_URL_LENGTH = 2048;
 /**
  * The https URL for `raw` if it is an absolute (or `base`-relative) link to one of the source's allow-listed
  * hosts; otherwise null. `http:` links to an allow-listed host are upgraded to https (every listed host serves
- * https). Entities are decoded first (`&amp;` in feed markup), credentials are refused.
+ * https). Entities are decoded first (`&amp;` in feed markup) with the strict HTML5 rules, so a query string such
+ * as "?a=1&region=2&copy=3" is never read as "®ion" / "©". Credentials are refused.
  */
 export function safeItemUrl(
   source: FeedSourceId,
@@ -30,7 +31,7 @@ export function safeItemUrl(
   base?: string,
 ): string | null {
   if (typeof raw !== "string") return null;
-  const trimmed = decode(raw.trim());
+  const trimmed = decode(raw.trim(), { level: "html5", scope: "strict" });
   if (!trimmed || /\s/.test(trimmed)) return null;
   let url: URL;
   try {

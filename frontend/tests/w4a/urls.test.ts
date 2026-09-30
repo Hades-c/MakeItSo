@@ -6,6 +6,12 @@ import { LIBRARY_HOURS_PAGE } from "@/server/feeds/libcal";
 import { ITEM_URL_HOSTS, pickItemUrl, safeItemUrl, urlDedupeKey } from "@/server/feeds/urls";
 
 describe("safeItemUrl (https only, per-source host allow-list)", () => {
+  it("decodes entities with the strict rules: '&amp;' yes, '&region=' / '&copy=' in a query no", () => {
+    expect(
+      safeItemUrl("davidson-news", "https://www.davidson.edu/x?a=1&amp;region=us&copy=2&notify=1"),
+    ).toBe("https://www.davidson.edu/x?a=1&region=us&copy=2&notify=1");
+  });
+
   it("accepts https links on the source's hosts", () => {
     expect(safeItemUrl("wildcatsync", "https://wildcatsync.davidson.edu/event/1")).toBe(
       "https://wildcatsync.davidson.edu/event/1",

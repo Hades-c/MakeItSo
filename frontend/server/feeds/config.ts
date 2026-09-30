@@ -2,7 +2,7 @@ import "server-only";
 import type { FeedSourceId } from "@/lib/types/feeds";
 import { hurtHubExternalId } from "@/server/feeds/tribe";
 import type { RssItem } from "@/server/feeds/rss";
-import { summaryFromHtml } from "@/server/feeds/text";
+import { HTML_INPUT_MAX, sliceText, summaryFromHtml } from "@/server/feeds/text";
 import { MINUTE_MS } from "@/server/feeds/time";
 
 /**
@@ -45,17 +45,32 @@ export function cleanWildcatSyncDescription(text: string): string {
   return text.replace(/\s*Additional Information can be found at:\s*\S*\s*$/i, "").trim();
 }
 
+/** The content of the first `<p>` whose opening tag `opener` matches (searched from `from`), up to its `</p>`. */
+function paragraphAfter(html: string, opener: RegExp, from = 0): string | null {
+  const open = new RegExp(opener.source, "gi");
+  open.lastIndex = from;
+  const match = open.exec(html);
+  if (!match) return null;
+  const start = match.index + match[0].length;
+  const close = /<\/p\s*>/gi;
+  close.lastIndex = start;
+  const end = close.exec(html);
+  return end ? html.slice(start, end.index) : null;
+}
+
 /**
  * davidson.edu's RSS description is the whole rendered article (byline, date, headline, photo caption, body).
  * The teaser is the paragraph right after Drupal's numeric timestamp, else the "intro" paragraph, else the first
- * body paragraph; otherwise no summary rather than a byline soup.
+ * body paragraph; otherwise no summary rather than a byline soup. Only the first HTML_INPUT_MAX characters are
+ * read (the teaser comes within the first few thousand), and every search is linear.
  */
 export function summarizeDavidsonNews(item: RssItem): string | null {
-  const html = item.description ?? item.content ?? "";
+  const html = sliceText(item.description ?? item.content ?? "", HTML_INPUT_MAX);
+  const article = html.search(/<article\b/i);
   const lead =
-    /\b\d{9,11}\s*<p\b[^>]*>([\s\S]*?)<\/p>/i.exec(html)?.[1] ??
-    /<p\b[^>]*\bclass\s*=\s*"[^"]*\bintro\b[^"]*"[^>]*>([\s\S]*?)<\/p>/i.exec(html)?.[1] ??
-    /<article\b[\s\S]*?<p\b[^>]*>([\s\S]*?)<\/p>/i.exec(html)?.[1];
+    paragraphAfter(html, /\b\d{9,11}\s*<p\b[^<>]*>/) ??
+    paragraphAfter(html, /<p\b[^<>]*\bclass\s*=\s*"[^"<>]*\bintro\b[^"<>]*"[^<>]*>/) ??
+    (article >= 0 ? paragraphAfter(html, /<p\b[^<>]*>/, article) : null);
   return lead ? summaryFromHtml(lead) : null;
 }
 
