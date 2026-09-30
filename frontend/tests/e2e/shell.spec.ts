@@ -203,10 +203,12 @@ test("unknown pages and malformed course codes show a not-found page", async ({
   const email = uniqueEmail("e2e-404");
   await registerViaApi(request, { name: "Lost Student", email, password: PASSWORD });
   await signIn(page, email, PASSWORD);
-  // Hub pages stream (loading.tsx), so the status is already sent; the not-found UI renders inside the shell.
-  await page.goto("/courses/209903/not-a-code");
+  // Inside the hub the not-found page keeps the shell, and still answers with a real 404.
+  const hubResponse = await page.goto("/courses/209903/not-a-code");
+  expect(hubResponse?.status()).toBe(404);
   await expect(page.getByRole("banner")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("We couldn't find that page");
+  expect((await page.goto("/careers/Not_A_Career"))?.status()).toBe(404);
 });
 
 test("keyboard focus shows a Lake Blue ring straight away, never red", async ({

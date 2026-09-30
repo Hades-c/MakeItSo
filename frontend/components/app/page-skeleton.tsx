@@ -1,7 +1,13 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Shown inside the shell while a hub page streams in. */
-export default function HubLoading() {
+/**
+ * Placeholder for a hub page that is still loading: title block plus the Lakeside 7/5 card grid. Use it from a
+ * segment's own loading.tsx (e.g. app/(hub)/today/loading.tsx).
+ *
+ * Keep loading.tsx files off routes that call notFound() for bad URLs (course codes, career slugs): a loading
+ * boundary starts streaming, so the 200 status is already sent and the not-found page cannot return 404.
+ */
+export function PageSkeleton() {
   return (
     <div>
       <p role="status" className="sr-only">
