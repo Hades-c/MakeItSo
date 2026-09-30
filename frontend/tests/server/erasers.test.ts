@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
 import {
   accountDataNames,
@@ -10,6 +10,10 @@ import {
   resetAccountDataRegistry,
 } from "@/server/account/erasers";
 import { getDb } from "@/server/db";
+
+// A registry unit test: keep the service modules' own registrations (W3: verificationcodes, ratelimits; tested in
+// tests/w3/account-data.test.ts) out of the exact-name assertions below.
+vi.mock("@/server/auth", () => ({}));
 
 let testDb: TestDb;
 

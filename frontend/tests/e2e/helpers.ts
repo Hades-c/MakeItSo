@@ -26,7 +26,8 @@ export async function registerViaApi(
     data: { name, email, password },
     headers: SAME_ORIGIN,
   });
-  expect(res.status()).toBe(201);
+  // Always 202 "check your inbox" (W3: no account enumeration); a new address gets an unverified account.
+  expect(res.status()).toBe(202);
 }
 
 export async function signIn(page: Page, email: string, password: string) {
