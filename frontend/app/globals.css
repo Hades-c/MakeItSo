@@ -443,6 +443,16 @@
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
+/* "Planned" on progress bars: Lake Blue stripes, so it reads differently from the solid "in progress" fill without
+ * relying on colour. */
+@utility bg-stripes-primary {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--primary-fill) 0 2px,
+    var(--primary-wash) 2px 4.5px
+  );
+}
+
 /* The striped band at the foot of the "M" brand mark (Lakeside wordmark). */
 @utility brand-stripes {
   background-image: repeating-linear-gradient(
