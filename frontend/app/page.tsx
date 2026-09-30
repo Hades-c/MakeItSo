@@ -7,13 +7,13 @@ import {
   ArrowRight,
   BookOpen,
   Briefcase,
+  ClipboardList,
   GraduationCap,
   Map,
-  Network,
   Sparkles,
   TrendingUp,
-  Users,
 } from "lucide-react";
+import { CAREER_PATHS } from "@/lib/career-paths";
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -135,8 +135,8 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold mb-3">Plan Forward</h3>
               <p className="text-muted-foreground leading-relaxed mb-6">
-                Select your interests and completed courses. We&apos;ll show you which courses to take next
-                and how each one connects to real career outcomes.
+                Pick your interests and browse Davidson&apos;s live course schedule. AI suggestions only
+                include courses that are actually on the schedule.
               </p>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm">
@@ -145,11 +145,11 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs font-bold">2</div>
-                  <span>Mark courses you&apos;ve taken</span>
+                  <span>Check official descriptions, prerequisites, and sections</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs font-bold">3</div>
-                  <span>See personalized recommendations with career impact</span>
+                  <span>Add courses to your plan for the term you choose</span>
                 </div>
               </div>
             </motion.div>
@@ -181,7 +181,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <div className="h-6 w-6 rounded-full bg-red-100 flex items-center justify-center text-red-800 text-xs font-bold">3</div>
-                  <span>Generate an optimized semester roadmap</span>
+                  <span>Draft a semester-by-semester roadmap to review with your advisor</span>
                 </div>
               </div>
             </motion.div>
@@ -211,12 +211,12 @@ export default function HomePage() {
             variants={stagger}
           >
             {[
-              { icon: BookOpen, title: "Smart Course Planning", desc: "Prerequisite-aware recommendations from Davidson's real course catalog with professor ratings.", color: "red" },
-              { icon: Briefcase, title: "Career Mapping", desc: "See how every course connects to career outcomes with AI-powered relevance scoring.", color: "rose" },
-              { icon: Network, title: "Networking Guide", desc: "Know who to meet — alumni, advisors, and professionals — and when to reach out.", color: "blue" },
-              { icon: TrendingUp, title: "Semester Roadmap", desc: "AI-generated optimal course sequence weighing professor quality and timing.", color: "emerald" },
-              { icon: Users, title: "People to Meet", desc: "Find alumni in your target field, department chairs, and career advisors with contact info.", color: "amber" },
-              { icon: GraduationCap, title: "Davidson-Native", desc: "Built with real Davidson data — every major, department, and course offering.", color: "purple" },
+              { icon: BookOpen, title: "Live Course Schedule", desc: "Davidson's current and registration-term schedules from the college's public course API, with official descriptions and prerequisites.", color: "red" },
+              { icon: Briefcase, title: "Career Paths", desc: "Career paths with Davidson courses offered this year, U.S. median pay from the BLS, and Davidson resources.", color: "rose" },
+              { icon: Sparkles, title: "AI Career Roadmaps", desc: "AI-drafted courses, activities, and people to connect with for a chosen career. Course picks are checked against the live schedule.", color: "blue" },
+              { icon: TrendingUp, title: "Semester Roadmap", desc: "An AI-drafted semester-by-semester plan that starts from the next registration term. Always confirm it with your advisor.", color: "emerald" },
+              { icon: ClipboardList, title: "Course Plan", desc: "Track planned, in-progress, and completed courses against Davidson's 32-course graduation requirement.", color: "amber" },
+              { icon: GraduationCap, title: "Davidson-Native", desc: "Made for Davidson students. Sign up with your @davidson.edu email.", color: "purple" },
             ].map(({ icon: Icon, title, desc, color }) => (
               <motion.div
                 key={title}
@@ -245,11 +245,11 @@ export default function HomePage() {
             transition={{ duration: 0.5 }}
           >
             <div className="text-center">
-              <p className="text-3xl font-bold gradient-text">200+</p>
-              <p className="text-sm text-muted-foreground mt-1">Davidson Courses</p>
+              <p className="text-3xl font-bold gradient-text">Live</p>
+              <p className="text-sm text-muted-foreground mt-1">Davidson Course Schedule</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-bold gradient-text">16</p>
+              <p className="text-3xl font-bold gradient-text">{CAREER_PATHS.length}</p>
               <p className="text-sm text-muted-foreground mt-1">Career Paths</p>
             </div>
             <div className="text-center">
@@ -257,8 +257,8 @@ export default function HomePage() {
               <p className="text-sm text-muted-foreground mt-1">Powered by Gemini</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-bold gradient-text">4 Years</p>
-              <p className="text-sm text-muted-foreground mt-1">Full Roadmap</p>
+              <p className="text-3xl font-bold gradient-text">32</p>
+              <p className="text-sm text-muted-foreground mt-1">Courses to Graduate</p>
             </div>
           </motion.div>
         </div>
@@ -279,7 +279,7 @@ export default function HomePage() {
             <div className="relative px-8 py-16 sm:px-16 text-center text-white">
               <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to make it happen?</h2>
               <p className="text-lg text-white/80 mb-8 max-w-lg mx-auto">
-                Join Davidson students who are planning smarter, connecting faster, and graduating with purpose.
+                Plan your next registration with Davidson&apos;s live course schedule.
               </p>
               <Button size="lg" className="bg-white text-red-800 hover:bg-gray-100 shadow-xl text-base h-12 px-8 font-semibold" asChild>
                 <Link href="/register">
@@ -302,7 +302,7 @@ export default function HomePage() {
             <span className="text-sm font-semibold">MakeItSo</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            hack@DAVIDSON 2025 &middot; Built for Davidson College students
+            hack@DAVIDSON 2026 &middot; Built for Davidson College students
           </p>
         </div>
       </footer>

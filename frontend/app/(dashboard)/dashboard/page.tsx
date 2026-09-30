@@ -8,13 +8,15 @@ import {
   ArrowRight,
   BookOpen,
   Briefcase,
+  CalendarDays,
   Compass,
   GraduationCap,
   Map,
   Sparkles,
-  Users,
   Zap,
 } from "lucide-react";
+import { useTerms } from "@/lib/use-terms";
+import { CAREER_PATHS } from "@/lib/career-paths";
 const fadeIn = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
@@ -27,6 +29,7 @@ const stagger = {
 export default function DashboardPage() {
   const { data: session } = useSession();
   const firstName = session?.user?.name?.split(" ")[0] || "there";
+  const terms = useTerms();
 
   const hour = new Date().getHours();
   const greeting =
@@ -53,10 +56,10 @@ export default function DashboardPage() {
       {/* Quick stats */}
       <motion.div variants={fadeIn} className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Live Courses", value: "463", icon: BookOpen, color: "text-davidson", bg: "bg-davidson-light" },
-          { label: "Career Paths", value: "24", icon: Briefcase, color: "text-davidson", bg: "bg-davidson-light" },
+          { label: "Current Term", value: terms?.active.label ?? "…", icon: BookOpen, color: "text-davidson", bg: "bg-davidson-light" },
+          { label: "Registering For", value: terms?.registration.label ?? "…", icon: CalendarDays, color: "text-davidson", bg: "bg-davidson-light" },
+          { label: "Career Paths", value: String(CAREER_PATHS.length), icon: Briefcase, color: "text-davidson", bg: "bg-davidson-light" },
           { label: "AI Powered", value: "Gemini", icon: Zap, color: "text-davidson", bg: "bg-davidson-light" },
-          { label: "Alumni Network", value: "38", icon: Users, color: "text-davidson", bg: "bg-davidson-light" },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-sm transition-all group">
             <div className={`h-8 w-8 rounded-lg ${bg} flex items-center justify-center mb-2`}>
@@ -80,7 +83,7 @@ export default function DashboardPage() {
               <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-davidson group-hover:translate-x-0.5 transition-all" />
             </h3>
             <p className="text-sm text-[#555555] leading-relaxed">
-              Browse all 463 Davidson courses with live enrollment data, professor ratings, and AI insights.
+              Browse the live {terms ? `${terms.registration.label} and ${terms.active.label}` : "Davidson"} course schedules with official descriptions, prerequisites, and section times.
             </p>
           </div>
         </Link>
@@ -95,7 +98,7 @@ export default function DashboardPage() {
               <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-davidson group-hover:translate-x-0.5 transition-all" />
             </h3>
             <p className="text-sm text-[#555555] leading-relaxed">
-              Explore 24 career paths with alumni connections, AI roadmaps, and cold email generator.
+              Explore {CAREER_PATHS.length} career paths with Davidson courses, BLS pay data, Davidson resources, and AI roadmaps.
             </p>
           </div>
         </Link>
@@ -141,7 +144,7 @@ export default function DashboardPage() {
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold font-serif text-sm text-[#111111]">Powered by Gemini AI</h3>
               <p className="text-xs text-[#555555]">
-                Personalized recommendations, career roadmaps, and networking emails for your Davidson experience.
+                AI course recommendations and career roadmaps, checked against Davidson&apos;s live course schedule.
               </p>
             </div>
             <div className="flex gap-2 shrink-0">
