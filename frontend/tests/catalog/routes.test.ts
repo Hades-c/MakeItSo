@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/catalog";
 import { CatalogFiltersSchema, CatalogSearchResultSchema } from "@/lib/types/catalog";
 import CatalogSection from "@/models/CatalogSection";
+import { drainBackground } from "@/server/catalog/background";
 import { UNAVAILABLE_MESSAGE } from "@/server/catalog/config";
 import { CatalogCronResultSchema } from "@/server/catalog/cron";
 import { setIngestDepsForTests } from "@/server/catalog/refresh";
@@ -128,12 +129,47 @@ describe("GET /api/catalog/courses/[term]/[code]", () => {
 });
 
 describe("GET /api/catalog/availability", () => {
+  it("is not CDN-cached while the history still waits for the backfill", async () => {
+    const early = await availabilityRoute(request("/api/catalog/availability?code=csc221"));
+    expect(early.status).toBe(200);
+    expect(early.headers.get("cache-control")).toBe("private, no-store");
+    const partial = AvailabilityResponseSchema.parse(await early.json());
+    expect(partial.availability.map((a) => a.termCode)).toEqual(["202601", "202602", "202701"]);
+    expect(partial.availability.at(-1)).toEqual({
+      termCode: "202701",
+      status: "not-yet-published",
+    });
+    // Requested terms that are known already are final, whatever the backfill does.
+    await expectPublic(
+      await availabilityRoute(request("/api/catalog/availability?code=CSC221&terms=202601,202602")),
+    );
+    // Fall 2027's "usually offered" depends on Fall 2024 and 2025: not final yet.
+    const future = await availabilityRoute(
+      request("/api/catalog/availability?code=CSC221&terms=202701"),
+    );
+    expect(future.headers.get("cache-control")).toBe("private, no-store");
+  });
+
   it("reports the history, or just the requested terms", async () => {
+    await availabilityRoute(request("/api/catalog/availability?code=csc221"));
+    await drainBackground(); // the history backfill
     const all = AvailabilityResponseSchema.parse(
       await expectPublic(await availabilityRoute(request("/api/catalog/availability?code=csc221"))),
     );
     expect(all.code).toBe("CSC 221");
-    expect(all.availability.map((a) => a.termCode)).toEqual(["202601", "202602", "202701"]);
+    expect(all.availability.map((a) => a.termCode)).toEqual([
+      "202201",
+      "202202",
+      "202301",
+      "202302",
+      "202401",
+      "202402",
+      "202501",
+      "202502",
+      "202601",
+      "202602",
+      "202701",
+    ]);
     const some = AvailabilityResponseSchema.parse(
       await expectPublic(
         await availabilityRoute(
@@ -143,7 +179,11 @@ describe("GET /api/catalog/availability", () => {
     );
     expect(some.availability).toEqual([
       { termCode: "202602", status: "offered", sectionCount: 2 },
-      { termCode: "202702", status: "not-yet-published" },
+      {
+        termCode: "202702",
+        status: "not-yet-published",
+        usually: { season: "Spring", basedOn: expect.arrayContaining(["202602"]) },
+      },
     ]);
   });
 

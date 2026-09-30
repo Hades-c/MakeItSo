@@ -3,9 +3,11 @@ import { withCatalogDb } from "./db";
 import { AvailabilitySchema } from "@/lib/types/catalog";
 import { getCourseHistory } from "@/server/catalog";
 import {
+  availabilityComplete,
   computeAvailability,
   defaultHistoryTerms,
-  lastSameSeasonTerms,
+  previousSameSeasonTerms,
+  usuallyOffered,
 } from "@/server/catalog/availability";
 import { drainBackground } from "@/server/catalog/background";
 import { runCatalogCron } from "@/server/catalog/cron";
@@ -114,10 +116,54 @@ describe("availability rules (PLAN §5)", () => {
     ).toEqual([{ termCode: "202501", status: "not-offered" }]);
   });
 
-  it("looks back at the three latest published same-season terms", () => {
-    expect(lastSameSeasonTerms("202701", metas)).toEqual(["202401", "202501", "202601"]);
-    expect(lastSameSeasonTerms("202702", metas)).toEqual(["202402", "202502"]);
-    expect(lastSameSeasonTerms("202603", metas)).toEqual([]);
+  it("looks back at the three same-season terms right before a term", () => {
+    expect(previousSameSeasonTerms("202701")).toEqual(["202401", "202501", "202601"]);
+    expect(previousSameSeasonTerms("202702")).toEqual(["202402", "202502", "202602"]);
+    expect(previousSameSeasonTerms("198901")).toEqual(["198801"]); // academic years start in 1988
+  });
+
+  it("makes no 'usually offered' claim while one of those three terms was never ingested", () => {
+    // Fall 2023–2025 never ingested (only Fall 2022 and Fall 2026 are): Fall 2022 is not one of the last 3 Falls.
+    const gaps = new Map(
+      [meta("202201", 600), meta("202601", 600), meta("202602", 500)].map((m) => [m.term, m]),
+    );
+    const counts = new Map([
+      ["202201", 1],
+      ["202601", 1],
+    ]);
+    expect(usuallyOffered("202701", gaps, counts)).toBeNull();
+    expect(
+      computeAvailability({ terms: ["202701"], resolved, metas: gaps, sectionCounts: counts }),
+    ).toEqual([{ termCode: "202701", status: "not-yet-published" }]);
+    // Once the three are known, the rule applies to exactly them.
+    const full = new Map([
+      ...gaps,
+      ...[meta("202401", 600), meta("202501", 600)].map((m) => [m.term, m] as const),
+    ]);
+    expect(usuallyOffered("202701", full, counts)).toBeNull(); // ran in 1 of 202401, 202501, 202601
+    expect(usuallyOffered("202701", full, new Map([...counts, ["202501", 2]]))).toEqual({
+      season: "Fall",
+      basedOn: ["202501", "202601"],
+    });
+  });
+
+  it("says whether the answer is final (no term it depends on waits for the backfill)", () => {
+    const window = ["202401", "202402", "202403", "202501", "202502", "202503", "202601", "202602"];
+    expect(availabilityComplete({ terms: window, resolved, metas, window })).toBe(true);
+    expect(
+      availabilityComplete({ terms: [...window, "202701", "202702"], resolved, metas, window }),
+    ).toBe(true);
+    const partial = new Map([...metas].filter(([term]) => term !== "202501"));
+    expect(availabilityComplete({ terms: window, resolved, metas: partial, window })).toBe(false);
+    // 202701's "usually" needs 202501 even when 202501 itself is not asked for.
+    expect(availabilityComplete({ terms: ["202701"], resolved, metas: partial, window })).toBe(
+      false,
+    );
+    expect(availabilityComplete({ terms: ["202602"], resolved, metas: partial, window })).toBe(
+      true,
+    );
+    // Terms outside the ingest window are never ingested and count as known.
+    expect(availabilityComplete({ terms: ["201901"], resolved, metas, window })).toBe(true);
   });
 
   it("reports regular terms from 202201 through the term after registration, plus summers with data", () => {
