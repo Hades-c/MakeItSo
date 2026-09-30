@@ -1,6 +1,6 @@
 {
   "source": "course-schedule",
-  "description": "Davidson public course API (api.davidson.edu), real responses captured 2026-09-30, minified. Full Fall 2026 (202601) and Spring 2027 (202602); subsets of 202201-202502; [] for summer terms and second pages. Terms 202203/202303/202403 have no subset: requests for other terms fail loudly.",
+  "description": "Davidson public course API (api.davidson.edu), real responses captured 2026-09-30, minified; contact e-mail addresses in descriptions replaced. Every term W1 ingests (202201 through 202603) is covered: full Fall 2026 (202601) and Spring 2027 (202602), subsets of 202201-202502, [] for summer terms and for second pages. Any other request fails loudly.",
   "capturedAt": "2026-09-30",
   "routes": [
     {
