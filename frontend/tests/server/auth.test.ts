@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
 import { POST as register } from "@/app/api/auth/register/route";
-import CoursePlan from "@/models/CoursePlan";
+import CoursePlanV1 from "@/models/legacy/CoursePlanV1";
 import User from "@/models/User";
 import { authorizeCredentials, getAuthOptions } from "@/server/auth/options";
 
@@ -46,7 +46,7 @@ describe("POST /api/auth/register", () => {
     expect(user?.password).not.toContain(alex.password);
 
     // Legacy collections are read-only to new code (PLAN §4).
-    expect(await CoursePlan.countDocuments({ userId })).toBe(0);
+    expect(await CoursePlanV1.countDocuments({ userId })).toBe(0);
   });
 
   it("returns 409 for an email that is already registered (case-insensitive)", async () => {
