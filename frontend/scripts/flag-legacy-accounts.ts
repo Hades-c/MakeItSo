@@ -6,11 +6,23 @@
  *   MONGODB_URI="mongodb+srv://…" node scripts/flag-legacy-accounts.ts --cutoff=2026-10-14 --apply
  *
  * `--cutoff` (required) is a date (YYYY-MM-DD, taken as 00:00 UTC) or an ISO date-time with an offset: every
- * account created strictly before it gets `legacyAccount: true`. Accounts without `createdAt`
- * use the time in their ObjectId. It never unsets the flag, never touches any other field, and is idempotent.
+ * account created strictly before it gets `legacyAccount: true`, EXCEPT unverified new-flow sign-ups. Accounts
+ * without `createdAt` use the time in their ObjectId. It never unsets the flag, never touches any other field,
+ * and is idempotent.
+ *
+ * Unverified new-flow sign-ups (`emailVerifiedAt` stored as null) are never flagged, whatever the cutoff:
+ * flagging one would make a squatted, unverified sign-up permanent (a legacy account is never replaced). They are
+ * counted as "skipped (unverified new sign-ups)". Pre-rewrite accounts lack the field and are flagged; verified
+ * accounts are never replaced anyway, so flagging them changes nothing.
  *
  * What the flag does: registration never replaces a legacy account (server/auth/registration.ts), whatever its
  * verification state. Legacy accounts keep signing in, may verify their own mailbox, and are otherwise normal.
+ * Pre-rewrite accounts are already protected without the flag (they lack the field); the flag makes that explicit
+ * and survives a later write of the field.
+ *
+ * Turning on a mail provider does NOT need this script first: an unverified new-flow sign-up becomes replaceable
+ * only 24 hours after a code actually reached its inbox (User.verificationSentAt), so accounts created while
+ * MAIL_PROVIDER=none stay safe when mail is switched on.
  *
  * Self-contained on purpose (only `mongoose`): no app aliases, so it runs without a bundler.
  */
@@ -32,6 +44,8 @@ export interface FlagReport {
   alreadyFlagged: number;
   /** Of those, not flagged yet (what --apply flags). */
   toFlag: number;
+  /** Created before the cutoff by the new sign-up flow and still unverified (emailVerifiedAt: null): never flagged. */
+  skippedNewFlow: number;
   /** Actually written (0 in a dry run). */
   flagged: number;
   /** Of the accounts before the cutoff: addresses outside @davidson.edu. */
@@ -71,14 +85,20 @@ export async function flagLegacyAccounts(
 ): Promise<FlagReport> {
   const users = db.collection("users");
   const before = createdBeforeFilter(options.cutoff);
-  const unflagged = { $and: [before, { legacyAccount: { $ne: true } }] };
-  const [totalUsers, createdBeforeCutoff, toFlag, nonDavidson, verified] = await Promise.all([
-    users.countDocuments({}),
-    users.countDocuments(before),
-    users.countDocuments(unflagged),
-    users.countDocuments({ $and: [before, { email: { $not: /@davidson\.edu$/ } }] }),
-    users.countDocuments({ $and: [before, { emailVerifiedAt: { $type: "date" } }] }),
-  ]);
+  // $not also matches a missing field: pre-rewrite accounts (no field) and verified ones, never a stored null.
+  const notPendingSignup = { emailVerifiedAt: { $not: { $type: "null" } } };
+  const unflagged = { $and: [before, notPendingSignup, { legacyAccount: { $ne: true } }] };
+  const [totalUsers, createdBeforeCutoff, toFlag, skippedNewFlow, nonDavidson, verified] =
+    await Promise.all([
+      users.countDocuments({}),
+      users.countDocuments(before),
+      users.countDocuments(unflagged),
+      users.countDocuments({
+        $and: [before, { emailVerifiedAt: { $type: "null" } }, { legacyAccount: { $ne: true } }],
+      }),
+      users.countDocuments({ $and: [before, { email: { $not: /@davidson\.edu$/ } }] }),
+      users.countDocuments({ $and: [before, { emailVerifiedAt: { $type: "date" } }] }),
+    ]);
   let flagged = 0;
   if (options.apply && toFlag > 0) {
     const result = await users.updateMany(unflagged, { $set: { legacyAccount: true } });
@@ -89,8 +109,9 @@ export async function flagLegacyAccounts(
     dryRun: !options.apply,
     totalUsers,
     createdBeforeCutoff,
-    alreadyFlagged: createdBeforeCutoff - toFlag,
+    alreadyFlagged: createdBeforeCutoff - toFlag - skippedNewFlow,
     toFlag,
+    skippedNewFlow,
     flagged,
     nonDavidson,
     verified,
@@ -105,6 +126,7 @@ export function formatReport(report: FlagReport, database: string): string {
     `created before the cutoff: ${report.createdBeforeCutoff}`,
     `  already flagged:         ${report.alreadyFlagged}`,
     `  ${report.dryRun ? "would flag" : "flagged"}:              ${report.dryRun ? report.toFlag : report.flagged}`,
+    `  skipped (unverified new sign-ups): ${report.skippedNewFlow}`,
     `  outside @davidson.edu:   ${report.nonDavidson}`,
     `  mailbox verified:        ${report.verified}`,
   ].join("\n");

@@ -49,6 +49,13 @@ async function seed() {
       createdAt: new Date("2026-10-20T00:00:00Z"),
       emailVerifiedAt: null,
     },
+    // A new-flow sign-up from before the cutoff that is still unverified: never flagged (review regression:
+    // flagging it would make a squatted sign-up permanent).
+    {
+      email: "pending@davidson.edu",
+      createdAt: new Date("2026-10-01T00:00:00Z"),
+      emailVerifiedAt: null,
+    },
   ]);
   return users;
 }
@@ -76,16 +83,18 @@ describe("scripts/flag-legacy-accounts.ts", () => {
     expect(report).toEqual({
       cutoff: "2026-10-14T00:00:00.000Z",
       dryRun: true,
-      totalUsers: 6,
-      createdBeforeCutoff: 5,
+      totalUsers: 7,
+      createdBeforeCutoff: 6,
       alreadyFlagged: 1,
       toFlag: 4,
+      skippedNewFlow: 1,
       flagged: 0,
       nonDavidson: 1,
       verified: 1,
     });
     expect(await users.find({}).toArray()).toEqual(before);
     expect(formatReport(report, "makeitso")).toMatch(/^DRY RUN .*"makeitso"[\s\S]*would flag: +4/);
+    expect(formatReport(report, "makeitso")).toMatch(/skipped \(unverified new sign-ups\): 1/);
   });
 
   it("flags only accounts created before the cutoff, and is idempotent", async () => {
@@ -102,8 +111,11 @@ describe("scripts/flag-legacy-accounts.ts", () => {
       "old3@davidson.edu",
     ]);
     expect(await users.findOne({ email: "new@davidson.edu" })).not.toHaveProperty("legacyAccount");
+    expect(await users.findOne({ email: "pending@davidson.edu" })).not.toHaveProperty(
+      "legacyAccount",
+    );
     const again = await flagLegacyAccounts(mongoose.connection.db!, { cutoff, apply: true });
-    expect(again).toMatchObject({ toFlag: 0, flagged: 0, alreadyFlagged: 5 });
+    expect(again).toMatchObject({ toFlag: 0, flagged: 0, alreadyFlagged: 5, skippedNewFlow: 1 });
   });
 
   it("runs as a plain Node script (TypeScript stripped natively), dry run by default", async () => {
