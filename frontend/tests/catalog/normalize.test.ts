@@ -9,6 +9,7 @@ import {
 import { SectionSchema } from "@/lib/types/catalog";
 import { normaliseItems } from "@/server/catalog/ingest";
 import {
+  cleanQuery,
   foldForSearch,
   isOverEnrolled,
   isStaffName,
@@ -337,6 +338,20 @@ describe("cross-listings, cross-postings, registration sections", () => {
 describe("search text", () => {
   it("folds case and accents and holds both code spellings", () => {
     expect(foldForSearch("  Beyoncé  and ÉCOLE ")).toBe("beyonce and ecole");
+    // Apostrophes in every spelling vanish on both sides (iOS types ’), invisible characters too.
+    for (const name of [
+      "O'Geen",
+      "O\u2019Geen",
+      "O\u2018Geen",
+      "O\u02BCGeen",
+      "O''Geen",
+      "O`Geen",
+    ]) {
+      expect(foldForSearch(name), name).toBe("ogeen");
+    }
+    expect(foldForSearch("Women\u2019s \u201CVoices\u201D")).toBe('womens "voices"');
+    expect(foldForSearch("CSC\u200B121\u00AD\uFEFF")).toBe("csc121");
+    expect(cleanQuery(" \u200B\uFF23\uFF33\uFF23\u3000\uFF11\uFF12\uFF11 ")).toBe("CSC 121");
     const section = fixtureSection("202602", "AFR 101", "A");
     expect(section.searchText).toContain("afr 101 afr101");
     expect(section.searchText).toContain("hilary green");

@@ -202,14 +202,33 @@ export function regForFromTitle(title: string): string | null {
   return COURSE_CODE_PATTERN.test(code) ? code : null;
 }
 
-/** Lower-case, accents removed (so "Beyonce" finds "Beyoncé"), whitespace collapsed. */
+/** Zero-width and invisible formatting characters (pasted text, soft hyphens). */
+const INVISIBLE = /[­​-‍⁠﻿]/g;
+/** Apostrophes in every spelling: ' ‘ ’ ‛ ʼ ′ ` ´ (iOS smart punctuation types ’). */
+const APOSTROPHES = /['‘’‛ʼ′`´]/g;
+/** Curly and low double quotes → ". */
+const DOUBLE_QUOTES = /[“”„″]/g;
+
+/**
+ * Search folding, applied alike to haystacks and queries: lower-case, accents removed ("Beyonce" finds "Beyoncé"),
+ * invisible characters removed, apostrophes dropped in every spelling ("O’Geen", "O'Geen", "O''Geen" and "ogeen"
+ * all fold to "ogeen"; "women’s" to "womens"), curly double quotes straightened, whitespace collapsed.
+ */
 export function foldForSearch(value: string): string {
   return value
     .normalize("NFKD")
     .replace(/\p{M}+/gu, "")
+    .replace(INVISIBLE, "")
+    .replace(APOSTROPHES, "")
+    .replace(DOUBLE_QUOTES, '"')
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Query text before parsing: NFKC (fullwidth "Ｃｓｃ　１２１"), invisible characters removed, whitespace collapsed. */
+export function cleanQuery(value: string): string {
+  return value.normalize("NFKC").replace(INVISIBLE, "").replace(/\s+/g, " ").trim();
 }
 
 /** Both code spellings: "csc 121 csc121". */

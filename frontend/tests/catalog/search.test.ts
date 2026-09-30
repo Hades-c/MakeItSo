@@ -7,10 +7,13 @@ import {
   courseLevel,
   courseTitle,
   isCompanionLab,
+  isTopicsCourse,
+  registrableSeats,
   summarizeCourse,
 } from "@/server/catalog/courses";
 import {
   matchCourses,
+  matchedSectionTitle,
   paletteMatches,
   prepareTextQuery,
   searchIndex,
@@ -41,12 +44,54 @@ describe("course grouping", () => {
     expect(bio.every((s) => !isCompanionLab(s, bio))).toBe(true);
   });
 
-  it("takes the title most sections share; topics courses keep their section titles", () => {
+  it("takes the title at least half the sections share, and no other title matches", () => {
     expect(courseTitle(sectionsOf("202601", "BIO 371"))).toBe("Research in Biology I");
-    const wri = buildCourse(sectionsOf("202601", "WRI 101"));
-    expect(wri.sections.map((s) => s.section).slice(0, 4)).toEqual(["A", "AA", "B", "C"]);
-    expect(wri.title).toBe("The Politics of Love"); // C and I share it; earliest-section tie-break
-    expect(wri.sections.find((s) => s.section === "A")?.title).toBe("According to Science");
+    const base = sectionsOf("202601", "BIO 371")[0]!;
+    const titled = (...titles: string[]) =>
+      titles.map((title, i) => ({ ...base, section: String.fromCharCode(65 + i), title }));
+    expect(courseTitle(titled("Solo"))).toBe("Solo");
+    expect(courseTitle(titled("X", "X", "Y", "Z"))).toBe("X"); // half share it
+    expect(courseTitle(titled("X", "Y", "X"))).toBe("X");
+    expect(courseTitle(titled("X", "X", "Y", "Y"), "Biology")).toBe(
+      "Biology: topics vary by section",
+    ); // a tie is no majority
+    expect(courseTitle(titled("X", "Y"), "Biology")).toBe("Biology: topics vary by section");
+    expect(courseTitle(titled("X", "Y", "Z"))).toBe("Topics vary by section"); // no department name
+    expect(isTopicsCourse(titled("X", "Y"))).toBe(true);
+    expect(isTopicsCourse(titled("X", "X"))).toBe(false);
+  });
+
+  it("gives topics courses a neutral title and keeps every section's own title (WRI 101, CSC 390, ECO 495)", () => {
+    // WRI 101: 24 sections, 22 titles in Fall 2026 (two share "The Politics of Love"); 16 sections in Spring 2027.
+    const wri = fall.byCode.get("WRI 101")!;
+    expect(wri.course.title).toBe("Writing Program: topics vary by section");
+    expect(wri.summary.title).toBe("Writing Program: topics vary by section");
+    expect(wri.topics).toBe(true);
+    expect(wri.course.sections.find((s) => s.section === "A")?.title).toBe("According to Science");
+    expect(spring.byCode.get("WRI 101")?.course.title).toBe(
+      "Writing Program: topics vary by section",
+    );
+    const csc390 = fall.byCode.get("CSC 390")!;
+    expect(csc390.course.title).toBe("Computer Science: topics vary by section");
+    expect(csc390.course.sections.map((s) => s.title)).toContain("Advanced Ranking Methods");
+    // ECO 495 in Spring 2027: A "Beckerian Economics", B "Senior Seminar", … six titles, none shared.
+    const eco495 = spring.byCode.get("ECO 495")!;
+    expect(eco495.course.title).toBe("Economics: topics vary by section");
+    expect(eco495.course.sections.slice(0, 2).map((s) => s.title)).toEqual([
+      "Beckerian Economics",
+      "Senior Seminar",
+    ]);
+    // POL 485: "Honors Thesis" on 3 of 9 sections is no majority either.
+    expect(fall.byCode.get("POL 485")?.course.title).toBe(
+      "Political Science: topics vary by section",
+    );
+    // Courses whose sections share a title keep it.
+    expect(spring.byCode.get("CSC 121")?.course.title).toBe("Programming & Problem Solving");
+    expect(spring.byCode.get("CSC 121")?.topics).toBe(false);
+    const wriBuilt = buildCourse(sectionsOf("202601", "WRI 101"), {
+      subjectName: "Writing Program",
+    });
+    expect(wriBuilt.title).toBe("Writing Program: topics vary by section");
   });
 
   it("summarises a course: credits, requirements, seats, people, siblings, TBA", () => {
@@ -95,7 +140,8 @@ describe("text queries", () => {
     const everything = spring.courses.length;
     expect(codes({ q: "   " })).toHaveLength(everything);
     expect(codes({})).toHaveLength(everything);
-    expect(prepareTextQuery(" \t ", spring.subjects)).toEqual({ kind: "none" });
+    expect(prepareTextQuery(" \t ", spring)).toEqual({ kind: "none" });
+    expect(prepareTextQuery("\u200B \u00A0", spring)).toEqual({ kind: "none" });
   });
 
   it("matches partial codes and department codes", () => {
@@ -105,11 +151,53 @@ describe("text queries", () => {
     expect(codes({ q: "csc22" })).toEqual(["CSC 221"]);
     const csc = codes({ q: "csc" });
     expect(csc).toEqual(expect.arrayContaining(["CSC 110", "CSC 221", "MAT 210", "PHY 240"]));
-    expect(
-      csc.every(
-        (code) => code.startsWith("CSC") || ["MAT 210", "MAT 315", "PHY 240"].includes(code),
-      ),
-    ).toBe(true);
+    // The department (subject or cross-posting), plus courses where "CSC" stands on its own (a cross-listed
+    // code, a description that names a CSC course).
+    for (const code of csc) {
+      const course = spring.byCode.get(code)!;
+      expect(
+        course.subject === "CSC" ||
+          course.crossPostings.has("CSC") ||
+          /\bcsc\b/.test(course.haystack),
+        code,
+      ).toBe(true);
+    }
+  });
+
+  it("a department code also finds the word in instructor names, titles and descriptions ('Dan')", () => {
+    const dan = codes({ q: "Dan" });
+    expect(dan).toEqual(expect.arrayContaining(["DAN 101", "DAN 140", "DAN 150", "DAN 340"]));
+    // Dan Aldridge teaches HIS 142, 349 and 449; instructors named Dan teach MUS 116 and PHY 116.
+    expect(dan).toEqual(
+      expect.arrayContaining(["HIS 142", "HIS 349", "HIS 449", "MUS 116", "PHY 116"]),
+    );
+    expect(codes({ q: "Dan Aldridge" })).toEqual(["HIS 142", "HIS 349", "HIS 449"]);
+    // A whole word only: "Jordan" is not "Dan".
+    for (const code of dan) {
+      const course = spring.byCode.get(code)!;
+      expect(course.subject === "DAN" || /\bdan\b/.test(course.haystack), code).toBe(true);
+    }
+    // The palette ranks the department's own courses first.
+    const palette = paletteMatches(spring, "dan", 20).map((c) => c.code);
+    expect(palette.slice(0, 4)).toEqual(["DAN 101", "DAN 140", "DAN 150", "DAN 340"]);
+    expect(palette).toEqual(expect.arrayContaining(["HIS 142", "MUS 116", "PHY 116"]));
+  });
+
+  it("recognises departments that exist only as cross-postings (FMD, INEU, IGEN, EAS)", () => {
+    for (const dept of ["FMD", "INEU", "IGEN", "EAS"]) {
+      expect(spring.subjects.has(dept), dept).toBe(true);
+      expect(prepareTextQuery(dept.toLowerCase(), spring)).toMatchObject({
+        kind: "dept",
+        subject: dept,
+      });
+      const byQuery = codes({ q: dept });
+      const byFilter = codes({ dept: [dept] });
+      expect(byFilter.length, dept).toBeGreaterThan(10);
+      expect(byQuery, dept).toEqual(expect.arrayContaining(byFilter));
+      expect(paletteMatches(spring, dept, 5).length, dept).toBe(5);
+    }
+    // "EAS" no longer matches every "east" and "ease".
+    expect(codes({ q: "EAS" })).toHaveLength(codes({ dept: ["EAS"] }).length);
   });
 
   it("matches titles, section titles, every instructor and descriptions, ignoring case and accents", () => {
@@ -126,6 +214,60 @@ describe("text queries", () => {
     expect(codes({ q: "kentucky route zero" })).toEqual(["ENG 110"]);
     expect(codes({ q: "BEYONCE" })).toEqual(["ENG 110"]);
     expect(codes({ q: "zzzz-no-such-course" })).toEqual([]);
+  });
+
+  it("normalises what people actually type: sections, punctuation, several codes, invisible characters", () => {
+    const cases: [string, string[]][] = [
+      ["CSC121A", ["CSC 121"]],
+      ["csc 121a", ["CSC 121"]],
+      ["CSC 121-A", ["CSC 121"]],
+      ["CSC 121 A", ["CSC 121"]],
+      ["CHE 430-A", ["CHE 430"]], // upstream's own "REG FOR CHE 430-A" spelling
+      ["CSC.121", ["CSC 121"]],
+      ["csc,121", ["CSC 121"]],
+      ["CSC_121", ["CSC 121"]],
+      ["\u200BCSC121", ["CSC 121"]],
+      ["CSC\u00AD121", ["CSC 121"]],
+      ["\uFF23\uFF53\uFF43\u3000\uFF11\uFF12\uFF11", ["CSC 121"]], // fullwidth "Ｃｓｃ　１２１"
+      ["CSC121 CSC221", ["CSC 121", "CSC 221"]],
+      ["csc 121, csc 221", ["CSC 121", "CSC 221"]],
+      ["CSC 121 or CSC 221", ["CSC 121", "CSC 221"]],
+      ["CSC 121 / AFR 101", ["AFR 101", "CSC 121"]],
+    ];
+    for (const [q, expected] of cases) {
+      expect(codes({ q }), JSON.stringify(q)).toEqual(expected);
+      expect(
+        paletteMatches(spring, q, 5).map((c) => c.code),
+        JSON.stringify(q),
+      ).toEqual(expected);
+    }
+    expect(prepareTextQuery("CSC 121-A", spring)).toEqual({ kind: "codes", codes: ["CSC 121"] });
+    // A lettered course number wins when the term has one (none in the fixtures: a synthetic alias).
+    expect(
+      prepareTextQuery("MUS101L", { subjects: spring.subjects, aliasCodes: new Set(["MUS 101L"]) }),
+    ).toEqual({ kind: "codes", codes: ["MUS 101L"] });
+    // "OR"/"AND" are separators, not sections; a code next to other words is one more word.
+    expect(prepareTextQuery("csc 121 python", spring)).toEqual({
+      kind: "words",
+      words: ["csc 121", "python"],
+    });
+    expect(codes({ q: "problem-solving" })).toContain("CSC 121");
+    expect(paletteMatches(spring, "problem-solving", 5).map((c) => c.code)).toEqual(["CSC 121"]);
+    expect(codes({ q: "Programming, Problem Solving" })).toContain("CSC 121");
+  });
+
+  it("ignores apostrophe styles: iOS smart punctuation finds O'Geen, O'Keefe and women's", () => {
+    const geen = ["POL 182", "POL 327", "POL 485"];
+    for (const q of ["O'Geen", "O\u2019Geen", "o\u2018geen", "O\u02BCGeen", "O''Geen", "ogeen"]) {
+      expect(codes({ q }, fall), JSON.stringify(q)).toEqual(geen);
+    }
+    for (const q of ["O'Keefe", "O\u2019Keefe", "okeefe"]) {
+      expect(codes({ q }, fall), q).toEqual(["ECO 202", "ECO 495"]);
+    }
+    expect(codes({ q: "black women\u2019s" }, fall)).toEqual(["AFR 247", "AFR 283"]);
+    expect(codes({ q: "black women's" }, fall)).toEqual(["AFR 247", "AFR 283"]);
+    expect(codes({ q: "children\u2019s" })).toEqual(["ENG 110"]);
+    expect(paletteMatches(fall, "O\u2019Geen", 5).map((c) => c.code)).toEqual(geen);
   });
 
   it("finds cross-listed and registration codes when no listing has them", () => {
@@ -191,8 +333,9 @@ describe("filters (OR within a list, AND across; section filters on one section)
 
   it("openOnly needs a section with seats; level uses the hundreds digit", () => {
     const open = matchCourses(spring, CatalogQuerySchema.parse({ openOnly: "true" }));
+    const lookup = (crn: string) => spring.byCrn.get(crn);
     for (const course of open) {
-      expect(course.course.sections.some((s) => s.enrollment.remaining > 0)).toBe(true);
+      expect(course.course.sections.some((s) => registrableSeats(s, lookup) > 0)).toBe(true);
     }
     expect(codes({ openOnly: true }, fixtureIndex("202201"))).not.toContain("ART 111");
     const intro = codes({ level: ["100"] });
@@ -201,6 +344,30 @@ describe("filters (OR within a list, AND across; section filters on one section)
     expect(
       codes({ level: ["000"] }, fall).every((code) => code.split(" ")[1]!.startsWith("0")),
     ).toBe(true);
+  });
+
+  it("counts a max-0 cross-listed listing's sibling seats ('Register as PHY 214')", () => {
+    // ENV 214 A/B have max 0 and are the same classes as PHY 214 A/B (4 and 1 open seats), matched by CRN.
+    const env = fall.byCode.get("ENV 214")!;
+    expect(env.course.sections.map((s) => s.enrollment.max)).toEqual([0, 0]);
+    expect(codes({ q: "ENV 214", openOnly: true }, fall)).toEqual(["ENV 214"]);
+    expect(codes({ q: "PHY 214", openOnly: true }, fall)).toEqual(["PHY 214"]);
+    expect(env.summary.openSeats).toBe(5);
+    expect(fall.byCode.get("PHY 214")?.summary.openSeats).toBe(5);
+    const lookup = (crn: string) => fall.byCrn.get(crn);
+    const [envA] = env.course.sections;
+    expect(registrableSeats(envA!, lookup)).toBe(4);
+    expect(registrableSeats(envA!)).toBe(0); // without the term's sections: its own seats only
+    expect(sectionMatches(envA!, CatalogQuerySchema.parse({ openOnly: true }), lookup)).toBe(true);
+    // The other max-0 listings of the term are cross-listed too, and follow their siblings.
+    for (const code of ["BIO 331", "ENG 285"]) {
+      const course = fall.byCode.get(code)!;
+      const listing = course.course.sections.find((s) => s.enrollment.max === 0)!;
+      const siblings = listing.crossListings.map((l) => fall.byCrn.get(l.crn)!);
+      expect(registrableSeats(listing, lookup), code).toBe(
+        siblings.reduce((sum, s) => sum + Math.max(0, s.enrollment.remaining), 0),
+      );
+    }
   });
 
   it("combines filters with AND", () => {
@@ -244,6 +411,17 @@ describe("the ⌘K palette's matches", () => {
     expect(paletteMatches(spring, "data", 3)).toHaveLength(3);
     expect(paletteMatches(spring, "   ", 5)).toEqual([]);
   });
+
+  it("names the matching topic of a topics course", () => {
+    const [wri] = paletteMatches(spring, "religion public square", 5);
+    expect(wri?.code).toBe("WRI 101");
+    expect(matchedSectionTitle(wri!, "religion public square")).toBe(
+      "Religion in the Public Square",
+    );
+    expect(matchedSectionTitle(wri!, "wri 101")).toBeNull(); // a code query names no topic
+    const csc = spring.byCode.get("CSC 121")!;
+    expect(matchedSectionTitle(csc, "programming")).toBeNull(); // not a topics course
+  });
 });
 
 describe("performance (PLAN §6.1 W1: search < 100 ms)", () => {
@@ -262,6 +440,10 @@ describe("performance (PLAN §6.1 W1: search < 100 ms)", () => {
       { req: ["LTRQ"], openOnly: true },
       { dept: ["HIS", "POL"], level: ["200", "300"] },
       { q: "research", page: 2, pageSize: 10 },
+      { q: "dan" },
+      { q: "O\u2019Keefe" },
+      { q: "CSC 121-A, MAT 110" },
+      { q: "problem-solving", openOnly: true },
     ];
     const timings: number[] = [];
     for (let i = 0; i < 200; i++) {

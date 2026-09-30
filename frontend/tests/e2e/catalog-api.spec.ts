@@ -31,10 +31,20 @@ test.describe("catalog API", () => {
     expect(body.course.sections.length).toBeGreaterThan(0);
 
     const availability = await request.get("/api/catalog/availability?code=CSC%20221&terms=202602");
+    // Final (Spring 2027 is loaded), so CDN-cacheable; a history still waiting for its backfill is not.
+    expect(availability.headers()["cache-control"]).toBe(PUBLIC_CATALOG);
     expect(await availability.json()).toEqual({
       code: "CSC 221",
       availability: [{ termCode: "202602", status: "offered", sectionCount: 2 }],
     });
+
+    // A topics course is named neutrally; its sections keep their own titles.
+    const wri = await request.get("/api/catalog/courses/202602/WRI-101");
+    const topics = (await wri.json()) as {
+      course: { title: string; sections: { title: string }[] };
+    };
+    expect(topics.course.title).toBe("Writing Program: topics vary by section");
+    expect(topics.course.sections.map((s) => s.title)).toContain("Religion in the Public Square");
 
     const filters = await request.get("/api/catalog/filters");
     expect(((await filters.json()) as { term: string }).term).toBe("202602");

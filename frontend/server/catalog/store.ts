@@ -8,7 +8,12 @@ import {
   type Section,
 } from "@/lib/types/catalog";
 import CatalogSection from "@/models/CatalogSection";
-import { buildCourse, courseLevel, summarizeCourse } from "@/server/catalog/courses";
+import {
+  buildCourse,
+  courseLevel,
+  isTopicsCourse,
+  summarizeCourse,
+} from "@/server/catalog/courses";
 import { getTermMeta } from "@/server/catalog/meta";
 import { codeSearchForms, foldForSearch, type StoredSection } from "@/server/catalog/normalize";
 import { onCatalogReset } from "@/server/catalog/state";
@@ -36,6 +41,10 @@ export interface IndexedCourse {
   shortHaystack: string;
   /** Folded course title. */
   foldedTitle: string;
+  /** The sections carry different titles (a topics course with a neutral course title). */
+  topics: boolean;
+  /** Each distinct section title with its folded form (the ⌘K palette names the matching topic). */
+  sectionTitles: readonly { title: string; folded: string }[];
 }
 
 export interface TermIndex {
@@ -45,8 +54,10 @@ export interface TermIndex {
   courses: readonly IndexedCourse[];
   byCode: ReadonlyMap<string, IndexedCourse>;
   byCrn: ReadonlyMap<string, Section>;
-  /** Subjects with a course in the term (dept-code queries such as "CSC"). */
+  /** Department codes of the term: course subjects and cross-posting codes (dept-code queries: "CSC", "FMD"). */
   subjects: ReadonlySet<string>;
+  /** Every code a course answers to: own codes, cross-listed sibling codes, registration-section codes. */
+  aliasCodes: ReadonlySet<string>;
 }
 
 const indexes = new Map<TermCode, TermIndex>();
@@ -111,6 +122,8 @@ export interface IndexEntry {
   section: Section;
   searchText: string;
   registrationCodes: string[];
+  /** Upstream department name ("Writing Program"); "" when unknown. */
+  subjectName: string;
 }
 
 /** A freshly normalised section → an index entry (the Section fields only, as a stored row reads back). */
@@ -119,6 +132,7 @@ export function entryFromStored(stored: StoredSection): IndexEntry {
     section: SectionSchema.parse(stored),
     searchText: stored.searchText,
     registrationCodes: stored.registrationSections.map((listing) => listing.courseCode),
+    subjectName: stored.subjectName,
   };
 }
 
@@ -134,34 +148,44 @@ export function buildTermIndex(
     if (group) group.push(entry);
     else groups.set(entry.section.courseCode, [entry]);
   }
-  const courses: IndexedCourse[] = [];
   const byCrn = new Map<string, Section>();
+  for (const entry of entries) byCrn.set(entry.section.crn, entry.section);
+  const lookup = (crn: string) => byCrn.get(crn);
+  const courses: IndexedCourse[] = [];
   const subjects = new Set<string>();
+  const aliasCodes = new Set<string>();
   for (const [code, group] of groups) {
-    const course = buildCourse(group.map((entry) => entry.section));
+    const subjectName = group.find((entry) => entry.subjectName)?.subjectName ?? "";
+    const course = buildCourse(
+      group.map((entry) => entry.section),
+      { subjectName },
+    );
     const aliases = new Set<string>([code]);
     const crossPostings = new Set<string>();
     const titles = new Set<string>([course.title]);
+    const sectionTitles = new Set<string>();
     const instructors = new Set<string>();
     const searchTexts = new Set<string>();
     for (const { section, searchText, registrationCodes } of group) {
-      byCrn.set(section.crn, section);
       for (const listing of section.crossListings) aliases.add(listing.courseCode);
       for (const alias of registrationCodes) aliases.add(alias);
       if (section.regFor) aliases.add(section.regFor);
       for (const posting of section.crossPostings) crossPostings.add(posting);
       titles.add(section.title);
+      sectionTitles.add(section.title);
       for (const i of section.instructors) if (!i.isStaff) instructors.add(`${i.first} ${i.last}`);
       searchTexts.add(searchText);
     }
     subjects.add(course.sections[0]?.subject ?? code.split(" ")[0] ?? "");
+    for (const posting of crossPostings) subjects.add(posting);
+    for (const alias of aliases) aliasCodes.add(alias);
     const codes = [...aliases].map(codeSearchForms).join(" ");
     const shortHaystack = foldForSearch(
       `${codes}\n${[...titles].join("\n")}\n${[...instructors].join("\n")}`,
     );
     courses.push({
       course,
-      summary: summarizeCourse(course),
+      summary: summarizeCourse(course, lookup),
       code,
       subject: course.sections[0]?.subject ?? "",
       level: courseLevel(course.sections[0]?.number ?? ""),
@@ -170,6 +194,8 @@ export function buildTermIndex(
       haystack: `${shortHaystack}\n${[...searchTexts].join("\n")}`,
       shortHaystack,
       foldedTitle: foldForSearch(course.title),
+      topics: isTopicsCourse(course.sections),
+      sectionTitles: [...sectionTitles].map((title) => ({ title, folded: foldForSearch(title) })),
     });
   }
   courses.sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
@@ -180,6 +206,7 @@ export function buildTermIndex(
     byCode: new Map(courses.map((course) => [course.code, course])),
     byCrn,
     subjects,
+    aliasCodes,
   };
 }
 
@@ -196,7 +223,14 @@ async function loadIndex(term: TermCode, hash: string | null): Promise<TermIndex
           .map((listing) => listing.courseCode)
           .filter((code): code is string => typeof code === "string")
       : [];
-    entries.push({ ...mapped, registrationCodes });
+    const subjectName = typeof record.subjectName === "string" ? record.subjectName : "";
+    // Re-fold the stored blob: rows written before a folding rule changed still search the same way.
+    entries.push({
+      ...mapped,
+      searchText: foldForSearch(mapped.searchText),
+      registrationCodes,
+      subjectName,
+    });
   }
   return buildTermIndex(term, entries, hash);
 }
