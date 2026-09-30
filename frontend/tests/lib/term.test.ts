@@ -19,6 +19,7 @@ import {
   termsBetween,
   type TermScheduleEntry,
 } from "@/lib/term";
+import { TermCodeSchema } from "@/lib/types/common";
 
 interface UpstreamTerm {
   term_code: string;
@@ -79,6 +80,42 @@ describe("term codes", () => {
     expect(() => termSeason("nope")).toThrow(RangeError);
     expect(() => compareTerms("202601", "x")).toThrow(RangeError);
     expect(() => nextRegularTerm("2026")).toThrow(RangeError);
+  });
+
+  it.each([
+    ["000000", "The Beginning of Time"],
+    ["000001", "Transfer"],
+    ["000002", "Junior Year Abroad"],
+    ["000003", "Advanced Placement (upstream is_summer)"],
+    ["190000", "Term for Converted DS records"],
+    ["196002", "Winter 1960-61 (trimester era)"],
+    ["198702", "Winter 1987-88 (trimester era)"],
+    ["210001", "past 2099"],
+  ])("rejects the Banner pseudo-term / out-of-range code %s (%s)", (code) => {
+    expect(isTermCode(code)).toBe(false);
+    expect(parseTermCode(code)).toBeNull();
+    expect(TermCodeSchema.safeParse(code).success).toBe(false);
+    expect(isRegularTerm(code)).toBe(false);
+    expect(isSummer(code)).toBe(false);
+  });
+
+  it("accepts the semester era, 198801 (Fall 1988) to 209903 (Summer 2100)", () => {
+    expect(termLabel("198801")).toBe("Fall 1988");
+    expect(termLabel("198802")).toBe("Spring 1989");
+    expect(termLabel("209903")).toBe("Summer 2100");
+    expect(TermCodeSchema.safeParse("198801").success).toBe(true);
+    expect(() => prevRegularTerm("198801")).toThrow(RangeError);
+    expect(() => nextRegularTerm("209902")).toThrow(RangeError);
+    expect(() => termCodeFor("Fall", 1987)).toThrow(RangeError);
+    expect(termCodeFor("Spring", 2100)).toBe("209902");
+  });
+
+  it("keeps pseudo-terms out of resolved term lists built from the real list", () => {
+    const codes = TERMS.map((t) => t.code);
+    expect(codes).toContain("000001");
+    const regular = codes.filter(isRegularTerm);
+    expect(regular.every((code) => Number(code.slice(0, 4)) >= 1988)).toBe(true);
+    expect(regular).toContain("202602");
   });
 
   it("knows seasons, summers and regular terms", () => {

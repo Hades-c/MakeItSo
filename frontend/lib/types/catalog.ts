@@ -262,6 +262,8 @@ export type CatalogSearchResult = z.infer<typeof CatalogSearchResultSchema>;
 
 /**
  * One term as the app sees it (PLAN §4.1.2), built by `resolveTerms()`:
+ * - code: a term code (1988–2099). The upstream list also holds Banner pseudo-terms (000001 Transfer, 000003
+ *   Advanced Placement, ...) and trimester-era codes; resolveTerms drops every entry `isTermCode` rejects.
  * - isActive: this is the CURRENT term (`currentTermFrom`), not the raw upstream flag.
  * - isRegistration: this is the registration term (`registrationTermFrom`).
  * - published: at least one section has been ingested for the term.

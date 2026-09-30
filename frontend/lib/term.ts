@@ -9,6 +9,11 @@ import { dayKey } from "@/lib/format";
  *   - `YYYY03` = Summer YYYY+1      (202503 = Summer 2026)
  * Numeric order of codes is chronological order, so codes sort as strings or numbers.
  *
+ * Only academic years 1988–2099 are term codes. Davidson moved from trimesters (Fall/Winter/Spring, where "YYYY02"
+ * meant Winter) to semesters in 1988-89, and Banner also lists pseudo-terms such as 000001 (Transfer), 000002
+ * (Junior Year Abroad) and 000003 (Advanced Placement, flagged summer): none of them may reach a TermInfo list or a
+ * URL, so the pattern itself rejects them.
+ *
  * "Regular" terms are Fall and Spring. Summer terms can hold plan entries but are never a default.
  *
  * Conventions:
@@ -25,8 +30,15 @@ export type Season = "Fall" | "Spring" | "Summer";
 /** A term code string such as "202602". Validate with `isTermCode` or `TermCodeSchema`. */
 export type TermCode = string;
 
-/** `^\d{4}0[1-3]$`: capture 1 = academic start year, capture 2 = 1 (Fall), 2 (Spring) or 3 (Summer). */
-export const TERM_CODE_PATTERN = /^(\d{4})0([1-3])$/;
+/** First and last academic start year a term code can have (semesters began in 1988-89). */
+export const MIN_TERM_ACADEMIC_YEAR = 1988;
+export const MAX_TERM_ACADEMIC_YEAR = 2099;
+
+/**
+ * `YYYY` 1988–2099 + `0` + `1|2|3`: capture 1 = academic start year, capture 2 = 1 (Fall), 2 (Spring) or 3
+ * (Summer). Rejects Banner pseudo-terms (000001 Transfer, ...) and the trimester era (196002 = Winter 1960-61).
+ */
+export const TERM_CODE_PATTERN = /^(198[89]|199\d|20\d\d)0([1-3])$/;
 
 /** The time zone all "today/now" term logic uses (PLAN §5 "Dates/times"). */
 export const TERM_TIME_ZONE = "America/New_York";
@@ -101,25 +113,38 @@ export function compareTerms(a: TermCode, b: TermCode): number {
  * (For example to convert legacy "semester + year" plan entries.)
  */
 export function termCodeFor(season: Season, calendarYear: number): TermCode {
-  if (!Number.isInteger(calendarYear) || calendarYear < 1001 || calendarYear > 9999) {
+  if (!Number.isInteger(calendarYear)) {
     throw new RangeError(`Invalid calendar year: ${calendarYear}`);
   }
-  if (season === "Fall") return `${calendarYear}01`;
-  return `${calendarYear - 1}${season === "Spring" ? "02" : "03"}`;
+  const code =
+    season === "Fall"
+      ? `${calendarYear}01`
+      : `${calendarYear - 1}${season === "Spring" ? "02" : "03"}`;
+  return mustBeTermCode(code);
+}
+
+/** `code` when it is a term code; RangeError at the edges of the supported years (1988–2099). */
+function mustBeTermCode(code: string): TermCode {
+  if (!isTermCode(code)) {
+    throw new RangeError(
+      `No term code ${JSON.stringify(code)}: terms run from ${MIN_TERM_ACADEMIC_YEAR}01 to ${MAX_TERM_ACADEMIC_YEAR}03`,
+    );
+  }
+  return code;
 }
 
 /** The next Fall/Spring term: Fall → Spring; Spring → Fall; Summer → the Fall right after it. */
 export function nextRegularTerm(code: TermCode): TermCode {
   const season = termSeason(code);
   const year = Number(code.slice(0, 4));
-  return season === "Fall" ? `${year}02` : `${year + 1}01`;
+  return mustBeTermCode(season === "Fall" ? `${year}02` : `${year + 1}01`);
 }
 
 /** The previous Fall/Spring term: Fall → Spring; Spring → Fall; Summer → the Spring right before it. */
 export function prevRegularTerm(code: TermCode): TermCode {
   const season = termSeason(code);
   const year = Number(code.slice(0, 4));
-  if (season === "Fall") return `${year - 1}02`;
+  if (season === "Fall") return mustBeTermCode(`${year - 1}02`);
   return season === "Spring" ? `${year}01` : `${year}02`;
 }
 
