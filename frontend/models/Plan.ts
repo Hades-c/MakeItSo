@@ -17,6 +17,11 @@ import { PLAN_STATUSES } from "@/lib/types/plan";
  * `mongoose.trusted()`.
  *
  * `reqCodes` is absent (undefined) when there is no requirement data, which the service exposes as `null`.
+ * `termCode` is null only for pre-matriculation credit (AP/transfer) without a term.
+ *
+ * Size bounds (server/plan/store.ts): at most MAX_PLAN_ITEMS items, MAX_SUMMER_ACTIVITIES summer entries,
+ * MAX_DEADLINES deadlines, the newest MAX_DRAFTS drafts, one WebTree list per term; each enforced atomically in
+ * the update filter (or with `$slice`), never by reading first.
  */
 
 const PlanItemSubSchema = new Schema({
@@ -119,6 +124,23 @@ const PlanSchema = new Schema(
         lifetimeActivities: { type: Number, default: 0, min: 0, max: 2 },
         teamSport: { type: Boolean, default: false },
       },
+    },
+    /**
+     * Set when this v2 document was first written from the student's legacy v1 plan (server/plan: on the first
+     * mutation, or scripts/migrate-plans.ts --apply). The v1 document itself is never touched.
+     */
+    importedFromLegacy: {
+      type: new Schema(
+        {
+          at: { type: Date, required: true },
+          /** The v1 document's updatedAt (null when it had none). */
+          sourceUpdatedAt: { type: Date, default: null },
+          /** "first-mutation" (lazy, server/plan) or "migration" (scripts/migrate-plans.ts). */
+          via: { type: String, enum: ["first-mutation", "migration"], required: true },
+        },
+        { _id: false },
+      ),
+      default: undefined,
     },
   },
   { collection: "plans", timestamps: true },
