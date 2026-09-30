@@ -34,7 +34,7 @@ const PUBLIC_NAMES = AcalogProgramListSchema.parse(
 let nextId = 1;
 function core(name: string, description = "", extra: Partial<AcalogCore> = {}): AcalogCore {
   const id = nextId++;
-  return { id, name, description, courses: [], children: [], sort_order: id, ...extra };
+  return { id, name, description, courses: [], adhocs: [], children: [], sort_order: id, ...extra };
 }
 
 function page(

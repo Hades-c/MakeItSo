@@ -15,8 +15,9 @@ import {
  * PLAN §6.1 W1b. A response counts as a failure, and callers keep their last good copy, when it is
  *   - not a 2xx (fetchExternal throws ExternalFetchError "http"), or a timeout / network error;
  *   - a 202 or carries `x-amzn-waf-action` (the AWS WAF bot challenge answers 202 with an empty body);
- *   - empty, not JSON, or not the expected shape (zod);
- *   - for the program list: incomplete (`count` ≠ entries received), or fewer than MIN_PROGRAM_COUNT programs.
+ *   - empty, not JSON, nested deeper than MAX_JSON_DEPTH, or not the expected shape (zod);
+ *   - for the program list: incomplete (`count` ≠ entries received), or fewer than MIN_PROGRAM_COUNT *public*
+ *     programs (a list whose programs are suddenly hidden empties the catalog just as a short list does).
  * Only these typed shapes leave this module; nothing upstream reaches a client unparsed.
  */
 
@@ -53,6 +54,17 @@ export const AcalogCourseRefSchema = z.looseObject({
   status: StatusSchema.optional(),
 });
 
+/**
+ * Text Acalog shows inside a core's course list ("A. Either", "OR", "Any 200-level History course", "Only SPA 403
+ * … will count"): `before` / `after` the course whose id is `course-id`, or `right` of it on the same line.
+ */
+export const AcalogAdhocSchema = z.looseObject({
+  content: z.string().nullish(),
+  placement: z.string().nullish(),
+  "course-id": z.number().int().nullish(),
+});
+export type AcalogAdhoc = z.infer<typeof AcalogAdhocSchema>;
+
 export interface AcalogCore {
   id: number;
   name: string;
@@ -60,6 +72,7 @@ export interface AcalogCore {
   description?: string | null;
   status?: { active: boolean; visible: boolean };
   courses: { id: number; title: string; status?: { active: boolean; visible: boolean } }[];
+  adhocs: AcalogAdhoc[];
   sort_order?: number | null;
   children: AcalogCore[];
 }
@@ -71,6 +84,7 @@ export const AcalogCoreSchema: z.ZodType<AcalogCore> = z.looseObject({
   description: z.string().nullish(),
   status: StatusSchema.optional(),
   courses: z.array(AcalogCourseRefSchema).default([]),
+  adhocs: z.array(AcalogAdhocSchema).default([]),
   sort_order: z.number().nullish(),
   get children() {
     return z.array(AcalogCoreSchema).default([]);
@@ -102,6 +116,27 @@ export const fetchCatalog: CatalogFetcher = async (url) => {
 };
 
 export type UpstreamResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+/**
+ * Deepest JSON nesting accepted (arrays and objects). Real program pages nest 12 levels (cores three deep); a much
+ * deeper body is malformed, and validating or walking it recursively could overflow the stack.
+ */
+export const MAX_JSON_DEPTH = 40;
+
+/** Nesting depth of a parsed JSON value, without recursion (stops counting past `limit`). */
+export function jsonDepth(value: unknown, limit = MAX_JSON_DEPTH): number {
+  let max = 0;
+  const stack: { value: unknown; depth: number }[] = [{ value, depth: 0 }];
+  while (stack.length > 0) {
+    const item = stack.pop() as { value: unknown; depth: number };
+    if (typeof item.value !== "object" || item.value === null) continue;
+    const depth = item.depth + 1;
+    if (depth > max) max = depth;
+    if (max > limit) return max;
+    for (const child of Object.values(item.value)) stack.push({ value: child, depth });
+  }
+  return max;
+}
 
 function describeExternalError(error: ExternalFetchError): string {
   switch (error.kind) {
@@ -152,7 +187,22 @@ export async function getAcalogJson<S extends z.ZodType>(
   } catch {
     return { ok: false, error: "Acalog sent a response that is not JSON" };
   }
-  const parsed = schema.safeParse(json);
+  if (jsonDepth(json) > MAX_JSON_DEPTH) {
+    return {
+      ok: false,
+      error: `Acalog sent a response nested deeper than ${MAX_JSON_DEPTH} levels`,
+    };
+  }
+  let parsed: z.ZodSafeParseResult<z.output<S>>;
+  try {
+    parsed = schema.safeParse(json);
+  } catch (error) {
+    // Only a stack overflow on a pathological body gets here (the depth check above should prevent it).
+    if (error instanceof RangeError) {
+      return { ok: false, error: "Acalog sent a response that could not be validated" };
+    }
+    throw error;
+  }
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     const where = first?.path.length ? ` at ${first.path.join(".")}` : "";
@@ -198,10 +248,11 @@ export async function fetchProgramList(
   if (new Set(items.map((item) => item.id)).size !== items.length) {
     return { ok: false, error: "Acalog's program list repeats a program" };
   }
-  if (items.length < MIN_PROGRAM_COUNT) {
+  const publicCount = items.filter(isPublicProgram).length;
+  if (publicCount < MIN_PROGRAM_COUNT) {
     return {
       ok: false,
-      error: `Acalog listed only ${items.length} programs (at least ${MIN_PROGRAM_COUNT} expected)`,
+      error: `Acalog listed only ${publicCount} public programs of ${items.length} (at least ${MIN_PROGRAM_COUNT} expected)`,
     };
   }
   return { ok: true, data: items };

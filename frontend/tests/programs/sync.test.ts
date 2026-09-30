@@ -6,8 +6,9 @@ import Program from "@/models/Program";
 import SourceSync from "@/models/SourceSync";
 import { now } from "@/server/clock";
 import { getDb } from "@/server/db";
+import { z } from "zod";
 import { ExternalFetchError } from "@/server/http";
-import { getProgram, listPrograms, syncPrograms } from "@/server/programs";
+import { getProgram, listPrograms, programNames, syncPrograms } from "@/server/programs";
 import { programListUrl } from "@/server/programs/catalog-info";
 import { getProgramWith, type ProgramsDeps, runProgramSync } from "@/server/programs/service";
 import { type CatalogFetcher, fetchCatalog, type RawResponse } from "@/server/programs/upstream";
@@ -58,6 +59,10 @@ function upstream(
   return { fetcher, pageReads };
 }
 
+function hidden(item: ListItem): ListItem {
+  return { ...item, status: { ...(item.status as object), visible: false } };
+}
+
 function deps(fetcher: CatalogFetcher, at: Date = now()): ProgramsDeps {
   return { fetcher, now: () => at };
 }
@@ -100,7 +105,21 @@ describe("syncPrograms (weekly list refresh)", () => {
     ],
     ["an empty body", { status: 200, text: "", headers: new Headers() }, /empty response/],
     ["a non-JSON body", { status: 200, text: "<html></html>", headers: new Headers() }, /not JSON/],
-    ["fewer than 45 programs", listResponse(LIST["program-list"].slice(0, 30)), /only 30 programs/],
+    [
+      "fewer than 45 programs",
+      listResponse(LIST["program-list"].slice(0, 30)),
+      /only \d+ public programs of 30/,
+    ],
+    [
+      "a list whose programs are suddenly hidden",
+      listResponse(LIST["program-list"].map((item, i) => (i < 48 ? hidden(item) : item))),
+      /only [34] public programs of 52/,
+    ],
+    [
+      "a list of hidden programs only",
+      listResponse(LIST["program-list"].map(hidden)),
+      /only 0 public programs of 52/,
+    ],
     [
       "an incomplete list",
       json({ count: 52, "program-list": LIST["program-list"].slice(0, 20) }),
@@ -142,6 +161,24 @@ describe("syncPrograms (weekly list refresh)", () => {
       consecutiveFailures: 1,
     });
     expect(await listPrograms()).toHaveLength(51);
+  });
+
+  it("keeps serving the snapshot, and records the error, when the first sync ever lists only hidden programs", async () => {
+    const result = await runProgramSync(
+      deps(upstream(listResponse(LIST["program-list"].map(hidden))).fetcher),
+    );
+    expect(result).toMatchObject({ ok: false, count: 0 });
+    expect(await Program.countDocuments({})).toBe(0);
+    expect(await SourceSync.findOne({ sourceId: "catalog" }).lean()).toMatchObject({
+      ok: false,
+      consecutiveFailures: 1,
+    });
+    const names = await programNames();
+    expect(names.majors).toContain("Major in Economics (A.B. Degree)");
+    expect(
+      z.enum(names.majors as [string, ...string[]]).safeParse("Major in Economics (A.B. Degree)")
+        .success,
+    ).toBe(true);
   });
 
   it("stops listing a program that left the catalog", async () => {

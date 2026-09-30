@@ -16,6 +16,8 @@ import {
   fetchProgramList,
   isInterdisciplinaryMinorType,
   isPublicProgram,
+  jsonDepth,
+  MAX_JSON_DEPTH,
 } from "@/server/programs/upstream";
 
 const FIXTURES = path.join(process.cwd(), "tests", "fixtures", "external", "catalog");
@@ -155,11 +157,34 @@ describe("fetchProgramList", () => {
       ok: false,
       error: "Acalog's program list repeats a program",
     });
-    expect(await fetchProgramList(respond(200, listOf(items.slice(0, 44))))).toEqual({
+    const publicItems = items.filter((item) => isPublicProgram(item as never));
+    expect(await fetchProgramList(respond(200, listOf(publicItems.slice(0, 44))))).toEqual({
       ok: false,
-      error: "Acalog listed only 44 programs (at least 45 expected)",
+      error: "Acalog listed only 44 public programs of 44 (at least 45 expected)",
     });
-    expect((await fetchProgramList(respond(200, listOf(items.slice(0, 45))))).ok).toBe(true);
+    expect((await fetchProgramList(respond(200, listOf(publicItems.slice(0, 45))))).ok).toBe(true);
+  });
+
+  it(`counts only public programs toward the ${MIN_PROGRAM_COUNT}-program floor`, async () => {
+    const items = LIST["program-list"];
+    const hide = (item: Record<string, unknown>) => ({
+      ...item,
+      status: { ...(item.status as object), visible: false },
+    });
+    // 48 of the 52 hidden: the list is complete, but only 4 programs would be left to show.
+    const mostlyHidden = items.map((item, i) => (i < 48 ? hide(item) : item));
+    expect(await fetchProgramList(respond(200, listOf(mostlyHidden)))).toEqual({
+      ok: false,
+      error: expect.stringMatching(
+        /^Acalog listed only [34] public programs of 52 \(at least 45 expected\)$/,
+      ),
+    });
+    expect(await fetchProgramList(respond(200, listOf(items.map(hide))))).toEqual({
+      ok: false,
+      error: "Acalog listed only 0 public programs of 52 (at least 45 expected)",
+    });
+    const inactive = items.map((item) => ({ ...item, status: { active: false, visible: true } }));
+    expect((await fetchProgramList(respond(200, listOf(inactive)))).ok).toBe(false);
   });
 
   it("pages through a list longer than one page of 100", async () => {
@@ -198,6 +223,34 @@ describe("fetchProgramDetail", () => {
       ok: false,
       error: "Acalog sent program 172 for program 174",
     });
+  });
+
+  it("reads adhoc text inside course lists, defaulting to none", async () => {
+    const page = JSON.parse(read("program-172.json")) as { cores: Record<string, unknown>[] };
+    const first = page.cores[0] as Record<string, unknown>;
+    first.adhocs = [{ content: "<p>OR</p>", placement: "after", "course-id": 12, name: "OR" }];
+    const result = await fetchProgramDetail(respond(200, JSON.stringify(page)), 172);
+    expect(result.ok && result.data.cores[0]?.adhocs).toEqual([
+      { content: "<p>OR</p>", placement: "after", "course-id": 12, name: "OR" },
+    ]);
+    delete first.adhocs;
+    const without = await fetchProgramDetail(respond(200, JSON.stringify(page)), 172);
+    expect(without.ok && without.data.cores[0]?.adhocs).toEqual([]);
+  });
+
+  it("rejects a page nested too deeply to validate safely (instead of overflowing the stack)", async () => {
+    // Built as text: JSON.stringify itself would overflow on 5,000 nested cores.
+    const depth = 5000;
+    const nested =
+      '{"id":1,"name":"x","courses":[],"children":['.repeat(depth) + "]}".repeat(depth);
+    const text = read("program-172.json").replace('"cores":[', `"cores":[${nested},`);
+    expect(await fetchProgramDetail(respond(200, text), 172)).toEqual({
+      ok: false,
+      error: `Acalog sent a response nested deeper than ${MAX_JSON_DEPTH} levels`,
+    });
+    expect(jsonDepth(JSON.parse(text))).toBeGreaterThan(MAX_JSON_DEPTH);
+    // Real pages nest far less (cores three deep).
+    expect(jsonDepth(JSON.parse(read("program-172.json")))).toBeLessThan(20);
   });
 
   it("rejects a page whose cores are not an array", async () => {
