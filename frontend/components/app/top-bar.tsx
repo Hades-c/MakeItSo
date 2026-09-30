@@ -19,7 +19,7 @@ export function TopBar({ user }: TopBarProps) {
       <Link
         href="/today"
         aria-label="MakeItSo, Davidson College: Today"
-        className="-m-1 shrink-0 rounded-md p-1 xl:w-56"
+        className="-m-1 shrink-0 rounded-md p-1 max-md:-my-1.5 max-md:py-1.5 xl:w-56"
       >
         <Wordmark />
       </Link>

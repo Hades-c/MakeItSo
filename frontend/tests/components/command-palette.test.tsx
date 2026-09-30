@@ -1,4 +1,5 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CommandPalette, CommandPaletteTrigger } from "@/components/app/command-palette";
@@ -222,6 +223,28 @@ describe("CommandPalette", () => {
     await waitFor(() =>
       expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["My plan"]),
     );
+    // A page matched, so it does not claim "no matches"; it says what the search itself found.
+    expect(
+      await screen.findByText("No courses, careers, events or alumni match “plan”."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No matches for/)).not.toBeInTheDocument();
+  });
+
+  it("leaves Enter and arrows to an input method while it is composing", async () => {
+    const user = userEvent.setup();
+    renderPalette(vi.fn<SearchFn>().mockResolvedValue(RESULTS));
+    act(() => openCommandPalette());
+    const input = await screen.findByRole("combobox");
+    await user.type(input, "civil");
+    await screen.findByRole("group", { name: "Courses" });
+    fireEvent.keyDown(input, { key: "ArrowDown", isComposing: true });
+    expect(input).not.toHaveAttribute("aria-activedescendant");
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
+    expect(router.push).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(router.push).toHaveBeenCalledWith("/courses?q=civil");
   });
 
   it("ignores stale responses when the query changes", async () => {
@@ -259,21 +282,71 @@ describe("CommandPalette", () => {
         <CommandPalette search={vi.fn<SearchFn>().mockResolvedValue([])} debounceMs={0} />
       </TooltipProvider>,
     );
-    await user.click(screen.getByRole("button", { name: "Search" }));
+    // The phone trigger is a link to the catalog (works before hydration), opening the palette instead.
+    const phone = screen.getByRole("link", { name: "Search" });
+    expect(phone).toHaveAttribute("href", "/courses");
+    expect(phone).toHaveAttribute("aria-haspopup", "dialog");
+    await user.click(phone);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close search" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    // Focus goes back to what opened the palette, not to <body>.
+    await waitFor(() => expect(phone).toHaveFocus());
 
-    await user.type(screen.getByRole("searchbox", { name: "Search courses" }), "econ");
-    await user.click(screen.getByRole("button", { name: "Search everything" }));
+    const field = screen.getByRole("searchbox", { name: "Search courses" });
+    await user.type(field, "econ");
+    const everything = screen.getByRole("button", { name: "Search everything" });
+    await user.click(everything);
     expect(await screen.findByRole("combobox")).toHaveValue("econ");
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(everything).toHaveFocus());
 
-    // The shortcut from inside the field carries its text over too.
-    screen.getByRole("searchbox", { name: "Search courses" }).focus();
+    // The shortcut from inside the field carries its text over too, and focus returns to the field.
+    field.focus();
     await user.keyboard("{Control>}k{/Control}");
     expect(await screen.findByRole("combobox")).toHaveValue("econ");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(field).toHaveFocus());
+  });
+
+  it("lets a modified click on the phone trigger open the catalog instead", () => {
+    render(<CommandPaletteTrigger />);
+    const phone = screen.getByRole("link", { name: "Search" });
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true });
+    phone.dispatchEvent(event);
+    // Not prevented: the browser follows /courses (in a new tab).
+    expect(event.defaultPrevented).toBe(false);
+    const plain = new MouseEvent("click", { bubbles: true, cancelable: true });
+    phone.dispatchEvent(plain);
+    expect(plain.defaultPrevented).toBe(true);
+  });
+
+  it("returns focus to the opener of a controlled palette", async () => {
+    const user = userEvent.setup();
+    function Demo() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open demo
+          </button>
+          <CommandPalette open={open} onOpenChange={setOpen} search={vi.fn<SearchFn>()} />
+        </>
+      );
+    }
+    render(
+      <TooltipProvider>
+        <Demo />
+      </TooltipProvider>,
+    );
+    const opener = screen.getByRole("button", { name: "Open demo" });
+    await user.click(opener);
+    expect(await screen.findByRole("combobox")).toHaveFocus();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(opener).toHaveFocus());
   });
 
   it("keeps the top-bar form a plain GET to the catalog", () => {

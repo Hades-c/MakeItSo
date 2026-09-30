@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -17,6 +18,7 @@ import { SourceTag } from "@/components/ui/source-tag";
 import { cn } from "@/lib/utils";
 import {
   closeCommandPalette,
+  focusedElement,
   openCommandPalette,
   useCommandPaletteState,
 } from "./command-palette-store";
@@ -77,8 +79,9 @@ export interface CommandPaletteProps {
 /**
  * ⌘K / Ctrl+K command palette: one search over courses, careers, events, alumni and pages, grouped by kind, each
  * result with its source tag. Arrow keys move, Enter opens the highlighted result, or, with nothing highlighted,
- * searches the course catalog (/courses?q=…); Escape closes (Radix Dialog: focus trap and focus return). While the
- * search API is missing or failing it says so and keeps the catalog fallback.
+ * searches the course catalog (/courses?q=…); Escape closes. Radix Dialog traps focus; since the palette has no
+ * Dialog.Trigger, it returns focus itself to whatever opened it (the ⌘K button, the phone search link, the top-bar
+ * field). While the search API is missing or failing it says so and keeps the catalog fallback.
  */
 export function CommandPalette({
   search = fetchSearch,
@@ -99,13 +102,21 @@ export function CommandPalette({
     [controlled, onOpenChange],
   );
 
+  // Where focus goes back to on close. The store records the app-wide palette's opener when it opens; a
+  // controlled palette takes whatever had focus as it opened (this runs before Radix moves focus into it).
+  const openerRef = React.useRef<HTMLElement | null>(null);
+  const storeOpener = store.opener;
+  React.useLayoutEffect(() => {
+    if (open) openerRef.current = controlled ? focusedElement() : storeOpener;
+  }, [open, controlled, storeOpener]);
+
   // The app-wide palette owns the keyboard shortcut.
   React.useEffect(() => {
     if (controlled) return;
     function onKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        // Carry over what was already typed in the top-bar course search.
+        // Carry over what was already typed in the top-bar course search (focus returns there too).
         const focused = document.activeElement;
         openCommandPalette(
           focused instanceof HTMLInputElement && focused.id === "global-search"
@@ -123,6 +134,14 @@ export function CommandPalette({
       <DialogContent
         size="lg"
         hideClose
+        onCloseAutoFocus={(event) => {
+          const opener = openerRef.current;
+          openerRef.current = null;
+          if (opener?.isConnected) {
+            event.preventDefault();
+            opener.focus();
+          }
+        }}
         className="top-4 max-h-[calc(100dvh-2rem)] max-w-160 translate-y-0 overflow-hidden p-0 md:top-[12vh] md:max-h-[76vh] md:p-0"
       >
         <DialogTitle className="sr-only">Search MakeItSo</DialogTitle>
@@ -225,6 +244,8 @@ function PaletteBody({
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    // Enter or an arrow that confirms an IME candidate (Safari reports key "Enter" while composing) is the IME's.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       if (options.length === 0) return;
@@ -247,7 +268,10 @@ function PaletteBody({
   let message: string | null = null;
   if (status === "loading") message = "Searching…";
   else if (status === "unavailable") message = "Search is unavailable right now.";
-  else if (status === "ready" && results.length === 0) message = `No matches for “${trimmed}”.`;
+  else if (status === "ready" && options.length === 0) message = `No matches for “${trimmed}”.`;
+  // Only local page matches: say what the search itself found.
+  else if (status === "ready" && results.length === 0)
+    message = `No courses, careers, events or alumni match “${trimmed}”.`;
 
   const announcement =
     status === "loading"
@@ -331,20 +355,30 @@ function PaletteBody({
                   )}
                 >
                   <Icon aria-hidden strokeWidth={1.8} className="size-4 shrink-0 text-fg-3" />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span
-                      className={cn(
-                        "truncate text-sm font-semibold",
-                        index === active ? "text-primary" : "text-fg",
-                      )}
-                    >
-                      {option.title}
+                  {/* Phones: the title gets the whole row and the source tag goes under it. */}
+                  <span className="flex min-w-0 flex-1 flex-col md:flex-row md:items-center md:gap-3">
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span
+                        className={cn(
+                          "text-sm font-semibold break-words md:truncate",
+                          index === active ? "text-primary" : "text-fg",
+                        )}
+                      >
+                        {option.title}
+                      </span>
+                      {option.subtitle ? (
+                        <span className="text-xs break-words text-fg-2 md:truncate">
+                          {option.subtitle}
+                        </span>
+                      ) : null}
                     </span>
-                    {option.subtitle ? (
-                      <span className="truncate text-xs text-fg-2">{option.subtitle}</span>
+                    {option.source ? (
+                      <SourceTag
+                        source={option.source}
+                        className="mt-1 self-start md:mt-0 md:shrink-0 md:self-center"
+                      />
                     ) : null}
                   </span>
-                  {option.source ? <SourceTag source={option.source} className="shrink-0" /> : null}
                   {index === active ? (
                     <CornerDownLeft
                       aria-hidden
@@ -384,21 +418,30 @@ function PaletteBody({
   );
 }
 
-/** Phone top-bar search button: opens the palette. */
+/**
+ * Phone top-bar search: a link to the course catalog that opens the palette instead once JavaScript runs, so it
+ * still works before hydration or without JavaScript (and a modified click still opens the catalog).
+ */
 export function CommandPaletteTrigger({ className }: { className?: string }) {
   return (
-    <button
-      type="button"
+    <Link
+      href="/courses"
+      prefetch={false}
       aria-label="Search"
       aria-haspopup="dialog"
       aria-keyshortcuts="Meta+K Control+K"
-      onClick={() => openCommandPalette()}
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)
+          return;
+        event.preventDefault();
+        openCommandPalette("", event.currentTarget);
+      }}
       className={cn(
         "grid size-11 place-items-center rounded-md border border-line bg-surface text-fg-2 hover:bg-surface-2",
         className,
       )}
     >
       <Search aria-hidden strokeWidth={1.8} className="size-4.5" />
-    </button>
+    </Link>
   );
 }

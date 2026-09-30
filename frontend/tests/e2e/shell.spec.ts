@@ -226,19 +226,50 @@ test("the top-bar course search still submits to the catalog", async ({ page, re
   await expect(page).toHaveURL(/\/courses\?q=organic\+chemistry$/);
 });
 
-test("the phone search button opens the command palette", async ({ page, request }) => {
+test("closing the command palette returns focus to what opened it", async ({ page, request }) => {
+  test.skip(isMobile(page), "the search field and ⌘K button are in the desktop top bar");
+  const email = uniqueEmail("e2e-search-focus");
+  await registerViaApi(request, { name: "Focus Searcher", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+  const dialog = page.getByRole("dialog", { name: "Search MakeItSo" });
+
+  // ⌘K from the course field: back to the field.
+  const field = page.getByRole("searchbox", { name: "Search courses" });
+  await field.focus();
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(field).toBeFocused();
+
+  // The ⌘K button: back to the button, and Tab carries on from there (not from the top of the page).
+  const everything = page.getByRole("button", { name: "Search everything" });
+  await everything.click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Close search" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(everything).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Dark mode" })).toBeFocused();
+});
+
+test("the phone search link opens the command palette", async ({ page, request }) => {
   test.skip(!isMobile(page), "phones only");
   const email = uniqueEmail("e2e-search-phone");
   await registerViaApi(request, { name: "Phone Searcher", email, password: PASSWORD });
   await signIn(page, email, PASSWORD);
 
-  const button = page.getByRole("banner").getByRole("button", { name: "Search", exact: true });
-  const box = (await button.boundingBox())!;
+  // A link to the catalog, so it works before hydration and without JavaScript.
+  const trigger = page.getByRole("banner").getByRole("link", { name: "Search", exact: true });
+  await expect(trigger).toHaveAttribute("href", "/courses");
+  const box = (await trigger.boundingBox())!;
   expect(box.height).toBeGreaterThanOrEqual(44);
-  await button.tap();
+  await trigger.tap();
   await expect(page.getByRole("dialog", { name: "Search MakeItSo" })).toBeVisible();
+  await expect(page).toHaveURL(/\/today$/);
   await page.getByRole("button", { name: "Close search" }).tap();
   await expect(page.getByRole("dialog", { name: "Search MakeItSo" })).toBeHidden();
+  await expect(trigger).toBeFocused();
 });
 
 test("unknown pages and malformed course codes show a not-found page", async ({

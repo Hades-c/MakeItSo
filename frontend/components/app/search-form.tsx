@@ -48,7 +48,7 @@ export function SearchForm({ className }: { className?: string }) {
         aria-label="Search everything"
         aria-haspopup="dialog"
         aria-keyshortcuts="Meta+K Control+K"
-        onClick={() => openCommandPalette(inputRef.current?.value ?? "")}
+        onClick={(event) => openCommandPalette(inputRef.current?.value ?? "", event.currentTarget)}
         className="absolute top-1/2 right-1.5 grid h-7 -translate-y-1/2 place-items-center rounded-xs px-1.5 text-fg-3 hover:text-fg"
       >
         <kbd
