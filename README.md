@@ -86,7 +86,7 @@ kept for "now" and urgent items. Errors use a separate danger colour, and focus 
 
 ## Local development
 
-Requirements: **Node.js 24** (see `.nvmrc`; `nvm use` picks it up), npm, and a MongoDB you can reach (a local
+Requirements: **Node.js 24** (see `.nvmrc`; `nvm use` picks it up; Node 22.12+ also works), npm, and a MongoDB you can reach (a local
 `mongod`, Docker `mongo:8`, or a free MongoDB Atlas cluster).
 
 ```bash
@@ -146,7 +146,8 @@ CI (`.github/workflows/ci.yml`) runs all of the above on every pull request and 
 ## Deploying to Vercel
 
 1. Import the repository at [vercel.com/new](https://vercel.com/new).
-2. Set **Root Directory** to `frontend`. Node.js 24 is selected from `engines.node` in `package.json`.
+2. Set **Root Directory** to `frontend`. Vercel picks Node.js 24, the newest major allowed by
+   `engines.node` (`>=22.12 <25`) in `package.json`.
 3. Add the environment variables `MONGODB_URI`, `NEXTAUTH_SECRET` and `ANTHROPIC_API_KEY` (and `NEXTAUTH_URL`
    if you use a custom domain).
 4. Deploy.
