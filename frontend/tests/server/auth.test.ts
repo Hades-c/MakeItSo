@@ -34,7 +34,7 @@ const alex = {
 };
 
 describe("POST /api/auth/register", () => {
-  it("creates the user (lower-cased email, hashed password) and an empty course plan", async () => {
+  it("creates the user (lower-cased email, hashed password) and writes no legacy course plan", async () => {
     const res = await register(registerRequest(alex));
     expect(res.status).toBe(201);
     const { userId } = (await res.json()) as { userId: string };
@@ -45,8 +45,8 @@ describe("POST /api/auth/register", () => {
     expect(user?.password).toMatch(/^\$2[aby]\$12\$/);
     expect(user?.password).not.toContain(alex.password);
 
-    const plan = await CoursePlan.findOne({ userId }).lean();
-    expect(plan?.plannedCourses).toEqual([]);
+    // Legacy collections are read-only to new code (PLAN §4).
+    expect(await CoursePlan.countDocuments({ userId })).toBe(0);
   });
 
   it("returns 409 for an email that is already registered (case-insensitive)", async () => {

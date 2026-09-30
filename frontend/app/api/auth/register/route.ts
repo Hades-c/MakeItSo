@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import CoursePlan from "@/models/CoursePlan";
 import User from "@/models/User";
 import { getDb } from "@/server/db";
 import { ApiError, parseJsonBody, withApi } from "@/server/http";
@@ -51,8 +50,8 @@ export const POST = withApi(async (req: Request) => {
     throw error;
   }
 
-  // Every account starts with an empty course plan.
-  await CoursePlan.create({ userId, plannedCourses: [] });
+  // No course plan is created here: new code never writes the legacy `courseplans` collection (PLAN §4), and the
+  // v2 plan is created on the student's first plan change.
 
   return NextResponse.json({ message: "Account created successfully", userId }, { status: 201 });
 });
