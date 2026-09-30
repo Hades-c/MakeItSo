@@ -103,6 +103,7 @@ describe("syncPrograms (weekly list refresh)", () => {
       { status: 202, text: "", headers: new Headers({ "x-amzn-waf-action": "challenge" }) },
       /bot challenge/,
     ],
+    ["a non-200 answer", { status: 503, text: "", headers: new Headers() }, /answered 503/],
     ["an empty body", { status: 200, text: "", headers: new Headers() }, /empty response/],
     ["a non-JSON body", { status: 200, text: "<html></html>", headers: new Headers() }, /not JSON/],
     [
