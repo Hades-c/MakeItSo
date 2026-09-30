@@ -21,7 +21,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["tests/**", "**/*.test.{ts,tsx}", "playwright.config.ts", "vitest.config.ts"],
+    files: ["tests/**", "**/*.test.{ts,tsx}", "playwright.config.ts", "vitest.config.mts"],
     rules: { "no-console": "off" },
   },
   // Turn off stylistic rules that Prettier owns. Keep last.
