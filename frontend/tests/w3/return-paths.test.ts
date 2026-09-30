@@ -145,6 +145,12 @@ describe("requireUser keeps the destination (review regression: deep links lost 
     );
     request.headers = new Headers({ [RETURN_PATH_HEADER]: "/.//evil.example" });
     expect(await redirectOf(() => requireUser())).toBe("/login");
+    // /today is where sign-in lands anyway: /login stays clean for the most common case.
+    request.headers = new Headers({ [RETURN_PATH_HEADER]: "/today" });
+    expect(await redirectOf(() => requireUser())).toBe("/login");
+    expect(await redirectOf(() => requireUser({ returnTo: "/today?x=1" }))).toBe(
+      "/login?callbackUrl=%2Ftoday%3Fx%3D1",
+    );
   });
 
   it("sends accounts that are not verified Davidson ones to /verify with `next`", async () => {

@@ -6,7 +6,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
 import { isDavidsonEmail } from "@/lib/api/account";
-import { queryString, routes } from "@/lib/routes";
+import { queryString, RETURN_PATH_HEADER, routes } from "@/lib/routes";
 import User from "@/models/User";
 import { getAuthOptions } from "@/server/auth/options";
 import { safeAppPath } from "@/server/auth/paths";
@@ -96,14 +96,15 @@ export interface RequireUserOptions {
   verifiedDavidson?: boolean;
   /**
    * The page's own path (with its query), to come back to after signing in or verifying: /login?callbackUrl=…,
-   * /verify?next=…. Without it, the RETURN_PATH_HEADER request header is used when present (set by the request
-   * proxy; contractRequest), else the student lands on /today. Checked with safeAppPath either way.
+   * /verify?next=…. Without it, the RETURN_PATH_HEADER request header is used (frontend/proxy.ts sets it on every
+   * page request), else the student lands on /today. Checked with safeAppPath either way; /today itself is left
+   * out of the URL (it is where sign-in lands anyway).
    */
   returnTo?: string;
 }
 
-/** Request header the proxy sets to the requested path + query, so layouts can pass it on (see returnTo). */
-export const RETURN_PATH_HEADER = "x-mis-return-path";
+/** Request header the proxy (frontend/proxy.ts) sets to the requested path + query (lib/routes.ts). */
+export { RETURN_PATH_HEADER };
 
 /** Where requireUser({ verifiedDavidson: true }) sends accounts that do not qualify. */
 export const VERIFIED_ONLY_REDIRECT = `${routes.verify()}${queryString({ reason: "davidson" })}`;
@@ -113,7 +114,10 @@ export function verifiedOnlyRedirect(next?: string | null): string {
   return `${routes.verify()}${queryString({ reason: "davidson", next: next || undefined })}`;
 }
 
-/** The path to return to: `returnTo`, else the proxy's header; null when neither is a safe app path. */
+/**
+ * The path to return to: `returnTo`, else the proxy's header; null when neither is a safe app path, or when it is
+ * /today (the default after sign-in, so /login stays clean for the most common case).
+ */
 async function returnPath(returnTo: string | undefined): Promise<string | null> {
   let candidate = returnTo;
   if (candidate === undefined) {
@@ -125,7 +129,8 @@ async function returnPath(returnTo: string | undefined): Promise<string | null> 
       candidate = undefined;
     }
   }
-  return safeAppPath(candidate, "") || null;
+  const path = safeAppPath(candidate, "");
+  return path && path !== routes.today() ? path : null;
 }
 
 /**

@@ -56,6 +56,33 @@ test("signed-out visitors are sent to /login, and old routes redirect", async ({
   await expect(page).toHaveURL(/\/login$/);
 });
 
+test("a signed-out deep link goes through /login and comes back to the same page", async ({
+  page,
+  request,
+}) => {
+  const email = uniqueEmail("e2e-deeplink");
+  const password = "deep link e2e password";
+  await registerViaApi(request, { name: "Dee Link", email, password });
+
+  // The proxy (frontend/proxy.ts) tells the hub layout which page was asked for.
+  await page.goto("/plan?tab=four-year");
+  await expect(page).toHaveURL(/\/login\?callbackUrl=%2Fplan%3Ftab%3Dfour-year$/);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/plan\?tab=four-year$/);
+
+  // A client-sent return-path header is overwritten by the proxy, never trusted.
+  const response = await request.get("/courses/202602/CSC-221", {
+    headers: { "x-mis-return-path": "//evil.example/phish" },
+    maxRedirects: 0,
+  });
+  expect(response.status()).toBe(307);
+  expect(response.headers()["location"]).toMatch(
+    /^(http:\/\/[^/]+)?\/login\?callbackUrl=%2Fcourses%2F202602%2FCSC-221$/,
+  );
+});
+
 test("register, verify with the e-mailed code, sign out, and sign back in", async ({ page }) => {
   const email = uniqueEmail("e2e-auth");
   const password = "e2e password 123";

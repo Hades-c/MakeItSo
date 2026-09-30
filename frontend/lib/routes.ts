@@ -71,6 +71,22 @@ export function parseTermParam(value: string | string[] | null | undefined): Ter
 // ---- Callback URLs -----------------------------------------------------------------------------------------------
 
 /**
+ * Request header the request proxy (frontend/proxy.ts) sets on every page request to the requested path + query,
+ * so layouts, which cannot see the URL, can send a signed-out deep link to /login?callbackUrl=<path>
+ * (server/auth/session.ts requireUser). Always overwritten (`set`, never `append`); still untrusted input:
+ * re-checked with safeAppPath before use.
+ */
+export const RETURN_PATH_HEADER = "x-mis-return-path";
+
+/** The RETURN_PATH_HEADER value for a requested URL: "/plan?tab=four-year" (Next's internal `_rsc` dropped). */
+export function returnPathOf(url: URL): string {
+  const search = new URLSearchParams(url.search);
+  search.delete("_rsc");
+  const query = search.toString();
+  return `${url.pathname}${query ? `?${query}` : ""}`;
+}
+
+/**
  * A same-origin path to return to after sign-in (PLAN §3: login honours a same-origin callbackUrl). Accepts an app
  * path ("/plan?tab=next") or an absolute URL on `origin`; anything else (other hosts, "//evil", "javascript:")
  * gives `fallback`. The check runs on the raw value AND on the normalised path it returns: dot segments collapse
