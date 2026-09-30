@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 import {
   ArrowRight,
   BookOpen,
@@ -11,10 +13,15 @@ import { Wordmark } from "@/components/app/wordmark";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
 import { SourceTag, SourceTagList } from "@/components/ui/source-tag";
+import { routes } from "@/lib/routes";
 import type { SourceId } from "@/lib/sources";
+import { getSessionUser } from "@/server/auth";
+import { LandingFacts } from "./_components/landing-facts";
 
-// Marketing landing. Copy states only what MakeItSo does; no invented statistics (audit
-// design-ux/dashboard-static-and-contradictory-claims).
+// Marketing landing ("/", PLAN §3). Copy states only what MakeItSo does; no invented statistics (audit
+// design-ux/dashboard-static-and-contradictory-claims). The only numbers are runtime facts (./_lib/facts.ts),
+// computed per request and left out when they cannot be computed. Signed-out visitors see the page below;
+// signed-in students get "Go to Today" in place of the sign-in and sign-up buttons.
 
 const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   {
@@ -58,7 +65,20 @@ const ALL_SOURCES: SourceId[] = [
   "davidsonian",
 ];
 
-export default function HomePage() {
+/** Whether a (valid, unrevoked) session came with the request; any failure counts as signed out. */
+async function isSignedIn(): Promise<boolean> {
+  try {
+    return (await getSessionUser()) !== null;
+  } catch (error) {
+    // Next.js control flow (dynamic rendering, redirects) must pass through.
+    unstable_rethrow(error);
+    console.error("[landing] could not read the session:", error);
+    return false;
+  }
+}
+
+export default async function HomePage() {
+  const signedIn = await isSignedIn();
   return (
     <div className="min-h-dvh bg-bg">
       <header className="sticky top-0 z-40 border-b border-line bg-surface">
@@ -67,12 +87,20 @@ export default function HomePage() {
             <Wordmark />
           </Link>
           <nav aria-label="Account" className="flex items-center gap-2">
-            <Button asChild variant="ghost">
-              <Link href="/login">Sign in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/register">Create account</Link>
-            </Button>
+            {signedIn ? (
+              <Button asChild>
+                <Link href={routes.today()}>Go to Today</Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild variant="ghost">
+                  <Link href={routes.login()}>Sign in</Link>
+                </Button>
+                <Button asChild>
+                  <Link href={routes.register()}>Create account</Link>
+                </Button>
+              </>
+            )}
           </nav>
         </div>
       </header>
@@ -91,16 +119,30 @@ export default function HomePage() {
               together, and labels every item with where it came from.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg">
-                <Link href="/register">
-                  Create your account
-                  <ArrowRight aria-hidden />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="secondary">
-                <Link href="/login">Sign in</Link>
-              </Button>
+              {signedIn ? (
+                <Button asChild size="lg">
+                  <Link href={routes.today()}>
+                    Go to Today
+                    <ArrowRight aria-hidden />
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button asChild size="lg">
+                    <Link href={routes.register()}>
+                      Create your account
+                      <ArrowRight aria-hidden />
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" variant="secondary">
+                    <Link href={routes.login()}>Sign in</Link>
+                  </Button>
+                </>
+              )}
             </div>
+            <Suspense fallback={null}>
+              <LandingFacts />
+            </Suspense>
           </div>
 
           <section
