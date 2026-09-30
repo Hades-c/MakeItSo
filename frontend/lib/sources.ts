@@ -1,0 +1,71 @@
+/**
+ * Where aggregated items come from. Every aggregated item in the UI carries one of these ids and renders it as a
+ * small uppercase source tag (Broadsheet idea adopted for Lakeside: "HANDSHAKE", "WILDCATSYNC", "DAVIDSON ONE",
+ * "COURSE SITE", ...). Labels are stored in normal case; the tag component uppercases them with CSS so screen
+ * readers do not spell them out letter by letter.
+ *
+ * Shared by the SourceTag UI primitive, the Sources panel (feed name + last sync) and the feed normalisers,
+ * which validate with `z.enum(SOURCE_IDS)`. Homepage/feed URLs live with the feed fetchers, next to their
+ * `source` + `verifiedAt` metadata, not here.
+ */
+
+export const SOURCE_IDS = [
+  "course-schedule",
+  "handshake",
+  "wildcatsync",
+  "davidson-one",
+  "course-site",
+  "ratemyprofessors",
+  "hurt-hub",
+  "library",
+  "davidsonian",
+  "events-digest",
+  "athletics",
+  "academic-calendar",
+  "my-plan",
+] as const;
+
+export type SourceId = (typeof SOURCE_IDS)[number];
+
+export type SourceKind =
+  /** Official Davidson data (course schedule API, academic calendar). */
+  | "official"
+  /** Third-party or campus platform the student already uses (Handshake, WildcatSync, Moodle, ...). */
+  | "platform"
+  /** Campus news and event listings. */
+  | "news"
+  /** Crowd-sourced ratings. */
+  | "ratings"
+  /** Entered or accepted by the student inside MakeItSo. */
+  | "user";
+
+export interface SourceInfo {
+  id: SourceId;
+  /** Display label (normal case; rendered uppercase by the tag). */
+  label: string;
+  kind: SourceKind;
+}
+
+export const SOURCES: Readonly<Record<SourceId, SourceInfo>> = {
+  "course-schedule": { id: "course-schedule", label: "Course schedule", kind: "official" },
+  handshake: { id: "handshake", label: "Handshake", kind: "platform" },
+  wildcatsync: { id: "wildcatsync", label: "WildcatSync", kind: "platform" },
+  "davidson-one": { id: "davidson-one", label: "Davidson One", kind: "platform" },
+  "course-site": { id: "course-site", label: "Course site", kind: "platform" },
+  ratemyprofessors: { id: "ratemyprofessors", label: "RateMyProfessors", kind: "ratings" },
+  "hurt-hub": { id: "hurt-hub", label: "Hurt Hub", kind: "platform" },
+  library: { id: "library", label: "Library", kind: "platform" },
+  davidsonian: { id: "davidsonian", label: "The Davidsonian", kind: "news" },
+  "events-digest": { id: "events-digest", label: "Events Digest", kind: "news" },
+  athletics: { id: "athletics", label: "Athletics", kind: "news" },
+  "academic-calendar": { id: "academic-calendar", label: "Academic calendar", kind: "official" },
+  "my-plan": { id: "my-plan", label: "My plan", kind: "user" },
+};
+
+export function isSourceId(value: unknown): value is SourceId {
+  return typeof value === "string" && (SOURCE_IDS as readonly string[]).includes(value);
+}
+
+export function sourceLabel(id: SourceId): string {
+  return SOURCES[id].label;
+}
