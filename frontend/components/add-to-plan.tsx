@@ -44,8 +44,10 @@ export function AddToPlan({ courseCode, courseName, credits, inPlan, defaultTerm
   }
 
   const options = terms ? planTermOptions(terms) : [];
+  // A suggested term (e.g. from an AI roadmap) is only preselected if it is
+  // the registration term or later; otherwise default to the registration term.
   const preferred =
-    defaultTermLabel && options.some((o) => o.label === defaultTermLabel)
+    terms && defaultTermLabel && options.some((o) => o.label === defaultTermLabel && o.code >= terms.registration.code)
       ? defaultTermLabel
       : terms?.registration.label ?? "";
   const selected = chosen ?? preferred;

@@ -165,8 +165,7 @@ const NAMED_ENTITIES: Record<string, string> = {
   bull: "•",
 };
 
-/** Decode HTML entities in a single pass (so "&amp;nbsp;" becomes "&nbsp;", not a space). */
-export function decodeEntities(text: string): string {
+function decodeOnce(text: string): string {
   return text.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (match, body: string) => {
     if (body[0] === "#") {
       const n = body[1] === "x" || body[1] === "X" ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
@@ -174,6 +173,22 @@ export function decodeEntities(text: string): string {
     }
     return NAMED_ENTITIES[body.toLowerCase()] ?? match;
   });
+}
+
+/**
+ * Decode HTML entities. The Davidson API sometimes double-encodes text
+ * ("major &amp;amp; minor"), so decode until the text stops changing
+ * (at most 3 passes). Tags are stripped before this runs, so decoded "<"
+ * is plain text.
+ */
+export function decodeEntities(text: string): string {
+  let out = text;
+  for (let i = 0; i < 3; i++) {
+    const next = decodeOnce(out);
+    if (next === out) break;
+    out = next;
+  }
+  return out;
 }
 
 function htmlToLines(html: string): string[] {
