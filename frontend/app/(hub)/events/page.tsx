@@ -3,11 +3,15 @@ import { CalendarDays } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { SourceTagList } from "@/components/ui/source-tag";
+import { requireFeature } from "@/server/features";
 
 export const metadata: Metadata = { title: "Events" };
 
 // Stub (wave 0). Wave 3 builds the events list from the feed service, with filters and a source tag per item.
-export default function EventsPage() {
+// Behind FEATURE_EVENTS: keep requireFeature() as the first line (404 while the flag is off; the shell hides Events
+// then).
+export default async function EventsPage() {
+  await requireFeature("events");
   return (
     <>
       <PageHeader

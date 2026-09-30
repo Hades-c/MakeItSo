@@ -5,6 +5,7 @@ import { BriefcaseBusiness } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { requireFeature } from "@/server/features";
 
 type Params = Promise<{ slug: string }>;
 
@@ -13,8 +14,10 @@ const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const metadata: Metadata = { title: "Career path" };
 
 // Stub (wave 0). Wave 3 replaces this with the career path page (overview, related courses, opportunities,
-// verified alumni, AI plan, cold email).
+// verified alumni, AI plan, cold email). Behind FEATURE_CAREERS: keep requireFeature() as the first line (404 while
+// the flag is off; the shell hides Careers then).
 export default async function CareerPage({ params }: { params: Params }) {
+  await requireFeature("careers");
   const { slug } = await params;
   if (!SLUG.test(slug) || slug.length > 80) notFound();
 

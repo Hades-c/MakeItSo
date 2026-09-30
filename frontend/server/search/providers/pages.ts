@@ -1,11 +1,13 @@
 import "server-only";
 import type { SearchResult } from "@/lib/api/search";
 import { routes } from "@/lib/routes";
+import { featureEnabled } from "@/server/features";
 import type { SearchContext } from "@/server/search/types";
 
 /**
  * Search provider: app pages and plan tabs (static, no data). Surfaces behind a flag are left out when the flag is
- * off. Ranking: title prefix, then word prefix, then substring of title or keywords.
+ * off, with the shell's rule for hub sections (featureEnabled: Alumni also needs Careers). Ranking: title prefix,
+ * then word prefix, then substring of title or keywords.
  */
 
 interface PageEntry {
@@ -101,6 +103,11 @@ const PAGES: readonly PageEntry[] = [
   },
 ];
 
+function isOn(entry: PageEntry, ctx: SearchContext): boolean {
+  if (!entry.flag) return true;
+  return entry.flag === "ai" ? ctx.flags.ai : featureEnabled(ctx.flags, entry.flag);
+}
+
 function score(entry: PageEntry, q: string): number {
   const title = entry.title.toLowerCase();
   if (title.startsWith(q)) return 3;
@@ -115,7 +122,7 @@ export async function search(
   ctx: SearchContext,
 ): Promise<SearchResult[]> {
   const needle = q.toLowerCase();
-  return PAGES.filter((entry) => !entry.flag || ctx.flags[entry.flag])
+  return PAGES.filter((entry) => isOn(entry, ctx))
     .map((entry, index) => ({ entry, index, score: score(entry, needle) }))
     .filter((row) => row.score > 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)

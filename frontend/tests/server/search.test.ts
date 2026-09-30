@@ -113,6 +113,11 @@ describe("search aggregator", () => {
     });
     expect((await pages("webtree", 8, ctx())).map((r) => r.href)).toEqual(["/plan?tab=next"]);
     expect(await pages("careers", 8, ctx({ careers: false }))).toEqual([]);
+    // Hub sections follow the shell (server/features.ts): Alumni also needs Careers.
+    expect((await pages("alumni", 8, ctx())).map((r) => r.href)).toEqual(["/alumni"]);
+    expect(await pages("alumni", 8, ctx({ alumni: false }))).toEqual([]);
+    expect(await pages("alumni", 8, ctx({ careers: false }))).toEqual([]);
+    expect(await pages("events", 8, ctx({ events: false }))).toEqual([]);
     expect((await pages("suggest", 8, ctx({ ai: false }))).map((r) => r.id)).toEqual([]);
     for (const r of await pages("e", 20, ctx())) {
       expect(r.href.startsWith("/")).toBe(true);
@@ -150,5 +155,24 @@ describe("GET /api/search", () => {
     await signIn();
     const res = await get("?q=plan&limit=50");
     expect(res.status).toBe(400);
+  });
+
+  it("reads the flags like the shell: off hides, malformed takes the default", async () => {
+    await signIn();
+    const hrefs = async (q: string) =>
+      SearchResponseSchema.parse(await (await get(`?q=${q}`)).json()).results.map((r) => r.href);
+    vi.stubEnv("FEATURE_CAREERS", "false");
+    expect(await hrefs("alumni")).not.toContain("/alumni");
+    vi.stubEnv("FEATURE_CAREERS", "true");
+    expect(await hrefs("alumni")).toContain("/alumni");
+
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubEnv("FEATURE_EVENTS", "sometimes");
+    const res = await get("?q=events");
+    expect(res.status).toBe(200);
+    expect(SearchResponseSchema.parse(await res.json()).results.map((r) => r.href)).toContain(
+      "/events",
+    );
+    expect(log).toHaveBeenCalledWith(expect.stringMatching(/FEATURE_EVENTS/));
   });
 });
