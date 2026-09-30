@@ -11,14 +11,12 @@ import {
   BookOpen,
   Briefcase,
   Calendar,
-  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   GraduationCap,
   Lightbulb,
   Loader2,
-  Plus,
   RefreshCw,
   Sparkles,
   Sun,
@@ -26,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { MAJORS } from "@/lib/utils";
+import { AddToPlan, type PlanCourseSummary } from "@/components/add-to-plan";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,6 +35,8 @@ interface Course {
   name: string;
   type: string;
   reason: string;
+  /** Generic slot such as "ELEC ---" (not a real course code). */
+  placeholder?: boolean;
 }
 
 interface SummerActivity {
@@ -71,7 +72,10 @@ interface SavedRoadmap {
 // Constants
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = "makeItSo_savedRoadmap";
+// v2: roadmaps saved before the registration hotfix were generated without
+// the current date/terms and without checking course codes, so they are not
+// reused.
+const STORAGE_KEY = "makeItSo_savedRoadmap_v2";
 
 const CLASS_YEARS = ["Freshman", "Sophomore", "Junior", "Senior"] as const;
 
@@ -300,7 +304,6 @@ export default function RoadmapPage() {
 
   // Plan state (for filtering & "Add to Plan" button)
   const [userPlanCourses, setUserPlanCourses] = useState<PlannedCourse[]>([]);
-  const [addingToPlan, setAddingToPlan] = useState<string | null>(null);
 
   const planCourseCodes = useMemo(
     () => new Set(userPlanCourses.map((c) => c.courseCode)),
@@ -421,46 +424,6 @@ export default function RoadmapPage() {
       setLoading(false);
     }
   }, [selectedMajor, classYear, interests, specificity, userPlanCourses]);
-
-  // ---------------------------------------------------------------------------
-  // Add course to plan (same pattern as career roadmaps)
-  // ---------------------------------------------------------------------------
-
-  async function addCourseToPlan(courseCode: string, semesterLabel: string) {
-    setAddingToPlan(courseCode);
-    try {
-      // Look up the course by code to get its _id
-      const searchRes = await fetch(`/api/courses?search=${encodeURIComponent(courseCode)}&limit=5`);
-      if (!searchRes.ok) return;
-      const searchData = await searchRes.json();
-      const match = (searchData.courses ?? []).find((c: { code: string }) => c.code.toUpperCase() === courseCode.toUpperCase());
-      if (!match) return;
-
-      // Parse semester and year from the roadmap label (e.g. "Fall 2026")
-      const parts = semesterLabel.split(" ");
-      const semName = parts[0] as "Fall" | "Spring" | "Summer";
-      const semYear = parseInt(parts[1]) || new Date().getFullYear();
-
-      const res = await fetch("/api/plans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseId: match._id,
-          semester: semName,
-          year: semYear,
-          status: "planned",
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUserPlanCourses(data.plan?.plannedCourses ?? []);
-      }
-    } catch {
-      // silent
-    } finally {
-      setAddingToPlan(null);
-    }
-  }
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -966,14 +929,13 @@ export default function RoadmapPage() {
                             {!sem.isSummer && sem.courses?.map((course, j) => {
                               const style = TYPE_STYLES[course.type] || DEFAULT_TYPE_STYLE;
                               const inPlan = planCourseCodes.has(course.code);
-                              const isAdding = addingToPlan === course.code;
                               return (
                                 <motion.div
                                   key={j}
                                   initial={{ opacity: 0, x: -8 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ duration: 0.2, delay: 0.04 * j }}
-                                  className={`flex items-start gap-3 p-3.5 rounded-lg border ${style.border} ${style.bg}`}
+                                  className={`flex flex-wrap sm:flex-nowrap items-start gap-3 p-3.5 rounded-lg border ${style.border} ${style.bg}`}
                                 >
                                   <div className="h-8 w-8 rounded-md bg-white border border-gray-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
                                     <BookOpen className="h-4 w-4 text-[#555555]" />
@@ -994,20 +956,17 @@ export default function RoadmapPage() {
                                       </p>
                                     )}
                                   </div>
-                                  <div className="shrink-0">
-                                    {inPlan ? (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
-                                        <Check className="h-3 w-3" /> In Plan
-                                      </span>
+                                  <div className="shrink-0 w-full sm:w-auto flex justify-end">
+                                    {course.placeholder ? (
+                                      <span className="text-[10px] text-gray-500">Choose a course</span>
                                     ) : (
-                                      <button
-                                        disabled={isAdding}
-                                        onClick={() => addCourseToPlan(course.code, sem.semester)}
-                                        className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
-                                      >
-                                        {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                                        Add to Plan
-                                      </button>
+                                      <AddToPlan
+                                        courseCode={course.code}
+                                        courseName={course.name}
+                                        inPlan={inPlan}
+                                        defaultTermLabel={sem.semester}
+                                        onAdded={(planned: PlanCourseSummary[]) => setUserPlanCourses(planned)}
+                                      />
                                     )}
                                   </div>
                                 </motion.div>

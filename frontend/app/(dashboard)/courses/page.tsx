@@ -23,6 +23,8 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react";
+import { useTerms } from "@/lib/use-terms";
+import { parseTermLabel, planTermOptions, termCodeFor } from "@/lib/terms";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -191,8 +193,17 @@ export default function CoursesPage() {
 
   // Add course modal
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addSemester, setAddSemester] = useState<"Fall" | "Spring" | "Summer">("Fall");
-  const [addYear, setAddYear] = useState(new Date().getFullYear());
+  // Term for "Add Course": defaults to the registration term (e.g. Spring 2027)
+  const terms = useTerms();
+  const [addTermLabel, setAddTermLabel] = useState<string | null>(null);
+  const addTerm = addTermLabel ?? terms?.registration.label ?? "";
+  const parsedAddTerm = parseTermLabel(addTerm);
+  // Course list: the chosen term's live schedule if it is the current or
+  // registration term, otherwise the registration term's schedule.
+  const addTermCode = parsedAddTerm ? termCodeFor(parsedAddTerm.season, parsedAddTerm.year) : "";
+  const catalogTerm = terms
+    ? [terms.active, terms.registration].find((t) => t.code === addTermCode) ?? terms.registration
+    : null;
   const [catalogCourses, setCatalogCourses] = useState<CatalogCourse[]>([]);
   const [courseSearch, setCourseSearch] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -238,67 +249,72 @@ export default function CoursesPage() {
   // ---- Search catalog courses (debounced) ----
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // All Davidson courses (fetched once from live API)
-  const allDavidsonCourses = useRef<CatalogCourse[]>([]);
+  // Live Davidson schedule per term code (fetched once per term)
+  const catalogByTerm = useRef<Map<string, CatalogCourse[]>>(new Map());
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const catalogTermCode = catalogTerm?.code ?? "";
 
   const searchCourses = useCallback(async (query: string) => {
+    if (!catalogTermCode) return;
     setCatalogLoading(true);
+    setCatalogError(null);
     try {
-      // Fetch from live Davidson API on first call, then filter locally
-      if (allDavidsonCourses.current.length === 0) {
-        const res = await fetch("/api/courses/davidson");
-        if (!res.ok) throw new Error("Failed to fetch courses");
-        const data = await res.json();
-        allDavidsonCourses.current = (data.courses ?? []).map(
-          (c: { code: string; name: string; description?: string; department: string }) => ({
+      let all = catalogByTerm.current.get(catalogTermCode);
+      if (!all) {
+        const res = await fetch(`/api/courses/davidson?term=${encodeURIComponent(catalogTermCode)}`);
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.courses) throw new Error(data?.error ?? "Could not load the course list");
+        all = (data.courses as { code: string; name: string; description?: string; department: string; credits?: number }[]).map(
+          (c) => ({
             code: c.code,
             name: c.name,
             description: c.description,
-            credits: 4,
+            credits: typeof c.credits === "number" ? c.credits : 1,
             department: c.department,
           })
         );
+        catalogByTerm.current.set(catalogTermCode, all);
       }
 
       if (!query.trim()) {
-        setCatalogCourses(allDavidsonCourses.current);
+        setCatalogCourses(all);
       } else {
-        const q = query.toLowerCase();
+        const q = query.trim().toLowerCase();
+        const compact = q.replace(/\s+/g, "");
         setCatalogCourses(
-          allDavidsonCourses.current.filter(
+          all.filter(
             (c) =>
               c.code.toLowerCase().includes(q) ||
+              c.code.replace(" ", "").toLowerCase().includes(compact) ||
               c.name.toLowerCase().includes(q) ||
               c.department.toLowerCase().includes(q)
           )
         );
       }
-    } catch {
+    } catch (err) {
       setCatalogCourses([]);
+      setCatalogError(err instanceof Error ? err.message : "Could not load the course list");
     } finally {
       setCatalogLoading(false);
     }
-  }, []);
+  }, [catalogTermCode]);
 
+  // Debounced search; also runs when the modal opens or the term changes.
   useEffect(() => {
     if (!showAddModal) return;
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => searchCourses(courseSearch), 300);
+    searchTimeout.current = setTimeout(() => searchCourses(courseSearch), courseSearch ? 300 : 0);
     return () => {
       if (searchTimeout.current) clearTimeout(searchTimeout.current);
     };
   }, [courseSearch, showAddModal, searchCourses]);
-
-  // Load initial catalog when modal opens
-  useEffect(() => {
-    if (showAddModal) searchCourses("");
-  }, [showAddModal, searchCourses]);
 
   // ---- Actions ----
 
   const clearActionError = () => setActionError(null);
 
   const addCourse = async (course: CatalogCourse) => {
+    if (!parsedAddTerm) return;
     setAdding(course.code);
     clearActionError();
     try {
@@ -309,8 +325,8 @@ export default function CoursesPage() {
           courseCode: course.code,
           courseName: course.name,
           credits: course.credits,
-          semester: addSemester,
-          year: addYear,
+          semester: parsedAddTerm?.season,
+          year: parsedAddTerm?.year,
           status: "planned",
         }),
       });
@@ -600,8 +616,8 @@ export default function CoursesPage() {
                 <GraduationCap className="h-4 w-4 text-davidson" />
                 Graduation Progress
               </h2>
-              <span className="text-xs text-[#555555]">
-                {REQUIRED_COURSES} courses required
+              <span className="text-xs text-[#555555]" data-testid="plan-progress">
+                {stats.activeCount} of {REQUIRED_COURSES} courses
               </span>
             </div>
 
@@ -994,36 +1010,31 @@ export default function CoursesPage() {
                 </button>
               </div>
 
-              {/* Semester / year selectors */}
-              <div className="px-5 py-3 border-b border-gray-50 flex items-center gap-3 shrink-0">
+              {/* Term selector (defaults to the registration term) */}
+              <div className="px-5 py-3 border-b border-gray-50 flex flex-wrap items-center gap-3 shrink-0">
                 <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-medium text-gray-500">Semester</label>
+                  <label htmlFor="add-course-term" className="text-xs font-medium text-gray-500">Term</label>
                   <select
-                    value={addSemester}
-                    onChange={(e) =>
-                      setAddSemester(e.target.value as "Fall" | "Spring" | "Summer")
-                    }
+                    id="add-course-term"
+                    data-testid="add-course-term"
+                    value={addTerm}
+                    disabled={!terms}
+                    onChange={(e) => setAddTermLabel(e.target.value)}
                     className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson"
                   >
-                    <option value="Fall">Fall</option>
-                    <option value="Spring">Spring</option>
-                    <option value="Summer">Summer</option>
-                  </select>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-medium text-gray-500">Year</label>
-                  <select
-                    value={addYear}
-                    onChange={(e) => setAddYear(Number(e.target.value))}
-                    className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-davidson/20 focus:border-davidson"
-                  >
-                    {yearOptions.map((y) => (
-                      <option key={y} value={y}>
-                        {y}
+                    {!terms && <option value="">Loading…</option>}
+                    {terms && planTermOptions(terms).map((t) => (
+                      <option key={t.code} value={t.label}>
+                        {t.label}
+                        {t.code === terms.registration.code ? " (registration)" : ""}
+                        {t.code === terms.active.code ? " (current)" : ""}
                       </option>
                     ))}
                   </select>
                 </div>
+                {catalogTerm && (
+                  <span className="text-[11px] text-gray-500">Course list: {catalogTerm.label} schedule</span>
+                )}
               </div>
 
               {/* Search input */}
@@ -1047,6 +1058,10 @@ export default function CoursesPage() {
                   <div className="flex items-center justify-center py-10">
                     <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                   </div>
+                ) : catalogError ? (
+                  <div className="py-10 text-center text-sm text-red-600">
+                    {catalogError}
+                  </div>
                 ) : catalogCourses.length === 0 ? (
                   <div className="py-10 text-center text-sm text-gray-400">
                     No courses found. Try a different search term.
@@ -1068,7 +1083,7 @@ export default function CoursesPage() {
                                 {c.code}
                               </span>
                               <span className="text-xs text-gray-400">{c.department}</span>
-                              <span className="text-[10px] text-gray-400">{c.credits} cr</span>
+                              <span className="text-[10px] text-gray-500">{c.credits === 1 ? "1 credit" : `${c.credits} credits`}</span>
                             </div>
                             <p className="text-sm font-medium text-[#111111]">{c.name}</p>
                             {c.description && (

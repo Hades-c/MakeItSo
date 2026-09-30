@@ -6,6 +6,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import CoursePlan from "@/models/CoursePlan";
 import Course from "@/models/Course";
 import User from "@/models/User";
+import { findLiveCourse } from "@/lib/davidson-api";
+import { termCodeFor } from "@/lib/terms";
 
 // GET /api/plans - get the current user's course plan
 export async function GET() {
@@ -75,10 +77,12 @@ export async function POST(req: NextRequest) {
     if (!semester || !year) {
       return NextResponse.json({ error: "semester and year are required" }, { status: 400 });
     }
+    if (!["Fall", "Spring", "Summer"].includes(semester) || !Number.isInteger(Number(year))) {
+      return NextResponse.json({ error: "semester must be Fall, Spring or Summer and year a number" }, { status: 400 });
+    }
 
     let resolvedCode = courseCode;
     let resolvedName = courseName;
-    let resolvedCredits = credits ?? 4;
     let resolvedCourseId = courseId;
 
     // If courseId is a MongoDB ObjectId, look up from DB (legacy path)
@@ -89,10 +93,28 @@ export async function POST(req: NextRequest) {
       }
       resolvedCode = course.code;
       resolvedName = course.name;
-      resolvedCredits = course.credits;
       resolvedCourseId = course._id;
     } else if (!courseCode || !courseName) {
       return NextResponse.json({ error: "courseCode and courseName are required" }, { status: 400 });
+    }
+
+    // Credits come from the Davidson API (usually 1; some courses 0 or 2),
+    // preferring the chosen term's schedule. Davidson counts 32 courses to
+    // graduate, so the old default of 4 credits per course was wrong.
+    let resolvedCredits = 1;
+    const clientCredits = Number(credits);
+    if (credits != null && Number.isFinite(clientCredits) && clientCredits >= 0 && clientCredits <= 4) {
+      resolvedCredits = clientCredits;
+    }
+    try {
+      const live = await findLiveCourse(String(resolvedCode), termCodeFor(semester, Number(year)));
+      if (live) {
+        resolvedCode = live.code;
+        resolvedName = live.name || resolvedName;
+        resolvedCredits = live.credits;
+      }
+    } catch (err) {
+      console.error("POST /api/plans: live course lookup failed:", err);
     }
 
     let plan = await CoursePlan.findOne({ userId });
@@ -114,7 +136,7 @@ export async function POST(req: NextRequest) {
       courseName: resolvedName,
       credits: resolvedCredits,
       semester,
-      year,
+      year: Number(year),
       status: status ?? "planned",
       notes,
     });

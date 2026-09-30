@@ -33,7 +33,7 @@ const UserSchema = new Schema<IUser>(
     },
     bio: { type: String, maxlength: 500 },
     careerInterests: [{ type: String }],
-    totalCreditsRequired: { type: Number, default: 128 },
+    totalCreditsRequired: { type: Number, default: 32 }, // Davidson: 32 course credits
   },
   { timestamps: true }
 );
