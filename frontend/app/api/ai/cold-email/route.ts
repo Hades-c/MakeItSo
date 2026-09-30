@@ -4,8 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { generateColdEmail } from "@/lib/gemini";
 import { connectToDatabase } from "@/lib/mongodb";
 import AiCache from "@/models/AiCache";
+import { COLD_EMAIL_ENABLED } from "@/lib/features";
 
 export async function POST(req: NextRequest) {
+  // Hidden until the alumni list is re-verified (see lib/features.ts).
+  if (!COLD_EMAIL_ENABLED) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
