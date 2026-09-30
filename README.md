@@ -54,7 +54,7 @@ MakeItSo/
     │   │                      sign-up with mailbox verification, passwords, profile, mail (console / Resend),
     │   │                      password reset, rate limits
     │   ├── clock.ts           now(): the server's "now" (pinned by FIXTURES_NOW in fixtures mode)
-    │   ├── sync.ts            recordSync / getSourceStatuses for the Sources panel
+    │   ├── sync.ts            recordSync / getSourceStatuses: the Sources panel's synced rows
     │   ├── account/           per-user data registry for export and account deletion (incl. the student's
     │   │                      own rows in the hackathon-era collections)
     │   ├── catalog/ programs/ rmp/ feeds/ content/   the live course catalog, Acalog majors and minors,
