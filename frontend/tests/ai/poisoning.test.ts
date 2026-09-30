@@ -15,6 +15,7 @@ import * as coldEmail from "@/app/api/ai/cold-email/route";
 import * as courseAbout from "@/app/api/ai/course-about/route";
 import * as purge from "@/app/api/ai/admin/purge/route";
 import * as planSuggestions from "@/app/api/ai/plan-suggestions/route";
+import * as professorSummary from "@/app/api/ai/professor-summary/route";
 import * as report from "@/app/api/ai/report/route";
 import { CourseAboutResultSchema } from "@/lib/api/ai";
 import AiCache from "@/models/AiCache";
@@ -189,5 +190,24 @@ describe("student A cannot change what student B receives", () => {
     expect(email).toMatchObject({ kind: "ok", cached: false });
     expect(email.data.email.body).not.toContain("scam");
     expect(store.of(aId)).toHaveLength(1);
+  });
+
+  it("professor summaries: the route only reads, so nobody can create or change an entry", async () => {
+    vi.stubEnv("RMP_SUMMARIES_ENABLED", "true");
+    const { a } = await accounts();
+    as(a);
+    const course = await getCourse("202602", "CSC 221");
+    const instructor = course!.sections[0]!.instructors[0]!;
+    const res = await professorSummary.POST(
+      aiRequest("/api/ai/professor-summary", {
+        termCode: "202602",
+        courseCode: "CSC 221",
+        instructor,
+      }),
+    );
+    expect(res.status).toBe(503);
+    expect((await bodyOf(res)).kind).toBe("unavailable");
+    expect(await AiCache.countDocuments({ feature: "professor-summary" })).toBe(0);
+    expect(mockAiRequests()).toHaveLength(0);
   });
 });
