@@ -41,6 +41,42 @@ export function parseInterval(
   return { start: s, end: e };
 }
 
+/** Longest item accepted as running past midnight (an end before its start): 10:00p–12:30a, not 6:00p–5:00p. */
+export const MAX_PAST_MIDNIGHT_MINUTES = 12 * MINUTES_PER_HOUR;
+
+/** A span as the timeline and week grid draw it. */
+export interface ItemSpan extends Interval {
+  /** Clock time printed as the end: the same as `end`, except for an item that runs past midnight. */
+  shownEnd: number;
+  /** Ends after midnight (end before start): drawn to 24:00 and labelled "until 12:30a", never dropped. */
+  pastMidnight: boolean;
+}
+
+/**
+ * A start/end pair of clock strings as a drawable span. An end before the start is read as running past midnight
+ * (a late ICS event, 22:00–00:30) when that makes it at most 12 hours long: it is drawn to 24:00 with `shownEnd`
+ * 00:30. Anything else unreadable is null.
+ */
+export function parseSpan(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): ItemSpan | null {
+  const s = parseClock(start);
+  const e = parseClock(end);
+  if (s === null || e === null) return null;
+  if (e >= s) return { start: s, end: e, shownEnd: e, pastMidnight: false };
+  if (MINUTES_PER_DAY - s + e > MAX_PAST_MIDNIGHT_MINUTES) return null;
+  return { start: s, end: MINUTES_PER_DAY, shownEnd: e, pastMidnight: true };
+}
+
+/** "10:30a–11:20a" for a span, using its printed end ("10:00p–12:30a" past midnight); a point is one time. */
+export function spanLabel(span: Interval & { shownEnd?: number }): string {
+  const end = span.shownEnd ?? span.end;
+  return span.end > span.start
+    ? `${clockLabel(span.start)}–${clockLabel(end)}`
+    : clockLabel(span.start);
+}
+
 function hour12(minutes: number): { hour: number; minute: number; period: "a" | "p" } {
   const m = ((Math.round(minutes) % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
   const h24 = Math.floor(m / MINUTES_PER_HOUR);

@@ -282,7 +282,15 @@ describe("DayTimeline", () => {
     const nowLine = screen.getByTestId("now-line");
     expect(nowLine).toHaveClass("border-urgent");
     expect(nowLine.style.top).toBe("2.8571%");
-    expect(nowLine).toHaveTextContent("9:12a");
+    // The time itself is a pill in the hour gutter, never over the blocks.
+    const gutter = screen.getByTestId("timeline-gutter");
+    const pill = within(gutter).getByTestId("now-pill");
+    expect(pill).toHaveTextContent("9:12a");
+    expect(pill.style.top).toBe("2.8571%");
+    expect(list).not.toContainElement(pill);
+    // "9a" would sit under the pill, so it is left out; the other hours stay.
+    expect(within(gutter).queryByText("9a")).not.toBeInTheDocument();
+    expect(within(gutter).getByText("10a")).toBeInTheDocument();
     // Classes carry no source tag, but still their source.
     expect(within(list).queryByText("Source:", { exact: false })).not.toBeInTheDocument();
     expect(items[0]).toHaveAttribute("data-source", "course-schedule");
@@ -336,6 +344,7 @@ describe("DayTimeline", () => {
         ]}
       />,
     );
+    // 1:00p sits in a free stretch (12:20–2:30 less the talk): labelled in place.
     const deadline = screen.getByText("Problem set").closest("li")!;
     expect(deadline).toHaveAttribute("data-kind", "deadline");
     expect(deadline).toHaveTextContent("Due 1:00p");
@@ -371,12 +380,134 @@ describe("DayTimeline", () => {
         ]}
       />,
     );
-    const [csc, talk] = screen
+    const list = screen.getByRole("list", { name: /Today's schedule/ });
+    const [csc, talk] = within(list)
       .getAllByRole("listitem")
-      .filter((li) => li.getAttribute("data-kind") !== "free");
+      .filter((li) => li.hasAttribute("data-lane"));
     expect(csc).toHaveAttribute("data-density", "narrow");
     expect(csc).toHaveAttribute("data-lane", "1/2");
     expect(talk).toHaveAttribute("data-lane", "2/2");
+    // Side by side only where two lanes fit 12px text; the tag in a lane is never cut short.
+    expect(csc).toHaveClass("hidden", "@min-[28rem]:block");
+    const tag = within(talk!).getByText("Hurt Hub", { selector: "[data-source]" });
+    expect(tag).not.toHaveClass("truncate");
+  });
+
+  it("on narrow containers draws an overlap as one block and lists its items in full", () => {
+    render(
+      <DayTimeline
+        now={new Date("2026-10-01T16:40:00Z")}
+        timeZone="America/New_York"
+        startHour={9}
+        endHour={16}
+        showFreeGaps={false}
+        items={[
+          {
+            id: "talk",
+            kind: "event",
+            title: "Faculty lunch talk (sample)",
+            start: "12:00",
+            end: "13:00",
+            location: "Hurt Hub",
+            source: "hurt-hub",
+          },
+          {
+            id: "dropin",
+            kind: "event",
+            title: "Advising drop-in (sample)",
+            start: "12:30",
+            end: "13:30",
+            source: "registrar",
+          },
+          {
+            id: "his",
+            kind: "class",
+            code: "HIS 357 A",
+            title: "The Civil Rights Movement",
+            start: "12:15",
+            end: "13:30",
+            source: "course-schedule",
+          },
+        ]}
+      />,
+    );
+    const group = screen.getByTestId("overlap-group");
+    expect(group).toHaveTextContent("3 at the same time12:00p–1:30p · listed below");
+    // Three lanes need a wide container; below it the group block and the list show instead.
+    expect(group).toHaveClass("@min-[38rem]:hidden");
+    const lanes = screen
+      .getByRole("list", { name: /Today's schedule/ })
+      .querySelectorAll("li[data-lane]");
+    expect([...lanes].every((li) => li.classList.contains("@min-[38rem]:block"))).toBe(true);
+    const listed = screen.getByTestId("overlap-list");
+    expect(listed).toHaveClass("@min-[38rem]:hidden");
+    expect(listed).toHaveTextContent("At the same time, 12:00p–1:30p");
+    const rows = within(listed).getAllByRole("listitem");
+    expect(rows.map((r) => r.getAttribute("data-source"))).toEqual([
+      "hurt-hub",
+      "course-schedule",
+      "registrar",
+    ]);
+    expect(rows[0]).toHaveTextContent(
+      "12:00p–1:00pFaculty lunch talk (sample)Hurt HubSource: Hurt Hubnow · 20 m left",
+    );
+    expect(rows[1]).toHaveTextContent("12:15p–1:30pHIS 357 AThe Civil Rights Movement");
+    expect(within(rows[2]!).getByText("Registrar", { selector: "[data-source]" })).toBeVisible();
+  });
+
+  it("never puts the now pill or a deadline label over a block", () => {
+    render(
+      <DayTimeline
+        now={new Date("2026-09-30T14:45:00Z")} // 10:45, during CSC 221 A
+        timeZone="America/New_York"
+        startHour={9}
+        endHour={16}
+        showFreeGaps
+        items={[
+          ...WEDNESDAY,
+          {
+            id: "quiz",
+            kind: "deadline",
+            code: "ECO 232",
+            title: "Reading quiz",
+            start: "11:00",
+            source: "my-plan",
+          },
+          {
+            id: "ps",
+            kind: "deadline",
+            code: "CSC 221",
+            title: "A problem set with a long title that has to wrap on a phone",
+            start: "13:59",
+            source: "my-plan",
+          },
+        ]}
+      />,
+    );
+    const list = screen.getByRole("list", { name: /Today's schedule/ });
+    // Now: the pill is in the gutter, the plot only has the line, drawn before (under) the blocks.
+    const gutter = screen.getByTestId("timeline-gutter");
+    expect(within(gutter).getByTestId("now-pill")).toHaveTextContent("10:45a");
+    const nowLine = screen.getByTestId("now-line");
+    expect(nowLine).toHaveTextContent("");
+    expect(nowLine.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The 11:00 deadline falls during CSC 221 A: no label in the plot, a flag and a dashed line, and a list row.
+    const labels = within(list).getAllByTestId("deadline-label");
+    expect(labels).toHaveLength(1);
+    expect(labels[0]).toHaveTextContent("A problem set with a long title");
+    expect(within(list).queryByText("Reading quiz")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("deadline-line")).toHaveLength(2);
+    const deadlines = screen.getByTestId("deadline-list");
+    expect(deadlines).toHaveTextContent("Deadlines");
+    expect(within(deadlines).getByRole("listitem")).toHaveTextContent(
+      "Due 11:00aECO 232Reading quizSource: My plan",
+    );
+    // The flag for the listed deadline would meet the pill (15 minutes away), so it is left out.
+    expect(within(gutter).queryByTestId("deadline-flag")).not.toBeInTheDocument();
+    // A label's title wraps; it is never truncated before its code and tag.
+    const title = within(labels[0]!).getByTestId("deadline-title");
+    expect(title).not.toHaveClass("truncate");
+    expect(title).toHaveClass("break-words");
   });
 
   it("clips items at the edges and lists what falls outside the view", () => {
@@ -422,6 +553,14 @@ describe("DayTimeline", () => {
             source: "registrar",
           },
           {
+            id: "late",
+            kind: "event",
+            title: "Late show",
+            start: "22:00",
+            end: "00:30",
+            source: "hurt-hub",
+          },
+          {
             id: "bad",
             kind: "event",
             title: "Mystery",
@@ -440,6 +579,7 @@ describe("DayTimeline", () => {
     expect(early).toHaveClass("rounded-t-none");
     const later = screen.getByText("Later today").nextElementSibling!;
     expect(later).toHaveTextContent("7:00p–8:30pClub open houseUnion");
+    expect(later).toHaveTextContent("10:00p–12:30aLate show");
     expect(later).toHaveTextContent("Due 11:59pHousing form");
     expect(within(later as HTMLElement).getByText("WildcatSync")).toBeInTheDocument();
     expect(screen.getByText("Time not listed").nextElementSibling).toHaveTextContent("Mystery");

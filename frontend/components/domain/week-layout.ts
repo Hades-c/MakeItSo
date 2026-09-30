@@ -7,9 +7,10 @@ import {
   clampToWindow,
   clockLabel,
   overlaps,
-  parseInterval,
+  parseSpan,
   toFraction,
   type Interval,
+  type ItemSpan,
   type TimeWindow,
 } from "./time-geometry";
 import { DAY_NAMES, joinDayNames, sortDays, WEEKDAYS_ONLY, type WeekDay } from "./week-days";
@@ -38,21 +39,22 @@ export interface WeekGridBlock {
 export interface PlacedBlock {
   block: WeekGridBlock;
   day: WeekDay;
-  /** Full meeting time. */
-  interval: Interval;
+  /** Full meeting time (to 24:00 for a meeting that runs past midnight; `shownEnd` is its real end). */
+  interval: ItemSpan;
   /** Fractions of the window for `top` and `height`. */
   top: number;
   height: number;
   lane: number;
   lanes: number;
   clippedStart: boolean;
+  /** Ends after the window, or after midnight. */
   clippedEnd: boolean;
 }
 
 export interface ListedBlock {
   block: WeekGridBlock;
   day?: WeekDay;
-  interval?: Interval;
+  interval?: ItemSpan;
 }
 
 export interface WeekLayout {
@@ -82,10 +84,11 @@ export function layoutWeek(
   const byDay = emptyByDay();
   const tba: ListedBlock[] = [];
   const outside: ListedBlock[] = [];
-  const timed: { block: WeekGridBlock; day: WeekDay; interval: Interval }[] = [];
+  const timed: { block: WeekGridBlock; day: WeekDay; interval: ItemSpan }[] = [];
 
   for (const block of blocks) {
-    const interval = block.tba ? null : parseInterval(block.start, block.end);
+    // A meeting that ends after midnight is drawn to 24:00 ("until 12:30a"), not listed as TBA.
+    const interval = block.tba ? null : parseSpan(block.start, block.end);
     if (!block.day || !interval || interval.end === interval.start) {
       tba.push({ block, day: block.day });
       continue;
@@ -120,7 +123,7 @@ export function layoutWeek(
           lane: lane.lane,
           lanes: lane.lanes,
           clippedStart: c.clippedStart,
-          clippedEnd: c.clippedEnd,
+          clippedEnd: c.clippedEnd || t.interval.pastMidnight,
         };
       })
       .sort((a, b) => a.interval.start - b.interval.start || a.lane - b.lane);
@@ -198,12 +201,16 @@ function shownIndex(day: WeekDay): number {
 }
 
 /** Screen-reader phrase for one block: "CSC 221 A, Data Structures, Monday 10:30a to 11:20a, Watson 132". */
-export function describeBlock(block: WeekGridBlock, day?: WeekDay, interval?: Interval): string {
+export function describeBlock(
+  block: WeekGridBlock,
+  day?: WeekDay,
+  interval?: Interval & { shownEnd?: number },
+): string {
   const parts = [block.code];
   if (block.title) parts.push(block.title);
   if (day && interval) {
     parts.push(
-      `${DAY_NAMES[day].long} ${clockLabel(interval.start)} to ${clockLabel(interval.end)}`,
+      `${DAY_NAMES[day].long} ${clockLabel(interval.start)} to ${clockLabel(interval.shownEnd ?? interval.end)}`,
     );
   } else {
     parts.push("time TBA");

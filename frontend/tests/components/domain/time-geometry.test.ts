@@ -13,6 +13,7 @@ import {
   overlaps,
   parseClock,
   parseInterval,
+  parseSpan,
   percent,
   pxToMinutes,
   shortHourLabel,
@@ -59,6 +60,25 @@ describe("parseClock", () => {
     expect(parseInterval("23:59", "23:59")).toEqual({ start: 1439, end: 1439 });
     expect(parseInterval("11:20", "10:30")).toBeNull();
     expect(parseInterval(null, "10:30")).toBeNull();
+  });
+});
+
+describe("parseSpan", () => {
+  it.each([
+    // [start, end, expected]
+    ["10:30", "11:20", { start: 630, end: 680, shownEnd: 680, pastMidnight: false }],
+    ["23:59", "23:59", { start: 1439, end: 1439, shownEnd: 1439, pastMidnight: false }],
+    // A late ICS event runs to 24:00 on this day, and says when it really ends.
+    ["22:00", "00:30", { start: 1320, end: 1440, shownEnd: 30, pastMidnight: true }],
+    ["23:30", "00:00", { start: 1410, end: 1440, shownEnd: 0, pastMidnight: true }],
+    ["13:00", "01:00", { start: 780, end: 1440, shownEnd: 60, pastMidnight: true }],
+    // More than 12 hours "past midnight" is bad data, not a late event.
+    ["11:20", "10:30", null],
+    ["18:00", "17:00", null],
+    ["TBA", "10:30", null],
+    ["10:30", null, null],
+  ] as const)("%s–%s", (start, end, expected) => {
+    expect(parseSpan(start, end)).toEqual(expected);
   });
 });
 

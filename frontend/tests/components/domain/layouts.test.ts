@@ -9,8 +9,16 @@ import {
   termShortLabel,
   type PlanMapTerm,
 } from "@/components/domain/plan-layout";
-import { windowFromHours } from "@/components/domain/time-geometry";
-import { itemInterval, layoutDay, type TimelineItem } from "@/components/domain/timeline-layout";
+import { overlaps, windowFromHours, type Interval } from "@/components/domain/time-geometry";
+import {
+  DEADLINE_LABEL_MINUTES,
+  gapTextPlacement,
+  hourLabelsClearOfNow,
+  itemInterval,
+  layoutDay,
+  placeDeadlineLabels,
+  type TimelineItem,
+} from "@/components/domain/timeline-layout";
 import { describeBlock, layoutWeek, type WeekGridBlock } from "@/components/domain/week-layout";
 
 const NINE_TO_FOUR = windowFromHours(9, 16);
@@ -132,10 +140,37 @@ describe("layoutWeek", () => {
     );
     expect(layout.tba.map((b) => b.block.id)).toEqual(["tba", "noday", "notime"]);
     expect(layout.outside.map((b) => b.block.id)).toEqual(["early", "eve"]);
+    expect(layout.outside[1]!.interval).toMatchObject({ start: 1140, end: 1290 });
     const edge = layout.byDay.F[0]!;
     expect(edge.clippedStart).toBe(true);
     expect(edge.top).toBe(0);
     expect(edge.height).toBeCloseTo(45 / 420, 10);
+  });
+
+  it("draws a meeting that runs past midnight to 24:00 instead of calling it TBA", () => {
+    const window = windowFromHours(18, 24);
+    const layout = layoutWeek(
+      [
+        {
+          id: "late",
+          code: "AST 101 L",
+          title: "Observing lab",
+          day: "W",
+          start: "22:00",
+          end: "00:30",
+        },
+      ],
+      window,
+    );
+    expect(layout.tba).toEqual([]);
+    const late = layout.byDay.W[0]!;
+    expect(late.interval).toEqual({ start: 1320, end: 1440, shownEnd: 30, pastMidnight: true });
+    expect(late.clippedEnd).toBe(true);
+    expect(late.top).toBeCloseTo(4 / 6, 10);
+    expect(late.height).toBeCloseTo(2 / 6, 10);
+    expect(describeBlock(late.block, "W", late.interval)).toBe(
+      "AST 101 L, Observing lab, Wednesday 10:00p to 12:30a",
+    );
   });
 
   it("adds weekend columns when a block needs them", () => {
@@ -176,40 +211,40 @@ describe("layoutWeek", () => {
   });
 });
 
-describe("layoutDay", () => {
-  const WEDNESDAY: TimelineItem[] = [
-    {
-      id: "csc",
-      kind: "class",
-      code: "CSC 221 A",
-      title: "Data Structures",
-      start: "10:30",
-      end: "11:20",
-      location: "Watson 132",
-      source: "course-schedule",
-    },
-    {
-      id: "eco",
-      kind: "class",
-      code: "ECO 232 A",
-      title: "Economics of Migration",
-      start: "11:30",
-      end: "12:20",
-      location: "Watson 243",
-      source: "course-schedule",
-    },
-    {
-      id: "env",
-      kind: "class",
-      code: "ENV 237 A",
-      title: "Intro to Interdisciplinary GIS",
-      start: "14:30",
-      end: "15:45",
-      location: "Watson 247",
-      source: "course-schedule",
-    },
-  ];
+const WEDNESDAY: TimelineItem[] = [
+  {
+    id: "csc",
+    kind: "class",
+    code: "CSC 221 A",
+    title: "Data Structures",
+    start: "10:30",
+    end: "11:20",
+    location: "Watson 132",
+    source: "course-schedule",
+  },
+  {
+    id: "eco",
+    kind: "class",
+    code: "ECO 232 A",
+    title: "Economics of Migration",
+    start: "11:30",
+    end: "12:20",
+    location: "Watson 243",
+    source: "course-schedule",
+  },
+  {
+    id: "env",
+    kind: "class",
+    code: "ENV 237 A",
+    title: "Intro to Interdisciplinary GIS",
+    start: "14:30",
+    end: "15:45",
+    location: "Watson 247",
+    source: "course-schedule",
+  },
+];
 
+describe("layoutDay", () => {
   it("lays out the mockup Wednesday at 9:12 with the lunch gap and the next class", () => {
     const layout = layoutDay(WEDNESDAY, NINE_TO_FOUR, { nowMinute: 552, showFreeGaps: true });
     expect(layout.blocks.map((b) => b.item.id)).toEqual(["csc", "eco", "env"]);
@@ -296,7 +331,12 @@ describe("layoutDay", () => {
   });
 
   it("reads item intervals", () => {
-    expect(itemInterval(WEDNESDAY[0]!)).toEqual({ start: 630, end: 680 });
+    expect(itemInterval(WEDNESDAY[0]!)).toEqual({
+      start: 630,
+      end: 680,
+      shownEnd: 680,
+      pastMidnight: false,
+    });
     expect(
       itemInterval({
         id: "d",
@@ -306,7 +346,7 @@ describe("layoutDay", () => {
         end: "18:00",
         source: "registrar",
       }),
-    ).toEqual({ start: 1020, end: 1020 });
+    ).toMatchObject({ start: 1020, end: 1020 });
     expect(
       itemInterval({
         id: "e",
@@ -317,6 +357,159 @@ describe("layoutDay", () => {
         source: "registrar",
       }),
     ).toBeNull();
+  });
+
+  it("keeps an item that runs past midnight, clipped at the end with its real end time", () => {
+    const late: TimelineItem = {
+      id: "late",
+      kind: "event",
+      title: "Late study session",
+      start: "22:00",
+      end: "00:30",
+      source: "my-plan",
+    };
+    expect(itemInterval(late)).toEqual({
+      start: 1320,
+      end: 1440,
+      shownEnd: 30,
+      pastMidnight: true,
+    });
+    // Outside a 9a–4p view: listed as later today, not as "time not listed".
+    const day = layoutDay([late], NINE_TO_FOUR);
+    expect(day.unscheduled).toEqual([]);
+    expect(day.later.map((l) => l.interval.shownEnd)).toEqual([30]);
+    // In an evening view: drawn to the bottom edge, "until 12:30a".
+    const evening = layoutDay([late], windowFromHours(18, 24));
+    expect(evening.blocks[0]).toMatchObject({ clippedEnd: true, clippedStart: false });
+    expect(evening.blocks[0]!.top + evening.blocks[0]!.height).toBeCloseTo(1, 10);
+  });
+
+  it("groups overlapping blocks (touching ones do not overlap)", () => {
+    const layout = layoutDay(
+      [
+        ...WEDNESDAY,
+        {
+          id: "talk",
+          kind: "event",
+          title: "Talk",
+          start: "12:00",
+          end: "13:00",
+          source: "hurt-hub",
+        },
+        {
+          id: "drop",
+          kind: "event",
+          title: "Drop-in",
+          start: "12:30",
+          end: "13:30",
+          source: "registrar",
+        },
+        {
+          id: "his",
+          kind: "class",
+          code: "HIS 357 A",
+          title: "Civil Rights",
+          start: "12:15",
+          end: "13:30",
+          source: "course-schedule",
+        },
+      ],
+      NINE_TO_FOUR,
+    );
+    expect(layout.groups).toHaveLength(1);
+    const group = layout.groups[0]!;
+    expect(group.interval).toEqual({ start: 690, end: 810 });
+    expect(group.lanes).toBe(3);
+    expect(group.blocks.map((b) => b.item.id)).toEqual(["eco", "talk", "his", "drop"]);
+    expect(layout.blocks.find((b) => b.item.id === "csc")!.group).toBeNull();
+    expect(layout.blocks.find((b) => b.item.id === "his")!.group).toBe(0);
+  });
+});
+
+describe("deadline labels", () => {
+  const busy = [
+    { start: 630, end: 680 }, // CSC 221 A 10:30–11:20
+    { start: 690, end: 740 }, // ECO 232 A 11:30–12:20
+    { start: 870, end: 945 }, // ENV 237 A 2:30–3:45
+  ];
+
+  it.each([
+    // [deadline, placement]: a label needs an hour of free time on one side of its line.
+    ["during a class: listed", 660, null],
+    ["at a class's start, free before it: above", 630, "above"],
+    ["between two classes 10 minutes apart: listed", 685, null],
+    ["lunch gap, room above: above", 860, "above"],
+    ["lunch gap, room below only: below", 745, "below"],
+    ["window start, free below: below", 540, "below"],
+    ["window end, just after the last class: listed", 960, null],
+  ] as const)("%s", (_name, minute, expected) => {
+    expect(placeDeadlineLabels([minute], busy, NINE_TO_FOUR)[0]!.label).toBe(expected);
+  });
+
+  it("never lets a label cover a block or another label", () => {
+    const minutes = [540, 560, 600, 630, 660, 745, 800, 820, 860, 945, 960];
+    const placed = placeDeadlineLabels(minutes, busy, NINE_TO_FOUR);
+    const spans = placed.flatMap((p) => (p.span ? [p.span] : []));
+    for (const span of spans) {
+      expect(span.end - span.start).toBe(DEADLINE_LABEL_MINUTES);
+      expect(busy.some((b) => overlaps(b, span))).toBe(false);
+      expect(span.start).toBeGreaterThanOrEqual(NINE_TO_FOUR.start);
+      expect(span.end).toBeLessThanOrEqual(NINE_TO_FOUR.end);
+    }
+    for (let i = 0; i < spans.length; i++)
+      for (let j = i + 1; j < spans.length; j++) expect(overlaps(spans[i]!, spans[j]!)).toBe(false);
+    // Two deadlines at the same minute: one above, one below.
+    expect(placeDeadlineLabels([800, 800], busy, NINE_TO_FOUR).map((p) => p.label)).toEqual([
+      "above",
+      "below",
+    ]);
+  });
+
+  it("layoutDay lists a deadline during a class and labels one in free time", () => {
+    const layout = layoutDay(
+      [
+        ...WEDNESDAY,
+        { id: "quiz", kind: "deadline", title: "Quiz", start: "11:00", source: "my-plan" },
+        { id: "ps", kind: "deadline", title: "Problem set", start: "13:59", source: "my-plan" },
+      ],
+      NINE_TO_FOUR,
+      { showFreeGaps: true },
+    );
+    expect(layout.deadlines.map((d) => [d.item.id, d.label])).toEqual([
+      ["quiz", null],
+      ["ps", "above"],
+    ]);
+    // The lunch gap (12:20–2:30) keeps its text clear of the label (12:59–1:59): at the top.
+    expect(layout.gaps.map((g) => g.text)).toEqual(["start"]);
+  });
+
+  it.each([
+    ["no label in the gap", [], "center"],
+    ["label in the lower part", [{ start: 800, end: 860 }], "start"],
+    ["label in the upper part", [{ start: 740, end: 800 }], "end"],
+    [
+      "label fills it",
+      [
+        { start: 745, end: 805 },
+        { start: 805, end: 865 },
+      ],
+      "hidden",
+    ],
+  ] as const)("gap text: %s", (_name, labels, expected) => {
+    expect(gapTextPlacement({ start: 740, end: 870 }, labels as readonly Interval[])).toBe(
+      expected,
+    );
+  });
+});
+
+describe("now pill", () => {
+  it.each([
+    [552, [10, 11, 12, 13, 14, 15, 16]], // 9:12: the pill covers "9a"
+    [645, [9, 10, 12, 13, 14, 15, 16]], // 10:45: "11a" is 15 minutes away
+    [760, [9, 10, 11, 12, 13, 14, 15, 16]], // 12:40: 20 minutes from "1p"
+    [null, [9, 10, 11, 12, 13, 14, 15, 16]],
+  ])("now %s leaves hour labels %j", (now, shown) => {
+    expect(hourLabelsClearOfNow([9, 10, 11, 12, 13, 14, 15, 16], now)).toEqual(shown);
   });
 });
 

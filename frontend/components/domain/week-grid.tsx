@@ -52,8 +52,8 @@ function colorClasses(code: string) {
   return COURSE_COLOR_CLASSES[courseColor(code)];
 }
 
-function timeRange(interval: Interval): string {
-  return `${clockLabel(interval.start)}–${clockLabel(interval.end)}`;
+function timeRange(interval: Interval & { shownEnd?: number }): string {
+  return `${clockLabel(interval.start)}–${clockLabel(interval.shownEnd ?? interval.end)}`;
 }
 
 /**
