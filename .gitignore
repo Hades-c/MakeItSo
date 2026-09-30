@@ -24,6 +24,11 @@ frontend/.env.*.local
 # Vercel
 .vercel
 
+# Agent notes that `next dev` (Next 16) writes when it detects an AI agent. Whether the repo carries an
+# AGENTS.md/CLAUDE.md is the owner's decision, so the generated ones are never committed (PLAN §2).
+frontend/AGENTS.md
+frontend/CLAUDE.md
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
