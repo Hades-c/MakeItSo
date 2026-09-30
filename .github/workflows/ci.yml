@@ -24,6 +24,8 @@ jobs:
     env:
       CI: "true"
       NEXT_TELEMETRY_DISABLED: "1"
+      # Outside services come from frontend/tests/fixtures/external; CI never calls Davidson, RMP or the feeds.
+      EXTERNAL_MODE: fixtures
       # Keep the mongod binary used by unit/integration and e2e tests outside node_modules so it can be cached.
       MONGOMS_DOWNLOAD_DIR: /home/runner/.cache/mongodb-binaries
     steps:
