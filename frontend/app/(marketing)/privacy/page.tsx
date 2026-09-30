@@ -17,9 +17,11 @@ const LAST_UPDATED = "September 30, 2026";
 
 /**
  * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Static. Every statement here must stay true: the
- * retention periods match the TTLs in the models (verification codes 15 min, per-user AI cache 30 days, feed items
- * 60 days, rate limits by window), the AI payload allow-list (server/ai/payloads.ts) and the account data registry
- * (server/account/erasers.ts). Change the text in the same commit as the behaviour.
+ * retention periods match the models (verification codes valid 15 min and deleted after 24 h, per-user AI cache
+ * 30 days, feed items 60 days, rate limits by window), the AI payload allow-list (server/ai/payloads.ts), the
+ * account data registry (server/account/erasers.ts: the legacy `aicaches` and `careergoals` are NOT in it yet,
+ * contractRequest), the cookies NextAuth sets, and the mail adapter (server/auth/mailer.ts: Resend). Change the
+ * text in the same commit as the behaviour.
  */
 
 function Section({
@@ -125,13 +127,34 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <b>From the earlier version of MakeItSo:</b> if you used the hackathon version, the
-                plan you saved there is kept (read-only) so it can be carried over.
+                plan you saved there, and the profile fields it kept on your account (a short bio,
+                your year, career interests, a picture address and a credit total), are kept
+                (read-only) so they can be carried over. They are in your download and deleted with
+                your account. That version also saved the AI answers it generated for you and any
+                career goals you entered: those are not yet part of the download or of account
+                deletion, so ask us (see Contact) and we will delete them.
               </li>
             </ul>
             <p>
-              Signing in uses one session cookie, plus a security cookie from the sign-in library.
-              Your light or dark theme choice is saved in your own browser. There are no advertising
-              or analytics trackers, and our fonts are served by MakeItSo itself.
+              Signing in sets three cookies from the sign-in library: the session cookie, which
+              keeps you signed in for up to 14 days, a security token that protects the sign-in
+              form, and the page to return to after signing in. Your light or dark theme choice is
+              saved in your own browser. There are no advertising or analytics trackers, and our
+              fonts are served by MakeItSo itself.
+            </p>
+            <p>
+              <b>Email:</b> once email verification is turned on, verification and password-reset
+              emails are sent through{" "}
+              <a
+                href="https://resend.com/legal/privacy-policy"
+                className="font-semibold text-primary underline"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Resend
+              </a>
+              , an email delivery service, which receives your email address and the message
+              (including its one-time code). MakeItSo sends no other email.
             </p>
             <p>
               MakeItSo is not an approved Davidson tool for Internal or Restricted college data.
@@ -208,11 +231,11 @@ export default function PrivacyPage() {
               />
               <Retention
                 what="Email codes"
-                how="Expire after 15 minutes and are deleted automatically, always within 24 hours."
+                how="Work for 15 minutes. The record (only a hash of the code) is deleted automatically 24 hours after it was sent."
               />
               <Retention
                 what="Unverified sign-ups"
-                how="A new sign-up with the same address can replace an account that was never verified once it is 24 hours old; the old account's data is deleted."
+                how="Once email verification is available: if a sign-up was emailed a code and is still not verified 24 hours later, a new sign-up with the same address can replace it, and the old account's data is deleted. A sign-up that was never sent a code is never replaced."
               />
               <Retention
                 what="Rate-limit counters"
@@ -233,12 +256,14 @@ export default function PrivacyPage() {
                 <Link href={routes.profile()} className="font-semibold text-primary underline">
                   profile
                 </Link>{" "}
-                gives you a JSON file of everything MakeItSo stores about you (up to 5 times a day).
+                gives you a JSON file of everything MakeItSo stores about you (up to 5 times a day),
+                except the earlier version&apos;s AI answers and career goals described above.
               </li>
               <li>
                 <b>Delete account</b> asks for your password, then immediately deletes your account
                 and everything tied to it: profile, plan, AI results, codes and counters, and any
-                plan from the earlier version. This cannot be undone.
+                plan from the earlier version (for that version&apos;s AI answers and career goals,
+                ask us). This cannot be undone.
               </li>
               <li>
                 <b>Turn off AI features</b> and <b>sign out everywhere</b> are on your profile too.

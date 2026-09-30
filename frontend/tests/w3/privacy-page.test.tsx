@@ -20,10 +20,19 @@ describe("/privacy", () => {
     expect(text).toMatch(/removed or corrected/);
     expect(text).toMatch(/30 days/);
     expect(text).toMatch(/15 minutes/);
-    expect(text).toMatch(/within 24 hours/);
+    expect(text).toMatch(/deleted automatically 24 hours after it was sent/);
     expect(text).toMatch(/60 days/);
     expect(text).toMatch(/Download my data/);
     expect(text).toMatch(/Delete account/);
+    // Review corrections: the cookies NextAuth really sets, the mail provider, the replacement rule's
+    // condition, the legacy profile fields, and what the export and deletion do not cover yet.
+    expect(text).toMatch(/three cookies/);
+    expect(text).toMatch(/Resend/);
+    expect(text).toMatch(/Once email verification is available/);
+    expect(text).toMatch(/never sent a code is never replaced/);
+    expect(text).toMatch(/a short bio,\s+your year, career interests/);
+    expect(text).toMatch(/not yet part of the download or of account\s+deletion/);
+    expect(text).not.toMatch(/one session cookie/);
     for (const id of ["what-we-store", "ai", "alumni", "retention", "your-data", "contact"]) {
       expect(document.getElementById(id)).not.toBeNull();
     }
