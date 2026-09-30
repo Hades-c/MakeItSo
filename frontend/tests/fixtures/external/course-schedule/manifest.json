@@ -11,52 +11,52 @@
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202201",
       "file": "courses-202201.json",
-      "note": "subset: 40 sections of courses named by the career paths and mockups (history / 'usually offered' tests)"
+      "note": "subset: about 40 sections of courses named by the career paths and mockups, plus their cross-listed siblings (history / 'usually offered' tests)"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202202",
       "file": "courses-202202.json",
-      "note": "subset: 40 sections of courses named by the career paths and mockups (history / 'usually offered' tests)"
+      "note": "subset: about 40 sections of courses named by the career paths and mockups, plus their cross-listed siblings (history / 'usually offered' tests)"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202301",
       "file": "courses-202301.json",
-      "note": "subset: 40 sections of courses named by the career paths and mockups (history / 'usually offered' tests)"
+      "note": "subset: about 40 sections of courses named by the career paths and mockups, plus their cross-listed siblings (history / 'usually offered' tests)"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202302",
       "file": "courses-202302.json",
-      "note": "subset: 40 sections of courses named by the career paths and mockups (history / 'usually offered' tests)"
+      "note": "subset: about 40 sections of courses named by the career paths and mockups, plus their cross-listed siblings (history / 'usually offered' tests)"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202401",
       "file": "courses-202401.json",
-      "note": "subset: 40 sections of courses named by the career paths and mockups (history / 'usually offered' tests)"
+      "note": "subset: about 40 sections of courses named by the career paths and mockups, plus their cross-listed siblings (history / 'usually offered' tests)"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202402",
       "file": "courses-202402.json",
-      "note": "subset: 40 sections of courses named by the career paths and mockups (history / 'usually offered' tests)"
+      "note": "subset: about 40 sections of courses named by the career paths and mockups, plus their cross-listed siblings (history / 'usually offered' tests)"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202501",
       "file": "courses-202501.json",
-      "note": "subset: ~130 sections across every department, incl. HUM 103/104, WRI 101, cross-listed pairs (both siblings), TBA meetings, 0-credit MUS/MIL, every note code, the RMP collision instructors"
+      "note": "subset: 130 sections across every department, incl. HUM 103/104, WRI 101, every cross-listed section with its siblings (by CRN), TBA meetings, 0-credit MUS/MIL, every note code used that term, the one NSCI section (PHY 395 A), the RMP collision instructors. Upstream has no reg_fors or Staff sections in 202501/202502: test those with 202602"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202502",
       "file": "courses-202502.json",
-      "note": "subset: ~130 sections across every department, incl. HUM 103/104, WRI 101, cross-listed pairs (both siblings), TBA meetings, 0-credit MUS/MIL, every note code, the RMP collision instructors"
+      "note": "subset: 133 sections across every department, incl. HUM 103/104, WRI 101, every cross-listed section with its siblings (by CRN), TBA meetings, 0-credit MUS/MIL, every note code used that term, the RMP collision instructors. Upstream has no NSCI, reg_fors or Staff sections in 202502: test those with 202501/202602"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202601",
       "file": "courses-202601.json",
-      "note": "FULL term (every section)"
+      "note": "FULL term (every section); NSCI on 2 sections"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202602",
       "file": "courses-202602.json",
-      "note": "FULL term (every section)"
+      "note": "FULL term (every section); holds the fixtures' only reg_fors sections (CHE 430 A, EDU 221 A, EDU 330 A, PSY 241 A) and the only Staff instructor (RUS 496 A)"
     },
     {
       "url": "https://api.davidson.edu/api/public/v2/courses?limit=1000&offset=0&term_code=202203",

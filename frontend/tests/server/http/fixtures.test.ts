@@ -104,6 +104,37 @@ describe("tests/fixtures/external (PLAN §4.1.10)", () => {
     expect(names.filter((name) => name.endsWith("|Smith")).length).toBeGreaterThanOrEqual(2);
   });
 
+  it.each(["wildcatsync/events.ics", "hurt-hub/events.ics", "wildcatsync/news.rss"])(
+    "keeps %s byte-exact with its upstream CRLF line endings",
+    (file) => {
+      // RFC 5545 content lines end in CRLF: a parser that splits on "\n" alone would leave "\r" in DTSTART and
+      // URL values, so the fixtures must keep the real line endings (.gitattributes turns conversion off).
+      const text = readFileSync(path.join(root, file), "utf8");
+      const lines = text.split("\n").length - 1;
+      expect(lines).toBeGreaterThan(10);
+      expect(text.split("\r\n").length - 1).toBe(lines);
+    },
+  );
+
+  it("keeps every cross-listed section's siblings (by CRN) in each course fixture", () => {
+    const dir = path.join(root, "course-schedule");
+    const files = readdirSync(dir).filter((name) => /^courses-\d{6}\.json$/.test(name));
+    expect(files.length).toBeGreaterThanOrEqual(10);
+    for (const file of files) {
+      const rows = JSON.parse(readFileSync(path.join(dir, file), "utf8")) as {
+        crn: number;
+        cross_listings: { crn: number }[];
+      }[];
+      const crns = new Set(rows.map((row) => row.crn));
+      const dangling = rows.flatMap((row) =>
+        row.cross_listings
+          .filter((sib) => !crns.has(sib.crn))
+          .map((sib) => `${row.crn}→${sib.crn}`),
+      );
+      expect([file, dangling]).toEqual([file, []]);
+    }
+  });
+
   it("serves the full registration-season terms and the terms list", () => {
     const read = (file: string) =>
       JSON.parse(readFileSync(path.join(root, "course-schedule", file), "utf8")) as unknown[];
