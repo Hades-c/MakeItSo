@@ -113,7 +113,7 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `AI_PROVIDER`           | no       | `anthropic` (default) or `mock` (canned output for tests and e2e; no API key needed)      |
 | `APP_TIMEZONE`          | no       | IANA time zone for "today" logic. Default `America/New_York`                              |
 | `RMP_ENABLED`           | no       | RateMyProfessors ratings on/off. Default `true`                                           |
-| `RMP_SUMMARIES_ENABLED` | no       | AI summaries of RateMyProfessors reviews on/off. Default `true`                           |
+| `RMP_SUMMARIES_ENABLED` | no       | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)           |
 
 ### Scripts (run in `frontend/`)
 

@@ -21,7 +21,7 @@ describe("getEnv", () => {
       AI_PROVIDER: "anthropic",
       APP_TIMEZONE: "America/New_York",
       RMP_ENABLED: true,
-      RMP_SUMMARIES_ENABLED: true,
+      RMP_SUMMARIES_ENABLED: false,
     });
   });
 
@@ -34,14 +34,14 @@ describe("getEnv", () => {
       AI_PROVIDER: "mock",
       APP_TIMEZONE: "Europe/London",
       RMP_ENABLED: "false",
-      RMP_SUMMARIES_ENABLED: "0",
+      RMP_SUMMARIES_ENABLED: "1",
     });
     expect(env.AI_PROVIDER).toBe("mock");
     expect(env.APP_TIMEZONE).toBe("Europe/London");
     expect(env.NEXTAUTH_URL).toBe("https://make-it-so.vercel.app");
     expect(env.ANTHROPIC_API_KEY).toBe("sk-ant-test");
     expect(env.RMP_ENABLED).toBe(false);
-    expect(env.RMP_SUMMARIES_ENABLED).toBe(false);
+    expect(env.RMP_SUMMARIES_ENABLED).toBe(true);
   });
 
   it("treats blank values as unset", () => {

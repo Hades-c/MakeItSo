@@ -59,7 +59,9 @@ export const envSchema = z.object({
       .default("America/New_York"),
   ),
   RMP_ENABLED: flag(true),
-  RMP_SUMMARIES_ENABLED: flag(true),
+  // AI summaries of RMP reviews are a derivative work and a prompt-poisoning vector: off unless the owner opts in
+  // (PLAN §1, §4.1.14).
+  RMP_SUMMARIES_ENABLED: flag(false),
 });
 
 export type Env = z.infer<typeof envSchema>;
