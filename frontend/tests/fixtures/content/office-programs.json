@@ -1,5 +1,5 @@
 {
-  "_note": "Index of the 122 verified office programs in content-prep/final_offices.json (verified 2026-09-30): office, name, URLs and amount only (no descriptions or staff names). tests/lib/types/content.test.ts proves each converts to a Program with a truthful source tag. W4b owns the full records (server/content/offices.ts).",
+  "_note": "Index of the 122 verified office programs in content-prep/final_offices.json (verified 2026-09-30): office, name, URLs and amount only (no descriptions or staff names). tests/lib/types/content.test.ts proves each converts to a Program with a truthful source tag. W4b owns the full records (server/content/offices.ts). Each program is filed under the office that runs it: the Greater Charlotte Law School Fair and the law school application fee grant are the Matthews Center's, although Prelaw Advising's pages list them.",
   "verifiedAt": "2026-09-30",
   "officeCount": 20,
   "programs": [
@@ -895,8 +895,8 @@
       "hasDeadline": true
     },
     {
-      "officeSlug": "prelaw",
-      "officeName": "Prelaw Advising",
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
       "name": "Greater Charlotte Law School Fair",
       "url": "https://www.davidson.edu/academic-departments/prelaw/law-school-fair",
       "sourceUrl": "https://wildcatsync.davidson.edu/event/12807625",
@@ -904,8 +904,8 @@
       "hasDeadline": false
     },
     {
-      "officeSlug": "prelaw",
-      "officeName": "Prelaw Advising",
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
       "name": "Law school application fee grant (Matthews Center professional development funding)",
       "url": "https://www.davidson.edu/academic-departments/prelaw/law-school-resources",
       "sourceUrl": "https://www.davidson.edu/academic-departments/prelaw/law-school-resources",

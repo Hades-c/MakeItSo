@@ -257,9 +257,11 @@ describe("content types (PLAN §4.1.6)", () => {
     expect([...tags.get("office-of-fellowships")!]).toEqual(["DAVIDSON OFFICES"]);
     const byTag = (tag: string) =>
       programs.filter((p) => sourceTag(programSourceForOffice(p.officeSlug)) === tag).length;
-    expect(byTag("MATTHEWS CENTER")).toBe(30);
+    // The law school fair and fee grant are the Matthews Center's (listed on Prelaw Advising's pages).
+    expect(byTag("MATTHEWS CENTER")).toBe(32);
     expect(byTag("HURT HUB PROGRAMS")).toBe(12);
-    expect(byTag("DAVIDSON OFFICES")).toBe(80);
+    expect(byTag("DAVIDSON OFFICES")).toBe(78);
+    expect(programs.filter((p) => p.officeSlug === "prelaw")).toEqual([]);
   });
 
   it("rejects a program tagged with another office's source", () => {

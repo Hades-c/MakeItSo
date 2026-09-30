@@ -42,33 +42,13 @@ const MONTHS = [
   "December",
 ];
 
-/**
- * Programs filed under the office that runs them rather than the office page that lists them (the contracts'
- * index still has the listing office; W4b contractRequest to update tests/fixtures/content/office-programs.json).
- */
-const RUN_BY: Readonly<Record<string, string>> = {
-  "Greater Charlotte Law School Fair": "matthews-center",
-  "Law school application fee grant (Matthews Center professional development funding)":
-    "matthews-center",
-};
-
 describe("offices and programs", () => {
   it("holds the 20 offices and 122 programs of the verified index, as published", () => {
     expect(OFFICES).toHaveLength(20);
     expect(PROGRAMS).toHaveLength(122);
     expect(PROGRAMS.map((p) => [p.officeSlug, p.name, p.url, p.sources[0], p.amount])).toEqual(
-      index.programs.map((p) => [
-        RUN_BY[p.name] ?? p.officeSlug,
-        p.name,
-        p.url,
-        p.sourceUrl,
-        p.amount,
-      ]),
+      index.programs.map((p) => [p.officeSlug, p.name, p.url, p.sourceUrl, p.amount]),
     );
-    for (const [name, office] of Object.entries(RUN_BY)) {
-      expect(index.programs.find((p) => p.name === name)?.officeSlug).toBe("prelaw");
-      expect(PROGRAMS.find((p) => p.name === name)?.officeSlug).toBe(office);
-    }
     expect(PROGRAMS.map((p) => p.deadlineText !== null)).toEqual(
       index.programs.map((p) => p.hasDeadline),
     );
