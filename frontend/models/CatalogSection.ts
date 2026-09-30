@@ -97,14 +97,17 @@ const CatalogSectionSchema = new Schema(
   { collection: "catalogsections", timestamps: true },
 );
 
+/**
+ * Every whole-term rewrite pays for each index, so only queried ones exist (searches, filters and course pages run
+ * on W1's in-process term index, not on Mongo; other streams read through server/catalog/index.ts):
+ * - (termCode, crn): the ingest's upserts and deletes, and loading a term's rows (a termCode prefix);
+ * - (courseCode, termCode): course history (sections of a code per term) and validateCourseCodes;
+ * - (canonicalCode, termCode): lookups by cross-listing canonical code (PLAN §5 "Plan items"; pinned by
+ *   tests/models/models.test.ts for the plan and AI grounding).
+ */
 CatalogSectionSchema.index({ termCode: 1, crn: 1 }, { unique: true });
-CatalogSectionSchema.index({ termCode: 1, courseCode: 1 });
-/** Course history (getCourseHistory) and code validation across terms. */
 CatalogSectionSchema.index({ courseCode: 1, termCode: 1 });
-CatalogSectionSchema.index({ "crossListings.courseCode": 1 });
 CatalogSectionSchema.index({ canonicalCode: 1, termCode: 1 });
-CatalogSectionSchema.index({ termCode: 1, subject: 1, number: 1 });
-CatalogSectionSchema.index({ termCode: 1, reqCodes: 1 });
 
 export type CatalogSectionDoc = InferSchemaType<typeof CatalogSectionSchema>;
 export type CatalogSectionDocument = HydratedDocument<CatalogSectionDoc>;

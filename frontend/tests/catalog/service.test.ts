@@ -13,6 +13,7 @@ import {
   countCourses,
   getCatalogFilters,
   getCourse,
+  getCourseHistory,
   getSection,
   resolveTerms,
   searchCourses,
@@ -191,8 +192,30 @@ describe("reads", () => {
 describe("validateCourseCodes", () => {
   it("canonicalises, dedupes and checks the ingested terms (current + registration at least)", async () => {
     expect(
-      await validateCourseCodes(["csc121", "CSC 121", "PHY 214", "ZZZ 999", "hello", "BIO 395"]),
-    ).toEqual({ valid: ["CSC 121", "PHY 214", "BIO 395"], invalid: ["ZZZ 999", "hello"] });
+      await validateCourseCodes(["csc121", "CSC 121", "PHY 214", "ENV 214", "ZZZ 999", "hello"]),
+    ).toEqual({ valid: ["CSC 121", "PHY 214", "ENV 214"], invalid: ["ZZZ 999", "hello"] });
+  });
+
+  it("agrees with getCourse and getCourseHistory: a registration-only alias is not a course", async () => {
+    await runCatalogCron();
+    // BIO 395 A (crn 20083) is only named in CHE 430 A's reg_fors; no BIO 395 listing exists anywhere.
+    expect(await validateCourseCodes(["BIO 395", "CHE 430"])).toEqual({
+      valid: ["CHE 430"],
+      invalid: ["BIO 395"],
+    });
+    expect(await getCourse("202602", "BIO 395")).toBeNull();
+    expect((await getCourseHistory("BIO 395")).filter((a) => a.status === "offered")).toEqual([]);
+    expect(await getCourse("202602", "CHE 430")).not.toBeNull();
+    expect(await validateCourseCodes(["SOC 221", "SOC 330", "EDU 241"], ["202602"])).toEqual({
+      valid: [],
+      invalid: ["SOC 221", "SOC 330", "EDU 241"],
+    });
+    // Every valid code of the term has a course page there.
+    const codes = fixtureSections("202602").map((section) => section.courseCode);
+    const { valid } = await validateCourseCodes(codes, ["202602"]);
+    for (const code of valid) expect(await getCourse("202602", code), code).not.toBeNull();
+    // Search still finds the class for the alias.
+    expect((await searchCourses({ q: "BIO 395" })).items.map((i) => i.code)).toEqual(["CHE 430"]);
   });
 
   it("limits to the given terms and knows every backfilled term", async () => {

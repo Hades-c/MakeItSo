@@ -96,7 +96,14 @@ export async function getCourseHistory(code: string): Promise<Availability[]> {
   return courseAvailability(normalized);
 }
 
-/** Split codes into those found in at least one of `terms` (default: every ingested term) and the rest. */
+/**
+ * Split codes into those offered in at least one of `terms` (default: every ingested term) and the rest. Codes are
+ * canonicalised ("csc121" → "CSC 121"). A code is valid when a listing of its own exists, so every valid code has a
+ * course page (getCourse) and a history (getCourseHistory) in that term; cross-listed siblings have listings of
+ * their own (ENV 214 and PHY 214 are both valid). Hidden registration-only codes (upstream reg_fors such as
+ * BIO 395 for CHE 430 A) are not: no export can resolve them, so they are reported invalid (search still finds
+ * CHE 430 for "BIO 395").
+ */
 export async function validateCourseCodes(
   codes: readonly string[],
   terms?: readonly TermCode[],
@@ -105,8 +112,8 @@ export async function validateCourseCodes(
   const scope = terms ? [...new Set(terms)].filter(isTermCode) : null;
   const toLoad = scope
     ? scope.filter((term) => inIngestWindow(term, resolved))
-    : [resolved.current, resolved.registration];
-  for (const term of toLoad) await ensureTermData(term, resolved);
+    : [...new Set([resolved.current, resolved.registration])];
+  await Promise.all(toLoad.map((term) => ensureTermData(term, resolved)));
 
   const inputs = [...new Set(codes)];
   const normalized = new Map(inputs.map((input) => [input, normalizeCourseCode(input)]));
@@ -117,19 +124,11 @@ export async function validateCourseCodes(
   if (wellFormed.length > 0 && (!scope || scope.length > 0)) {
     await getDb();
     const termFilter = scope ? { termCode: trusted({ $in: scope }) } : {};
-    const $in = trusted({ $in: wellFormed });
-    const [own, crossListed, registration] = await Promise.all([
-      CatalogSection.distinct("courseCode", { ...termFilter, courseCode: $in }),
-      CatalogSection.distinct("crossListings.courseCode", {
-        ...termFilter,
-        "crossListings.courseCode": $in,
-      }),
-      CatalogSection.distinct("registrationSections.courseCode", {
-        ...termFilter,
-        "registrationSections.courseCode": $in,
-      }),
-    ]);
-    for (const code of [...own, ...crossListed, ...registration]) found.add(String(code));
+    const own = await CatalogSection.distinct("courseCode", {
+      ...termFilter,
+      courseCode: trusted({ $in: wellFormed }),
+    });
+    for (const code of own) found.add(String(code));
   }
   const valid: string[] = [];
   const invalid: string[] = [];
