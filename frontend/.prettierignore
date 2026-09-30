@@ -8,3 +8,5 @@ test-results/
 package-lock.json
 next-env.d.ts
 public/
+# Recorded upstream responses: byte-exact on purpose (minified JSON, CRLF ICS).
+tests/fixtures/external/

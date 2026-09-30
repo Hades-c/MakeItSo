@@ -1,0 +1,1105 @@
+{
+  "_note": "Index of the 122 verified office programs in content-prep/final_offices.json (verified 2026-09-30): office, name, URLs and amount only (no descriptions or staff names). tests/lib/types/content.test.ts proves each converts to a Program with a truthful source tag. W4b owns the full records (server/content/offices.ts).",
+  "verifiedAt": "2026-09-30",
+  "officeCount": 20,
+  "programs": [
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Summer Internship Grants (common application)",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Frank Matthews II '49 Center for Career Development Summer Internship Grant",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": "$1,000 -$6,000",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Anne Stanback '81 and Charlotte Kinlock Internship for Non-profit Leadership",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Bill Boyd Entrepreneurial Internship Grant",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Boswell Family Experiential Learning Grant",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Boyd Family Internship Grant",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Butner Family Internship Fund",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Carolyn and George Cretekos '69 Public Service Internship",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Dr. Randy Nelson Summer Internship Grant",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Gerald Lee Wilson '58 and Virginia S. Wilson Internship Fund Grant",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Ginny Newell '78 Arts Fund",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Hall Family Internship Grants",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Hasty/Smith Internship Grant",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Janet Burt Anderson First-generation Internship Fund",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Juliana Tazewell Porter Memorial Internship Fund",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Layendecker Family Internship Fund",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Locke White Jr. Internship Fund",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "MacDonald Family Internship Grant",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Morehead Family Internship Grant",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Pioneer Internship Fund",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "The Cassell Family Socios En Salud / Partners in Health in Peru Internship",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": "$6,000",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Tom Anstrom Internship Fund",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Weeks Family Visual Arts Internship",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/summer-internship-grants/available-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "XPL 099 Academic Credit for Internships",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/xpl-099-academic-credit-internships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/internships/xpl-099-academic-credit-internships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Davidson in Washington (DIW)",
+      "url": "https://www.davidson.edu/academic-departments/political-science/internships-careers-and-graduate-school/davidson-washington",
+      "sourceUrl": "https://www.davidson.edu/academic-departments/political-science/internships-careers-and-graduate-school/davidson-washington",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "East Asia Internship Program (Freeman Foundation)",
+      "url": "https://www.davidson.edu/academic-departments/chinese-studies/internships",
+      "sourceUrl": "https://www.davidson.edu/academic-departments/chinese-studies/internships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Davidson Impact Fellows (DIF)",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/davidson-impact-fellows",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/davidson-impact-fellows",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Professional Development Funding (Tony Snow '77 Professional Development Fund)",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Scholarships for Tuck Business Bridge (Dartmouth) and Vanderbilt Summer Business Immersion",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/technical-skill-building-partnerships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming/technical-skill-building-partnerships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "matthews-center",
+      "officeName": "Betty and B. Frank Matthews II '49 Center for Career Development (Matthews Center)",
+      "name": "Health Careers Fair",
+      "url": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/matthews-center-career-development/key-programming",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "Try It Fund",
+      "url": "https://hurthub.davidson.edu/try-it-fund/",
+      "sourceUrl": "https://hurthub.davidson.edu/try-it-fund/",
+      "amount": "up to $1,000",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "AI Try It Fund (Applied AI Lab)",
+      "url": "https://hurthub.davidson.edu/applied-ai/",
+      "sourceUrl": "https://hurthub.davidson.edu/applied-ai/",
+      "amount": "up to $1,000",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "Davidson at NeurIPS (Applied AI Lab)",
+      "url": "https://hurthub.davidson.edu/applied-ai/",
+      "sourceUrl": "https://hurthub.davidson.edu/applied-ai/",
+      "amount": "fully funded",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "Avinger Impact Fund",
+      "url": "https://hurthub.davidson.edu/avinger-impact-fund/",
+      "sourceUrl": "https://hurthub.davidson.edu/avinger-impact-fund/",
+      "amount": "up to $8,000",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "Nisbet Venture Fund",
+      "url": "https://hurthub.davidson.edu/nisbet-venture-fund/",
+      "sourceUrl": "https://hurthub.davidson.edu/nisbet-venture-fund/",
+      "amount": "up to $32,500 in grants and investment ($25,000 Acceleration Track investment structured as a SAFE; $5,000 Incubation Track grant; $2,500 Entrepreneurial Excellence Award)",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "IdeaSprint",
+      "url": "https://hurthub.davidson.edu/ideasprint/",
+      "sourceUrl": "https://hurthub.davidson.edu/ideasprint/",
+      "amount": "$200 micro-grant per team; $1,000 grand prize",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "Davidson College Consulting Group (DCCG)",
+      "url": "https://hurthub.davidson.edu/become-a-student-consultant/",
+      "sourceUrl": "https://hurthub.davidson.edu/become-a-student-consultant/",
+      "amount": "$15.50 per hour (academic year); $18.00 per hour (summer)",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "NEXT Level",
+      "url": "https://hurthub.davidson.edu/next-level/",
+      "sourceUrl": "https://hurthub.davidson.edu/next-level/",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "R. Craig and Sheila Yoder Applied Research Fellowship",
+      "url": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/r-craig-and-sheila-yoder-applied-research-fellowship",
+      "sourceUrl": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/r-craig-and-sheila-yoder-applied-research-fellowship",
+      "amount": "$15/hr, 40 hours per week, 10 weeks ($6,000), and up to $3,000 for supplies, travel, or necessary professional services",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "Davidson Innovation Fellows (Lucid Bots partnership)",
+      "url": "https://hurthub.davidson.edu/students/",
+      "sourceUrl": "https://www.davidson.edu/news/2026/04/28/dorm-room-drone-labs-davidson-college-and-lucid-bots-launch-innovation-fellows-program",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "Building a Lean Startup (course)",
+      "url": "https://hurthub.davidson.edu/event/building-a-lean-startup-fall-2026/",
+      "sourceUrl": "https://hurthub.davidson.edu/event/building-a-lean-startup-fall-2026/",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "hurt-hub",
+      "officeName": "The Jay Hurt Hub for Innovation and Entrepreneurship",
+      "name": "Techstars Startup Weekend - Davidson, NC",
+      "url": "https://hurthub.davidson.edu/event/techstars-startup-weekend-davidson-nc/",
+      "sourceUrl": "https://hurthub.davidson.edu/event/techstars-startup-weekend-davidson-nc/",
+      "amount": "$10 per person (scholarships available)",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Critical Language Scholarship (CLS) Program",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/critical-language-scholarship-program",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/critical-language-scholarship-program",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "DAAD RISE Germany",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/daad-rise-germany",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/daad-rise-germany",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Fulbright UK Summer Institutes",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/uk-summer-institutes",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/uk-summer-institutes",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Beinecke Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/beinecke-scholarship",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/beinecke-scholarship",
+      "amount": "$5,000 immediately prior to entering graduate school and an additional $30,000 while attending graduate school",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Goldwater Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/goldwater-scholarships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/goldwater-scholarships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "NOAA Hollings Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/noaa-hollings-scholarship",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/noaa-hollings-scholarship",
+      "amount": "up to $9,500 per year for two academic years",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Truman Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/truman-scholarships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/truman-scholarships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Udall Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/udall-scholarships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/udall-scholarships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Gaither Junior Fellows Program (Carnegie Endowment)",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/gaither-junior-fellows-program",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/gaither-junior-fellows-program",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Knight-Hennessy Scholars",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/knight-hennessy-scholars",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12495815",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "NSF Graduate Research Fellowship Program (GRFP)",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/national-science-foundation-graduate-fellowships",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12722709",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Paul & Daisy Soros Fellowships for New Americans",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/paul-daisy-soros-fellowships-new-americans",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/paul-daisy-soros-fellowships-new-americans",
+      "amount": "up to $90,000 in financial support over two years",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Thomas R. Pickering Foreign Affairs Graduate Fellowship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/pickering-fellowship-program",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/pickering-fellowship-program",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Rangel Graduate Fellowship Program",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/rangel-fellowship-program",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/rangel-fellowship-program",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Boren Fellowship (graduate)",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/boren-fellowships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/boren-fellowships",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Churchill Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/churchill-scholarship",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/churchill-scholarship",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Fulbright U.S. Student Program",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/fulbright-us-student-program",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/fulbright-us-student-program",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Gates Cambridge Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/gates-cambridge-scholarships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/gates-cambridge-scholarships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Luce Scholars Program",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/luce-scholarships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/luce-scholarships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Marshall Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/marshall-scholarships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/marshall-scholarships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "McCall MacBain Scholarships",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/mccall-macbain-scholarships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/mccall-macbain-scholarships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Rhodes Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/rhodes-scholarships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/rhodes-scholarships",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Schwarzman Scholars",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/schwarzman-scholars",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/schwarzman-scholars",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "W. Thomas Smith Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/smith-scholarship",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/smith-scholarship",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Thomas J. Watson Fellowship",
+      "url": "https://www.davidson.edu/offices-and-services/office-fellowships/fellowship-opportunities/watson-fellowship",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12460064",
+      "amount": "$40,000",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Project Horseshoe Farm Community Health Fellowship",
+      "url": "https://wildcatsync.davidson.edu/event/12797363",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12797363",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Princeton in Africa Fellowship",
+      "url": "https://wildcatsync.davidson.edu/event/12722746",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12722746",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Hertz Fellowship",
+      "url": "https://wildcatsync.davidson.edu/event/12797072",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12797072",
+      "amount": "valued over $250,000",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Princeton in Asia Fellowship",
+      "url": "https://wildcatsync.davidson.edu/event/12722581",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12722581",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "American-Scandinavian Foundation (ASF) Fellowships for Americans",
+      "url": "https://wildcatsync.davidson.edu/event/12799999",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12799999",
+      "amount": "long-term (4-12 months) fellowships of up to $23,000; short-term (1-3 months) fellowships of up to $5,000",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Goldwater Summer Research Internship Program",
+      "url": "https://wildcatsync.davidson.edu/event/12722624",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12722624",
+      "amount": "$10,500",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Mentora Scholars",
+      "url": "https://wildcatsync.davidson.edu/event/12833259",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12833259",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Mississippi Teacher Corps",
+      "url": "https://wildcatsync.davidson.edu/event/12507062",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12507062",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Lafayette Fellowship",
+      "url": "https://wildcatsync.davidson.edu/event/12722629",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12722629",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Carnegie Mellon University (CMU) Rales Fellows Program",
+      "url": "https://wildcatsync.davidson.edu/event/12755666",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12755666",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Blakemore Fellowship",
+      "url": "https://wildcatsync.davidson.edu/event/12796972",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12796972",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Blakemore Freeman Fellowship",
+      "url": "https://wildcatsync.davidson.edu/event/12796949",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12796949",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "office-of-fellowships",
+      "officeName": "Office of Fellowships",
+      "name": "Davidson College Fellows Program",
+      "url": "https://www.davidson.edu/offices-and-services/human-resources/work-davidson/fellows-program",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/human-resources/work-davidson/fellows-program",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "education-abroad",
+      "officeName": "Office of Education Abroad & Away (OEAA)",
+      "name": "Study abroad/away application - Summer, Fall & Academic Year programs",
+      "url": "https://educationabroad.davidson.edu/index.cfm?FuseAction=Abroad.ViewLink&Parent_ID=0&Link_ID=29971A64-26B9-58D3-F563E6F3964A415B",
+      "sourceUrl": "https://educationabroad.davidson.edu/index.cfm?FuseAction=Abroad.ViewLink&Parent_ID=0&Link_ID=29971A64-26B9-58D3-F563E6F3964A415B",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "education-abroad",
+      "officeName": "Office of Education Abroad & Away (OEAA)",
+      "name": "Study abroad/away application - Spring & Winter Break programs",
+      "url": "https://educationabroad.davidson.edu/index.cfm?FuseAction=Abroad.ViewLink&Parent_ID=0&Link_ID=29971A64-26B9-58D3-F563E6F3964A415B",
+      "sourceUrl": "https://educationabroad.davidson.edu/index.cfm?FuseAction=Abroad.ViewLink&Parent_ID=0&Link_ID=29971A64-26B9-58D3-F563E6F3964A415B",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "education-abroad",
+      "officeName": "Office of Education Abroad & Away (OEAA)",
+      "name": "Heitz-Wagener Study Abroad Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/education-abroad/scholarships-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/education-abroad/scholarships-grants",
+      "amount": "$1,500",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "education-abroad",
+      "officeName": "Office of Education Abroad & Away (OEAA)",
+      "name": "Bertis E. Downs III and Eugene M. Downs, Sr. Education Abroad Fund",
+      "url": "https://www.davidson.edu/offices-and-services/education-abroad/scholarships-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/education-abroad/scholarships-grants",
+      "amount": "typically $2,000 each",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "education-abroad",
+      "officeName": "Office of Education Abroad & Away (OEAA)",
+      "name": "Stephen W. Keller Memorial Scholarship",
+      "url": "https://www.davidson.edu/offices-and-services/education-abroad/scholarships-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/education-abroad/scholarships-grants",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "education-abroad",
+      "officeName": "Office of Education Abroad & Away (OEAA)",
+      "name": "Benjamin A. Gilman International Scholarship (external; OEAA advising)",
+      "url": "https://www.davidson.edu/offices-and-services/education-abroad/scholarships-grants",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12577351",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "education-abroad",
+      "officeName": "Office of Education Abroad & Away (OEAA)",
+      "name": "Boren Scholarship (external; OEAA campus representative)",
+      "url": "https://www.davidson.edu/offices-and-services/education-abroad/scholarships-grants",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12498063",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "education-abroad",
+      "officeName": "Office of Education Abroad & Away (OEAA)",
+      "name": "Douglass-O'Connell Global Internship (CIEE)",
+      "url": "https://wildcatsync.davidson.edu/event/12723916",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12723916",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Nonprofit Leadership Fellows",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "amount": "$3,500 stipend + housing",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Brenda H. Tapia CDF Freedom Schools Servant Leader Interns",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "amount": "$3,500 stipend + housing",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Community Research Fellows",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "amount": "$3,500 education award + housing stipend",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Mulliss Center for Civic Engagement and Service Odyssey Interns",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "amount": "$4,500 stipend + on-campus housing (or equivalent locally)",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Roy Alexander Internship with Davidson Lands Conservancy",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/community-based-experiential-learning/fellowships-and-internships",
+      "amount": "$5,000 stipend",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Leonard Fund",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/leonard-fund",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/leonard-fund",
+      "amount": "up to $3,500",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Robert T. Stone Fund",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/robert-t-stone-fund",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/robert-t-stone-fund",
+      "amount": "up to $5,000",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Ruth Pittard Fund for Love in Action",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/ruth-pittard-fund-love-action",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/ruth-pittard-fund-love-action",
+      "amount": "up to $5,000",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Kathryn W. Davis Projects for Peace Grant",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/kathryn-w-davis-projects-peace-grant",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/grants-and-funding-opportunities/kathryn-w-davis-projects-peace-grant",
+      "amount": "$10,000",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "civic-engagement",
+      "officeName": "The William F. and Betty G. Mulliss Center for Civic Engagement",
+      "name": "Bonner Scholars Program",
+      "url": "https://www.davidson.edu/offices-and-services/civic-engagement/signature-programs/bonner-scholars",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/civic-engagement/signature-programs/bonner-scholars",
+      "amount": "$2,500 per semester; $3,000 per summer (living support); $1,500 per summer (earnings); $500 senior stipend",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "premed-health-professions",
+      "officeName": "Premedicine and Allied Health Professions Program",
+      "name": "Premedical/Prehealth Advisory Committee (PAC) Evaluation",
+      "url": "https://www.davidson.edu/academic-departments/premedicine-and-allied-health-professions/premedicalprehealth-advisory-committee",
+      "sourceUrl": "https://www.davidson.edu/academic-departments/premedicine-and-allied-health-professions/premedicalprehealth-advisory-committee",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "prelaw",
+      "officeName": "Prelaw Advising",
+      "name": "Greater Charlotte Law School Fair",
+      "url": "https://www.davidson.edu/academic-departments/prelaw/law-school-fair",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12807625",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "prelaw",
+      "officeName": "Prelaw Advising",
+      "name": "Law school application fee grant (Matthews Center professional development funding)",
+      "url": "https://www.davidson.edu/academic-departments/prelaw/law-school-resources",
+      "sourceUrl": "https://www.davidson.edu/academic-departments/prelaw/law-school-resources",
+      "amount": "$500 during their undergraduate studies",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "aadr",
+      "officeName": "Academic Access & Disability Resources (AADR)",
+      "name": "Peer Academic Coaching (PAC)",
+      "url": "https://www.davidson.edu/offices-and-services/academic-access-disability-resources/academic-access/peer-academic-coaching",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/academic-access-disability-resources/academic-access/peer-academic-coaching",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "aadr",
+      "officeName": "Academic Access & Disability Resources (AADR)",
+      "name": "Semester accommodation request (Accommodate)",
+      "url": "https://www.davidson.edu/offices-and-services/academic-access-disability-resources/disability-resources/requesting-accommodations",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/academic-access-disability-resources/disability-resources/requesting-accommodations",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "dean-of-students",
+      "officeName": "Dean of Students Office",
+      "name": "Student Assistance for Financial Emergencies (SAFE)",
+      "url": "https://www.davidson.edu/offices-and-services/division-student-life/dean-students/student-assistance-financial-emergencies-safe",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/division-student-life/dean-students/student-assistance-financial-emergencies-safe",
+      "amount": "The maximum request amount is of $1000.00",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "dean-rusk",
+      "officeName": "Dean Rusk International Studies Program",
+      "name": "Dean Rusk Travel Grants",
+      "url": "https://www.davidson.edu/offices-and-services/dean-rusk-international-studies-program/international-travel-grants/student-grants/dean-rusk-travel-grants/application-process",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/dean-rusk-international-studies-program/international-travel-grants/student-grants/dean-rusk-travel-grants/application-process",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "dean-rusk",
+      "officeName": "Dean Rusk International Studies Program",
+      "name": "Pulitzer Center Fellowship Grant",
+      "url": "https://www.davidson.edu/offices-and-services/dean-rusk-international-studies-program/international-travel-grants/student-grants/pulitzer-center-fellowship-grant",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/dean-rusk-international-studies-program/international-travel-grants/student-grants/pulitzer-center-fellowship-grant",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "dean-rusk",
+      "officeName": "Dean Rusk International Studies Program",
+      "name": "The Lou Ortmayer Fellowship Grant",
+      "url": "https://www.davidson.edu/offices-and-services/dean-rusk-international-studies-program/international-travel-grants/student-grants/lou-ortmayer-fellowship-grant",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/dean-rusk-international-studies-program/international-travel-grants/student-grants/lou-ortmayer-fellowship-grant",
+      "amount": "$15,000",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "undergraduate-research",
+      "officeName": "Undergraduate Research (Office of Sponsored Programs)",
+      "name": "Davidson Research Initiative (DRI) Summer Research Fellowships",
+      "url": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/davidson-research-initiative",
+      "sourceUrl": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/davidson-research-initiative",
+      "amount": "$600 per week and up to $1,000 for travel/supplies",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "undergraduate-research",
+      "officeName": "Undergraduate Research (Office of Sponsored Programs)",
+      "name": "Abernethy Endowment Grant",
+      "url": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/abernethy-endowment-grant",
+      "sourceUrl": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/abernethy-endowment-grant",
+      "amount": "Grant awards average about $2,000 but have ranged from $250 to $5900",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "undergraduate-research",
+      "officeName": "Undergraduate Research (Office of Sponsored Programs)",
+      "name": "Davidson Research Network (DRN)",
+      "url": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/davidson-research-network",
+      "sourceUrl": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/davidson-research-network",
+      "amount": "A $6,000 stipend",
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "undergraduate-research",
+      "officeName": "Undergraduate Research (Office of Sponsored Programs)",
+      "name": "Kemp Scholars Program",
+      "url": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/kemp-scholars-program",
+      "sourceUrl": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/kemp-scholars-program",
+      "amount": "typically $3,000 to $7,000",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "undergraduate-research",
+      "officeName": "Undergraduate Research (Office of Sponsored Programs)",
+      "name": "Research in Science Experience (RISE)",
+      "url": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/research-science-experience",
+      "sourceUrl": "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/research-science-experience",
+      "amount": "$2,500 fellowship, plus an additional sum to cover on-campus housing",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "catalyst",
+      "officeName": "Catalyst",
+      "name": "XPL 199: High Impact Experiential Learning (Internship for Credit)",
+      "url": "https://www.davidson.edu/catalyst/xpl-199-internship-credit",
+      "sourceUrl": "https://www.davidson.edu/catalyst/xpl-199-internship-credit",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "catalyst",
+      "officeName": "Catalyst",
+      "name": "Sustainability Scholars",
+      "url": "https://www.davidson.edu/offices-and-services/sustainability-office/sustainability-scholars",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/sustainability-office/sustainability-scholars",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "arts-creative-engagement",
+      "officeName": "Davidson Arts & Creative Engagement (DACE)",
+      "name": "Student Spike! Grants",
+      "url": "https://www.davidson.edu/offices-and-services/arts-creative-engagement/student-spike-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/arts-creative-engagement/student-spike-grants",
+      "amount": "up to $1,500 per grant",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "arts-creative-engagement",
+      "officeName": "Davidson Arts & Creative Engagement (DACE)",
+      "name": "AIR (Artistic Independent Research) Grants",
+      "url": "https://www.davidson.edu/offices-and-services/arts-creative-engagement/artistic-independent-research-grants",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/arts-creative-engagement/artistic-independent-research-grants",
+      "amount": "up to $500 per grant",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "arts-creative-engagement",
+      "officeName": "Davidson Arts & Creative Engagement (DACE)",
+      "name": "MAGIC (Micro Arts Grant for Independent Creatives)",
+      "url": "https://www.davidson.edu/offices-and-services/arts-creative-engagement/micro-arts-grant-independent-creatives-magic",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/arts-creative-engagement/micro-arts-grant-independent-creatives-magic",
+      "amount": "up to $300 per grant (up to $400 if presenting or displaying work at the beginning of the fall semester)",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "arts-creative-engagement",
+      "officeName": "Davidson Arts & Creative Engagement (DACE)",
+      "name": "Arts Fellows",
+      "url": "https://www.davidson.edu/offices-and-services/arts-creative-engagement/arts-fellows",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/arts-creative-engagement/arts-fellows",
+      "amount": null,
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "international-student-engagement",
+      "officeName": "International Student Engagement (ISE)",
+      "name": "Alvarez Access Fund (Alvarez Grant Program)",
+      "url": "https://www.davidson.edu/offices-and-services/international-student-engagement/grants/alvarez-grant-program",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/international-student-engagement/grants/alvarez-grant-program",
+      "amount": "Grant amounts will rarely exceed the standard amount of $1,200 and never exceed $2,000",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "international-student-engagement",
+      "officeName": "International Student Engagement (ISE)",
+      "name": "Alvarez Guarantee Fund (Alvarez Grant Program)",
+      "url": "https://www.davidson.edu/offices-and-services/international-student-engagement/grants/alvarez-grant-program",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/international-student-engagement/grants/alvarez-grant-program",
+      "amount": "up to $4,000",
+      "hasDeadline": false
+    },
+    {
+      "officeSlug": "international-student-engagement",
+      "officeName": "International Student Engagement (ISE)",
+      "name": "Weinstein Travel Grant",
+      "url": "https://www.davidson.edu/offices-and-services/international-student-engagement/grants/weinstein-travel-grant",
+      "sourceUrl": "https://wildcatsync.davidson.edu/event/12737806",
+      "amount": null,
+      "hasDeadline": true
+    },
+    {
+      "officeSlug": "chidsey-center",
+      "officeName": "Chidsey Center for Leadership Development",
+      "name": "Chidsey Leadership Fellows",
+      "url": "https://www.davidson.edu/offices-and-services/chidsey-center-leadership-development/chidsey-leadership-fellows",
+      "sourceUrl": "https://www.davidson.edu/offices-and-services/chidsey-center-leadership-development/chidsey-leadership-fellows",
+      "amount": null,
+      "hasDeadline": true
+    }
+  ]
+}

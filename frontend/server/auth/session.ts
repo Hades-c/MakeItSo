@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
 import { getAuthOptions } from "@/server/auth/options";
-import { ApiError } from "@/server/http";
+import { ApiError } from "@/server/http/errors";
 
 /** The signed-in user as the rest of the server sees it. */
 export interface SessionUser {
@@ -38,7 +38,7 @@ export async function requireUser(): Promise<SessionUser> {
 }
 
 /**
- * For route handlers wrapped in withApi(): returns the signed-in user or throws ApiError(401), which withApi()
+ * For route handlers (defineRoute does this for auth "user"): returns the signed-in user or throws ApiError(401), which defineRoute
  * turns into `{ error: { code: "unauthorized", ... } }` with status 401.
  */
 export async function requireApiUser(): Promise<SessionUser> {

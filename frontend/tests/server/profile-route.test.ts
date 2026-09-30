@@ -8,7 +8,7 @@ import { getDb } from "@/server/db";
 const session = vi.hoisted(() => ({ user: null as SessionUser | null }));
 
 vi.mock("@/server/auth/session", async () => {
-  const { ApiError } = await import("@/server/http");
+  const { ApiError } = await import("@/server/http/errors");
   return {
     requireApiUser: async () => {
       if (!session.user) throw new ApiError(401, "unauthorized", "Sign in to continue.");
@@ -43,25 +43,34 @@ async function signInAsNewUser() {
   return user;
 }
 
+function get() {
+  return GET(new Request("http://localhost/api/profile"));
+}
+
 function patch(body: unknown) {
   return PATCH(
-    new Request("http://localhost/api/profile", { method: "PATCH", body: JSON.stringify(body) }),
+    new Request("http://localhost/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", origin: "http://localhost" },
+      body: JSON.stringify(body),
+    }),
   );
 }
 
 describe("/api/profile", () => {
   it("returns 401 with a typed error when signed out", async () => {
-    const res = await GET();
+    const res = await get();
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({
       error: { code: "unauthorized", message: "Sign in to continue." },
     });
   });
 
-  it("returns the profile without the password hash", async () => {
+  it("returns the profile without the password hash, never cached", async () => {
     await signInAsNewUser();
-    const res = await GET();
+    const res = await get();
     expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
     const { user } = (await res.json()) as { user: Record<string, unknown> };
     expect(user.email).toBe("sam@davidson.edu");
     expect(user).not.toHaveProperty("password");
@@ -91,5 +100,17 @@ describe("/api/profile", () => {
     expect(stored?.email).toBe("sam@davidson.edu");
     expect(stored?.password).toBe("$2b$12$hash");
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it("refuses a cross-site PATCH", async () => {
+    await signInAsNewUser();
+    const res = await PATCH(
+      new Request("http://localhost/api/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json", origin: "https://evil.example" },
+        body: JSON.stringify({ major: "Hacked" }),
+      }),
+    );
+    expect(res.status).toBe(403);
   });
 });

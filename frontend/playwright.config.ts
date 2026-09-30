@@ -2,7 +2,11 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * End-to-end tests run against a production build: `next build && next start -p 3210`, with an in-memory MongoDB
- * (started by tests/e2e/serve.mjs) and the mock AI provider. No real secrets or services are needed.
+ * (started by tests/e2e/serve.mjs), the mock AI provider and EXTERNAL_MODE=fixtures (every outside service is
+ * served from tests/fixtures/external; serve.mjs also makes any other outbound fetch from the server fail). No
+ * real secrets, services or network are needed. Server "now" is pinned to the fixtures' day (FIXTURES_NOW) and
+ * rate limits are off (RATE_LIMITS=off): off Vercel every request shares one client-IP bucket, and the suite
+ * registers and signs in far more often than the real limits allow. Rate limits are unit-tested instead.
  *
  * Environment knobs:
  *   E2E_SKIP_BUILD=1          reuse an existing .next build (CI builds in an earlier step)
@@ -58,8 +62,15 @@ export default defineConfig({
     env: {
       E2E_PORT: String(PORT),
       NEXTAUTH_URL: baseURL,
+      // `next start` runs with NODE_ENV=production, so the production checks apply: a 32+ character secret and
+      // APP_ORIGIN (the Origin every POST/PUT/PATCH/DELETE must carry).
       NEXTAUTH_SECRET: "e2e-only-secret-not-for-production",
+      APP_ORIGIN: baseURL,
       AI_PROVIDER: "mock",
+      EXTERNAL_MODE: "fixtures",
+      FIXTURES_NOW: "2026-09-30T12:00:00-04:00",
+      RATE_LIMITS: "off",
+      MAIL_PROVIDER: "console",
       NEXT_TELEMETRY_DISABLED: "1",
     },
   },

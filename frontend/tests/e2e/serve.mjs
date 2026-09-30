@@ -1,5 +1,7 @@
 // Starts the production server for Playwright: an in-memory MongoDB (unless E2E_MONGODB_URI is set) and
 // `next start -p $E2E_PORT` pointed at it. Stops both when either exits or when Playwright sends SIGTERM.
+// With EXTERNAL_MODE=fixtures (always, from playwright.config.ts) the server process preloads fetch-guard.mjs, so
+// an outbound fetch to anything but localhost fails instead of reaching a real upstream.
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -15,9 +17,15 @@ if (!mongoUri) {
   console.log(`[e2e] in-memory MongoDB at ${mongoUri}`);
 }
 
+const guard =
+  process.env.EXTERNAL_MODE === "fixtures"
+    ? `--import=${new URL("./fetch-guard.mjs", import.meta.url).href}`
+    : "";
+const nodeOptions = [process.env.NODE_OPTIONS, guard].filter(Boolean).join(" ");
+
 const next = spawn(process.execPath, [require.resolve("next/dist/bin/next"), "start", "-p", port], {
   stdio: "inherit",
-  env: { ...process.env, MONGODB_URI: mongoUri },
+  env: { ...process.env, MONGODB_URI: mongoUri, NODE_OPTIONS: nodeOptions },
 });
 
 let stopping = false;
