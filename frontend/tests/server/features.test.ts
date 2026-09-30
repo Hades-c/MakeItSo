@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import AlumniPage from "@/app/(hub)/alumni/page";
-import CareerPage from "@/app/(hub)/careers/[slug]/page";
-import CareersPage from "@/app/(hub)/careers/page";
-import EventsPage from "@/app/(hub)/events/page";
-import type { NavKey } from "@/components/app/nav-items";
+import * as alumniPage from "@/app/(hub)/alumni/page";
+import * as careerPage from "@/app/(hub)/careers/[slug]/page";
+import * as careersPage from "@/app/(hub)/careers/page";
+import * as eventsPage from "@/app/(hub)/events/page";
+import { metadata as hubNotFoundMetadata } from "@/app/(hub)/not-found";
 import { getFlags } from "@/lib/flags";
+import type { NavKey } from "@/lib/nav";
 import {
   featureEnabled,
+  featureMetadata,
   HUB_FEATURES,
   hubNavKeys,
   loadFlags,
@@ -124,6 +126,23 @@ describe("loadFlags", () => {
     vi.stubEnv("FEATURE_ALUMNI", "false");
     expect(loadFlags().alumni).toBe(false);
   });
+
+  it("logs each distinct warning once per process, not on every request", () => {
+    // Warnings are remembered for the whole file: this test uses flags no other test here makes malformed.
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const source = { AI_ENABLED: "maybe" };
+    expect(loadFlags(source).ai).toBe(true);
+    expect(loadFlags(source).ai).toBe(true);
+    expect(loadFlags({ ...source }).ai).toBe(true);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(String(log.mock.calls[0]?.[0])).toMatch(/AI_ENABLED must be a boolean/);
+
+    // A different problem is news, and is logged (once) too.
+    loadFlags({ ...source, FEATURE_ALUMNI: "maybe" });
+    loadFlags({ ...source, FEATURE_ALUMNI: "maybe" });
+    expect(log).toHaveBeenCalledTimes(2);
+    expect(String(log.mock.calls[1]?.[0])).toMatch(/FEATURE_ALUMNI must be a boolean/);
+  });
 });
 
 describe("requireFeature", () => {
@@ -157,18 +176,50 @@ describe("requireFeature", () => {
   });
 });
 
+describe("featureMetadata", () => {
+  it("is the page's metadata while the section is on", async () => {
+    await expect(featureMetadata("events", { title: "Events" })).resolves.toEqual({
+      title: "Events",
+    });
+  });
+
+  it("answers 404 while the section is off, so the 404 is never titled after it", async () => {
+    vi.stubEnv("FEATURE_CAREERS", "false");
+    await expect(featureMetadata("careers", { title: "Careers" })).rejects.toMatchObject(NOT_FOUND);
+    await expect(featureMetadata("alumni", { title: "Alumni" })).rejects.toMatchObject(NOT_FOUND);
+    await expect(featureMetadata("events", { title: "Events" })).resolves.toEqual({
+      title: "Events",
+    });
+  });
+
+  it("leaves the title to the hub's not-found page, which names no section", () => {
+    expect(hubNotFoundMetadata).toEqual({ title: "Page not found" });
+  });
+});
+
 describe("flagged hub pages", () => {
   const params = Promise.resolve({ slug: "software-engineering" });
 
   it.each([
-    ["/careers", "FEATURE_CAREERS", () => CareersPage()],
-    ["/careers/[slug]", "FEATURE_CAREERS", () => CareerPage({ params })],
-    ["/events", "FEATURE_EVENTS", () => EventsPage()],
-    ["/alumni", "FEATURE_ALUMNI", () => AlumniPage()],
-    ["/alumni", "FEATURE_CAREERS", () => AlumniPage()],
-  ] as const)("%s answers 404 while %s is off", async (_route, name, render) => {
+    ["/careers", "FEATURE_CAREERS", careersPage, "Careers", () => careersPage.default()],
+    [
+      "/careers/[slug]",
+      "FEATURE_CAREERS",
+      careerPage,
+      "Career path",
+      () => careerPage.default({ params }),
+    ],
+    ["/events", "FEATURE_EVENTS", eventsPage, "Events", () => eventsPage.default()],
+    ["/alumni", "FEATURE_ALUMNI", alumniPage, "Alumni", () => alumniPage.default()],
+    ["/alumni", "FEATURE_CAREERS", alumniPage, "Alumni", () => alumniPage.default()],
+  ] as const)("%s answers 404 while %s is off", async (_route, name, page, title, render) => {
     await expect(render()).resolves.toBeTruthy();
+    await expect(page.generateMetadata()).resolves.toEqual({ title });
     vi.stubEnv(name, "false");
     await expect(render()).rejects.toMatchObject(NOT_FOUND);
+    // The title too: Next.js keeps a static `metadata` export on the 404, which would name the hidden section in
+    // the browser tab and to screen readers. generateMetadata answers 404 instead, so the not-found title is used.
+    expect(page).not.toHaveProperty("metadata");
+    await expect(page.generateMetadata()).rejects.toMatchObject(NOT_FOUND);
   });
 });

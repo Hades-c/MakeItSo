@@ -157,7 +157,7 @@ describe("GET /api/search", () => {
     expect(res.status).toBe(400);
   });
 
-  it("reads the flags like the shell: off hides, malformed takes the default", async () => {
+  it("hides the sections the shell hides (Alumni with Careers)", async () => {
     await signIn();
     const hrefs = async (q: string) =>
       SearchResponseSchema.parse(await (await get(`?q=${q}`)).json()).results.map((r) => r.href);
@@ -165,14 +165,16 @@ describe("GET /api/search", () => {
     expect(await hrefs("alumni")).not.toContain("/alumni");
     vi.stubEnv("FEATURE_CAREERS", "true");
     expect(await hrefs("alumni")).toContain("/alumni");
+  });
 
+  it("fails with a 500 on a malformed flag, like every route (PLAN §2)", async () => {
+    // Only the shell and the flagged pages fall back (server/features.ts loadFlags); the palette then lists its
+    // own pages.
+    await signIn();
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubEnv("FEATURE_EVENTS", "sometimes");
     const res = await get("?q=events");
-    expect(res.status).toBe(200);
-    expect(SearchResponseSchema.parse(await res.json()).results.map((r) => r.href)).toContain(
-      "/events",
-    );
-    expect(log).toHaveBeenCalledWith(expect.stringMatching(/FEATURE_EVENTS/));
+    expect(res.status).toBe(500);
+    expect(log).toHaveBeenCalled();
   });
 });

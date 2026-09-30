@@ -3,13 +3,16 @@ import { BriefcaseBusiness } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { SourceTagList } from "@/components/ui/source-tag";
-import { requireFeature } from "@/server/features";
-
-export const metadata: Metadata = { title: "Careers" };
+import { featureMetadata, requireFeature } from "@/server/features";
 
 // Stub (wave 0). Wave 3 builds career paths with related real courses, opportunities, verified alumni and an
-// AI career plan (drafts into My plan). Behind FEATURE_CAREERS: keep requireFeature() as the first line (404 while
-// the flag is off; the shell hides Careers then).
+// AI career plan (drafts into My plan). Behind FEATURE_CAREERS (404 while it is off; the shell hides Careers then):
+// keep featureMetadata() as generateMetadata (a static `metadata` would title the 404 "Careers") and
+// requireFeature() as the page's first line.
+export async function generateMetadata(): Promise<Metadata> {
+  return featureMetadata("careers", { title: "Careers" });
+}
+
 export default async function CareersPage() {
   await requireFeature("careers");
   return (

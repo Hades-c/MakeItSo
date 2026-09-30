@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import { Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { requireFeature } from "@/server/features";
-
-export const metadata: Metadata = { title: "Alumni" };
+import { featureMetadata, requireFeature } from "@/server/features";
 
 // Stub (wave 0). Wave 3 builds the verified alumni directory (signed-in users only). Behind FEATURE_ALUMNI and
-// FEATURE_CAREERS (Alumni lives under Careers): keep requireFeature() as the first line (404 while either is off;
-// the shell hides Alumni then).
+// FEATURE_CAREERS (Alumni lives under Careers; 404 while either is off, and the shell hides Alumni then): keep
+// featureMetadata() as generateMetadata (a static `metadata` would title the 404 "Alumni") and requireFeature() as
+// the page's first line.
+export async function generateMetadata(): Promise<Metadata> {
+  return featureMetadata("alumni", { title: "Alumni" });
+}
+
 export default async function AlumniPage() {
   await requireFeature("alumni");
   return (

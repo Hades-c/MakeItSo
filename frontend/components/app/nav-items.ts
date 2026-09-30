@@ -7,8 +7,9 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { ALL_NAV_KEYS, type NavKey } from "@/lib/nav";
 
-export type NavKey = "today" | "courses" | "plan" | "careers" | "events" | "alumni";
+export { ALL_NAV_KEYS, type NavKey };
 
 export interface NavItem {
   key: NavKey;
@@ -20,28 +21,25 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
-/** The hub's information architecture (PLAN §3). One label per destination, everywhere. */
-export const NAV_ITEMS: readonly NavItem[] = [
-  { key: "today", href: "/today", label: "Today", shortLabel: "Today", icon: House },
-  { key: "courses", href: "/courses", label: "Courses", shortLabel: "Courses", icon: BookOpen },
-  { key: "plan", href: "/plan", label: "My plan", shortLabel: "Plan", icon: MapIcon },
-  {
-    key: "careers",
-    href: "/careers",
-    label: "Careers",
-    shortLabel: "Careers",
-    icon: BriefcaseBusiness,
-  },
-  { key: "events", href: "/events", label: "Events", shortLabel: "Events", icon: CalendarDays },
-  { key: "alumni", href: "/alumni", label: "Alumni", shortLabel: "Alumni", icon: Users },
-];
+const NAV_ITEM_DETAILS: Record<NavKey, Omit<NavItem, "key">> = {
+  today: { href: "/today", label: "Today", shortLabel: "Today", icon: House },
+  courses: { href: "/courses", label: "Courses", shortLabel: "Courses", icon: BookOpen },
+  plan: { href: "/plan", label: "My plan", shortLabel: "Plan", icon: MapIcon },
+  careers: { href: "/careers", label: "Careers", shortLabel: "Careers", icon: BriefcaseBusiness },
+  events: { href: "/events", label: "Events", shortLabel: "Events", icon: CalendarDays },
+  alumni: { href: "/alumni", label: "Alumni", shortLabel: "Alumni", icon: Users },
+};
 
 /**
- * Every section, in sidebar order: the default for the shell's `nav` prop (the sections it shows). The hub layout
- * passes `hubNavKeys(flags)` (server/features.ts) instead, so a flagged-off Careers, Events or Alumni leaves the
- * sidebar, the bottom tabs and the command palette together.
+ * The hub's information architecture (PLAN §3). One label per destination, everywhere. In the order of
+ * ALL_NAV_KEYS (lib/nav.ts), which is also the default for the shell's `nav` prop (the sections it shows). The hub
+ * layout passes `hubNavKeys(flags)` (server/features.ts) instead, so a flagged-off Careers, Events or Alumni leaves
+ * the sidebar, the bottom tabs and the command palette together.
  */
-export const ALL_NAV_KEYS: readonly NavKey[] = NAV_ITEMS.map((item) => item.key);
+export const NAV_ITEMS: readonly NavItem[] = ALL_NAV_KEYS.map((key) => ({
+  key,
+  ...NAV_ITEM_DETAILS[key],
+}));
 
 /** Phones show five tabs; Alumni lives under Careers and Profile under the avatar menu. */
 export const BOTTOM_TAB_KEYS: readonly NavKey[] = ["today", "courses", "plan", "careers", "events"];

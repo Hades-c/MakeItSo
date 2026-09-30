@@ -3,13 +3,15 @@ import { CalendarDays } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { SourceTagList } from "@/components/ui/source-tag";
-import { requireFeature } from "@/server/features";
-
-export const metadata: Metadata = { title: "Events" };
+import { featureMetadata, requireFeature } from "@/server/features";
 
 // Stub (wave 0). Wave 3 builds the events list from the feed service, with filters and a source tag per item.
-// Behind FEATURE_EVENTS: keep requireFeature() as the first line (404 while the flag is off; the shell hides Events
-// then).
+// Behind FEATURE_EVENTS (404 while it is off; the shell hides Events then): keep featureMetadata() as
+// generateMetadata (a static `metadata` would title the 404 "Events") and requireFeature() as the page's first line.
+export async function generateMetadata(): Promise<Metadata> {
+  return featureMetadata("events", { title: "Events" });
+}
+
 export default async function EventsPage() {
   await requireFeature("events");
   return (
