@@ -3,10 +3,11 @@ import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
 import type { z } from "zod";
 import type { AuthMode, CacheMode, HttpMethod } from "@/lib/api/spec";
+import { aiResultStatus } from "@/lib/types/ai";
 import { readEnv } from "@/server/env";
 import { resolveRouteUser, type RouteUser } from "@/server/http/auth";
 import { DEFAULT_MAX_BODY_BYTES, readJsonBody } from "@/server/http/body";
-import { ApiError, NO_STORE, toErrorResponse } from "@/server/http/errors";
+import { ApiError, NO_STORE, toErrorResponse, zodIssues } from "@/server/http/errors";
 import { assertSameOrigin } from "@/server/http/origin";
 import { enforceRateLimits, type RateLimitRule } from "@/server/http/rate-limit";
 
@@ -28,13 +29,17 @@ import { enforceRateLimits, type RateLimitRule } from "@/server/http/rate-limit"
  *   4. rate limits (429 + Retry-After);
  *   5. params, query (zod → 400 validation_failed); body when the config has a body schema: application/json
  *      only (415), ≤ maxBytes (default 16384 → 413), valid JSON (400 bad_request), strict zod (400);
- *   6. the handler: return a Response, a JSON-serialisable value (sent with `status`, default 200), or
- *      null/undefined for 204;
+ *   6. the handler: return a Response, a JSON-serialisable value (sent with `status`, default 200, or for an
+ *      `aiResult` route with AI_RESULT_STATUS[kind]), or null/undefined for 204;
  *   7. outside production the value is checked against `response` (a mismatch is a 500 and logged);
  *   8. Cache-Control: `private, no-store` (default, and every error) or, for cache "public-catalog" (GET + auth
  *      public only, never reads cookies), `public, s-maxage=900, stale-while-revalidate=3600`.
- * Thrown errors map through toErrorResponse (ApiError, ZodError, CastError → 400, E11000 → 409, ...). Next.js
- * control-flow errors (redirect, notFound, dynamic bailouts) are re-thrown untouched.
+ * Thrown errors map through toErrorResponse (ApiError, CastError → 400, E11000 → 409, ...). Only step 5 turns
+ * zod problems into a 400: a ZodError thrown by the handler or a service (bad stored or upstream data) is a
+ * logged 500. Next.js control-flow errors (redirect, notFound, dynamic bailouts) are re-thrown untouched.
+ *
+ * Every handler defineRoute returns is tagged (isDefinedRoute), so a test can check that each exported method of
+ * every route module came from here.
  */
 
 export const PUBLIC_CATALOG_CACHE = "public, s-maxage=900, stale-while-revalidate=3600";
@@ -52,6 +57,8 @@ export interface RouteConfig {
   cache?: CacheMode;
   status?: number;
   maxBytes?: number;
+  /** The handler returns AiResults; each is sent with AI_RESULT_STATUS[kind] (lib/types/ai.ts). */
+  aiResult?: true;
   rateLimit?: RateLimitRule | readonly RateLimitRule[];
 }
 
@@ -82,6 +89,14 @@ export interface NextRouteContext {
 
 export type RouteHandler = (request: Request, context?: NextRouteContext) => Promise<Response>;
 
+/** Marks handlers built by defineRoute (value: the route's config). */
+const DEFINED_ROUTE = Symbol.for("makeitso.defineRoute");
+
+/** True for a handler returned by defineRoute (tests/server/route-files.test.ts checks every route module). */
+export function isDefinedRoute(value: unknown): value is RouteHandler {
+  return typeof value === "function" && DEFINED_ROUTE in value;
+}
+
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 function assertValidConfig(config: RouteConfig): void {
@@ -93,6 +108,25 @@ function assertValidConfig(config: RouteConfig): void {
   if (config.body && config.method === "GET") {
     throw new Error(`defineRoute ${config.path ?? ""}: GET routes cannot take a body`);
   }
+  if (config.aiResult && !config.response) {
+    throw new Error(
+      `defineRoute ${config.path ?? ""}: an aiResult route needs an aiResultSchema() response`,
+    );
+  }
+}
+
+/** Parse request input (params, query or body); problems are the client's → 400 validation_failed. */
+function parseInput(schema: z.ZodType, value: unknown): unknown {
+  const result = schema.safeParse(value);
+  if (!result.success) {
+    throw new ApiError(
+      400,
+      "validation_failed",
+      "Some fields are invalid.",
+      zodIssues(result.error),
+    );
+  }
+  return result.data;
 }
 
 /** URLSearchParams → { key: value } with repeated keys as arrays. */
@@ -137,7 +171,7 @@ export function defineRoute<const C extends RouteConfig>(
       : [config.rateLimit as RateLimitRule]
     : [];
 
-  return async (request, context) => {
+  const route: RouteHandler = async (request, context) => {
     try {
       const method = request.method.toUpperCase();
       if (method !== config.method && !(config.method === "GET" && method === "HEAD")) {
@@ -157,12 +191,15 @@ export function defineRoute<const C extends RouteConfig>(
       if (rules.length > 0) await enforceRateLimits(rules, request, user?.id ?? null);
 
       const rawParams = (await context?.params) ?? {};
-      const params = config.params ? config.params.parse(rawParams) : undefined;
+      const params = config.params ? parseInput(config.params, rawParams) : undefined;
       const query = config.query
-        ? config.query.parse(searchParamsToObject(new URL(request.url).searchParams))
+        ? parseInput(config.query, searchParamsToObject(new URL(request.url).searchParams))
         : undefined;
       const body = config.body
-        ? config.body.parse(await readJsonBody(request, config.maxBytes ?? DEFAULT_MAX_BODY_BYTES))
+        ? parseInput(
+            config.body,
+            await readJsonBody(request, config.maxBytes ?? DEFAULT_MAX_BODY_BYTES),
+          )
         : undefined;
 
       const result = await handler({
@@ -178,10 +215,13 @@ export function defineRoute<const C extends RouteConfig>(
         return withCacheHeader(new NextResponse(null, { status: 204 }), config);
       }
       checkResponse(config, result);
-      return withCacheHeader(NextResponse.json(result, { status: config.status ?? 200 }), config);
+      const status = config.aiResult ? aiResultStatus(result) : (config.status ?? 200);
+      return withCacheHeader(NextResponse.json(result, { status }), config);
     } catch (error) {
       unstable_rethrow(error);
       return toErrorResponse(error);
     }
   };
+  Object.defineProperty(route, DEFINED_ROUTE, { value: config });
+  return route;
 }

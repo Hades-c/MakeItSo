@@ -1,12 +1,23 @@
 import { z } from "zod";
+import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { PlanDraftSchema } from "@/lib/types/plan";
 import { CourseCodeSchema, IsoDateTimeSchema, TermCodeSchema } from "@/lib/types/common";
 
 /**
- * AI results (PLAN §4.1.8, §6.1 W6). Every AI route answers with an AiResult; the UI renders `ok` data as text
- * only with the "AI · verify with your advisor" chip, and every failure kind in ErrorState with a Retry where it
- * makes sense. Model: Claude Sonnet 5.5 via server/ai (W6); outputs are validated with these zod schemas.
- * The UI never renders model-written prerequisites, difficulty or workload.
+ * AI results (PLAN §4.1.8, §6.1 W6). The UI renders `ok` data as text only with the "AI · verify with your
+ * advisor" chip, and every failure kind in ErrorState with a Retry where it makes sense. Model: Claude Sonnet 5.5
+ * via server/ai (W6); outputs are validated with these zod schemas. The UI never renders model-written
+ * prerequisites, difficulty or workload.
+ *
+ * Wire format (one path, end to end):
+ *   - Every AI route's spec (lib/api/ai.ts) has `aiResult: true` and `auth: "user"`.
+ *   - The handler RETURNS an AiResult for every outcome it decides, failures included; it never throws for them.
+ *     It resolves the gate first: `const gate = aiGateFailure({...}); if (gate) return gate;`.
+ *   - defineRoute sends the result with HTTP status `AI_RESULT_STATUS[kind]` (logs and monitoring see real
+ *     statuses) and the AiResult as the body.
+ *   - callApi returns the AiResult for those statuses too (it does not throw), so client code switches on `kind`.
+ *   - Only errors outside the handler's decision (401 signed out, 400 bad body, 429 route rate limit, 500) use the
+ *     generic ApiErrorBody and make callApi throw ApiClientError.
  */
 
 export const AI_FEATURES = [
@@ -49,7 +60,10 @@ export const AI_FAILURE_KINDS = [
 export const AiFailureKindSchema = z.enum(AI_FAILURE_KINDS);
 export type AiFailureKind = z.infer<typeof AiFailureKindSchema>;
 
-/** HTTP status an AI route uses for each result kind (the body is always the AiResult). */
+/**
+ * HTTP status defineRoute sends for each result kind of an `aiResult` route (the body is the AiResult itself;
+ * callApi returns it rather than throwing).
+ */
 export const AI_RESULT_STATUS: Readonly<Record<"ok" | AiFailureKind, number>> = {
   ok: 200,
   refused: 422,
@@ -70,6 +84,60 @@ export const AiFailureSchema = z.object({
   message: z.string(),
 });
 export type AiFailure = z.infer<typeof AiFailureSchema>;
+
+/** Default student-facing message per failure kind (W6 may pass a more specific one). */
+export const AI_FAILURE_MESSAGES: Readonly<Record<AiFailureKind, string>> = {
+  refused: "The AI declined to answer this request.",
+  truncated: "The AI's answer was cut off. Please try again.",
+  invalid: "The AI's answer did not pass MakeItSo's checks, so it is not shown. Please try again.",
+  quota: "You have used today's AI requests. They reset tomorrow.",
+  budget: "AI is paused for today.",
+  timeout: "The AI took too long to answer. Please try again.",
+  unavailable: "AI is busy right now. Please try again in a minute.",
+  not_configured: "AI features are not set up on this server yet.",
+  disabled: "AI features are turned off.",
+  consent_required: "Turn on AI features in your profile to use this.",
+  unverified: UNVERIFIED_MESSAGE,
+};
+
+/** A failure result with the default message for its kind unless one is given. */
+export function aiFailure(kind: AiFailureKind, message?: string): AiFailure {
+  return { kind, message: message ?? AI_FAILURE_MESSAGES[kind] };
+}
+
+/** What an AI route knows about the request before it calls the model. */
+export interface AiGateInput {
+  /** AI_ENABLED (flags.ai); for professor summaries also flags.rmpSummaries. */
+  enabled: boolean;
+  /** A provider is configured (an API key, or AI_PROVIDER=mock outside Vercel production). */
+  configured: boolean;
+  /** Signed in with a verified @davidson.edu mailbox (isVerifiedDavidson in server/http). */
+  verified: boolean;
+  /** aiConsentAt set (and the 18+ attestation, once the owner decides it is required). */
+  consented: boolean;
+}
+
+/**
+ * The first gate an AI request fails, in the order the student can act on it, or null when it may proceed:
+ * disabled → not_configured → unverified → consent_required. (No point asking an unverified student to consent,
+ * or anyone to consent while AI is off.)
+ */
+export function aiGateFailure(input: AiGateInput): AiFailure | null {
+  if (!input.enabled) return aiFailure("disabled");
+  if (!input.configured) return aiFailure("not_configured");
+  if (!input.verified) return aiFailure("unverified");
+  if (!input.consented) return aiFailure("consent_required");
+  return null;
+}
+
+/** The HTTP status for an AiResult-shaped value (200 when `kind` is not a known kind). */
+export function aiResultStatus(value: unknown): number {
+  const kind =
+    typeof value === "object" && value !== null ? (value as { kind?: unknown }).kind : undefined;
+  return typeof kind === "string" && Object.prototype.hasOwnProperty.call(AI_RESULT_STATUS, kind)
+    ? AI_RESULT_STATUS[kind as keyof typeof AI_RESULT_STATUS]
+    : 200;
+}
 
 /**
  * `{kind:'ok', data, servedModel, fallbackUsed, cached}` or a failure `{kind, message}`.

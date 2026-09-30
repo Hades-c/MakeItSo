@@ -22,6 +22,13 @@ export function isDavidsonEmail(email: string): boolean {
   return DAVIDSON_EMAIL_PATTERN.test(normalizeEmail(email));
 }
 
+/**
+ * What a signed-in account without a verified @davidson.edu mailbox is told (PLAN §1; owner to confirm, §8). Used by
+ * defineRoute's "verified" 403 and by the AI routes' `unverified` result.
+ */
+export const UNVERIFIED_MESSAGE =
+  "The alumni network and AI features are limited to verified @davidson.edu accounts.";
+
 export const DavidsonEmailSchema = z
   .string()
   .max(254)

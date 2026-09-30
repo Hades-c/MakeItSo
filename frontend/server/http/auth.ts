@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import mongoose from "mongoose";
-import { isDavidsonEmail } from "@/lib/api/account";
+import { isDavidsonEmail, UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import type { AuthMode } from "@/lib/api/spec";
 import User from "@/models/User";
 import { requireApiUser, type SessionUser } from "@/server/auth/session";
@@ -21,8 +21,7 @@ import { ApiError } from "@/server/http/errors";
  * (absent → unverified), so "verified" routes answer 403 for everyone.
  */
 
-export const UNVERIFIED_MESSAGE =
-  "The alumni network and AI features are limited to verified @davidson.edu accounts.";
+export { UNVERIFIED_MESSAGE };
 
 interface AccountFlags {
   email: string;

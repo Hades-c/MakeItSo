@@ -59,9 +59,27 @@ describe("lib/api route contracts (PLAN §4.1.16)", () => {
     if (spec.response === null) expect(spec.status ?? 204).toBe(204);
   });
 
-  it("gates alumni-grade data: every AI route needs a verified account", () => {
+  it("AI routes: generating routes answer AiResults (auth user, gate in the handler); report/purge do not", () => {
+    const generating = [
+      "courseAbout",
+      "planSuggestions",
+      "careerPlan",
+      "coldEmail",
+      "professorSummary",
+    ];
     for (const [name, spec] of Object.entries(aiApi)) {
-      expect([name, spec.auth]).toEqual([name, name === "purge" ? "admin" : "verified"]);
+      if (generating.includes(name)) {
+        expect([name, spec.auth, "aiResult" in spec && spec.aiResult]).toEqual([
+          name,
+          "user",
+          true,
+        ]);
+        // Every failure kind is a valid body for the route (callApi returns it instead of throwing).
+        expect(spec.response?.safeParse({ kind: "unverified", message: "x" }).success).toBe(true);
+      } else {
+        expect([name, spec.auth]).toEqual([name, name === "purge" ? "admin" : "verified"]);
+        expect("aiResult" in spec).toBe(false);
+      }
     }
   });
 

@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   AI_FAILURE_KINDS,
+  AI_FAILURE_MESSAGES,
   AI_RESULT_STATUS,
+  aiFailure,
+  aiGateFailure,
   aiResultSchema,
+  aiResultStatus,
   ColdEmailSchema,
 } from "@/lib/types/ai";
 import { FeedItemSchema } from "@/lib/types/feeds";
@@ -30,6 +34,28 @@ describe("AI results (PLAN §4.1.8)", () => {
     expect(aiResultSchema(z.object({ n: z.number() })).safeParse({ kind: "quota" }).success).toBe(
       false,
     );
+  });
+
+  it("has a default message per failure kind and a status for every result", () => {
+    for (const kind of AI_FAILURE_KINDS) {
+      expect(AI_FAILURE_MESSAGES[kind].length).toBeGreaterThan(0);
+      expect(aiFailure(kind)).toEqual({ kind, message: AI_FAILURE_MESSAGES[kind] });
+      expect(aiResultStatus({ kind, message: "x" })).toBe(AI_RESULT_STATUS[kind]);
+    }
+    expect(aiFailure("quota", "Try tomorrow")).toEqual({ kind: "quota", message: "Try tomorrow" });
+    expect(aiResultStatus({ kind: "ok" })).toBe(200);
+    expect(aiResultStatus({ kind: "toString" })).toBe(200);
+    expect(aiResultStatus(null)).toBe(200);
+  });
+
+  it.each([
+    [{ enabled: false, configured: false, verified: false, consented: false }, "disabled"],
+    [{ enabled: true, configured: false, verified: false, consented: false }, "not_configured"],
+    [{ enabled: true, configured: true, verified: false, consented: false }, "unverified"],
+    [{ enabled: true, configured: true, verified: true, consented: false }, "consent_required"],
+    [{ enabled: true, configured: true, verified: true, consented: true }, null],
+  ] as const)("gates AI requests in the order the student can act on: %o → %s", (input, kind) => {
+    expect(aiGateFailure(input)?.kind ?? null).toBe(kind);
   });
 });
 

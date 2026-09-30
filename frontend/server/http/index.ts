@@ -18,6 +18,7 @@ export {
 } from "./errors";
 export {
   defineRoute,
+  isDefinedRoute,
   PUBLIC_CATALOG_CACHE,
   searchParamsToObject,
   type NextRouteContext,

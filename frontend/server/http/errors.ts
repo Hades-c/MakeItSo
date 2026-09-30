@@ -73,16 +73,16 @@ function mongooseIssues(error: unknown): ApiIssue[] {
 
 /**
  * Convert anything thrown by a handler into a typed JSON error response. 500s are logged, never leaked.
- *   ApiError → its status · ZodError → 400 validation_failed · mongoose CastError → 400 bad_request ·
- *   mongoose ValidationError → 400 validation_failed · E11000 → 409 conflict ·
- *   ExternalFetchError (upstream down) → 503 unavailable · EnvError and anything else → 500 internal.
+ *   ApiError → its status · mongoose CastError → 400 bad_request · mongoose ValidationError → 400
+ *   validation_failed · E11000 → 409 conflict · ExternalFetchError (upstream down) → 503 unavailable ·
+ *   a bare ZodError, EnvError and anything else → 500 internal.
+ * A bare ZodError is a server bug or bad stored/upstream data (a service's own `.parse`): the student must not see
+ * internal field paths. Request validation is a 400 because defineRoute converts it into
+ * ApiError(400, "validation_failed", ..., zodIssues(error)) before any handler code runs.
  */
 export function toErrorResponse(error: unknown): NextResponse<ApiErrorBody> {
   if (error instanceof ApiError) {
     return jsonError(error.status, error.code, error.message, error.issues, error.headers);
-  }
-  if (error instanceof z.ZodError) {
-    return jsonError(400, "validation_failed", "Some fields are invalid.", zodIssues(error));
   }
   if (hasName(error, "CastError")) {
     return jsonError(400, "bad_request", "That id or value is not valid.");
@@ -98,7 +98,11 @@ export function toErrorResponse(error: unknown): NextResponse<ApiErrorBody> {
     return jsonError(503, "unavailable", "A campus data source is not responding. Try again soon.");
   }
   console.error(
-    error instanceof EnvError ? "[api] server configuration error:" : "[api] unhandled error:",
+    error instanceof EnvError
+      ? "[api] server configuration error:"
+      : error instanceof z.ZodError
+        ? "[api] data failed validation on the server:"
+        : "[api] unhandled error:",
     error,
   );
   return jsonError(500, "internal", "Something went wrong. Please try again.");

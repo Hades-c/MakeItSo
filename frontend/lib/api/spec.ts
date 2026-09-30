@@ -12,7 +12,9 @@ import type { z } from "zod";
  * Conventions:
  *   - query schemas are non-strict (unknown params are ignored) and accept string | string[] values;
  *   - body schemas are strict objects (unknown keys → 400);
- *   - `response` describes the success body; errors always use ApiErrorBody (lib/api/errors.ts);
+ *   - `response` describes the success body; errors use ApiErrorBody (lib/api/errors.ts), except that an
+ *     `aiResult` route also answers its AI failure kinds (quota 429, unverified 403, ...) with an AiResult body
+ *     described by `response` (see lib/types/ai.ts "Wire format");
  *   - a response of `null` means 204 No Content.
  */
 
@@ -21,8 +23,8 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 /**
  *   public    anyone; never reads cookies (required for cache "public-catalog")
  *   user      signed in (401 otherwise)
- *   verified  signed in + mailbox verified (emailVerifiedAt) + @davidson.edu (403 otherwise): alumni, cold email,
- *             every AI route
+ *   verified  signed in + mailbox verified (emailVerifiedAt) + @davidson.edu (403 otherwise): alumni data, AI
+ *             "Report this". The generating AI routes use "user" + `aiResult` and answer `unverified` themselves.
  *   cron      `Authorization: Bearer $CRON_SECRET` (503 while CRON_SECRET is unset)
  *   admin     verified mailbox + e-mail in ADMIN_EMAILS
  */
@@ -49,6 +51,12 @@ export interface ApiRouteSpec {
   status?: number;
   /** Request body limit in bytes (default 16384 → 413 above it). */
   maxBytes?: number;
+  /**
+   * The route answers with an AiResult (lib/types/ai.ts) for success AND for its AI failure kinds: defineRoute
+   * sends each result with status AI_RESULT_STATUS[kind], and callApi returns those results instead of throwing.
+   * Requires a `response` built with aiResultSchema().
+   */
+  aiResult?: true;
 }
 
 /** Declare a route contract (identity function that keeps literal types). */

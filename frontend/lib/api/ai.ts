@@ -14,10 +14,25 @@ import { CourseCodeSchema, SlugSchema, TermCodeSchema } from "@/lib/types/common
 import { PlanDraftSchema } from "@/lib/types/plan";
 
 /**
- * AI routes (W6: app/api/ai/**; PLAN §6.1 W6). Every route needs a verified @davidson.edu account (auth
- * "verified"), AI_ENABLED, configuration and consent; each answers with an AiResult body and the HTTP status from
- * AI_RESULT_STATUS. The client sends only ids: the server loads the profile, plan and catalog itself and sends the
- * model only allow-listed fields (server/ai/payloads.ts). Routes set `export const maxDuration = 120`.
+ * AI routes (W6: app/api/ai/**; PLAN §6.1 W6). The generating routes are `auth: "user"` + `aiResult: true`: the
+ * handler resolves AI_ENABLED, configuration, verification (@davidson.edu) and consent itself and RETURNS the
+ * failure as an AiResult, so the student sees the specific kind (see lib/types/ai.ts "Wire format"):
+ *
+ *   export const POST = defineRoute(aiApi.courseAbout, async ({ user, body }) => {
+ *     const flags = getFlags();
+ *     const gate = aiGateFailure({
+ *       enabled: flags.ai,
+ *       configured: aiConfigured(),              // server/ai (W6)
+ *       verified: await isVerifiedDavidson(user.id),
+ *       consented: await hasAiConsent(user.id),  // aiConsentAt (W3's User field)
+ *     });
+ *     if (gate) return gate;                     // → 404/503/403 with { kind, message }
+ *     return generateCourseAbout(body);          // → AiResult (ok 200, quota 429, refused 422, ...)
+ *   });
+ *
+ * The client sends only ids: the server loads the profile, plan and catalog itself and sends the model only
+ * allow-listed fields (server/ai/payloads.ts). Routes set `export const maxDuration = 120`. "Report this" and the
+ * admin purge are ordinary routes (ApiErrorBody errors).
  */
 
 /** Shared per term + course; no user regenerate (refreshes on input-hash change or TTL). */
@@ -77,35 +92,40 @@ export const aiApi = {
   courseAbout: apiRoute({
     method: "POST",
     path: "/api/ai/course-about",
-    auth: "verified",
+    auth: "user",
+    aiResult: true,
     body: CourseAboutBodySchema,
     response: CourseAboutResultSchema,
   }),
   planSuggestions: apiRoute({
     method: "POST",
     path: "/api/ai/plan-suggestions",
-    auth: "verified",
+    auth: "user",
+    aiResult: true,
     body: PlanSuggestionsBodySchema,
     response: PlanSuggestionsResultSchema,
   }),
   careerPlan: apiRoute({
     method: "POST",
     path: "/api/ai/career-plan",
-    auth: "verified",
+    auth: "user",
+    aiResult: true,
     body: CareerPlanBodySchema,
     response: CareerPlanResultSchema,
   }),
   coldEmail: apiRoute({
     method: "POST",
     path: "/api/ai/cold-email",
-    auth: "verified",
+    auth: "user",
+    aiResult: true,
     body: ColdEmailBodySchema,
     response: ColdEmailResultSchema,
   }),
   professorSummary: apiRoute({
     method: "POST",
     path: "/api/ai/professor-summary",
-    auth: "verified",
+    auth: "user",
+    aiResult: true,
     body: ProfessorSummaryBodySchema,
     response: ProfessorSummaryResultSchema,
   }),

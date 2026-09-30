@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ApiErrorBodySchema } from "@/lib/api/errors";
 import { EnvError } from "@/server/env";
-import { ApiError, notImplemented, toErrorResponse } from "@/server/http";
+import { ApiError, notImplemented, toErrorResponse, zodIssues } from "@/server/http";
 import { ExternalFetchError } from "@/server/http/external";
 
 async function body(res: Response) {
@@ -25,13 +25,21 @@ describe("toErrorResponse (PLAN §2 API errors)", () => {
     expect(res.headers.get("retry-after")).toBe("30");
   });
 
-  it("turns ZodError into 400 validation_failed with issue paths", async () => {
+  it("treats a bare ZodError as a server-side 500 (request validation is an ApiError 400)", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const schema = z.object({ year: z.number() });
-    const res = toErrorResponse(schema.safeParse({ year: "2027" }).error);
-    expect(res.status).toBe(400);
+    const parsed = schema.safeParse({ year: "2027" });
+    const res = toErrorResponse(parsed.error);
+    expect(res.status).toBe(500);
     const error = await body(res);
-    expect(error.code).toBe("validation_failed");
-    expect(error.issues).toEqual([{ path: "year", message: expect.any(String) }]);
+    expect(error).toEqual({ code: "internal", message: "Something went wrong. Please try again." });
+    expect(log).toHaveBeenCalled();
+
+    const request = toErrorResponse(
+      new ApiError(400, "validation_failed", "Some fields are invalid.", zodIssues(parsed.error!)),
+    );
+    expect(request.status).toBe(400);
+    expect((await body(request)).issues).toEqual([{ path: "year", message: expect.any(String) }]);
   });
 
   it("maps mongoose CastError / ValidationError and duplicate keys", async () => {

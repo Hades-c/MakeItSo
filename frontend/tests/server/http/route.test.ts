@@ -6,8 +6,18 @@ import { startTestDb, type TestDb } from "../../helpers/db";
 import User from "@/models/User";
 import type { SessionUser } from "@/server/auth/session";
 import { getDb } from "@/server/db";
+import { aiApi } from "@/lib/api/ai";
+import { callApi } from "@/lib/api/client";
+import { AI_FAILURE_KINDS, AI_RESULT_STATUS, aiGateFailure } from "@/lib/types/ai";
+import { SectionSchema } from "@/lib/types/catalog";
 import { resetEnvCache } from "@/server/env";
-import { ApiError, defineRoute, PUBLIC_CATALOG_CACHE } from "@/server/http";
+import {
+  ApiError,
+  defineRoute,
+  isDefinedRoute,
+  isVerifiedDavidson,
+  PUBLIC_CATALOG_CACHE,
+} from "@/server/http";
 
 const session = vi.hoisted(() => ({ user: null as SessionUser | null }));
 
@@ -161,6 +171,30 @@ describe("defineRoute: responses", () => {
     const conflict = await duplicate(new Request(`${ORIGIN}/x`));
     expect(conflict.status).toBe(409);
     expect((await errorOf(conflict)).code).toBe("conflict");
+  });
+
+  it("treats a ZodError from handler or service code as a logged 500, not a client 400", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const corrupt = defineRoute({ method: "GET", auth: "public" }, async () => {
+      // e.g. a normalised upstream section or a stored document that no longer matches its schema
+      SectionSchema.parse({ crn: "20001", termCode: "202602", reqCodes: [] });
+      return { ok: true };
+    });
+    const res = await corrupt(new Request(`${ORIGIN}/x`));
+    expect(res.status).toBe(500);
+    const error = await errorOf(res);
+    expect(error).toEqual({ code: "internal", message: "Something went wrong. Please try again." });
+    expect(log).toHaveBeenCalledWith(
+      "[api] data failed validation on the server:",
+      expect.any(z.ZodError),
+    );
+  });
+
+  it("tags its handlers so route modules can be checked", () => {
+    const handler = defineRoute({ method: "GET", auth: "public" }, () => null);
+    expect(isDefinedRoute(handler)).toBe(true);
+    expect(isDefinedRoute(async () => new Response())).toBe(false);
+    expect(isDefinedRoute(undefined)).toBe(false);
   });
 
   it("re-throws Next.js control flow (notFound) untouched", async () => {
@@ -371,6 +405,93 @@ describe("defineRoute: auth modes", () => {
     const ok = await call("Bearer s3cret-s3cret-s3cret");
     expect(ok.status).toBe(200);
     expect(await ok.json()).toEqual({ user: null });
+  });
+});
+
+describe("defineRoute: AI results (lib/types/ai.ts wire format)", () => {
+  const outcome = { kind: "ok" as string };
+  const about = {
+    about: { summary: "Intro to data structures.", goodFor: [], topics: ["trees"] },
+    provenance: {
+      model: "claude-sonnet-5-5",
+      promptVersion: "course-about-v1",
+      inputHash: "abc",
+      generatedAt: "2026-09-30T12:00:00.000Z",
+    },
+  };
+  const route = defineRoute(aiApi.courseAbout, async ({ user }) => {
+    const gate = aiGateFailure({
+      enabled: true,
+      configured: true,
+      verified: await isVerifiedDavidson(user.id),
+      consented: true,
+    });
+    if (gate) return gate;
+    if (outcome.kind !== "ok") {
+      return { kind: outcome.kind as (typeof AI_FAILURE_KINDS)[number], message: "m" };
+    }
+    return {
+      kind: "ok" as const,
+      data: about,
+      servedModel: "claude-sonnet-5-5",
+      fallbackUsed: false,
+      cached: false,
+    };
+  });
+  const call = () =>
+    route(
+      post({ termCode: "202602", courseCode: "CSC 221" }, {}, `${ORIGIN}${aiApi.courseAbout.path}`),
+    );
+
+  afterEach(() => {
+    outcome.kind = "ok";
+    vi.unstubAllGlobals();
+  });
+
+  it("answers an unverified student with kind 'unverified' (403), not the generic error body", async () => {
+    await signIn();
+    const res = await call();
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({
+      kind: "unverified",
+      message: expect.stringMatching(/verified @davidson\.edu accounts/),
+    });
+  });
+
+  it("sends each result kind with AI_RESULT_STATUS[kind], and callApi hands the kind to the client", async () => {
+    await signIn({ emailVerifiedAt: new Date() });
+    // The browser side of the same round trip: callApi → this route handler.
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) =>
+      route(
+        new Request(`${ORIGIN}${url}`, { ...init, headers: { ...init.headers, origin: ORIGIN } }),
+      ),
+    );
+    for (const kind of ["ok", ...AI_FAILURE_KINDS] as const) {
+      outcome.kind = kind;
+      const res = await call();
+      expect([kind, res.status]).toEqual([kind, AI_RESULT_STATUS[kind]]);
+      expect(res.headers.get("cache-control")).toBe("private, no-store");
+      const result = await callApi(aiApi.courseAbout, {
+        body: { termCode: "202602", courseCode: "CSC 221" },
+      });
+      expect(result.kind).toBe(kind);
+    }
+  });
+
+  it("keeps generic errors for problems outside the handler (401 signed out, 400 bad body)", async () => {
+    const signedOut = await call();
+    expect(signedOut.status).toBe(401);
+    expect((await errorOf(signedOut)).code).toBe("unauthorized");
+    await signIn({ emailVerifiedAt: new Date() });
+    const bad = await route(post({ termCode: "nope", courseCode: "CSC 221" }));
+    expect(bad.status).toBe(400);
+    expect((await errorOf(bad)).code).toBe("validation_failed");
+  });
+
+  it("refuses an aiResult route without a response schema", () => {
+    expect(() =>
+      defineRoute({ method: "POST", auth: "user", aiResult: true, response: null }, () => null),
+    ).toThrow(/aiResultSchema/);
   });
 });
 

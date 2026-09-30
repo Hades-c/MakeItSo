@@ -11,10 +11,13 @@ import { queryString } from "@/lib/routes";
 
 /**
  * Typed fetch for client islands (SWR fetchers, mutations). Builds the URL from the spec, sends JSON, validates the
- * success body against `spec.response` and throws ApiClientError for every non-2xx answer.
+ * success body against `spec.response` and throws ApiClientError for every non-2xx answer, with one exception:
+ * for an `aiResult` spec, a non-2xx body that is an AiResult (quota 429, unverified 403, ...) is returned, so
+ * the caller switches on `kind` (see lib/types/ai.ts "Wire format").
  *
  *   const { data } = useSWR(["plan"], () => callApi(planApi.getPlan, {}));
  *   await callApi(planApi.addItem, { body: { termCode: "202602", courseCode: "CSC 221" } });
+ *   const about = await callApi(aiApi.courseAbout, { body }); // about.kind: "ok" | "quota" | "unverified" | ...
  *
  * Same-origin only: `credentials: "same-origin"`; the browser adds Origin/Sec-Fetch-Site for the CSRF check.
  */
@@ -71,7 +74,12 @@ export async function callApi<S extends ApiRouteSpec>(
   }
 
   if (!res.ok) {
-    const parsed = ApiErrorBodySchema.safeParse(await res.json().catch(() => null));
+    const errorJson: unknown = await res.json().catch(() => null);
+    if (spec.aiResult && spec.response) {
+      const result = spec.response.safeParse(errorJson);
+      if (result.success) return result.data as ResponseOf<S>;
+    }
+    const parsed = ApiErrorBodySchema.safeParse(errorJson);
     if (parsed.success) {
       const { code, message, issues } = parsed.data.error;
       throw new ApiClientError(res.status, code, message, issues);
