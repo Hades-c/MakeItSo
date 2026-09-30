@@ -22,16 +22,20 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await signIn("credentials", { email, password, redirect: false });
-
-    setLoading(false);
-
-    if (result?.error) {
-      // next-auth reports wrong credentials as "CredentialsSignin"; anything else is a server-side message.
-      setError(result.error === "CredentialsSignin" ? "Invalid email or password" : result.error);
-    } else {
+    try {
+      const result = await signIn("credentials", { email, password, redirect: false });
+      if (result?.error) {
+        // next-auth reports wrong credentials as "CredentialsSignin"; anything else is a server-side message.
+        setError(result.error === "CredentialsSignin" ? "Invalid email or password" : result.error);
+        setLoading(false);
+        return;
+      }
       router.push("/today");
       router.refresh();
+    } catch {
+      // Network failure: without this the button stayed on "Signing in…" forever.
+      setError("Could not reach MakeItSo. Check your connection and try again.");
+      setLoading(false);
     }
   }
 
