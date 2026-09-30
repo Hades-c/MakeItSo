@@ -8,8 +8,11 @@ import { defineConfig, devices } from "@playwright/test";
  *   E2E_SKIP_BUILD=1          reuse an existing .next build (CI builds in an earlier step)
  *   E2E_MONGODB_URI=...       use this MongoDB instead of starting an in-memory one
  *   PW_CHROMIUM_EXECUTABLE=.. launch this Chromium instead of Playwright's bundled one (local machines)
+ *   E2E_PORT=3210             serve on this port (give each parallel checkout its own)
+ *   E2E_REUSE_SERVER=1        reuse a server already listening on E2E_PORT (off by default: another checkout's
+ *                             server on the same port would silently be tested instead of this one)
  */
-const PORT = 3210;
+const PORT = Number(process.env.E2E_PORT ?? 3210);
 const baseURL = `http://localhost:${PORT}`;
 const executablePath = process.env.PW_CHROMIUM_EXECUTABLE || undefined;
 
@@ -48,7 +51,7 @@ export default defineConfig({
     command: `${process.env.E2E_SKIP_BUILD ? "" : "npm run build && "}node tests/e2e/serve.mjs`,
     url: `${baseURL}/login`,
     timeout: 300_000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && !!process.env.E2E_REUSE_SERVER,
     stdout: "pipe",
     stderr: "pipe",
     gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
