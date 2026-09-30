@@ -810,20 +810,12 @@ const EXCLUDED = [
 ];
 
 /**
- * True when a URL is LinkedIn or a copy of it: linkedin.com itself, or any URL (an archive snapshot, a search
- * cache, a proxy, the lnkd.in shortener) whose decoded text names LinkedIn. Such a page never counts as the
- * non-LinkedIn source a displayed field or Davidson attendance needs (PLAN §1). Stricter than isLinkedInUrl() in
- * lib/types/content.ts, which checks the host only.
+ * True when a URL is LinkedIn or a copy of it (an archive snapshot, a search cache, a proxy, the lnkd.in
+ * shortener). The contract's isLinkedInUrl() (lib/types/content.ts) now applies this rule for every consumer; kept
+ * as an alias for the callers and tests that name it.
  */
 export function restsOnLinkedIn(url: string): boolean {
-  if (isLinkedInUrl(url)) return true;
-  let text = url;
-  try {
-    text = decodeURIComponent(url);
-  } catch {
-    // Malformed escapes: test the raw text.
-  }
-  return /linkedin\.com|lnkd\.in/i.test(text);
+  return isLinkedInUrl(url);
 }
 
 /** AlumnusSchema plus the stricter LinkedIn test for attendance and for every field source (used at load). */

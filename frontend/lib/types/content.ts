@@ -85,13 +85,28 @@ export type Career = z.infer<typeof CareerSchema>;
 /** Hand-entered public profile URL; never fetched by code (PLAN §1). */
 export const LINKEDIN_URL_PATTERN = /^https:\/\/www\.linkedin\.com\/in\/[A-Za-z0-9\-_%]+\/$/;
 
+const LINKEDIN_TEXT = /linkedin\.com|lnkd\.in/i;
+
+/**
+ * True when a URL is LinkedIn or a copy of it: a linkedin.com host, the lnkd.in shortener, or any URL (an archive
+ * snapshot, a search cache, a proxy) whose decoded text names LinkedIn. Such a page never counts as the
+ * non-LinkedIn source a shown alumni field or Davidson attendance needs (PLAN §1; AlumnusSchema below).
+ */
 export function isLinkedInUrl(url: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    return host === "linkedin.com" || host.endsWith(".linkedin.com");
+    if (host === "linkedin.com" || host.endsWith(".linkedin.com") || host === "lnkd.in")
+      return true;
   } catch {
-    return false;
+    // Not a URL: judge the text alone.
   }
+  let text = url;
+  try {
+    text = decodeURIComponent(url);
+  } catch {
+    // A malformed escape: test the raw text.
+  }
+  return LINKEDIN_TEXT.test(text);
 }
 
 /** Displayed alumni fields that need their own non-LinkedIn source (LinkedIn User Agreement §8.2). */

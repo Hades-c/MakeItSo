@@ -109,6 +109,38 @@ describe("content types (PLAN §4.1.6)", () => {
     expect(isLinkedInUrl("https://www.davidson.edu/")).toBe(false);
   });
 
+  it("treats the lnkd.in shortener and archived, cached or proxied LinkedIn copies as LinkedIn", () => {
+    for (const url of [
+      "https://lnkd.in/abc123",
+      "https://web.archive.org/web/2026/https://www.linkedin.com/in/sophie-eldridge/",
+      "https://webcache.googleusercontent.com/search?q=cache:linkedin.com/in/sophie-eldridge",
+      "https://archive.ph/https%3A%2F%2Fwww.linkedin.com%2Fin%2Fsophie-eldridge%2F",
+      "https://proxy.example/?u=https%3A%2F%2FLNKD.IN%2Fx",
+    ]) {
+      expect([url, isLinkedInUrl(url)]).toEqual([url, true]);
+    }
+    for (const url of [
+      "https://www.davidson.edu/media/9498/download",
+      "https://archive.ph/%E0%A4%A", // a malformed escape is read as raw text, never thrown
+      "https://thelinkedinfluencer.example/",
+    ]) {
+      expect([url, isLinkedInUrl(url)]).toEqual([url, false]);
+    }
+    // So AlumnusSchema refuses a shown field that rests on a LinkedIn copy, for every consumer.
+    const archived =
+      "https://web.archive.org/web/2026/https://www.linkedin.com/in/sophie-eldridge/";
+    const viaArchive = {
+      ...alumnus,
+      role: "Business Analyst",
+      roleAsOf: "2026-09-30",
+      sources: [...alumnus.sources, archived],
+      fieldSources: { ...alumnus.fieldSources, role: [archived] },
+    };
+    expect(AlumnusSchema.safeParse(viaArchive).success).toBe(false);
+    const attendance = { ...alumnus, sources: [archived, alumnus.linkedinUrl], fieldSources: {} };
+    expect(AlumnusSchema.safeParse({ ...attendance, classYear: null }).success).toBe(false);
+  });
+
   it("fits a verified career record", () => {
     const career = CareerSchema.parse({
       slug: "software-engineering",
