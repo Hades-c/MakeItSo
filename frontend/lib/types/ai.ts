@@ -10,7 +10,7 @@ import { CourseCodeSchema, IsoDateTimeSchema, TermCodeSchema } from "@/lib/types
  * prerequisites, difficulty or workload.
  *
  * Wire format (one path, end to end):
- *   - Every AI route's spec (lib/api/ai.ts) has `aiResult: true` and `auth: "user"`.
+ *   - Every generating AI route's spec (lib/api/ai.ts) has `aiResult: true` and `auth: "user"`.
  *   - The handler RETURNS an AiResult for every outcome it decides, failures included; it never throws for them.
  *     It resolves the gate first: `const gate = aiGateFailure({...}); if (gate) return gate;`.
  *   - defineRoute sends the result with HTTP status `AI_RESULT_STATUS[kind]` (logs and monitoring see real

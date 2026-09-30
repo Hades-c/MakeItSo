@@ -48,6 +48,7 @@ MakeItSo/
     │   ├── http/              defineRoute (auth, CSRF, limits, validation, caching), typed errors,
     │   │                      fetchExternal (the only way to call outside services) + fixtures mode
     │   ├── auth/              NextAuth options, requireUser() / requireApiUser()
+    │   ├── clock.ts           now(): the server's "now" (pinned by FIXTURES_NOW in fixtures mode)
     │   ├── sync.ts            recordSync / getSourceStatuses for the Sources panel
     │   ├── account/           per-user data registry for export and account deletion
     │   ├── catalog/ plan/ feeds/ rmp/ programs/   service contracts (typed stubs until each workstream lands)
@@ -70,8 +71,9 @@ Shared interfaces are frozen and documented in [`frontend/docs/CONTRACTS.md`](fr
 term rules (`lib/term.ts`), source tags (`lib/sources.ts`), domain types (`lib/types/*`), route contracts
 (`lib/api/*`, served with `defineRoute` and called with `callApi`), `fetchExternal`, `recordSync`, the account
 data registry, feature flags and the service signatures. Outside services are reached only through
-`fetchExternal`; with `EXTERNAL_MODE=fixtures` (tests, e2e, CI) it serves `frontend/tests/fixtures/external`
-and never touches the network.
+`fetchExternal` (ESLint forbids raw `fetch` in `server/`, `lib/` and `app/api/`); with `EXTERNAL_MODE=fixtures`
+(tests, e2e, CI) it serves `frontend/tests/fixtures/external` and never touches the network. Server code reads
+"now" from `server/clock.ts`, which tests and e2e pin to the fixtures' day with `FIXTURES_NOW`.
 
 ---
 
@@ -171,9 +173,11 @@ server log naming the variable; it never fails the build.
 - **Unit and integration** (`npm test`): server modules are tested directly; database tests use
   [mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server) via `tests/helpers/db.ts`, so no
   MongoDB setup is needed. The first run downloads a `mongod` binary (about 100 MB) into the local cache.
-  Tests run with `EXTERNAL_MODE=fixtures`, and any real network call from a test fails.
+  Tests run with `EXTERNAL_MODE=fixtures` and `FIXTURES_NOW=2026-09-30T12:00:00-04:00`, and any real network
+  call from a test fails.
 - **End-to-end** (`npm run test:e2e`): builds the app, then `tests/e2e/serve.mjs` starts an in-memory MongoDB and
-  `next start` on port 3210 with `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures` and a throwaway secret. Install the browser once with
+  `next start` on port 3210 with `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures`, `FIXTURES_NOW`, `RATE_LIMITS=off`
+  and a throwaway secret; the server process blocks any outbound fetch to a non-local host. Install the browser once with
   `npx playwright install chromium`. Set `E2E_SKIP_BUILD=1` to reuse an existing build, `E2E_MONGODB_URI` to use
   your own database, or `PW_CHROMIUM_EXECUTABLE` to use a Chromium you already have.
 
