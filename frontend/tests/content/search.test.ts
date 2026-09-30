@@ -76,7 +76,7 @@ describe("careers search provider", () => {
   it("matches short fragments only at a name's start or as whole words", async () => {
     const { context } = ctx();
     const ids = async (q: string) => (await careers(q, 20, context)).map((r) => r.id);
-    // "plan" is the My plan page, not "Urban Planning" (the aggregator interleaves providers).
+    // "plan" is the My plan page, not "Urban Planning" (short fragments match whole words or the name's start).
     expect(await ids("plan")).toEqual([]);
     expect(await ids("planning")).toEqual(["financial-planning", "architecture-urban-planning"]);
     expect(await ids("bank")).toEqual([]);
@@ -103,7 +103,7 @@ describe("alumni search provider", () => {
         id: "stephen-curry",
         title: "Stephen Curry",
         subtitle: "Class of 2022 · Guard, Golden State Warriors",
-        href: "/alumni",
+        href: "/alumni#stephen-curry",
       },
     ]);
     expect(isVerifiedDavidson).toHaveBeenCalled();
@@ -121,7 +121,7 @@ describe("alumni search provider", () => {
       id: "stephen-p-macmillan",
       title: "Stephen P. MacMillan",
       subtitle: "Class of 1985 · Retired; former Chairman, President & CEO, Hologic",
-      href: "/alumni",
+      href: "/alumni#stephen-p-macmillan",
     };
     expect(valid(await alumni("macmillan", 8, context))).toEqual([expected]);
     expect(await alumni("hologic", 8, context)).toEqual([expected]);

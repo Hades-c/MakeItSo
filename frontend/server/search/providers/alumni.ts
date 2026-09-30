@@ -13,7 +13,7 @@ import type { SearchContext } from "@/server/search/types";
  * is a verified @davidson.edu account (`await ctx.isVerifiedDavidson()`, PLAN §1); otherwise it returns nothing. The
  * flags are checked first, so a switched-off section costs no verification lookup.
  * Matches the name (any word), then the shown organization and role; fields that are null ("see LinkedIn") are
- * never searched or shown. href routes.alumni().
+ * never searched or shown. href routes.alumnus(id): the person's card in the directory (/alumni#<id>).
  */
 
 const INDEX = ALUMNI.map((alumnus, index) => {
@@ -65,7 +65,7 @@ export async function search(
         kind: "alumnus",
         id: alumnus.id,
         title: alumnus.name,
-        href: routes.alumni(),
+        href: routes.alumnus(alumnus.id),
       };
       const text = subtitle(alumnus);
       if (text) result.subtitle = text;

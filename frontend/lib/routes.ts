@@ -164,6 +164,8 @@ export const routes = {
   events: (params: EventsParams = {}) =>
     `/events${queryString({ sources: params.sources, kinds: params.kinds, q: params.q?.trim() })}`,
   alumni: (params: { career?: string } = {}) => `/alumni${queryString({ career: params.career })}`,
+  /** One alumnus's card in the directory: /alumni#<id> (the card's element id is the Alumnus id). */
+  alumnus: (id: string) => `/alumni#${encodeURIComponent(id)}`,
   profile: () => "/profile",
 } as const;
 

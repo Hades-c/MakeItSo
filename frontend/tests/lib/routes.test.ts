@@ -36,6 +36,8 @@ describe("href builders (lib/routes.ts)", () => {
       "/onboarding",
     ]);
     expect(routes.forgotPassword()).toBe("/forgot-password");
+    expect(routes.alumnus("stephen-curry")).toBe("/alumni#stephen-curry");
+    expect(routes.alumni({ career: "law" })).toBe("/alumni?career=law");
   });
 
   it("serialises query strings", () => {
