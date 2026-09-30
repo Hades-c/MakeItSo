@@ -81,6 +81,16 @@ export function formatShortDate(
   return formatter(timeZone, { month: "short", day: "numeric" }).format(toDate(value));
 }
 
+/** "Sep 30, 2026". */
+export function formatMediumDate(
+  value: Date | string | number,
+  timeZone = DEFAULT_TIME_ZONE,
+): string {
+  return formatter(timeZone, { month: "short", day: "numeric", year: "numeric" }).format(
+    toDate(value),
+  );
+}
+
 /** "Thursday". */
 export function formatWeekday(value: Date | string | number, timeZone = DEFAULT_TIME_ZONE): string {
   return formatter(timeZone, { weekday: "long" }).format(toDate(value));
@@ -106,4 +116,20 @@ export function formatSyncTime(
   return dayKey(date, timeZone) === dayKey(now, timeZone)
     ? formatClock(date, timeZone)
     : formatShortDate(date, timeZone);
+}
+
+/**
+ * Wall-clock minutes since midnight in the zone (9:12 AM → 552): how the day timeline places "now". During the
+ * repeated hour when DST ends both 1:30 AMs read 90, matching how the schedule prints times.
+ */
+export function wallClockMinutes(
+  value: Date | string | number,
+  timeZone = DEFAULT_TIME_ZONE,
+): number {
+  const parts = formatter(timeZone, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(toDate(value));
+  return Number(part(parts, "hour")) * 60 + Number(part(parts, "minute"));
 }

@@ -177,19 +177,99 @@ test("theme choice persists across reloads and can return to the system setting"
   await expect(html).not.toHaveAttribute("data-theme", /.+/);
 });
 
-test("⌘K / Ctrl+K focuses search, which opens the course catalog", async ({ page, request }) => {
-  test.skip(isMobile(page), "the search field is in the desktop top bar");
+test("⌘K / Ctrl+K opens the command palette; Enter with nothing selected searches the catalog", async ({
+  page,
+  request,
+}) => {
   const email = uniqueEmail("e2e-search");
   await registerViaApi(request, { name: "Search Tester", email, password: PASSWORD });
   await signIn(page, email, PASSWORD);
 
   await page.keyboard.press("ControlOrMeta+k");
+  const dialog = page.getByRole("dialog", { name: "Search MakeItSo" });
+  await expect(dialog).toBeVisible();
+  const input = dialog.getByRole("combobox", { name: "Search MakeItSo" });
+  await expect(input).toBeFocused();
+  await input.fill("organic chemistry");
+  // /api/search does not exist yet: the palette says so and keeps the catalog fallback.
+  await expect(dialog.getByText("Search is unavailable right now.")).toBeVisible();
+  await expect(
+    dialog.getByRole("link", { name: /Search courses for “organic chemistry”/ }),
+  ).toBeVisible();
+  await input.press("Enter");
+  await expect(page).toHaveURL(/\/courses\?q=organic\+chemistry$/);
+  await expect(page.getByRole("heading", { name: /organic chemistry/ })).toBeVisible();
+  await expect(dialog).toBeHidden();
+
+  // Pages are always one keystroke away, and Escape closes the palette.
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("combobox").fill("plan");
+  await page.keyboard.press("ArrowDown");
+  await expect(dialog.getByRole("option", { name: /My plan/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});
+
+test("the top-bar course search still submits to the catalog", async ({ page, request }) => {
+  test.skip(isMobile(page), "the search field is in the desktop top bar");
+  const email = uniqueEmail("e2e-search-form");
+  await registerViaApi(request, { name: "Form Tester", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+
   const search = page.getByRole("searchbox", { name: "Search courses" });
-  await expect(search).toBeFocused();
   await search.fill("organic chemistry");
   await search.press("Enter");
   await expect(page).toHaveURL(/\/courses\?q=organic\+chemistry$/);
-  await expect(page.getByRole("heading", { name: /organic chemistry/ })).toBeVisible();
+});
+
+test("closing the command palette returns focus to what opened it", async ({ page, request }) => {
+  test.skip(isMobile(page), "the search field and ⌘K button are in the desktop top bar");
+  const email = uniqueEmail("e2e-search-focus");
+  await registerViaApi(request, { name: "Focus Searcher", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+  const dialog = page.getByRole("dialog", { name: "Search MakeItSo" });
+
+  // ⌘K from the course field: back to the field.
+  const field = page.getByRole("searchbox", { name: "Search courses" });
+  await field.focus();
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(field).toBeFocused();
+
+  // The ⌘K button: back to the button, and Tab carries on from there (not from the top of the page).
+  const everything = page.getByRole("button", { name: "Search everything" });
+  await everything.click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Close search" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(everything).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Dark mode" })).toBeFocused();
+});
+
+test("the phone search link opens the command palette", async ({ page, request }) => {
+  test.skip(!isMobile(page), "phones only");
+  const email = uniqueEmail("e2e-search-phone");
+  await registerViaApi(request, { name: "Phone Searcher", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+
+  // A link to the catalog, so it works before hydration and without JavaScript.
+  const trigger = page.getByRole("banner").getByRole("link", { name: "Search", exact: true });
+  await expect(trigger).toHaveAttribute("href", "/courses");
+  const box = (await trigger.boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  await trigger.tap();
+  await expect(page.getByRole("dialog", { name: "Search MakeItSo" })).toBeVisible();
+  await expect(page).toHaveURL(/\/today$/);
+  await page.getByRole("button", { name: "Close search" }).tap();
+  await expect(page.getByRole("dialog", { name: "Search MakeItSo" })).toBeHidden();
+  await expect(trigger).toBeFocused();
 });
 
 test("unknown pages and malformed course codes show a not-found page", async ({
