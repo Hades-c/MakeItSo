@@ -4,9 +4,10 @@ import { GET as cronGET } from "@/app/api/cron/programs/route";
 import { GET as programGET } from "@/app/api/programs/[id]/route";
 import { GET as listGET } from "@/app/api/programs/route";
 import { ProgramResponseSchema, ProgramsResponseSchema } from "@/lib/api/programs";
+import { ProgramSyncResultSchema } from "@/lib/types/catalog";
 import { getDb } from "@/server/db";
 import { isDefinedRoute, NO_STORE, PUBLIC_CATALOG_CACHE } from "@/server/http";
-import { liveDeps, ProgramSyncResultSchema } from "@/server/programs/service";
+import { liveDeps } from "@/server/programs/service";
 
 let testDb: TestDb;
 

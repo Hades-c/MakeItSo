@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiRoute } from "@/lib/api/spec";
 import {
   AvailabilitySchema,
+  CatalogCronResultSchema,
   CatalogFiltersSchema,
   CatalogQuerySchema,
   CatalogSearchResultSchema,
@@ -93,5 +94,16 @@ export const catalogApi = {
     cache: "public-catalog",
     query: FiltersQuerySchema,
     response: CatalogFiltersSchema,
+  }),
+  /**
+   * GET /api/cron/catalog (nightly Vercel Cron, `Authorization: Bearer $CRON_SECRET`): refresh the terms list and
+   * every due term of the ingest window (the first run backfills 202201 → registration). 200 with `ok: false`
+   * when a term failed; the stored data is kept.
+   */
+  cronRefresh: apiRoute({
+    method: "GET",
+    path: "/api/cron/catalog",
+    auth: "cron",
+    response: CatalogCronResultSchema,
   }),
 } as const;

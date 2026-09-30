@@ -3,6 +3,7 @@ import type {
   AcademicProgram,
   AcademicProgramSummary,
   ProgramOfferingKind,
+  ProgramSyncResult,
 } from "@/lib/types/catalog";
 import { ACALOG_CATALOG } from "@/server/programs/catalog-info";
 import {
@@ -103,6 +104,6 @@ export async function findProgramByName(
 }
 
 /** Weekly refresh; records the run with recordSync("catalog", ...). */
-export async function syncPrograms(): Promise<{ ok: boolean; count: number; error?: string }> {
+export async function syncPrograms(): Promise<ProgramSyncResult> {
   return runProgramSync(liveDeps);
 }

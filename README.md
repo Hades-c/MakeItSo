@@ -201,9 +201,14 @@ so `CRON_SECRET` must be set in Production. The schedules are Hobby-plan safe (a
 stale data in the background, so the jobs only keep data warm. On the Pro plan you can raise the feeds job to every
 30 minutes.
 
-| Route             | Schedule (UTC) | Job                                   |
-| ----------------- | -------------- | ------------------------------------- |
-| `/api/cron/feeds` | daily 10:23    | campus feeds (WildcatSync, Hurt Hub…) |
-| `/api/cron/rmp`   | Mondays 07:17  | RateMyProfessors roster               |
+| Route                | Schedule (UTC) | Job                                                                                                     |
+| -------------------- | -------------- | ------------------------------------------------------------------------------------------------------- |
+| `/api/cron/feeds`    | daily 10:23    | campus feeds (WildcatSync, Hurt Hub…)                                                                   |
+| `/api/cron/rmp`      | Mondays 07:17  | RateMyProfessors roster                                                                                 |
+| `/api/cron/catalog`  | daily 07:13    | course schedule: the terms list, past terms and the first-run backfill from Fall 2022 (up to 5 minutes) |
+| `/api/cron/programs` | Mondays 06:23  | majors and minors from the Acalog catalog                                                               |
+
+The current and registration terms also refresh in the background on reads (every 15 minutes), so the catalog job
+matters most for past terms: "Other terms" availability and the first ingest of a new deployment.
 
 Production: https://make-it-so.vercel.app

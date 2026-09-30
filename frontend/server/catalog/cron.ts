@@ -1,7 +1,10 @@
 import "server-only";
-import { z } from "zod";
-import { TermCodeSchema } from "@/lib/types/common";
 import type { TermCode } from "@/lib/term";
+import {
+  CATALOG_CRON_STATUSES,
+  CatalogCronResultSchema,
+  type CatalogCronResult,
+} from "@/lib/types/catalog";
 import { warmFilters } from "@/server/catalog/filters";
 import { listTermMetas } from "@/server/catalog/meta";
 import { isFresh, isRefreshDue, refreshTerm } from "@/server/catalog/refresh";
@@ -22,31 +25,8 @@ import { MissingFixtureError } from "@/server/http/fixtures";
  * and go first next time, being older).
  */
 
-export const CATALOG_CRON_STATUSES = [
-  "updated",
-  "unchanged",
-  "rejected",
-  "failed",
-  "locked",
-  "fresh",
-  "waiting",
-  "skipped",
-] as const;
-
-export const CatalogCronResultSchema = z.object({
-  ok: z.boolean(),
-  current: TermCodeSchema,
-  registration: TermCodeSchema,
-  terms: z.array(
-    z.object({
-      term: TermCodeSchema,
-      status: z.enum(CATALOG_CRON_STATUSES),
-      sectionCount: z.number().int().min(0).optional(),
-      error: z.string().optional(),
-    }),
-  ),
-});
-export type CatalogCronResult = z.infer<typeof CatalogCronResultSchema>;
+// The result contract lives in lib/types/catalog.ts (catalogApi.cronRefresh); re-exported for older imports.
+export { CATALOG_CRON_STATUSES, CatalogCronResultSchema, type CatalogCronResult };
 
 export interface CatalogCronOptions {
   /** Stop starting new terms after this long (real clock). Default 240 s (the route allows 300 s). */

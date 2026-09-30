@@ -1,10 +1,11 @@
 import "server-only";
-import { z } from "zod";
 import {
   type AcademicProgram,
   AcademicProgramSchema,
   type AcademicProgramSummary,
   type ProgramOfferingKind,
+  ProgramSyncResultSchema,
+  type ProgramSyncResult,
 } from "@/lib/types/catalog";
 import Program, { type ProgramDoc } from "@/models/Program";
 import { now as serverNow } from "@/server/clock";
@@ -511,21 +512,8 @@ export async function getProgramWith(
 
 // ---- Weekly sync -------------------------------------------------------------------------------------------------
 
-export const ProgramSyncResultSchema = z.object({
-  ok: z.boolean(),
-  /** Public programs in the list (0 on failure). */
-  count: z.number().int().min(0),
-  error: z.string().optional(),
-  /** Program pages refreshed because Acalog's `modified` stamp changed (failed ones keep their last good copy). */
-  pages: z
-    .object({
-      updated: z.number().int().min(0),
-      failed: z.number().int().min(0),
-      deferred: z.number().int().min(0),
-    })
-    .optional(),
-});
-export type ProgramSyncResult = z.infer<typeof ProgramSyncResultSchema>;
+// The result contract lives in lib/types/catalog.ts (programsApi.cron); re-exported for older imports.
+export { ProgramSyncResultSchema, type ProgramSyncResult };
 
 async function eachLimited<T>(
   items: readonly T[],

@@ -11,11 +11,14 @@ import {
   CourseResponseSchema,
   TermsResponseSchema,
 } from "@/lib/api/catalog";
-import { CatalogFiltersSchema, CatalogSearchResultSchema } from "@/lib/types/catalog";
+import {
+  CatalogCronResultSchema,
+  CatalogFiltersSchema,
+  CatalogSearchResultSchema,
+} from "@/lib/types/catalog";
 import CatalogSection from "@/models/CatalogSection";
 import { drainBackground } from "@/server/catalog/background";
 import { UNAVAILABLE_MESSAGE } from "@/server/catalog/config";
-import { CatalogCronResultSchema } from "@/server/catalog/cron";
 import { setIngestDepsForTests } from "@/server/catalog/refresh";
 import { PUBLIC_CATALOG_CACHE } from "@/server/http";
 

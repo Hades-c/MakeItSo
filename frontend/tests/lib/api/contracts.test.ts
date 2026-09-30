@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { accountApi } from "@/lib/api/account";
@@ -81,6 +82,37 @@ describe("lib/api route contracts (PLAN §4.1.16)", () => {
         expect("aiResult" in spec).toBe(false);
       }
     }
+  });
+
+  it("cron jobs: every /api/cron route has a cron spec, and vercel.json schedules each exactly once", () => {
+    const cronSpecs = specs.filter(({ spec }) => spec.path.startsWith("/api/cron/"));
+    for (const { id, spec } of cronSpecs) {
+      expect([id, spec.method, spec.auth, spec.body]).toEqual([id, "GET", "cron", undefined]);
+    }
+    expect(cronSpecs.map(({ id }) => id).sort()).toEqual([
+      "catalogApi.cronRefresh",
+      "eventsApi.cronFeeds",
+      "programsApi.cron",
+      "ratingsApi.cronRoster",
+    ]);
+    // frontend/vercel.json is the Root Directory's config (the repository-root one is not read).
+    const vercel = JSON.parse(
+      readFileSync(new URL("../../../vercel.json", import.meta.url), "utf8"),
+    ) as { crons: { path: string; schedule: string }[] };
+    expect(vercel.crons.map((job) => job.path).sort()).toEqual(
+      cronSpecs.map(({ spec }) => spec.path).sort(),
+    );
+    for (const job of vercel.crons) {
+      // Five fields, at most daily (Vercel Hobby): fixed minute and hour.
+      expect([job.path, job.schedule]).toEqual([
+        job.path,
+        expect.stringMatching(/^\d+ \d+ \* \* [\d*]+$/),
+      ]);
+    }
+    expect(Object.fromEntries(vercel.crons.map((job) => [job.path, job.schedule]))).toMatchObject({
+      "/api/cron/catalog": "13 7 * * *",
+      "/api/cron/programs": "23 6 * * 1",
+    });
   });
 
   it("fills path parameters", () => {

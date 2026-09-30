@@ -325,6 +325,45 @@ export const CodeValidationSchema = z.object({
 });
 export type CodeValidation = z.infer<typeof CodeValidationSchema>;
 
+// ---- Catalog cron (GET /api/cron/catalog) --------------------------------------------------------------------------
+
+/**
+ * What the nightly catalog job did with each term of the ingest window (server/catalog/cron.ts):
+ * - updated / unchanged: refreshed (content changed or not);
+ * - rejected: upstream answered an empty or too-small result, so the stored term was kept (PLAN §5);
+ * - failed: upstream error (the stored term is kept);
+ * - locked: another instance was refreshing it;
+ * - fresh: not due yet; waiting: due, but the last attempt failed under 5 minutes ago;
+ * - skipped: the run's time budget ran out (it goes first next time).
+ */
+export const CATALOG_CRON_STATUSES = [
+  "updated",
+  "unchanged",
+  "rejected",
+  "failed",
+  "locked",
+  "fresh",
+  "waiting",
+  "skipped",
+] as const;
+export type CatalogCronStatus = (typeof CATALOG_CRON_STATUSES)[number];
+
+/** GET /api/cron/catalog response. `ok` is false when any term failed or was rejected. */
+export const CatalogCronResultSchema = z.object({
+  ok: z.boolean(),
+  current: TermCodeSchema,
+  registration: TermCodeSchema,
+  terms: z.array(
+    z.object({
+      term: TermCodeSchema,
+      status: z.enum(CATALOG_CRON_STATUSES),
+      sectionCount: z.number().int().min(0).optional(),
+      error: z.string().optional(),
+    }),
+  ),
+});
+export type CatalogCronResult = z.infer<typeof CatalogCronResultSchema>;
+
 // ---- Academic programs (Acalog, W1b) -----------------------------------------------------------------------------
 
 export const ProgramOfferingKindSchema = z.enum([
@@ -372,3 +411,23 @@ export const AcademicProgramSummarySchema = AcademicProgramSchema.pick({
   offerings: z.array(z.object({ kind: ProgramOfferingKindSchema, name: z.string() })),
 });
 export type AcademicProgramSummary = z.infer<typeof AcademicProgramSummarySchema>;
+
+/**
+ * GET /api/cron/programs response (the weekly Acalog sync, server/programs). 200 even when Acalog failed (`ok:
+ * false`, `count: 0`, `error`): the last good copy is kept and the run is recorded with recordSync("catalog", …).
+ */
+export const ProgramSyncResultSchema = z.object({
+  ok: z.boolean(),
+  /** Public programs in the list (0 on failure). */
+  count: z.number().int().min(0),
+  error: z.string().optional(),
+  /** Program pages refreshed because Acalog's `modified` stamp changed (failed ones keep their last good copy). */
+  pages: z
+    .object({
+      updated: z.number().int().min(0),
+      failed: z.number().int().min(0),
+      deferred: z.number().int().min(0),
+    })
+    .optional(),
+});
+export type ProgramSyncResult = z.infer<typeof ProgramSyncResultSchema>;
