@@ -68,6 +68,10 @@ export function failureOf(outcome: { kind: string; message: string }): AiFailure
   return aiFailure(outcome.kind as AiFailure["kind"], outcome.message);
 }
 
+/** Appended to the user turn of the grounding retry. */
+export const GROUNDING_RETRY_NOTE =
+  "Your previous answer named courses or terms that are not among the candidates in <catalog_data>. Choose only candidates, with their exact courseCode and one of their listed term codes.";
+
 export const GROUNDING_FAILED_MESSAGE =
   "The AI suggested courses MakeItSo could not match to the catalog, so nothing is shown. Please try again.";
 
@@ -87,7 +91,12 @@ export async function generateGrounded<S extends z.ZodType, G extends GroundingR
 ): Promise<GroundedOutcome<z.output<S>, G>> {
   const startedAt = Date.now();
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const outcome = await callModel(schema, request, {
+    // The retry repeats the request with one more user-turn note (the system prompt stays byte-identical).
+    const attemptRequest =
+      attempt === 1
+        ? request
+        : { ...request, userBlocks: [...request.userBlocks, GROUNDING_RETRY_NOTE] };
+    const outcome = await callModel(schema, attemptRequest, {
       userId: options.userId,
       regeneration: options.regeneration && attempt === 1,
     });

@@ -79,12 +79,15 @@ export async function courseAboutFor(
         entry.message ?? undefined,
       );
     }
-    await recordUsage({
-      userId: requester.userId,
-      feature: "course-about",
-      kind: "cache-hit",
-      servedModel: entry.provenance.model,
-    });
+    // Students' views count as cache hits; the pre-generation job's checks do not.
+    if (requester.userId) {
+      await recordUsage({
+        userId: requester.userId,
+        feature: "course-about",
+        kind: "cache-hit",
+        servedModel: entry.provenance.model,
+      });
+    }
     return okResult(
       { about: entry.data, provenance: entry.provenance },
       { servedModel: entry.provenance.model, fallbackUsed: entry.fallbackUsed, cached: true },

@@ -1,5 +1,5 @@
 import "server-only";
-import { compareTerms, termLabel, termsBetween, type TermCode } from "@/lib/term";
+import { compareTerms, isSummer, termLabel, termsBetween, type TermCode } from "@/lib/term";
 import { aiFailure, type AiResult } from "@/lib/types/ai";
 import type { PlanDraft } from "@/lib/types/plan";
 import { hashInput, readPersonal, writePersonal } from "@/server/ai/cache";
@@ -50,6 +50,7 @@ export const NO_CANDIDATES_MESSAGE =
   "MakeItSo found no courses for that term that fill your open requirements, so there is nothing to suggest.";
 
 export function targetTermProblem(target: TermCode, registration: TermCode): string | null {
+  if (isSummer(target)) return "Suggestions are for fall and spring terms.";
   if (compareTerms(target, registration) < 0) {
     return `Suggestions are for ${termLabel(registration)} or later.`;
   }

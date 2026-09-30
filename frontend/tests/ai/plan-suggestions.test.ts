@@ -21,7 +21,7 @@ import { PlanSuggestionsResultSchema } from "@/lib/api/ai";
 import type { PlanProgress, PlanView } from "@/lib/types/plan";
 import AiCache from "@/models/AiCache";
 import { readDataBlocks } from "@/server/ai/blocks";
-import { GROUNDING_FAILED_MESSAGE } from "@/server/ai/features/common";
+import { GROUNDING_FAILED_MESSAGE, GROUNDING_RETRY_NOTE } from "@/server/ai/features/common";
 import { NO_CANDIDATES_MESSAGE } from "@/server/ai/features/plan-suggestions";
 import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
 import { SYSTEM } from "@/server/ai/prompts/plan-suggestions";
@@ -105,6 +105,9 @@ describe("route contract", () => {
     expect(past.status).toBe(400);
     expect((await errorOf(past)).message).toMatch(/Spring 2027 or later/);
     expect((await post({ termCode: "203601" })).status).toBe(400);
+    const summer = await post({ termCode: "202603" });
+    expect(summer.status).toBe(400);
+    expect((await errorOf(summer)).message).toMatch(/fall and spring/);
   });
 
   it("gates before reading the plan", async () => {
@@ -235,6 +238,14 @@ describe("grounding failures", () => {
     expect(res.status).toBe(502);
     expect(await bodyOf(res)).toEqual({ kind: "invalid", message: GROUNDING_FAILED_MESSAGE });
     expect(mockAiRequests()).toHaveLength(2);
+    // The retry adds one user-turn note; the system prompt stays byte-identical.
+    const [first, retry] = mockAiRequests().map((r) => r.params);
+    expect(retry!.system).toEqual(first!.system);
+    const texts = (retry!.messages[0]!.content as { text: string }[]).map((b) => b.text);
+    expect(texts.at(-1)).toBe(GROUNDING_RETRY_NOTE);
+    expect(texts.slice(0, -1)).toEqual(
+      (first!.messages[0]!.content as { text: string }[]).map((b) => b.text),
+    );
     expect(saveDraft).not.toHaveBeenCalled();
     expect(await AiCache.countDocuments()).toBe(0);
     expect(warn.mock.calls.flat().join(" ")).toContain("plan-suggestions/1");
