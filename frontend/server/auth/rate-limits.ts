@@ -40,8 +40,9 @@ import {
  * (fixtures-mode test knob). Client IPs come from clientIp(): x-real-ip / first X-Forwarded-For on Vercel only.
  *
  * Time: decisions use the `at` the caller got from server/clock.ts now(). The TTL field (`expiresAt`) is only a
- * purge time, computed with purgeTime() so that a pinned FIXTURES_NOW in the past never lets the TTL monitor
- * delete a counter that is still live for the code under test.
+ * purge time, computed with purgeTime() (and, for counters, consumeRateLimit's rateLimitPurgeTime) so that a
+ * pinned FIXTURES_NOW in the past never lets the TTL monitor delete a counter that is still live for the code
+ * under test.
  */
 
 export const LOGIN_IP_LIMIT = 10;
@@ -103,9 +104,6 @@ void _rules;
 
 // ---- Time --------------------------------------------------------------------------------------------------------
 
-/** How far server "now" may trail the real clock before a counter gets a later purge time (one TTL pass). */
-const CLOCK_LAG_TOLERANCE_MS = 60_000;
-
 /**
  * When the TTL monitor may delete a document whose logical lifetime ends at `logicalEnd` (decided with server
  * "now" `at`). In production now() is the real clock and this is `logicalEnd` (give or take the request's own
@@ -161,8 +159,8 @@ export function codeFailureKey(userId: string): string {
 // ---- Fixed windows (reserve / release / peek) --------------------------------------------------------------------
 
 /**
- * consumeRateLimit with a TTL that survives a pinned clock: when `at` trails the real clock, the counter's
- * `expiresAt` is pushed out with purgeTime() (one extra write, never in production).
+ * consumeRateLimit at the server's "now" `at`. Its counter's TTL already survives a pinned clock
+ * (server/http/rate-limit.ts rateLimitPurgeTime), so this is a plain call kept for the auth call sites.
  */
 export async function consumeAuthLimit(
   key: string,
@@ -170,16 +168,7 @@ export async function consumeAuthLimit(
   windowSec: number,
   at: Date,
 ): Promise<RateLimitResult> {
-  const result = await consumeRateLimit(key, limit, windowSec, at);
-  if (!rateLimitsOff() && Date.now() - at.getTime() > CLOCK_LAG_TOLERANCE_MS) {
-    const windowStart = fixedWindowStart(at, windowSec);
-    const windowEnd = new Date(windowStart.getTime() + windowSec * 1000);
-    await RateLimit.collection.updateOne(
-      { key, windowStart },
-      { $max: { expiresAt: purgeTime(windowEnd, at) } },
-    );
-  }
-  return result;
+  return consumeRateLimit(key, limit, windowSec, at);
 }
 
 /** Give back one hit taken with consumeAuthLimit in the same window (a reservation that did not count). */

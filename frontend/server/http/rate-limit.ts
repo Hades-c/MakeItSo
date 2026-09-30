@@ -6,7 +6,8 @@ import { ApiError, isDuplicateKeyError } from "@/server/http/errors";
 
 /**
  * Atomic fixed-window rate limiting on MongoDB (PLAN §6.1 W3): one counter document per (key, window), incremented
- * with `findOneAndUpdate({$inc}, {upsert})`, removed by a TTL index when the window ends. Used by defineRoute's
+ * with `findOneAndUpdate({$inc}, {upsert})`, removed by a TTL index when the window ends (rateLimitPurgeTime: on the
+ * real clock, so a pinned FIXTURES_NOW never lets the monitor purge a live counter). Used by defineRoute's
  * `rateLimit` option and directly by services (e.g. per-account login backoff, the verification-code resend limit
  * `verify-resend:user:<id>` at 3 per hour).
  *
@@ -39,6 +40,21 @@ export function rateLimitsOff(): boolean {
   return readEnv("RATE_LIMITS") === "off";
 }
 
+/** How far `now` may trail the real clock before it counts as pinned (FIXTURES_NOW) for purge times. */
+export const PINNED_CLOCK_LAG_MS = 60_000;
+
+/**
+ * When the TTL monitor may delete a counter whose window ends at `windowEnd`, decided at `now`. The monitor runs on
+ * the real clock, so this is `windowEnd` in production, and max(windowEnd, real now + (windowEnd − now)) when `now`
+ * trails the real clock by more than PINNED_CLOCK_LAG_MS (a pinned FIXTURES_NOW in the past): the counter then
+ * outlives the test that uses it instead of being purged within a minute. Only a purge time, never a decision.
+ */
+export function rateLimitPurgeTime(windowEnd: Date, now: Date): Date {
+  const realNow = Date.now();
+  if (realNow - now.getTime() <= PINNED_CLOCK_LAG_MS) return windowEnd;
+  return new Date(Math.max(windowEnd.getTime(), realNow + (windowEnd.getTime() - now.getTime())));
+}
+
 /** Count one hit on `key` and say whether it is within `limit` for the current `windowSec` window. */
 export async function consumeRateLimit(
   key: string,
@@ -50,7 +66,8 @@ export async function consumeRateLimit(
   await getDb();
   const windowMs = windowSec * 1000;
   const windowStart = new Date(Math.floor(now.getTime() / windowMs) * windowMs);
-  const expiresAt = new Date(windowStart.getTime() + windowMs);
+  const windowEnd = new Date(windowStart.getTime() + windowMs);
+  const expiresAt = rateLimitPurgeTime(windowEnd, now);
 
   const bump = () =>
     RateLimit.findOneAndUpdate(
@@ -72,7 +89,7 @@ export async function consumeRateLimit(
     allowed: count <= limit,
     count,
     remaining: Math.max(0, limit - count),
-    retryAfterSec: Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 1000)),
+    retryAfterSec: Math.max(1, Math.ceil((windowEnd.getTime() - now.getTime()) / 1000)),
   };
 }
 

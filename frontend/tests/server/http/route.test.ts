@@ -14,6 +14,7 @@ import { resetEnvCache } from "@/server/env";
 import {
   ApiError,
   consumeRateLimit,
+  rateLimitPurgeTime,
   defineRoute,
   isDefinedRoute,
   isVerifiedDavidson,
@@ -515,6 +516,32 @@ describe("defineRoute: rate limits", () => {
     expect(Number(third.headers.get("retry-after"))).toBeGreaterThan(0);
     expect((await errorOf(third)).code).toBe("rate_limited");
     expect(await mongoose.connection.db!.collection("ratelimits").countDocuments()).toBe(1);
+  });
+
+  it("gives counters a purge time the TTL monitor (real clock) cannot reach while the window is live", async () => {
+    const ratelimits = () => mongoose.connection.db!.collection("ratelimits");
+    // Production: now() is the real clock, and the purge time is exactly the window's end.
+    const realNow = new Date();
+    const live = await consumeRateLimit("probe:real", 3, 3600, realNow);
+    const windowEnd = Math.floor(realNow.getTime() / 3_600_000) * 3_600_000 + 3_600_000;
+    expect((await ratelimits().findOne({ key: "probe:real" }))?.expiresAt).toEqual(
+      new Date(windowEnd),
+    );
+    expect(live.retryAfterSec).toBe(Math.max(1, Math.ceil((windowEnd - realNow.getTime()) / 1000)));
+    // A pinned FIXTURES_NOW a month in the past: the window's end is long gone in real time, the purge time is not,
+    // and the decision (Retry-After) still uses the pinned clock.
+    const hourStart = Math.floor((Date.now() - 30 * 86_400_000) / 3_600_000) * 3_600_000;
+    const pinned = new Date(hourStart + 10 * 60_000);
+    const result = await consumeRateLimit("probe:pinned", 3, 3600, pinned);
+    expect(result.retryAfterSec).toBe(50 * 60);
+    const doc = await ratelimits().findOne({ key: "probe:pinned" });
+    expect(doc?.windowStart).toEqual(new Date(hourStart));
+    const purge = (doc?.expiresAt as Date).getTime();
+    expect(purge).toBeGreaterThan(Date.now() + 49 * 60_000);
+    expect(purge).toBeLessThanOrEqual(Date.now() + 50 * 60_000);
+    // The same pinned window keeps counting in the same document.
+    expect((await consumeRateLimit("probe:pinned", 3, 3600, pinned)).count).toBe(2);
+    expect(rateLimitPurgeTime(new Date(windowEnd), realNow)).toEqual(new Date(windowEnd));
   });
 
   it("RATE_LIMITS=off (the e2e server) skips every limit without touching the database", async () => {

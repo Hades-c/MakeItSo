@@ -41,6 +41,8 @@ export {
   clientIp,
   consumeRateLimit,
   enforceRateLimits,
+  PINNED_CLOCK_LAG_MS,
+  rateLimitPurgeTime,
   rateLimitsOff,
   type RateLimitResult,
   type RateLimitRule,
