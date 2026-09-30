@@ -354,6 +354,137 @@ describe("(d) CULT and JEC", () => {
   });
 });
 
+describe("one course, one count (credit is received only once for a course)", () => {
+  const hum104 = (termCode: string, status: PlanItem["status"]) =>
+    item({
+      courseCode: "HUM 104",
+      title: "Connections and Conflicts II",
+      credits: 1,
+      termCode,
+      status,
+      reqCodes: ["COMP", "HTRQ", "LTRQ"],
+    });
+
+  it("a retake of HUM 104 (COMP+HTRQ+LTRQ) fills one Ways of Knowing slot and counts one credit", () => {
+    const first = hum104("202402", "completed");
+    const retake = hum104("202602", "planned");
+    const report = evaluate([retake, first]);
+    const wok = (["HTRQ", "LTRQ"] as const).filter((slot) => report.reqs[slot] !== "open");
+    expect(wok).toHaveLength(1);
+    expect(report.reqs[wok[0]!]).toBe("done");
+    expect(report.filledBy[wok[0]!]).toEqual([first.id]);
+    expect(report.reqs.COMP).toBe("done");
+    expect(report).toMatchObject({ creditsDone: 1, creditsPlanned: 1 });
+    expect(report.warnings).toContainEqual({
+      code: "already-completed",
+      message:
+        "HUM 104 (Spring 2027) is completed in Spring 2025: credit is received only once for a course, so it counts once. If it may be repeated for credit, verify in Degree Works.",
+      itemId: retake.id,
+      termCode: "202602",
+    });
+  });
+
+  it.each([
+    [
+      "the same course planned in two terms",
+      [
+        tagged("HIS 184", ["CULT", "HTRQ"], {
+          title: "Modern Africa",
+          termCode: "202602",
+          status: "planned",
+        }),
+        tagged("HIS 184", ["CULT", "HTRQ"], {
+          title: "Modern Africa",
+          termCode: "202701",
+          status: "planned",
+        }),
+      ],
+      { creditsPlanned: 1, repeats: 1 },
+    ],
+    [
+      "cross-listed siblings with different codes (EDU 330 / SOC 330)",
+      [
+        item({
+          courseCode: "EDU 330",
+          canonicalCode: "EDU 330",
+          title: "Sociology of Education",
+          termCode: "202501",
+          reqCodes: ["JEC", "SSRQ"],
+        }),
+        item({
+          courseCode: "SOC 330",
+          canonicalCode: "EDU 330",
+          title: "Sociology of Education",
+          termCode: "202601",
+          status: "planned",
+          reqCodes: ["CULT", "SSRQ"],
+        }),
+      ],
+      { creditsPlanned: 1, repeats: 1 },
+    ],
+    [
+      "a topics course planned twice without a section",
+      [
+        item({
+          courseCode: "WRI 101",
+          title: "Writing Program: topics vary by section",
+          termCode: "202602",
+          status: "planned",
+        }),
+        item({
+          courseCode: "WRI 101",
+          title: "Writing Program: topics vary by section",
+          termCode: "202701",
+          status: "planned",
+        }),
+      ],
+      { creditsPlanned: 2, repeats: 0 },
+    ],
+    [
+      "a topics course with different section titles",
+      [
+        item({ courseCode: "ENG 110", title: "Monsters", termCode: "202501" }),
+        item({ courseCode: "ENG 110", title: "Road Trips", termCode: "202502" }),
+      ],
+      { creditsPlanned: 2, repeats: 0 },
+    ],
+    [
+      "a 0-credit ensemble every term",
+      [
+        item({ courseCode: "MUS 012", title: "Chorale", credits: 0, termCode: "202501" }),
+        item({ courseCode: "MUS 012", title: "Chorale", credits: 0, termCode: "202502" }),
+      ],
+      { creditsPlanned: 0, repeats: 0 },
+    ],
+    [
+      "a failed attempt and its retake",
+      [
+        item({ courseCode: "CSC 121", title: "Programming", termCode: "202501", status: "failed" }),
+        item({ courseCode: "CSC 121", title: "Programming", termCode: "202502" }),
+      ],
+      { creditsPlanned: 1, repeats: 0 },
+    ],
+  ] as const)("%s", (_name, items, expected) => {
+    const report = evaluate([...items]);
+    expect(report.creditsPlanned).toBe(expected.creditsPlanned);
+    expect(report.warnings.filter((w) => w.code === "already-completed")).toHaveLength(
+      expected.repeats,
+    );
+  });
+
+  it("a course counted once fills CULT or JEC once, never one with each copy", () => {
+    const report = evaluate([
+      tagged("SPA 343", ["CULT", "JEC"], { title: "Spanish Civil War", termCode: "202501" }),
+      tagged("SPA 343", ["CULT", "JEC"], {
+        title: "Spanish Civil War",
+        termCode: "202601",
+        status: "planned",
+      }),
+    ]);
+    expect([report.reqs.CULT, report.reqs.JEC].sort()).toEqual(["done", "open"]);
+  });
+});
+
 describe("(e) language and (f) PE", () => {
   it("FRLG: a tagged course, or the proficiency/exemption toggle", () => {
     expect(evaluate([tagged("SPA 201", ["FRLG"], { status: "planned" })]).reqs.FRLG).toBe(
@@ -362,6 +493,26 @@ describe("(e) language and (f) PE", () => {
     expect(evaluate([], { manual: { ...NO_MANUAL, languageExempt: true } }).reqs.FRLG).toBe("done");
     // The Self-Instructional Language Program never satisfies it.
     expect(evaluate([tagged("SIL 201", ["FRLG"])]).reqs.FRLG).toBe("open");
+  });
+
+  it.each([
+    // A Davidson language (rules.language.languages) at 201 or higher.
+    ["SPA 201", {}, "done"],
+    ["ARB 395", {}, "done"],
+    ["LAT 224", {}, "done"],
+    ["GER 398", {}, "done"],
+    ["SPA 201", { source: "transfer" as const, termCode: null }, "done"],
+    // Below the third-semester level.
+    ["SPA 101", {}, "open"],
+    ["FRE 102", {}, "open"],
+    // Not a Davidson language: live data has MUS 055 A (CRN 20546, Spring 2026) tagged FRLG (0 credits there).
+    ["MUS 055", { credits: 1 }, "open"],
+    ["HEB 201", {}, "open"],
+    // The tag is still required.
+    ["SPA 202", { reqCodes: ["LTRQ"] as ReqCode[] }, "open"],
+  ] as const)("FRLG %s %j → %s", (courseCode, extra, status) => {
+    const report = evaluate([tagged(courseCode, ["FRLG"], { ...extra })]);
+    expect(report.reqs.FRLG).toBe(status);
   });
 
   it.each([
@@ -453,9 +604,10 @@ describe("a senior with 32 credits and no JEC course", () => {
       ["FRLG"],
     ];
     const terms = ["202301", "202302", "202401", "202402", "202501", "202502", "202601", "202602"];
+    // The FRLG course is a Davidson language at the 201 level (the language rule), the rest ECO courses.
     const items = Array.from({ length: 32 }, (_, i) =>
       item({
-        courseCode: `ECO ${String(101 + i)}`,
+        courseCode: tags[i]?.[0] === "FRLG" ? "SPA 201" : `ECO ${String(101 + i)}`,
         termCode: terms[Math.floor(i / 4)]!,
         reqCodes: tags[i] ?? ["NONE"],
       }),

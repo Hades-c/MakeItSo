@@ -28,8 +28,13 @@ import { firstYearLastTerm } from "@/server/plan/terms";
  * dropped and withdrawn (W) never count. A slot's status is that of the item filling it: completed → done,
  * in-progress or registered → this-term, planned → planned; nothing → open.
  *
- * (a) Credits: creditsDone = credits of completed items (P counts: a completed P/F item is a pass); 0-credit
- *     sections count 0; creditsPlanned adds in-progress, registered and planned items. At most
+ * One course, one count: credit is received only once for a course (Academic Regulations), so active items of the
+ * same course (same canonical code, so cross-listed siblings too, and the same title; credit-bearing; not a topics
+ * course planned without a section) are one degree course: its best item (completed first, then the earliest
+ * term) fills slots and counts credits once, and every extra copy is warned about ("counts once").
+ *
+ * (a) Credits: creditsDone = credits of completed courses (P counts: a completed P/F item is a pass); 0-credit
+ *     sections count 0; creditsPlanned adds in-progress, registered and planned courses. At most
  *     `preMatriculation.maxCredits` (4) credits from before matriculation count.
  * (b) Writing (COMP): a COMP-tagged course that is not AP/transfer credit. Warned about until it is done or
  *     planned within the first year, and after that until it is done.
@@ -40,7 +45,8 @@ import { firstYearLastTerm } from "@/server/plan/terms";
  *     code and id order. Tags a course has but does not use are listed in `alsoTagged`.
  * (d) CULT and JEC: one course each; either may be a WoK course too. One course never fills both (the regulation
  *     reads "a WoK requirement and the CULT or the JEC requirement": the conservative reading).
- * (e) Language (FRLG): an FRLG-tagged course (not from the self-instructional program) or the manual
+ * (e) Language (FRLG): an FRLG-tagged course of a Davidson language (`language.languages`) numbered
+ *     `language.minCourseNumber` (201) or higher, never from the self-instructional program; or the manual
  *     proficiency/exemption toggle.
  * (f) PE: the manual checklist (2 Lifetime Activity + 1 Team Sport): done or open.
  * (g) Pass/Fail: warns above 3 elected courses in total or more than 1 in a term (transfer credit is never P/F).
@@ -131,6 +137,76 @@ function bestItem(items: readonly PlanItem[]): PlanItem | null {
       compareItems(a, b),
   );
   return sorted[0] ?? null;
+}
+
+/** A topics course planned without a section ("Writing Program: topics vary by section"): sections differ. */
+const TOPICS_TITLE = /topics vary by section$/i;
+
+function titleKey(title: string): string {
+  return title.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * True when two items are the same course for the degree (credit is received only once for a course): the same
+ * canonical code (cross-listed siblings included) and the same title, both credit-bearing. A topics course planned
+ * without a section never matches (its sections carry different titles); 0-credit courses count nothing anyway.
+ */
+export function isSameDegreeCourse(
+  a: Pick<PlanItem, "canonicalCode" | "title" | "credits">,
+  b: Pick<PlanItem, "canonicalCode" | "title" | "credits">,
+): boolean {
+  return (
+    a.canonicalCode === b.canonicalCode &&
+    a.credits > 0 &&
+    b.credits > 0 &&
+    titleKey(a.title) === titleKey(b.title) &&
+    !TOPICS_TITLE.test(a.title.trim())
+  );
+}
+
+interface DegreeCourse {
+  /** The item that stands for the course: best status (completed first), then the earliest term. */
+  best: PlanItem;
+  /** The other active items of the same course (retakes, double-planned copies): they count nothing more. */
+  extra: PlanItem[];
+}
+
+/** Active items grouped into degree courses (see isSameDegreeCourse), in a deterministic order. */
+function degreeCourses(active: readonly PlanItem[]): DegreeCourse[] {
+  const ordered = [...active].sort(
+    (a, b) =>
+      SLOT_STATUS_RANK[slotStatusOf(a.status)] - SLOT_STATUS_RANK[slotStatusOf(b.status)] ||
+      compareItems(a, b),
+  );
+  const courses: DegreeCourse[] = [];
+  for (const item of ordered) {
+    const course = courses.find((candidate) => isSameDegreeCourse(candidate.best, item));
+    if (course) course.extra.push(item);
+    else courses.push({ best: item, extra: [] });
+  }
+  return courses;
+}
+
+/** "SPA 201" → { subject: "SPA", number: 201 }; null when the code has no leading course number. */
+function parseCode(code: string): { subject: string; number: number } | null {
+  const match = /^([A-Z]{2,4}) (\d{3})/.exec(code);
+  return match ? { subject: match[1]!, number: Number(match[2]) } : null;
+}
+
+/** An FRLG-tagged course that satisfies the language rule (a Davidson language at 201 or higher, never SIL). */
+function isLanguageCourse(item: PlanItem, rules: GraduationRules): boolean {
+  if (item.credits <= 0 || !hasCode(item, rules.language.code)) return false;
+  const languages = new Set(rules.language.languages.map((entry) => entry.subject));
+  const excluded = new Set(rules.language.excludedSubjects.map((entry) => entry.subject));
+  return [item.courseCode, item.canonicalCode].some((code) => {
+    const parsed = parseCode(code);
+    return (
+      parsed !== null &&
+      languages.has(parsed.subject) &&
+      !excluded.has(parsed.subject) &&
+      parsed.number >= rules.language.minCourseNumber
+    );
+  });
 }
 
 // ---- Min-cost max-flow (small, deterministic) -------------------------------------------------------------------
@@ -302,16 +378,19 @@ export function evaluateRequirements(input: RequirementsInput): RequirementsRepo
   const { rules, exact } = resolveGraduationRules(catalogYear);
   const firstTerm = input.firstTerm;
   const active = input.items.filter(isActiveItem);
+  const courses = degreeCourses(active);
+  // One item per degree course: every rule below counts courses, not copies.
+  const counted = courses.map((course) => course.best);
   const warnings: PlanWarning[] = [];
 
   // (a) credits
   const preMat = (item: PlanItem) => isPreMatriculation(item, firstTerm);
   const cap = rules.preMatriculation.maxCredits;
-  const done = active.filter((item) => item.status === "completed");
+  const done = counted.filter((item) => item.status === "completed");
   const preMatDone = sumCredits(done.filter(preMat));
-  const preMatAll = sumCredits(active.filter(preMat));
+  const preMatAll = sumCredits(counted.filter(preMat));
   const creditsDone = sumCredits(done.filter((i) => !preMat(i))) + Math.min(preMatDone, cap);
-  const creditsPlanned = sumCredits(active.filter((i) => !preMat(i))) + Math.min(preMatAll, cap);
+  const creditsPlanned = sumCredits(counted.filter((i) => !preMat(i))) + Math.min(preMatAll, cap);
 
   const reqs = Object.fromEntries(REQUIREMENT_SLOTS.map((slot) => [slot, "open"])) as Record<
     RequirementSlot,
@@ -325,7 +404,7 @@ export function evaluateRequirements(input: RequirementsInput): RequirementsRepo
   };
 
   // (b) writing
-  const writing = active.filter(
+  const writing = counted.filter(
     (item) =>
       item.credits > 0 &&
       hasCode(item, rules.writing.code) &&
@@ -335,11 +414,11 @@ export function evaluateRequirements(input: RequirementsInput): RequirementsRepo
   fill("COMP", bestItem(writing));
 
   // (c) Ways of Knowing
-  const wok = assignWaysOfKnowing(active, rules, firstTerm);
+  const wok = assignWaysOfKnowing(counted, rules, firstTerm);
   for (const [slot, item] of wok.filled) fill(slot, item);
 
   // (d) CULT and JEC
-  const cultJec = assignCultJec(active);
+  const cultJec = assignCultJec(counted);
   fill("CULT", cultJec.CULT);
   fill("JEC", cultJec.JEC);
 
@@ -347,18 +426,7 @@ export function evaluateRequirements(input: RequirementsInput): RequirementsRepo
   if (input.manual.languageExempt) {
     reqs.FRLG = "done";
   } else {
-    const excluded = new Set(rules.language.excludedSubjects.map((entry) => entry.subject));
-    fill(
-      "FRLG",
-      bestItem(
-        active.filter(
-          (item) =>
-            item.credits > 0 &&
-            hasCode(item, "FRLG") &&
-            !excluded.has(item.courseCode.split(" ")[0] ?? ""),
-        ),
-      ),
-    );
+    fill("FRLG", bestItem(counted.filter((item) => isLanguageCourse(item, rules))));
   }
 
   // (f) PE
@@ -424,6 +492,20 @@ export function evaluateRequirements(input: RequirementsInput): RequirementsRepo
     }
   }
 
+  const repeats = courses
+    .flatMap((course) => course.extra.map((copy) => ({ copy, best: course.best })))
+    .sort((a, b) => compareItems(a.copy, b.copy));
+  for (const { copy, best } of repeats) {
+    const where = best.termCode ? `in ${termLabel(best.termCode)}` : "as AP/transfer credit";
+    const listed = best.status === "completed" ? `completed ${where}` : `also listed ${where}`;
+    warnings.push({
+      code: "already-completed",
+      message: `${copy.courseCode}${copy.termCode ? ` (${termLabel(copy.termCode)})` : ""} is ${listed}: credit is received only once for a course, so it counts once. If it may be repeated for credit, verify in Degree Works.`,
+      itemId: copy.id,
+      ...(copy.termCode ? { termCode: copy.termCode } : {}),
+    });
+  }
+
   const sortedActive = [...active].sort(compareItems);
   for (const item of sortedActive) {
     if (hasCode(item, "NSCI")) {
@@ -456,7 +538,7 @@ export function evaluateRequirements(input: RequirementsInput): RequirementsRepo
     }
   }
 
-  const external = active.filter((item) => item.source === "ap" || item.source === "transfer");
+  const external = counted.filter((item) => item.source === "ap" || item.source === "transfer");
   if (external.length > 0) {
     const residence = rules.credits.required * rules.credits.residenceFraction;
     const externalCredits = sumCredits(external);
