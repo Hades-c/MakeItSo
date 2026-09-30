@@ -1,6 +1,6 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
+import mongoose, { type Model, Schema } from "mongoose";
 
-export interface IAiCache extends Document {
+export interface IAiCache {
   type: string;
   cacheKey: string;
   data: Record<string, unknown>;
@@ -14,7 +14,7 @@ const AiCacheSchema = new Schema<IAiCache>(
     cacheKey: { type: String, required: true },
     data: { type: Schema.Types.Mixed, required: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 AiCacheSchema.index({ type: 1, cacheKey: 1 }, { unique: true });

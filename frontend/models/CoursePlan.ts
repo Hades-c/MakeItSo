@@ -1,27 +1,27 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
+import mongoose, { type Model, Schema } from "mongoose";
 
 export type CourseStatus = "planned" | "in-progress" | "completed" | "dropped";
 
 export interface IPlannedCourse {
   courseId: mongoose.Types.ObjectId;
-  courseCode: string;    // denormalized for quick display
-  courseName: string;    // denormalized for quick display
-  credits: number;       // denormalized for credit calculations
+  courseCode: string; // denormalized for quick display
+  courseName: string; // denormalized for quick display
+  credits: number; // denormalized for credit calculations
   semester: "Fall" | "Spring" | "Summer";
   year: number;
   status: CourseStatus;
-  grade?: string;        // e.g. "A", "B+", "Pass"
+  grade?: string; // e.g. "A", "B+", "Pass"
   notes?: string;
 }
 
 export interface ISummerActivity {
   title: string;
   description?: string;
-  summer: string;       // e.g. "Summer 2026"
+  summer: string; // e.g. "Summer 2026"
   year: number;
 }
 
-export interface ICoursePlan extends Document {
+export interface ICoursePlan {
   userId: mongoose.Types.ObjectId;
   plannedCourses: IPlannedCourse[];
   summerActivities: ISummerActivity[];
@@ -62,11 +62,12 @@ const CoursePlanSchema = new Schema<ICoursePlan>(
     totalCreditsCompleted: { type: Number, default: 0 },
     totalCreditsPlanned: { type: Number, default: 0 },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-// Recompute credit totals before saving
-CoursePlanSchema.pre("save", function (next) {
+// Recompute credit totals before saving. Mongoose 9 hooks take no `next` callback: a synchronous (or async)
+// function is enough, and calling next() would throw "next is not a function" (audit devex/mongoose9-breaks-presave).
+CoursePlanSchema.pre("save", function () {
   this.totalCreditsCompleted = this.plannedCourses
     .filter((c) => c.status === "completed")
     .reduce((sum, c) => sum + c.credits, 0);
@@ -74,12 +75,9 @@ CoursePlanSchema.pre("save", function (next) {
   this.totalCreditsPlanned = this.plannedCourses
     .filter((c) => c.status !== "dropped")
     .reduce((sum, c) => sum + c.credits, 0);
-
-  next();
 });
 
 const CoursePlan: Model<ICoursePlan> =
-  mongoose.models.CoursePlan ??
-  mongoose.model<ICoursePlan>("CoursePlan", CoursePlanSchema);
+  mongoose.models.CoursePlan ?? mongoose.model<ICoursePlan>("CoursePlan", CoursePlanSchema);
 
 export default CoursePlan;

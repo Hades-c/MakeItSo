@@ -2,14 +2,11 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   darkMode: ["class"],
+  // No safelist: every class must appear literally in source (audit devex/tailwind-safelist-7mb-css).
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
-  // Safelist colors used with dynamic class names
-  safelist: [
-    { pattern: /^(bg|text|border|from|to|shadow|ring|hover:bg|hover:text|hover:border)-/ },
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     container: {

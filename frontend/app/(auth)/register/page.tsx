@@ -4,15 +4,25 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sparkles } from "lucide-react";
 import { MAJORS } from "@/lib/utils";
 
 const CLASS_YEARS = ["Freshman", "Sophomore", "Junior", "Senior"] as const;
+
+interface ApiErrorResponse {
+  error?: { code?: string; message?: string; issues?: { path: string; message: string }[] };
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -43,21 +53,27 @@ export default function RegisterPage() {
         body: JSON.stringify(form),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        setError(data.error ?? "Registration failed");
+        const data = (await res.json().catch(() => null)) as ApiErrorResponse | null;
+        setError(
+          data?.error?.issues?.[0]?.message ?? data?.error?.message ?? "Registration failed",
+        );
         setLoading(false);
         return;
       }
 
-      await signIn("credentials", {
+      const result = await signIn("credentials", {
         email: form.email,
         password: form.password,
         redirect: false,
       });
+      if (result?.error) {
+        router.push("/login");
+        return;
+      }
 
-      router.push("/dashboard");
+      router.push("/today");
+      router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
@@ -65,29 +81,27 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 relative overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
       {/* Background */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-red-50 via-white to-rose-50" />
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-red-100/30 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-rose-100/30 rounded-full blur-3xl animate-float" style={{ animationDelay: "3s" }} />
+        <div className="animate-float absolute right-1/4 top-0 h-96 w-96 rounded-full bg-red-100/30 blur-3xl" />
+        <div
+          className="animate-float absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-rose-100/30 blur-3xl"
+          style={{ animationDelay: "3s" }}
+        />
       </div>
 
-      <motion.div
-        className="w-full max-w-md"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-      >
-        <div className="flex justify-center mb-8">
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex justify-center">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-lg bg-red-800 flex items-center justify-center shadow-md shadow-red-800/20">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-800 shadow-md shadow-red-800/20">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <span className="text-xl font-bold tracking-tight">MakeItSo</span>
           </Link>
         </div>
-        <Card className="shadow-xl shadow-gray-200/50 border-gray-200/50">
+        <Card className="border-gray-200/50 shadow-xl shadow-gray-200/50">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Create your account</CardTitle>
             <CardDescription>Start planning your academic and career journey</CardDescription>
@@ -95,13 +109,12 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
                 >
                   {error}
-                </motion.div>
+                </div>
               )}
               <div className="space-y-1.5">
                 <Label htmlFor="name">Full Name</Label>
@@ -149,7 +162,9 @@ export default function RegisterPage() {
                     onChange={(e) => update("major", e.target.value)}
                   >
                     {MAJORS.map((m) => (
-                      <option key={m} value={m}>{m}</option>
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -162,7 +177,9 @@ export default function RegisterPage() {
                     onChange={(e) => update("currentYear", e.target.value)}
                   >
                     {CLASS_YEARS.map((y) => (
-                      <option key={y} value={y}>{y}</option>
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -171,21 +188,21 @@ export default function RegisterPage() {
             <CardFooter className="flex flex-col gap-4">
               <Button
                 type="submit"
-                className="w-full h-11 bg-red-800 hover:bg-red-900 shadow-lg shadow-red-800/20"
+                className="h-11 w-full bg-red-800 shadow-lg shadow-red-800/20 hover:bg-red-900"
                 disabled={loading}
               >
                 {loading ? "Creating account..." : "Create Account"}
               </Button>
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
-                <Link href="/login" className="text-red-800 hover:underline font-medium">
+                <Link href="/login" className="font-medium text-red-800 hover:underline">
                   Sign in
                 </Link>
               </p>
             </CardFooter>
           </form>
         </Card>
-      </motion.div>
+      </div>
     </div>
   );
 }
