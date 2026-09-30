@@ -5,7 +5,7 @@ import { type InstructorRating, RmpRatingSchema, type RosterSyncResult } from "@
 import RmpTeacher from "@/models/RmpTeacher";
 import { getDb, trusted } from "@/server/db";
 import { findOverride, matchInstructor, type MatchOutcome } from "@/server/rmp/match";
-import { isStaffName, lookupTokens } from "@/server/rmp/normalize";
+import { isStaffName, lookupTokens, normalizeName } from "@/server/rmp/normalize";
 import { RMP_OVERRIDES } from "@/server/rmp/overrides";
 import { rmpProfileUrl, runRosterSync } from "@/server/rmp/roster";
 
@@ -15,20 +15,29 @@ import { rmpProfileUrl, runRosterSync } from "@/server/rmp/roster";
  * - `syncRoster()`: the weekly roster job (server/rmp/roster.ts) behind GET /api/cron/rmp. One GraphQL search for
  *   every Davidson teacher (schoolID U2Nob29sLTM5NjU=, first: 1000, paged by cursor, no Basic header) through
  *   fetchExternal("ratemyprofessors", ...) → rmpteachers, recorded with recordSync("ratemyprofessors", ...).
- * - `getRatings(instructors, { subject })`: reads the stored roster only (no per-view RMP calls) and runs the
- *   matching engine (server/rmp/match.ts) per instructor: never surname-only; departments mapped to subject codes
- *   before a conflict is flagged; conflicts and ambiguity → "review".
+ * - `getRatings(instructors, { subject, relatedSubjects, homeSubjects })`: reads the stored roster only (no per-view
+ *   RMP calls) and runs the matching engine (server/rmp/match.ts) per instructor: never surname-only; departments
+ *   mapped to subject codes before a conflict is flagged; conflicts and ambiguity → "review".
  * - RMP_ENABLED=false: every rating is "disabled" and neither function touches the network or the roster.
  *
  * rmpteachers holds no per-user data, so this module registers nothing with server/account/erasers.ts.
  * Course pages use server/rmp/course.ts (distinct instructors of a course + their subjects).
  */
 
+/** The subjects an instructor teaches in the term's other sections (null when that cannot be known). */
+export type HomeSubjectsResolver = (instructor: Instructor) => Promise<readonly string[] | null>;
+
 export interface GetRatingsOptions {
   /** Subject code of the section(s) the instructors teach ("CHE"). */
   subject?: string;
   /** Other subjects of those sections: cross-listed siblings' subjects and cross-postings ("POL", "PPE"). */
   relatedSubjects?: readonly string[];
+  /**
+   * Asked only for an instructor whose sections are listed under interdisciplinary programs alone (WRI, HUM, SIL,
+   * ...) when their other sections could settle the match (server/rmp/course.ts catalogHomeSubjects). Without it,
+   * such an instructor is matched only by an exact name or an agreeing department, else "review".
+   */
+  homeSubjects?: HomeSubjectsResolver;
 }
 
 interface StoredTeacher {
@@ -112,7 +121,8 @@ function toRating(instructor: Instructor, outcome: MatchOutcome<StoredTeacher>):
 
 /**
  * One rating per instructor, same order. Staff → "staff"; RMP_ENABLED off → every entry "disabled" (no database
- * or network access). `subject`/`relatedSubjects` are the sections' subjects, used for department agreement.
+ * or network access). `subject`/`relatedSubjects` are the sections' subjects, used for department agreement;
+ * `homeSubjects` is asked only when those are all interdisciplinary programs and the answer could change.
  */
 export async function getRatings(
   instructors: readonly Instructor[],
@@ -133,9 +143,29 @@ export async function getRatings(
   ];
   const lookups = instructors.filter((instructor) => !isStaff(instructor));
   const roster = lookups.length > 0 ? await loadCandidates(lookups, subjects) : [];
-  return instructors.map((instructor) =>
-    toRating(instructor, matchInstructor(instructor, roster, { subjects })),
+  const outcomes = instructors.map((instructor) =>
+    matchInstructor(instructor, roster, { subjects }),
   );
+
+  // Second pass for instructors whose sections say nothing about their department (WRI, HUM, ...).
+  const resolve = options.homeSubjects;
+  if (resolve) {
+    const lookedUp = new Map<string, Promise<readonly string[] | null>>();
+    await Promise.all(
+      outcomes.map(async (outcome, index) => {
+        if (!outcome.needsHomeSubjects) return;
+        const instructor = instructors[index]!;
+        const key = `${normalizeName(instructor.first)}|${normalizeName(instructor.last)}`;
+        let pending = lookedUp.get(key);
+        if (!pending) lookedUp.set(key, (pending = resolve(plainInstructor(instructor))));
+        const homeSubjects = await pending;
+        if (homeSubjects) {
+          outcomes[index] = matchInstructor(instructor, roster, { subjects, homeSubjects });
+        }
+      }),
+    );
+  }
+  return instructors.map((instructor, index) => toRating(instructor, outcomes[index]!));
 }
 
 /**

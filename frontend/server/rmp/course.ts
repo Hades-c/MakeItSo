@@ -1,8 +1,11 @@
 import "server-only";
-import type { Course, Instructor, Section } from "@/lib/types/catalog";
+import type { TermCode } from "@/lib/term";
+import type { CatalogSearchResult, Course, Instructor, Section } from "@/lib/types/catalog";
 import type { InstructorRating } from "@/lib/types/ratings";
+import { searchCourses } from "@/server/catalog";
+import { ApiError } from "@/server/http/errors";
 import type { RateLimitRule } from "@/server/http/rate-limit";
-import { getRatings } from "@/server/rmp";
+import { getRatings, type HomeSubjectsResolver } from "@/server/rmp";
 import { isStaffName, normalizeName } from "@/server/rmp/normalize";
 
 /**
@@ -10,6 +13,9 @@ import { isStaffName, normalizeName } from "@/server/rmp/normalize";
  *
  *   const course = await getCourse(term, code);
  *   const ratings = course ? await getCourseRatings(course) : [];
+ *
+ * An instructor of a course listed only under interdisciplinary programs (WRI 101, HUM 103, SIL, ...) is matched
+ * with the help of their other sections in the term, found through the catalog search (catalogHomeSubjects).
  */
 
 /** GET /api/ratings: per signed-in user. Generous for browsing, far too low to page through the roster. */
@@ -60,10 +66,58 @@ export function courseInstructors(
   return { instructors, subject, relatedSubjects: [...related].sort() };
 }
 
+const subjectOf = (code: string) => code.trim().split(/\s+/)[0]?.toUpperCase() ?? "";
+
+/**
+ * The subjects an instructor teaches in `term`, from the catalog search: every course whose instructor list names
+ * them (after normalizeName), with its cross-listed siblings' subjects. null when the catalog cannot answer (the
+ * 501 stub before W1 lands, a 503 outage): the instructor then stays "review" unless otherwise settled.
+ */
+export function catalogHomeSubjects(term: TermCode): HomeSubjectsResolver {
+  return async (instructor) => {
+    const name = `${instructor.first} ${instructor.last}`.replace(/\s+/g, " ").trim();
+    const key = normalizeName(name);
+    if (!key) return null;
+    let result: CatalogSearchResult;
+    try {
+      result = await searchCourses({ term, q: name.slice(0, 100), pageSize: 100 });
+    } catch (error) {
+      // Only the catalog's typed errors mean "cannot say"; anything else (a missing fixture, a bug) propagates.
+      if (error instanceof ApiError) return null;
+      throw error;
+    }
+    const subjects = new Set<string>();
+    for (const item of result.items) {
+      if (!item.instructorNames.some((other) => normalizeName(other) === key)) continue;
+      subjects.add(subjectOf(item.code));
+      for (const sibling of item.crossListings) subjects.add(subjectOf(sibling));
+    }
+    subjects.delete("");
+    return [...subjects].sort();
+  };
+}
+
+export interface CourseRatingsOptions {
+  /** Default: catalogHomeSubjects(the sections' term). null = never look up other sections. */
+  homeSubjects?: HomeSubjectsResolver | null;
+}
+
 /** One rating per distinct instructor of the course, in upstream order. */
 export async function getCourseRatings(
   course: Pick<Course, "code"> & { sections: readonly Section[] },
+  options: CourseRatingsOptions = {},
 ): Promise<InstructorRating[]> {
   const { instructors, subject, relatedSubjects } = courseInstructors(course);
-  return getRatings(instructors, { subject, relatedSubjects });
+  const term = course.sections[0]?.termCode;
+  const homeSubjects =
+    options.homeSubjects === undefined
+      ? term
+        ? catalogHomeSubjects(term)
+        : undefined
+      : (options.homeSubjects ?? undefined);
+  return getRatings(instructors, {
+    subject,
+    relatedSubjects,
+    ...(homeSubjects ? { homeSubjects } : {}),
+  });
 }

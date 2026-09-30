@@ -8,7 +8,7 @@ import RmpTeacher from "@/models/RmpTeacher";
 import SourceSync from "@/models/SourceSync";
 import type { SessionUser } from "@/server/auth/session";
 import type * as CatalogModule from "@/server/catalog";
-import { getCourse } from "@/server/catalog";
+import { getCourse, searchCourses } from "@/server/catalog";
 import { getDb } from "@/server/db";
 import { ApiError, isDefinedRoute } from "@/server/http";
 import { syncRoster } from "@/server/rmp";
@@ -27,10 +27,14 @@ vi.mock("@/server/auth/session", async () => {
   };
 });
 
-// W1 owns getCourse (a 501 stub until it lands): by default call through; tests supply courses.
+// W1 owns getCourse and searchCourses (501 stubs until it lands): by default call through; tests supply data.
 vi.mock("@/server/catalog", async (importOriginal) => {
   const actual = await importOriginal<typeof CatalogModule>();
-  return { ...actual, getCourse: vi.fn(actual.getCourse) };
+  return {
+    ...actual,
+    getCourse: vi.fn(actual.getCourse),
+    searchCourses: vi.fn(actual.searchCourses),
+  };
 });
 
 const ORIGIN = "http://localhost";
@@ -46,6 +50,7 @@ beforeAll(async () => {
 afterEach(async () => {
   session.user = null;
   vi.mocked(getCourse).mockReset();
+  vi.mocked(searchCourses).mockReset();
   await testDb.clear();
 });
 
@@ -142,6 +147,58 @@ describe("GET /api/ratings", () => {
     );
     expect(body.ratings.map((r) => r.status)).toEqual(["review", "staff"]);
     expect(body.ratings.every((r) => r.rmp === undefined)).toBe(true);
+  });
+
+  it("rates an all-interdisciplinary course with each instructor's other sections (catalog search)", async () => {
+    const wri = makeCourse("WRI 101", [
+      makeSection({
+        courseCode: "WRI 101",
+        instructors: [instructor("Christopher", "Alexander"), instructor("Tim", "Chartier")],
+      }),
+    ]);
+    vi.mocked(getCourse).mockResolvedValue(wri);
+    const item = (code: string, instructorNames: string[]) => ({
+      termCode: "202602",
+      code,
+      title: "Other course",
+      credits: [1],
+      reqCodes: [],
+      sectionCount: 1,
+      openSeats: 0,
+      instructorNames,
+      crossListings: [],
+      hasTba: false,
+    });
+    vi.mocked(searchCourses).mockImplementation(async (query) => ({
+      term: "202602",
+      items: [item("CHE 250", ["Christopher Alexander"]), item("MAT 110", ["Tim Chartier"])].filter(
+        (course) => typeof query.q === "string" && course.instructorNames.includes(query.q),
+      ),
+      total: 1,
+      page: 1,
+      pageSize: 100,
+      asOf: null,
+    }));
+    const body = RatingsResponseSchema.parse(
+      await (await ratings("?term=202602&code=WRI%20101")).json(),
+    );
+    expect(body.ratings.map((r) => [r.instructor.last, r.status, r.rmp?.legacyId])).toEqual([
+      ["Alexander", "review", undefined],
+      ["Chartier", "matched", 9000025],
+    ]);
+    expect(vi.mocked(searchCourses).mock.calls.map(([query]) => [query.term, query.q])).toEqual([
+      ["202602", "Christopher Alexander"],
+      ["202602", "Tim Chartier"],
+    ]);
+
+    // While the catalog search is unavailable, nobody is matched on a nickname alone.
+    vi.mocked(searchCourses).mockRejectedValue(
+      new ApiError(503, "unavailable", "Course data is temporarily unavailable."),
+    );
+    const fallback = RatingsResponseSchema.parse(
+      await (await ratings("?term=202602&code=WRI%20101")).json(),
+    );
+    expect(fallback.ratings.map((r) => r.status)).toEqual(["review", "review"]);
   });
 
   it("answers 404 when the course is not offered in the term", async () => {
