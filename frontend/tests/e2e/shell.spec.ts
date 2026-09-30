@@ -191,8 +191,9 @@ test("⌘K / Ctrl+K opens the command palette; Enter with nothing selected searc
   const input = dialog.getByRole("combobox", { name: "Search MakeItSo" });
   await expect(input).toBeFocused();
   await input.fill("organic chemistry");
-  // /api/search does not exist yet: the palette says so and keeps the catalog fallback.
-  await expect(dialog.getByText("Search is unavailable right now.")).toBeVisible();
+  // /api/search answers (the course provider is filled in by the catalog workstream); with no matches the palette
+  // says so and keeps the catalog fallback.
+  await expect(dialog.getByText("No matches for “organic chemistry”.")).toBeVisible();
   await expect(
     dialog.getByRole("link", { name: /Search courses for “organic chemistry”/ }),
   ).toBeVisible();

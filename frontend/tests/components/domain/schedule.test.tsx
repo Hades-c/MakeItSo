@@ -348,7 +348,7 @@ describe("DayTimeline", () => {
     const deadline = screen.getByText("Problem set").closest("li")!;
     expect(deadline).toHaveAttribute("data-kind", "deadline");
     expect(deadline).toHaveTextContent("Due 1:00p");
-    expect(within(deadline).getByText("My plan").closest("[data-source]")).toHaveAttribute(
+    expect(within(deadline).getByText("Your plan").closest("[data-source]")).toHaveAttribute(
       "data-source",
       "my-plan",
     );
@@ -500,7 +500,7 @@ describe("DayTimeline", () => {
     const deadlines = screen.getByTestId("deadline-list");
     expect(deadlines).toHaveTextContent("Deadlines");
     expect(within(deadlines).getByRole("listitem")).toHaveTextContent(
-      "Due 11:00aECO 232Reading quizSource: My plan",
+      "Due 11:00aECO 232Reading quizSource: Your plan",
     );
     // The flag for the listed deadline would meet the pill (15 minutes away), so it is left out.
     expect(within(gutter).queryByTestId("deadline-flag")).not.toBeInTheDocument();

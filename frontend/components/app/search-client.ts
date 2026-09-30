@@ -1,35 +1,33 @@
 /**
- * Client side of global search: the response contract and a fetcher for the command palette.
+ * Client side of global search: a lenient reader of the /api/search contract and a fetcher for the command palette.
  *
- * Contract (PLAN §4.1.16, owned by lib/api/search.ts once it exists; this mirrors it exactly):
+ * The contract itself is frozen in lib/api/search.ts (PLAN §4.1.16):
  *   GET /api/search?q=<text>&limit=<n ≤ 20>
  *   → { results: { kind: 'course'|'career'|'event'|'alumnus'|'page', id, title, subtitle?, href, source? }[] }
- * Until the route exists, 404/501, other errors and network failures all mean "Search is unavailable", and the
- * palette falls back to the course catalog (/courses?q=…).
+ * 404/501, other errors and network failures all mean "Search is unavailable", and the palette falls back to the
+ * course catalog (/courses?q=…).
  */
 import { z } from "zod";
+import {
+  SEARCH_MAX_LIMIT,
+  SEARCH_RESULT_KINDS,
+  SearchResponseSchema,
+  SearchResultSchema,
+  type SearchResponse,
+  type SearchResult,
+  type SearchResultKind,
+} from "@/lib/api/search";
 import { SOURCE_IDS } from "@/lib/sources";
 
-export const SEARCH_RESULT_KINDS = ["course", "career", "event", "alumnus", "page"] as const;
-export type SearchResultKind = (typeof SEARCH_RESULT_KINDS)[number];
+export { SEARCH_RESULT_KINDS };
+export type { SearchResponse, SearchResult, SearchResultKind };
 
 /** Most results the API returns (and the palette asks for). */
-export const SEARCH_LIMIT_MAX = 20;
+export const SEARCH_LIMIT_MAX = SEARCH_MAX_LIMIT;
 
-/** The strict contract for one result. */
-export const searchResultSchema = z.object({
-  kind: z.enum(SEARCH_RESULT_KINDS),
-  id: z.string().min(1),
-  title: z.string().min(1),
-  subtitle: z.string().optional(),
-  href: z.string().min(1),
-  source: z.enum(SOURCE_IDS).optional(),
-});
-
-export const searchResponseSchema = z.object({ results: z.array(searchResultSchema) });
-
-export type SearchResult = z.infer<typeof searchResultSchema>;
-export type SearchResponse = z.infer<typeof searchResponseSchema>;
+/** The strict contract for one result (re-exported from lib/api/search.ts). */
+export const searchResultSchema = SearchResultSchema;
+export const searchResponseSchema = SearchResponseSchema;
 
 /** Same-origin paths only ("/courses/202602/HIS-357"): never another origin, protocol-relative or javascript:. */
 export function isInternalHref(href: string): boolean {
@@ -43,7 +41,9 @@ export function isInternalHref(href: string): boolean {
 
 // The reader is lenient where the contract is strict: one bad row, or a source id this build does not know yet,
 // must not blank the whole palette. Bad rows are dropped; an unknown source drops only the tag.
-const lenientResult = searchResultSchema.extend({
+// z.object over the shape (not .extend) so extra keys are stripped rather than rejected by the strict contract.
+const lenientResult = z.object({
+  ...searchResultSchema.shape,
   source: z.enum(SOURCE_IDS).optional().catch(undefined),
 });
 
