@@ -34,7 +34,14 @@ export default defineConfig({
     },
     {
       name: "mobile",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 }, hasTouch: true },
+      // A phone: 390px wide, touch, mobile viewport handling and no hover (so hover-only UI shows up as broken).
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
     },
   ],
   webServer: {
