@@ -3,9 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Course from "@/models/Course";
+import { STATIC_CATALOG_API_ENABLED } from "@/lib/features";
 
-// GET /api/courses - list/search courses
+// GET /api/courses - list/search the old static catalog (hidden, see lib/features.ts)
 export async function GET(req: NextRequest) {
+  if (!STATIC_CATALOG_API_ENABLED) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session) {

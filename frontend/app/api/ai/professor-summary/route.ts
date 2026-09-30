@@ -4,8 +4,15 @@ import { authOptions } from "@/lib/auth";
 import { generateProfessorSummary } from "@/lib/gemini";
 import { connectToDatabase } from "@/lib/mongodb";
 import AiCache from "@/models/AiCache";
+import { PROFESSOR_RATINGS_ENABLED } from "@/lib/features";
 
 export async function POST(req: NextRequest) {
+  // Hidden until professors can be matched correctly (see lib/features.ts).
+  // Before re-enabling: build the prompt only from server-fetched data and
+  // require the professor to teach the live course.
+  if (!PROFESSOR_RATINGS_ENABLED) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -23,14 +30,15 @@ export async function POST(req: NextRequest) {
       rmpTags,
     } = await req.json();
 
-    if (!professorName || !courseCode) {
+    if (typeof professorName !== "string" || typeof courseCode !== "string" || !professorName || !courseCode) {
       return NextResponse.json(
         { error: "professorName and courseCode are required" },
         { status: 400 }
       );
     }
 
-    const cacheKey = JSON.stringify({ professorName: professorName.toLowerCase(), courseCode: courseCode.toUpperCase() });
+    // v2: entries written before the registration hotfix are never served.
+    const cacheKey = JSON.stringify({ v: 2, professorName: professorName.toLowerCase(), courseCode: courseCode.toUpperCase() });
 
     await connectToDatabase();
 

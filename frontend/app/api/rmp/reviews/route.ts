@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { PROFESSOR_RATINGS_ENABLED } from "@/lib/features";
 
 const RMP_GRAPHQL_URL = "https://www.ratemyprofessors.com/graphql";
 const RMP_AUTH_HEADER = "Basic dGVzdDp0ZXN0";
@@ -83,6 +84,10 @@ async function rmpQuery(query: string, variables: Record<string, unknown>) {
 const DAVIDSON_SCHOOL_ID = "U2Nob29sLTM5NjU="; // base64 encoded School-3965
 
 export async function POST(req: NextRequest) {
+  // Hidden until professors can be matched correctly (see lib/features.ts).
+  if (!PROFESSOR_RATINGS_ENABLED) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
