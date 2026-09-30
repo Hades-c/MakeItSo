@@ -9,6 +9,9 @@
 // - Every upstream call has a 10 s timeout.
 // - On upstream failure the last good data is served. An empty result, or one
 //   under half the size of the last good result, is never cached as success.
+// - The last good sections of each term are also saved in MongoDB, so a cold
+//   instance (new serverless instance on registration day) has a fallback and
+//   a size baseline even when the upstream is down.
 
 import {
   fallbackTerms,
@@ -25,6 +28,10 @@ const TERMS_TTL_MS = 6 * 60 * 60 * 1000;
 const COURSES_TTL_MS = 30 * 60 * 1000;
 // After a failed refresh, keep serving the last good copy this long before retrying.
 const RETRY_AFTER_FAILURE_MS = 60 * 1000;
+// Persisted last-good snapshots (MongoDB): bounded waits, infrequent writes.
+const SNAPSHOT_COLLECTION = "davidson_term_snapshots";
+const SNAPSHOT_DB_TIMEOUT_MS = 3_000;
+const SNAPSHOT_MIN_WRITE_INTERVAL_MS = 10 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -125,6 +132,8 @@ interface DavidsonCache {
   termsInflight?: Promise<ResolvedTerms>;
   courses: Map<string, CacheEntry<TermCourses>>;
   coursesInflight: Map<string, Promise<TermCourses>>;
+  /** fetchedAt (ms) of the newest snapshot known to be saved, per term. */
+  snapshotSavedAt?: Map<string, number>;
 }
 
 declare global {
@@ -500,6 +509,87 @@ async function loadSections(termCode: string): Promise<RawSection[]> {
 
 export class CourseDataUnavailableError extends Error {}
 
+// ---------------------------------------------------------------------------
+// Persisted last-good snapshot (one MongoDB document per term)
+// ---------------------------------------------------------------------------
+
+interface TermSnapshot {
+  termCode: string;
+  sections: RawSection[];
+  sectionCount: number;
+  fetchedAt: string;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function snapshotCollection() {
+  // Imported lazily so the schedule still works if MongoDB is not configured.
+  const { connectToDatabase } = await import("@/lib/mongodb");
+  const conn = await withTimeout(connectToDatabase(), SNAPSHOT_DB_TIMEOUT_MS, "MongoDB connect");
+  const db = conn.connection.db;
+  if (!db) throw new Error("MongoDB connection has no database");
+  return db.collection<TermSnapshot>(SNAPSHOT_COLLECTION);
+}
+
+/** Only the fields transformSections reads, to keep the document small. */
+function slimSection(s: RawSection): RawSection {
+  return {
+    id: s.id,
+    crn: s.crn,
+    course_number: s.course_number,
+    course_title: s.course_title,
+    course_description: s.course_description,
+    credits: s.credits,
+    instructors: (s.instructors ?? []).map((i) => ({ first_name: i.first_name, last_name: i.last_name })),
+    enrollment: s.enrollment,
+    grad_requirements: s.grad_requirements,
+    meetings: (s.meetings ?? []).map((m) => ({
+      weekdays: m.weekdays,
+      class_time: m.class_time,
+      building: { description: m.building?.description },
+      room: m.room,
+    })),
+    section: s.section,
+    subject: { code: s.subject?.code, description: s.subject?.description },
+  };
+}
+
+async function readSnapshot(termCode: string): Promise<TermSnapshot | null> {
+  try {
+    const col = await snapshotCollection();
+    const doc = await withTimeout(
+      col.findOne({ termCode }, { projection: { _id: 0 } }),
+      SNAPSHOT_DB_TIMEOUT_MS,
+      "snapshot read"
+    );
+    if (!doc || !Array.isArray(doc.sections) || doc.sections.length === 0) return null;
+    (cache.snapshotSavedAt ??= new Map()).set(termCode, Date.parse(doc.fetchedAt) || 0);
+    return doc;
+  } catch (err) {
+    console.error(`Davidson snapshot read failed for ${termCode}:`, err);
+    return null;
+  }
+}
+
+async function saveSnapshot(termCode: string, sections: RawSection[], fetchedAt: string): Promise<void> {
+  const savedAt = cache.snapshotSavedAt?.get(termCode) ?? 0;
+  if (Date.now() - savedAt < SNAPSHOT_MIN_WRITE_INTERVAL_MS) return;
+  try {
+    const col = await snapshotCollection();
+    const doc: TermSnapshot = { termCode, sections: sections.map(slimSection), sectionCount: sections.length, fetchedAt };
+    await withTimeout(col.replaceOne({ termCode }, doc, { upsert: true }), SNAPSHOT_DB_TIMEOUT_MS, "snapshot write");
+    (cache.snapshotSavedAt ??= new Map()).set(termCode, Date.parse(fetchedAt));
+  } catch (err) {
+    console.error(`Davidson snapshot write failed for ${termCode}:`, err);
+  }
+}
+
 /**
  * Course data for one term. Returns fresh data when possible, otherwise the
  * last good copy with `stale: true`. Throws CourseDataUnavailableError only
@@ -514,22 +604,42 @@ export async function getTermCourses(term: TermInfo): Promise<{ data: TermCourse
   let inflight = cache.coursesInflight.get(term.code);
   if (!inflight) {
     inflight = (async () => {
-      const raw = await loadSections(term.code);
       const last = cache.courses.get(term.code)?.value;
-      if (raw.length === 0) throw new Error(`Davidson courses API returned no sections for ${term.code}`);
-      if (last && raw.length < last.sectionCount * 0.5) {
-        throw new Error(
-          `Davidson courses API returned ${raw.length} sections for ${term.code}, under half of the last good ${last.sectionCount}`
-        );
+      // Cold instance: the saved snapshot is both the size baseline and the
+      // fallback. Read it while the upstream request runs.
+      const snapshot = last ? Promise.resolve(null) : readSnapshot(term.code);
+      try {
+        const raw = await loadSections(term.code);
+        const baseline = last?.sectionCount ?? (await snapshot)?.sectionCount;
+        if (raw.length === 0) throw new Error(`Davidson courses API returned no sections for ${term.code}`);
+        if (baseline && raw.length < baseline * 0.5) {
+          throw new Error(
+            `Davidson courses API returned ${raw.length} sections for ${term.code}, under half of the last good ${baseline}`
+          );
+        }
+        const value: TermCourses = {
+          term,
+          courses: transformSections(raw),
+          sectionCount: raw.length,
+          fetchedAt: new Date().toISOString(),
+        };
+        cache.courses.set(term.code, { value, expiry: Date.now() + COURSES_TTL_MS, nextAttempt: 0 });
+        await saveSnapshot(term.code, raw, value.fetchedAt);
+        return value;
+      } catch (err) {
+        const saved = await snapshot;
+        if (saved && !cache.courses.has(term.code)) {
+          // Serve the saved copy as stale (the catch below picks it up).
+          const value: TermCourses = {
+            term,
+            courses: transformSections(saved.sections),
+            sectionCount: saved.sectionCount,
+            fetchedAt: saved.fetchedAt,
+          };
+          cache.courses.set(term.code, { value, expiry: 0, nextAttempt: 0 });
+        }
+        throw err;
       }
-      const value: TermCourses = {
-        term,
-        courses: transformSections(raw),
-        sectionCount: raw.length,
-        fetchedAt: new Date().toISOString(),
-      };
-      cache.courses.set(term.code, { value, expiry: Date.now() + COURSES_TTL_MS, nextAttempt: 0 });
-      return value;
     })().finally(() => {
       cache.coursesInflight.delete(term.code);
     });

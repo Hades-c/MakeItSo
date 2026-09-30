@@ -50,9 +50,10 @@ export async function GET(req: NextRequest) {
       {
         headers: {
           // Public schedule data; let the CDN absorb registration-day traffic.
+          // stale-if-error lets a CDN keep serving this copy if a later request fails.
           "Cache-Control": stale
-            ? "public, s-maxage=60, stale-while-revalidate=300"
-            : "public, s-maxage=300, stale-while-revalidate=900",
+            ? "public, s-maxage=60, stale-while-revalidate=300, stale-if-error=86400"
+            : "public, s-maxage=300, stale-while-revalidate=900, stale-if-error=86400",
         },
       }
     );
