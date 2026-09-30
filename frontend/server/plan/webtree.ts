@@ -1,6 +1,6 @@
 import "server-only";
 import type mongoose from "mongoose";
-import { prevRegularTerm, termLabel, type TermCode } from "@/lib/term";
+import { compareTerms, prevRegularTerm, termLabel, type TermCode } from "@/lib/term";
 import type { ReqCode, ResolvedTerms, Section } from "@/lib/types/catalog";
 import {
   WebTreeListSchema,
@@ -27,13 +27,19 @@ import { lookupSection, sectionCodes } from "@/server/plan/catalog";
 import { detectConflictsImpl } from "@/server/plan/conflicts";
 import { isCompMet, type RequirementsReport } from "@/server/plan/requirements";
 import { sectionRestrictionWarnings } from "@/server/plan/restrictions";
+import { classesBegun } from "@/server/plan/schedule";
 import {
   ensurePlanDoc,
   MAX_WEBTREE_LISTS,
   readPlanDoc,
   webtreeChoicesFromDoc,
 } from "@/server/plan/store";
-import { standingForTerm, type PlanContext } from "@/server/plan/terms";
+import {
+  isInPlanRange,
+  planRangeLabel,
+  standingForTerm,
+  type PlanContext,
+} from "@/server/plan/terms";
 
 /**
  * The WebTree list (PLAN §5 "WebTree list"): the student's ranked course preferences with alternates for the
@@ -133,6 +139,20 @@ async function sectionsOf(list: WebTreeList): Promise<Map<string, Section>> {
   return map;
 }
 
+/**
+ * The terms a WebTree list may be saved for: the registration term or a later one, inside the student's plan
+ * range (a list for a past term could never be used, and would be the first one evicted). Throws 400.
+ */
+export function checkWebTreeTerm(
+  termCode: TermCode,
+  context: Pick<PlanContext, "firstTerm" | "graduationYear">,
+  registration: TermCode,
+): void {
+  if (compareTerms(termCode, registration) >= 0 && isInPlanRange(context, termCode)) return;
+  const message = `WebTree lists are for ${termLabel(registration)} or a later term in your plan (${planRangeLabel(context)}).`;
+  throw new ApiError(400, "validation_failed", message, [{ path: "termCode", message }]);
+}
+
 /** Validate a list for saving; returns it with choices sorted by rank. Throws 400 with per-field issues. */
 export async function validateWebTreeList(input: WebTreeList): Promise<WebTreeList> {
   const list = WebTreeListSchema.parse(input);
@@ -180,7 +200,11 @@ export async function readWebTreeList(
   return { termCode, choices: sorted(webtreeChoicesFromDoc(entry?.choices)) };
 }
 
-/** Replace the term's list: positional $set when it exists, else $push guarded by "no list for this term". */
+/**
+ * Replace the term's list: positional $set when it exists, else $push guarded by "no list for this term" and by
+ * room for it (fewer than MAX_WEBTREE_LISTS lists, or one for an earlier term, which `$slice` then evicts: the
+ * new list itself is never the one sliced away). 409 when every kept list is for a later term.
+ */
 export async function writeWebTreeList(
   userId: string,
   oid: mongoose.Types.ObjectId,
@@ -201,7 +225,14 @@ export async function writeWebTreeList(
     );
     if (replaced.matchedCount === 1) return;
     const added = await Plan.updateOne(
-      { userId: oid, "webtree.termCode": trusted({ $ne: list.termCode }) },
+      {
+        userId: oid,
+        "webtree.termCode": trusted({ $ne: list.termCode }),
+        $or: [
+          { [`webtree.${MAX_WEBTREE_LISTS - 1}`]: trusted({ $exists: false }) },
+          { "webtree.termCode": trusted({ $lt: list.termCode }) },
+        ],
+      },
       {
         $push: {
           webtree: {
@@ -213,6 +244,20 @@ export async function writeWebTreeList(
       },
     );
     if (added.matchedCount === 1) return;
+    const doc = await readPlanDoc(oid, { webtree: 1 });
+    const kept = Array.isArray(doc?.webtree) ? (doc.webtree as Record<string, unknown>[]) : [];
+    const terms = kept.map((entry) => String(entry.termCode));
+    if (
+      !terms.includes(list.termCode) &&
+      kept.length >= MAX_WEBTREE_LISTS &&
+      terms.every((term) => term > list.termCode)
+    ) {
+      throw new ApiError(
+        409,
+        "conflict",
+        `You can keep WebTree lists for at most ${MAX_WEBTREE_LISTS} terms, all later than ${termLabel(list.termCode)}.`,
+      );
+    }
   }
   throw new ApiError(409, "conflict", "Your WebTree list changed while saving. Please try again.");
 }
@@ -243,6 +288,7 @@ interface DetailContext {
   progress: RequirementsReport;
   standing: ReturnType<typeof standingForTerm>;
   compMet: boolean;
+  classesBegun: boolean;
 }
 
 async function detailOf(
@@ -285,6 +331,7 @@ async function detailOf(
     flags: sectionRestrictionWarnings(section, {
       standing: context.standing,
       compMet: context.compMet,
+      classesBegun: context.classesBegun,
       termCode: context.termCode,
     }),
   };
@@ -362,6 +409,7 @@ export async function buildWebTreeReport(input: WebTreeReportInput): Promise<Web
     progress,
     standing: standingForTerm(context, list.termCode, at),
     compMet: isCompMet(items, list.termCode),
+    classesBegun: classesBegun(input.terms, list.termCode, at),
   };
   const details: WebTreeChoiceDetail[] = [];
   for (const choice of sorted(list.choices)) {

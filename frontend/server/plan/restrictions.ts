@@ -7,7 +7,8 @@ import { standingLabel, standingYear } from "@/server/plan/terms";
 /**
  * Registration restrictions as warnings (PLAN §5 "Sections": Add-to-plan and AI FLAG, never block): class-year
  * codes against the student's standing, PRM (permission required), and W sections once the writing requirement
- * (COMP) is met. Pure.
+ * (COMP) is met. A class-year code marked "+" (`untilFirstDay`) lasts only until the first day of class: once the
+ * term's classes have begun (`classesBegun`) it is no longer flagged. Pure.
  */
 
 export type RestrictedSection = Pick<Section, "crn" | "courseCode" | "section" | "restrictions">;
@@ -17,6 +18,11 @@ export interface RestrictionContext {
   standing: ClassStanding;
   /** A completed COMP course (never AP/transfer), or one in progress before the section's term. */
   compMet: boolean;
+  /**
+   * True once the section's term has reached its first day of class (server/plan/schedule.ts classesBegun):
+   * restrictions marked "+" (until the first day of class) are lifted. Default false.
+   */
+  classesBegun?: boolean;
   termCode?: string;
   itemId?: string;
 }
@@ -33,10 +39,18 @@ export function eligibleYearsLabel(years: readonly number[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-/** Does the section's class-year restriction leave the student out? (null years = open to everyone.) */
-export function excludesStanding(section: RestrictedSection, standing: ClassStanding): boolean {
+/**
+ * Does the section's class-year restriction leave the student out? (null years = open to everyone; a "+"
+ * restriction is lifted once classes have begun.)
+ */
+export function excludesStanding(
+  section: RestrictedSection,
+  standing: ClassStanding,
+  classesBegun = false,
+): boolean {
   const years = section.restrictions.eligibleYears;
   if (!years || years.length === 0) return false;
+  if (classesBegun && section.restrictions.untilFirstDay) return false;
   const year = standingYear(standing);
   return year !== null && !years.includes(year);
 }
@@ -59,7 +73,7 @@ export function sectionRestrictionWarnings(
 ): PlanWarning[] {
   const out: PlanWarning[] = [];
   const years = section.restrictions.eligibleYears;
-  if (years && excludesStanding(section, context.standing)) {
+  if (years && excludesStanding(section, context.standing, context.classesBegun)) {
     const until = section.restrictions.untilFirstDay ? " until the first day of class" : "";
     out.push({
       code: "restricted-standing",
@@ -97,7 +111,7 @@ export function courseRestrictionWarnings(
   const pool = primary.length > 0 ? primary : sections;
   if (pool.length === 0) return [];
   const out: PlanWarning[] = [];
-  if (pool.every((section) => excludesStanding(section, context.standing))) {
+  if (pool.every((section) => excludesStanding(section, context.standing, context.classesBegun))) {
     const years = [...new Set(pool.flatMap((section) => section.restrictions.eligibleYears ?? []))];
     out.push({
       code: "restricted-standing",

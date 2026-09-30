@@ -5,7 +5,7 @@ import { DayScheduleSchema } from "@/lib/types/plan";
 import { resolveTerms } from "@/server/catalog";
 import { ApiError } from "@/server/http/errors";
 import { addDeadline, addItem, getDaySchedule, type DayScheduleResult } from "@/server/plan";
-import { classDay, termOnDate } from "@/server/plan/schedule";
+import { classDay, classesBegun, firstClassDay, termOnDate } from "@/server/plan/schedule";
 
 /**
  * getDaySchedule (PLAN §3 Today timeline): the student's class meetings on one America/New_York date from the
@@ -210,5 +210,20 @@ describe("spring", () => {
     };
     expect(termOnDate(undated, "2026-09-30")).toBe("202601");
     expect(termOnDate(undated, "2027-02-01")).toBeNull();
+  });
+});
+
+describe("the first day of class (for '+' restrictions)", () => {
+  it("comes from the calendar's first classes row, else the Banner start date", async () => {
+    const terms = await resolveTerms();
+    expect(firstClassDay(terms, "202601")).toBe("2026-08-24");
+    const at = (iso: string) => new Date(iso);
+    expect(classesBegun(terms, "202601", at("2026-08-23T23:59:00-04:00"))).toBe(false);
+    expect(classesBegun(terms, "202601", at("2026-08-24T00:00:00-04:00"))).toBe(true);
+    expect(classesBegun(terms, "202601", at("2026-09-30T12:00:00-04:00"))).toBe(true);
+    expect(classesBegun(terms, "202602", at("2026-09-30T12:00:00-04:00"))).toBe(false);
+    // No calendar rows and no Banner dates: never begun (the restriction stays flagged).
+    expect(firstClassDay(null, "203101")).toBeNull();
+    expect(classesBegun(null, "203101", at("2031-12-01T12:00:00-05:00"))).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
-import { insertStudent, planDoc, withPlanDb } from "./helpers";
+import { FIXTURES_NOW, insertStudent, planDoc, withPlanDb } from "./helpers";
 import { AddPlanItemBodySchema } from "@/lib/api/plan";
 import { WebTreeListSchema, type WebTreeList } from "@/lib/types/plan";
 import Plan from "@/models/Plan";
@@ -57,13 +57,10 @@ describe("saving and reading", () => {
       saveWebTreeList(user, LIST),
     ]);
     await saveWebTreeList(user, shorter);
-    await saveWebTreeList(user, {
-      termCode: "202601",
-      choices: [{ rank: 1, crn: "10141", courseCode: "CSC 121", alternates: [] }],
-    });
+    await saveWebTreeList(user, { termCode: "202701", choices: [] });
     const doc = await planDoc(user);
     const lists = doc!.webtree as { termCode: string }[];
-    expect(lists.map((l) => l.termCode)).toEqual(["202601", "202602"]);
+    expect(lists.map((l) => l.termCode)).toEqual(["202602", "202701"]);
     expect(await getWebTreeList(user, "202602")).toEqual({
       termCode: "202602",
       choices: [{ ...LIST.choices[1]!, rank: 1 }],
@@ -104,11 +101,65 @@ describe("saving and reading", () => {
 
   it("accepts a cross-listed sibling's code for a CRN", async () => {
     const user = await insertStudent();
+    // CRN 20347 is MUS 116 A, cross-listed as PHY 116 A.
     const saved = await saveWebTreeList(user, {
-      termCode: "202601",
-      choices: [{ rank: 1, crn: "10227", courseCode: "PHY 214", alternates: [] }],
+      termCode: "202602",
+      choices: [{ rank: 1, crn: "20347", courseCode: "PHY 116", alternates: [] }],
     });
-    expect(saved.choices[0]).toMatchObject({ crn: "10227", courseCode: "PHY 214" });
+    expect(saved.choices[0]).toMatchObject({ crn: "20347", courseCode: "PHY 116" });
+  });
+
+  it("saves lists only for the registration term or later, inside the plan (400 otherwise, nothing written)", async () => {
+    const user = await insertStudent(); // class of 2028: plan Fall 2024 – Summer 2029
+    const list = (termCode: string): WebTreeList => ({ termCode, choices: [] });
+    for (const termCode of ["202501", "202601", "202901", "203001"]) {
+      const error = await rejection(saveWebTreeList(user, list(termCode)));
+      expect(error).toMatchObject({
+        status: 400,
+        code: "validation_failed",
+        message:
+          "WebTree lists are for Spring 2027 or a later term in your plan (Fall 2024 – Summer 2029).",
+      });
+      expect(error.issues?.[0]?.path).toBe("termCode");
+    }
+    expect(await planDoc(user)).toBeNull();
+    await saveWebTreeList(user, list("202803"));
+    expect(await getWebTreeList(user, "202803")).toEqual(list("202803"));
+  });
+
+  it("never lets $slice drop the list just saved: older lists go first, else 409", async () => {
+    const stored = (terms: string[]) =>
+      terms.map((termCode) => ({ termCode, choices: [], updatedAt: new Date(FIXTURES_NOW) }));
+    const planWith = async (userId: string, terms: string[]) =>
+      Plan.collection.insertOne({
+        userId: new mongoose.Types.ObjectId(userId),
+        version: 2,
+        items: [],
+        summer: [],
+        deadlines: [],
+        drafts: [],
+        webtree: stored(terms),
+      });
+    const later = ["202603", "202701", "202702", "202703", "202801", "202802", "202803"];
+    // A first-year (class of 2030) with 12 kept lists, all later than Spring 2027: no room.
+    const full = await insertStudent({ graduationYear: 2030 });
+    await planWith(full, [...later, "202901", "202902", "202903", "203001", "203002"]);
+    expect(await rejection(saveWebTreeList(full, LIST))).toMatchObject({
+      status: 409,
+      message: "You can keep WebTree lists for at most 12 terms, all later than Spring 2027.",
+    });
+    expect(await getWebTreeList(full, "202602")).toEqual({ termCode: "202602", choices: [] });
+    // With a past term's list among the 12, that one is evicted and the new list is kept.
+    const roomy = await insertStudent({ graduationYear: 2030 });
+    await planWith(roomy, ["202501", ...later, "202901", "202902", "202903", "203001"]);
+    const saved = await saveWebTreeList(roomy, LIST);
+    expect(await getWebTreeList(roomy, "202602")).toEqual(saved);
+    const terms = ((await planDoc(roomy))!.webtree as { termCode: string }[]).map(
+      (l) => l.termCode,
+    );
+    expect(terms).toHaveLength(12);
+    expect(terms).not.toContain("202501");
+    expect(terms).toContain("202602");
   });
 });
 
@@ -200,11 +251,13 @@ describe("the report", () => {
 
   it("registers a 'max 0' listing as its sibling (seats and copy use PHY 214 A for ENV 214 A)", async () => {
     const user = await insertStudent({ graduationYear: 2030, firstTerm: "202601" });
-    await saveWebTreeList(user, {
-      termCode: "202601",
-      choices: [{ rank: 1, crn: "10227", courseCode: "ENV 214", alternates: [] }],
+    // Fall 2026 has the pair; a list for it can no longer be saved, but an unsaved list can be reported on.
+    const report = await getWebTreeReport(user, "202601", {
+      list: {
+        termCode: "202601",
+        choices: [{ rank: 1, crn: "10227", courseCode: "ENV 214", alternates: [] }],
+      },
     });
-    const report = await getWebTreeReport(user, "202601");
     expect(report.details[0]?.choice).toMatchObject({
       crn: "10227",
       courseCode: "ENV 214",

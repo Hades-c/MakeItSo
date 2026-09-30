@@ -66,13 +66,31 @@ export function termOnDate(terms: ResolvedTerms, date: string): TermCode | null 
   return containing[0]?.code ?? null;
 }
 
+/**
+ * The term's first day of class ("YYYY-MM-DD", America/New_York): the Registrar calendar's first "classes" row,
+ * else the term's Banner start date; null when neither is known.
+ */
+export function firstClassDay(terms: ResolvedTerms | null, termCode: TermCode): string | null {
+  const first = calendarForTerm(termCode).find((row) => row.category === "classes");
+  return first?.start ?? terms?.terms.find((term) => term.code === termCode)?.startDate ?? null;
+}
+
+/**
+ * True once `at` (America/New_York) is on or after the term's first day of class: registration restrictions
+ * marked "+" ("until the first day of class") are lifted then. False when the first day is unknown.
+ */
+export function classesBegun(terms: ResolvedTerms | null, termCode: TermCode, at: Date): boolean {
+  const first = firstClassDay(terms, termCode);
+  return first !== null && dayKey(at, PLAN_TIME_ZONE) >= first;
+}
+
 /** How classes run on `date` in `termCode` (see the module comment). Pure over the curated calendar. */
 export function classDay(terms: ResolvedTerms, termCode: TermCode | null, date: string): TermDay {
   if (!termCode) return { termCode: null, weekday: null, reason: "no-term", cutoff: null };
   const rows = calendarForTerm(termCode);
   const classRows = rows.filter((row) => row.category === "classes");
   const info = terms.terms.find((term) => term.code === termCode);
-  const first = classRows[0]?.start ?? info?.startDate ?? null;
+  const first = firstClassDay(terms, termCode);
   const last =
     classRows.length > 0 ? classRows[classRows.length - 1]!.start : (info?.endDate ?? null);
   const weekday = weekdayOf(date);

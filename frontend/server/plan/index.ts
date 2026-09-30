@@ -46,6 +46,7 @@ import { DEFAULT_MANUAL, readPlanDoc, viewFromDoc } from "@/server/plan/store";
 import { isDateKey } from "@/server/plan/time";
 import {
   buildWebTreeReport,
+  checkWebTreeTerm,
   readWebTreeList,
   validateWebTreeList,
   writeWebTreeList,
@@ -194,9 +195,15 @@ export async function getWebTreeList(userId: string, termCode: TermCode): Promis
   return readWebTreeList(userObjectId(userId), termCode);
 }
 
-/** Replace the ranked WebTree list for `list.termCode` (400 with per-choice issues when invalid). */
+/**
+ * Replace the ranked WebTree list for `list.termCode` (400 with per-choice issues when invalid, or when the term is
+ * before the registration term or outside the student's plan).
+ */
 export async function saveWebTreeList(userId: string, list: WebTreeList): Promise<WebTreeList> {
   const oid = userObjectId(userId);
+  assertTermCode(list.termCode);
+  const [context, terms] = await Promise.all([loadPlanContext(userId, now()), catalogTerms()]);
+  checkWebTreeTerm(list.termCode, context, terms.registration);
   const valid = await validateWebTreeList(list);
   await writeWebTreeList(userId, oid, valid);
   return valid;

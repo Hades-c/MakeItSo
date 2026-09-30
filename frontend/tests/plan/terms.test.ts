@@ -117,6 +117,27 @@ describe("restriction flags (never blocks)", () => {
     },
   });
 
+  it("lifts a '+' restriction (until the first day of class) once classes have begun", () => {
+    const plus = section({ eligibleYears: [1, 2], untilFirstDay: true });
+    const standing = section({ eligibleYears: [1, 2], untilFirstDay: false });
+    expect(excludesStanding(plus, "senior", true)).toBe(false);
+    expect(excludesStanding(plus, "senior", false)).toBe(true);
+    expect(excludesStanding(standing, "senior", true)).toBe(true);
+    const context = { standing: "senior" as const, compMet: false, classesBegun: true };
+    expect(sectionRestrictionWarnings(plus, context)).toEqual([]);
+    expect(sectionRestrictionWarnings(standing, context).map((w) => w.code)).toEqual([
+      "restricted-standing",
+    ]);
+    // A course planned without a section: flagged only while every section still excludes the student.
+    const sections = [plus, section({ eligibleYears: [1], untilFirstDay: true }, "B")];
+    expect(courseRestrictionWarnings("ART 101", sections, context)).toEqual([]);
+    expect(
+      courseRestrictionWarnings("ART 101", sections, { ...context, classesBegun: false }).map(
+        (w) => w.code,
+      ),
+    ).toEqual(["restricted-standing"]);
+  });
+
   it("labels class years", () => {
     expect(eligibleYearsLabel([1])).toBe("first-years");
     expect(eligibleYearsLabel([2, 1])).toBe("first-years and sophomores");

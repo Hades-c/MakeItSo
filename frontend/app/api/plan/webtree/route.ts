@@ -11,9 +11,12 @@ export const GET = defineRoute(planApi.getWebTree, async ({ user, query }) => {
   return report;
 });
 
-/** PUT /api/plan/webtree → replace the ranked list for its term (400 with per-choice issues), then the report. */
+/**
+ * PUT /api/plan/webtree → replace the ranked list for its term (400 with per-choice issues, or for a term before
+ * the registration term or outside the plan), then the report on the list as stored.
+ */
 export const PUT = defineRoute(planApi.saveWebTree, async ({ user, body }) => {
   const list = await saveWebTreeList(user.id, body);
-  const report = await getWebTreeReport(user.id, list.termCode, { list });
+  const report = await getWebTreeReport(user.id, list.termCode);
   return report;
 });
