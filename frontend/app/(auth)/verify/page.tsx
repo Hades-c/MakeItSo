@@ -41,6 +41,7 @@ async function hasLiveCode(userId: string): Promise<boolean> {
     return false;
   }
 }
+
 export default async function VerifyPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const user = await signedInUserOrNull();

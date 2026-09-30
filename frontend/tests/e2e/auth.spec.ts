@@ -134,11 +134,17 @@ test("new sign-ups need a @davidson.edu address and an uncommon password", async
   await page.getByLabel("Email").fill("someone@gmail.com");
   await page.getByLabel("Password").fill("1234567890");
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("Use your @davidson.edu email address")).toBeVisible();
+  await expect(page.locator("#email-error")).toHaveText("Use your @davidson.edu email address");
+  // Field errors are announced in a summary alert, and focus moves to the first invalid field.
+  const summary = page.getByRole("alert").filter({ hasText: "Check the highlighted fields" });
+  await expect(summary).toContainText("Email: Use your @davidson.edu email address");
+  await expect(page.getByLabel("Email")).toBeFocused();
 
   await page.getByLabel("Email").fill(uniqueEmail("e2e-common"));
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText(/commonly used passwords/)).toBeVisible();
+  await expect(page.locator("#password-error")).toHaveText(/commonly used passwords/);
+  await expect(summary).toContainText(/Password: .*commonly used passwords/);
+  await expect(page.getByLabel("Password")).toBeFocused();
   await expect(page).toHaveURL(/\/register$/);
 });
 
