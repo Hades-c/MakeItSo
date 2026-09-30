@@ -37,6 +37,10 @@ export function CareerFilters({
   return (
     <div className="mb-6 flex flex-col gap-4">
       <form method="get" action="/careers" className="flex flex-col gap-1.5">
+        {/* First, so the URL reads like careersHref(): ?cluster=…&q=… */}
+        {filters.cluster ? (
+          <input type="hidden" name="cluster" value={clusterSlug(filters.cluster)} />
+        ) : null}
         <Label htmlFor="careers-q">Search careers</Label>
         <div className="flex max-w-xl gap-2">
           <Input
@@ -48,9 +52,6 @@ export function CareerFilters({
             placeholder="A career, subject or course code"
             autoComplete="off"
           />
-          {filters.cluster ? (
-            <input type="hidden" name="cluster" value={clusterSlug(filters.cluster)} />
-          ) : null}
           <Button type="submit" variant="secondary">
             <Search aria-hidden />
             Search
