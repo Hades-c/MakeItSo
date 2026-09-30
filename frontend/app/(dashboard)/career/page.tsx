@@ -14,11 +14,11 @@ import {
   CAREER_PATHS,
   CAREER_PATH_FILTERS,
   filterCareerPaths,
+  formatUsd,
   type CareerFilter,
 } from "@/lib/career-paths";
 
 const TAG_COLORS: Record<string, string> = {
-  "High Salary": "bg-emerald-50 text-emerald-700 border-emerald-200",
   "Technical": "bg-blue-50 text-blue-700 border-blue-200",
   "Analytical": "bg-purple-50 text-purple-700 border-purple-200",
   "Leadership": "bg-amber-50 text-amber-700 border-amber-200",
@@ -50,8 +50,8 @@ export default function CareerPage() {
           Career Paths
         </h1>
         <p className="text-sm text-[#555555] mt-1.5 max-w-xl">
-          Explore careers with curated courses, alumni connections, and
-          AI-powered guidance tailored to your interests.
+          Explore careers with Davidson courses offered this year, BLS pay data,
+          Davidson resources, and AI-powered guidance.
         </p>
       </div>
 
@@ -101,10 +101,6 @@ export default function CareerPage() {
             const Icon =
               (LucideIcons[iconName] as LucideIcons.LucideIcon) ||
               LucideIcons.Briefcase;
-            const salaryPercent = Math.min(
-              100,
-              (career.salaryRange.max / 200000) * 100
-            );
 
             return (
               <motion.div
@@ -147,23 +143,13 @@ export default function CareerPage() {
                       ))}
                     </div>
 
-                    {/* Salary bar */}
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1.5">
-                        <span>
-                          ${(career.salaryRange.min / 1000).toFixed(0)}k
-                        </span>
-                        <span>
-                          ${(career.salaryRange.max / 1000).toFixed(0)}k
-                        </span>
-                      </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-davidson/40 to-davidson rounded-full"
-                          style={{ width: `${salaryPercent}%` }}
-                        />
-                      </div>
-                    </div>
+                    {/* Pay: BLS median for the closest occupation (sourced) */}
+                    <p className="text-[11px] text-gray-500 mb-4">
+                      Median pay (BLS, {career.pay.period}):{" "}
+                      <span className="font-semibold text-[#111111] tabular-nums">
+                        {formatUsd(career.pay.medianAnnual)}
+                      </span>
+                    </p>
 
                     {/* Skills */}
                     <div className="flex flex-wrap gap-1 mb-4 mt-auto">

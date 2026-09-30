@@ -12,30 +12,25 @@ import {
   BookOpen,
   Briefcase,
   Check,
-  ChevronDown,
   Copy,
-  DollarSign,
   ExternalLink,
-  GraduationCap,
   Linkedin,
   Loader2,
   Mail,
-  Map,
   RefreshCw,
   Sparkles,
-  Star,
-  Sun,
   Users,
   X,
-  Plus,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { CAREER_PATHS } from "@/lib/career-paths";
-import { getAlumniForCareer, type DavidsonAlumni } from "@/lib/davidson-alumni";
-import { DAVIDSON_COURSES } from "@/lib/davidson-courses";
-type Tab = "overview" | "courses" | "summer" | "networking" | "roadmap";
+import { CAREER_PATHS, formatUsd } from "@/lib/career-paths";
+import type { DavidsonAlumni } from "@/lib/davidson-alumni";
+import { ALUMNI_NETWORKING_ENABLED } from "@/lib/features";
+import { termFromCode } from "@/lib/terms";
+import { AddToPlan, type PlanCourseSummary } from "@/components/add-to-plan";
+
+type Tab = "overview" | "courses" | "resources" | "networking" | "roadmap";
 
 interface CareerPlan {
   recommendedMajor: string;
@@ -44,12 +39,6 @@ interface CareerPlan {
   thingsToDo: { activity: string; type: string; reason: string; timing: string; classYear: string }[];
   careerInsights: string;
 }
-
-const PRIORITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  required: { bg: "bg-davidson-light", text: "text-davidson", border: "border-davidson/20" },
-  recommended: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
-  helpful: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
-};
 
 const ACTIVITY_COLORS: Record<string, { bg: string; text: string }> = {
   internship: { bg: "bg-amber-50", text: "text-amber-700" },
@@ -86,7 +75,6 @@ const COURSE_TYPE_COLORS: Record<string, { bg: string; text: string; border: str
 };
 
 const TAG_COLORS: Record<string, string> = {
-  "High Salary": "bg-emerald-50 text-emerald-700 border-emerald-200",
   "Technical": "bg-blue-50 text-blue-700 border-blue-200",
   "Analytical": "bg-purple-50 text-purple-700 border-purple-200",
   "Leadership": "bg-amber-50 text-amber-700 border-amber-200",
@@ -111,7 +99,6 @@ function getDeptColor(courseCode: string): { bg: string; text: string } {
     ART: { bg: "bg-fuchsia-50", text: "text-fuchsia-600" },
     HIS: { bg: "bg-rose-50", text: "text-rose-600" },
     EDU: { bg: "bg-sky-50", text: "text-sky-600" },
-    ACC: { bg: "bg-lime-50", text: "text-lime-700" },
     ENV: { bg: "bg-green-50", text: "text-green-700" },
     ANT: { bg: "bg-stone-100", text: "text-stone-600" },
     DIG: { bg: "bg-violet-50", text: "text-violet-600" },
@@ -129,10 +116,8 @@ export default function CareerDetailPage() {
   const [emailCopied, setEmailCopied] = useState(false);
   const [careerPlan, setCareerPlan] = useState<CareerPlan | null>(null);
   const [roadmapLoading, setRoadmapLoading] = useState(false);
-  const [roadmapError, setRoadmapError] = useState(false);
-  const [expandedCourseIdx, setExpandedCourseIdx] = useState<number | null>(null);
-  const [userPlanCourses, setUserPlanCourses] = useState<{ courseCode: string; courseName: string; status: string; semester: string; year: number }[]>([]);
-  const [addingToPlan, setAddingToPlan] = useState<string | null>(null);
+  const [roadmapError, setRoadmapError] = useState<string | null>(null);
+  const [userPlanCourses, setUserPlanCourses] = useState<PlanCourseSummary[]>([]);
 
   const fetchUserPlan = useCallback(async () => {
     try {
@@ -169,32 +154,6 @@ export default function CareerDetailPage() {
 
   const planCourseCodes = new Set(userPlanCourses.map((c) => c.courseCode));
 
-  async function addCourseToPlan(courseCode: string, courseName: string) {
-    setAddingToPlan(courseCode);
-    try {
-      const currentYear = new Date().getFullYear();
-      const res = await fetch("/api/plans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseCode,
-          courseName,
-          semester: "Fall",
-          year: currentYear,
-          status: "planned",
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUserPlanCourses(data.plan?.plannedCourses ?? []);
-      }
-    } catch {
-      // silent
-    } finally {
-      setAddingToPlan(null);
-    }
-  }
-
   const careerPath = CAREER_PATHS.find((c) => c.id === params.id);
   if (!careerPath) {
     return (
@@ -209,19 +168,26 @@ export default function CareerDetailPage() {
 
   const iconName = careerPath.icon as keyof typeof LucideIcons;
   const Icon = (LucideIcons[iconName] as LucideIcons.LucideIcon) || Briefcase;
-  const careerAlumni = getAlumniForCareer(careerPath.id);
+  // Alumni data is not loaded while the networking feature is hidden
+  // (lib/features.ts); the list below stays empty.
+  const careerAlumni: DavidsonAlumni[] = [];
+  // Term labels come from the verified course data (term codes), not literals.
+  const courseTermLabels = Array.from(new Set(careerPath.courses.flatMap((c) => c.terms)))
+    .sort()
+    .map((code) => termFromCode(code)?.label)
+    .filter((label): label is string => !!label);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "courses", label: "Courses" },
-    { id: "summer", label: "Summer Opportunities" },
-    { id: "networking", label: "Networking" },
+    { id: "resources", label: "Davidson Resources" },
+    ...(ALUMNI_NETWORKING_ENABLED ? [{ id: "networking" as Tab, label: "Networking" }] : []),
     { id: "roadmap", label: "Roadmap" },
   ];
 
   async function generateRoadmap(regenerate = false) {
     setRoadmapLoading(true);
-    setRoadmapError(false);
+    setRoadmapError(null);
     if (regenerate) setCareerPlan(null);
     try {
       const completedCourses = userPlanCourses
@@ -242,16 +208,18 @@ export default function CareerDetailPage() {
         const data = await res.json();
         setCareerPlan(data.plan);
       } else {
-        setRoadmapError(true);
+        const data = await res.json().catch(() => null);
+        setRoadmapError(data?.error ?? "Failed to generate roadmap. Please try again.");
       }
     } catch {
-      setRoadmapError(true);
+      setRoadmapError("Failed to generate roadmap. Please try again.");
     } finally {
       setRoadmapLoading(false);
     }
   }
 
   async function generateEmail(alumni: DavidsonAlumni, regenerate = false) {
+    if (!ALUMNI_NETWORKING_ENABLED) return;
     setSelectedAlumni(alumni);
     if (regenerate) setColdEmail(null);
     setEmailLoading(true);
@@ -311,19 +279,25 @@ export default function CareerDetailPage() {
         <div className="h-11 w-11 rounded-lg border border-davidson/20 bg-davidson-light flex items-center justify-center shrink-0">
           <Icon className="h-5 w-5 text-davidson" />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0">
           <h1 className="font-serif text-3xl font-semibold tracking-tight text-navy leading-tight">
             {careerPath.title}
           </h1>
           <p className="text-sm text-gray-500 leading-relaxed max-w-2xl">
             {careerPath.description}
           </p>
-          <div className="flex items-center gap-4 pt-1">
-            <span className="text-sm text-davidson font-semibold tabular-nums">
-              ${(careerPath.salaryRange.min / 1000).toFixed(0)}k &ndash; ${(careerPath.salaryRange.max / 1000).toFixed(0)}k
-            </span>
-            <span className="text-gray-200">|</span>
-            <div className="flex gap-1.5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
+            <a
+              href={careerPath.pay.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-davidson font-semibold tabular-nums hover:underline"
+              title={careerPath.pay.occupation}
+            >
+              Median pay (BLS, {careerPath.pay.period}): {formatUsd(careerPath.pay.medianAnnual)}
+              <ExternalLink className="inline h-3 w-3 ml-1 -mt-0.5" />
+            </a>
+            <div className="flex flex-wrap gap-1.5">
               {careerPath.tags.map((tag) => (
                 <span
                   key={tag}
@@ -334,6 +308,9 @@ export default function CareerDetailPage() {
               ))}
             </div>
           </div>
+          <p className="text-[11px] text-gray-500">
+            Pay figure is the U.S. median for: {careerPath.pay.occupation}.
+          </p>
         </div>
       </div>
 
@@ -341,12 +318,12 @@ export default function CareerDetailPage() {
       <div className="border-b border-gray-200" />
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 pb-0 -mt-2">
+      <div className="flex gap-1 border-b border-gray-200 pb-0 -mt-2 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`relative px-4 py-2.5 text-sm font-medium tracking-tight transition-colors ${
+            className={`relative shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium tracking-tight transition-colors ${
               activeTab === tab.id ? "text-[#111111]" : "text-gray-400 hover:text-gray-600"
             }`}
           >
@@ -401,156 +378,41 @@ export default function CareerDetailPage() {
         </div>
       )}
 
-      {/* Courses Tab */}
+      {/* Courses Tab: verified Davidson courses with a section in the live terms */}
       {activeTab === "courses" && (
         <div className="space-y-1">
           <p className="text-sm text-gray-500 mb-5">
-            Recommended courses at Davidson for {careerPath.title.toLowerCase()}. Click a course for more details.
+            Davidson courses that build skills for {careerPath.title.toLowerCase()}. Every course below has a
+            section on the {courseTermLabels.join(" or ")} schedule; check the Courses page for times and prerequisites.
           </p>
           <div className="space-y-2">
-            {careerPath.courses.map((course, i) => {
+            {careerPath.courses.map((course) => {
               const deptColor = getDeptColor(course.code);
-              const isExpanded = expandedCourseIdx === i;
-              const richCourse = DAVIDSON_COURSES.find((c) => c.code === course.code);
-              const courseInPlan = planCourseCodes.has(course.code);
-              const courseIsAdding = addingToPlan === course.code;
+              const offered = course.terms.map((t) => termFromCode(t)?.label).filter(Boolean);
               return (
-                <div key={i} className={`bg-white rounded-lg border transition-all ${isExpanded ? "border-gray-200 shadow-sm" : "border-gray-100 hover:border-gray-200"}`}>
-                  <div className="flex items-start p-4 gap-3">
-                    <button
-                      onClick={() => setExpandedCourseIdx(isExpanded ? null : i)}
-                      className="flex-1 text-left min-w-0"
-                    >
-                      <div className="flex items-center gap-3 mb-1.5">
+                <div key={course.code} className="bg-white rounded-lg border border-gray-100 p-4" data-testid="career-course">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
                           {course.code}
                         </span>
-                        <div className="flex gap-0.5">
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <Star
-                              key={n}
-                              className={`h-3 w-3 ${
-                                n <= course.difficulty
-                                  ? "text-amber-400 fill-amber-400"
-                                  : "text-gray-200"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        {course.bestProfessor && (
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-navy/5 text-navy font-medium">
-                            {course.bestProfessor}
-                          </span>
+                        {offered.length > 0 && (
+                          <span className="text-[11px] text-gray-500">Offered {offered.join(" · ")}</span>
                         )}
                       </div>
-                      <h3 className="font-medium text-sm text-[#111111]">{course.name}</h3>
-                    </button>
-                    <div className="flex items-center gap-2 shrink-0 mt-1">
-                      {courseInPlan ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
-                          <Check className="h-3 w-3" /> In Plan
-                        </span>
-                      ) : (
-                        <button
-                          disabled={courseIsAdding}
-                          onClick={() => addCourseToPlan(course.code, course.name)}
-                          className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
-                        >
-                          {courseIsAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                          Add to Plan
-                        </button>
-                      )}
-                      <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      <h3 className="font-medium text-sm text-[#111111]">{course.title}</h3>
+                      <p className="text-xs text-gray-600 leading-relaxed mt-1">{course.why}</p>
+                    </div>
+                    <div className="shrink-0 self-end sm:self-start">
+                      <AddToPlan
+                        courseCode={course.code}
+                        courseName={course.title}
+                        inPlan={planCourseCodes.has(course.code)}
+                        onAdded={setUserPlanCourses}
+                      />
                     </div>
                   </div>
-
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
-                          <p className="text-sm text-gray-600 leading-relaxed">{course.description}</p>
-
-                          {richCourse && (
-                            <>
-                              {richCourse.courseInsights?.keyTopics && richCourse.courseInsights.keyTopics.length > 0 && (
-                                <div>
-                                  <p className="text-[10px] font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Topics</p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {richCourse.courseInsights.keyTopics.map((topic) => (
-                                      <span key={topic} className="text-[11px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                        {topic}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {richCourse.courseInsights?.skillsGained && richCourse.courseInsights.skillsGained.length > 0 && (
-                                <div>
-                                  <p className="text-[10px] font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Skills</p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {richCourse.courseInsights.skillsGained.map((skill) => (
-                                      <span key={skill} className="text-[11px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                        {skill}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {richCourse.professorInfo?.rmpRating != null && (
-                                <div className="flex items-center gap-3 text-xs text-gray-500">
-                                  <span className="flex items-center gap-1">
-                                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                                    <span className="font-semibold text-[#111111]">{richCourse.professorInfo.rmpRating}</span>/5
-                                  </span>
-                                  {richCourse.professorInfo.rmpDifficulty != null && (
-                                    <span>Difficulty: {richCourse.professorInfo.rmpDifficulty}/5</span>
-                                  )}
-                                  {richCourse.professorInfo.rmpWouldTakeAgain != null && (
-                                    <span>{richCourse.professorInfo.rmpWouldTakeAgain}% would take again</span>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                                {richCourse.credits && <span>{richCourse.credits} credits</span>}
-                                {richCourse.offered.length > 0 && <span>Offered: {richCourse.offered.join(", ")}</span>}
-                                {richCourse.prerequisites.length > 0 && <span>Prerequisites: {richCourse.prerequisites.join(", ")}</span>}
-                              </div>
-
-                              {richCourse.careerRelevance.length > 0 && (
-                                <div>
-                                  <p className="text-[10px] font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Career Relevance</p>
-                                  <div className="space-y-1">
-                                    {richCourse.careerRelevance.slice(0, 3).map(({ field, relevance }) => (
-                                      <div key={field} className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-600 w-36 truncate">{field}</span>
-                                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                          <div className="h-full rounded-full bg-davidson" style={{ width: `${relevance * 100}%` }} />
-                                        </div>
-                                        <span className="text-xs text-gray-400 w-8 text-right">{Math.round(relevance * 100)}%</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          )}
-
-                          {!richCourse && course.bestProfessor && (
-                            <p className="text-xs text-gray-500">Best Professor: {course.bestProfessor}</p>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               );
             })}
@@ -558,28 +420,30 @@ export default function CareerDetailPage() {
         </div>
       )}
 
-      {/* Summer Tab */}
-      {activeTab === "summer" && (
+      {/* Davidson Resources Tab (verified links) */}
+      {activeTab === "resources" && (
         <div className="space-y-1">
           <p className="text-sm text-gray-500 mb-5">
-            Summer opportunities to build experience in {careerPath.title.toLowerCase()}.
+            Davidson offices and programs that support students interested in {careerPath.title.toLowerCase()}.
           </p>
           <div className="divide-y divide-gray-100">
-            {careerPath.summerOpportunities.map((opp, i) => (
-              <div key={i} className="py-4 first:pt-0 last:pb-0">
+            {careerPath.davidsonResources.map((res) => (
+              <div key={res.url} className="py-4 first:pt-0 last:pb-0">
                 <div className="flex items-start gap-3">
                   <div className="h-8 w-8 rounded border border-gray-200 bg-white flex items-center justify-center shrink-0 mt-0.5">
-                    <Sun className="h-3.5 w-3.5 text-gray-400" />
+                    <BookOpen className="h-3.5 w-3.5 text-gray-400" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2.5 mb-0.5">
-                      <h3 className="font-medium text-sm text-[#111111]">{opp.title}</h3>
-                      <span className="text-[10px] tracking-wide uppercase px-1.5 py-0.5 rounded border border-gray-200 text-gray-400 bg-white">
-                        {opp.type}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 leading-relaxed">{opp.description}</p>
-                    <p className="text-xs text-[#111111] font-medium mt-1.5">{opp.timing}</p>
+                  <div className="min-w-0">
+                    <a
+                      href={res.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-sm text-[#111111] hover:text-davidson hover:underline"
+                    >
+                      {res.name}
+                      <ExternalLink className="inline h-3 w-3 ml-1 -mt-0.5 text-gray-400" />
+                    </a>
+                    <p className="text-xs text-gray-500 leading-relaxed mt-0.5">{res.description}</p>
                   </div>
                 </div>
               </div>
@@ -588,10 +452,9 @@ export default function CareerDetailPage() {
         </div>
       )}
 
-      {/* Networking Tab */}
-      {activeTab === "networking" && (
+      {/* Networking Tab: hidden while ALUMNI_NETWORKING_ENABLED is false */}
+      {ALUMNI_NETWORKING_ENABLED && activeTab === "networking" && (
         <div className="space-y-10">
-          {/* Davidson Alumni */}
           {careerAlumni.length > 0 && (
             <section>
               <h2 className="font-serif text-lg font-semibold text-navy mb-5">
@@ -637,30 +500,6 @@ export default function CareerDetailPage() {
               </div>
             </section>
           )}
-
-          {/* General Networking */}
-          <section>
-            <h2 className="font-serif text-lg font-semibold text-navy mb-5">Networking Tips</h2>
-            <div className="divide-y divide-gray-100">
-              {careerPath.networking.map((contact, i) => (
-                <div key={i} className="py-4 first:pt-0 last:pb-0">
-                  <div className="flex items-start gap-3">
-                    <div className="h-8 w-8 rounded border border-gray-200 bg-white flex items-center justify-center shrink-0 mt-0.5">
-                      <Users className="h-3.5 w-3.5 text-gray-400" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-0.5">
-                        <h4 className="font-medium text-xs text-[#111111]">{contact.role}</h4>
-                        <span className="text-[10px] tracking-wide uppercase text-gray-400">{contact.type}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 leading-relaxed">{contact.description}</p>
-                      <p className="text-xs text-[#111111] font-medium mt-1.5">{contact.howToConnect}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
       )}
 
@@ -687,7 +526,7 @@ export default function CareerDetailPage() {
 
           {roadmapError && (
             <div className="bg-white border border-red-200 rounded-xl p-8 text-center shadow-sm">
-              <p className="text-sm text-red-600 mb-4">Failed to generate roadmap. Please try again.</p>
+              <p className="text-sm text-red-600 mb-4">{roadmapError}</p>
               <Button
                 onClick={() => generateRoadmap()}
                 variant="outline"
@@ -707,7 +546,7 @@ export default function CareerDetailPage() {
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-serif text-sm font-semibold text-navy mb-1">Career Insights</h3>
+                    <h3 className="font-serif text-sm font-semibold text-navy mb-1">Career Insights (AI-generated)</h3>
                     <p className="text-sm text-gray-600 leading-relaxed">{careerPlan.careerInsights}</p>
                     <p className="text-xs text-davidson font-medium mt-2">
                       Recommended Major: {careerPlan.recommendedMajor}
@@ -716,13 +555,16 @@ export default function CareerDetailPage() {
                 </div>
               </div>
 
-              {/* Courses to Take */}
+              {/* Courses to Take (server keeps only courses on the live schedule) */}
               <section>
                 <h2 className="font-serif text-lg font-semibold text-navy mb-4 flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-davidson" />
                   Recommended Courses
                 </h2>
                 <div className="grid gap-2">
+                  {careerPlan.coursesToTake.length === 0 && (
+                    <p className="text-sm text-gray-500">None of the AI&apos;s course suggestions are on the current schedule. See the Courses tab.</p>
+                  )}
                   {[...careerPlan.coursesToTake].sort((a, b) => {
                     const typeA = COURSE_TYPE_ORDER[a.courseType ?? "elective"] ?? 99;
                     const typeB = COURSE_TYPE_ORDER[b.courseType ?? "elective"] ?? 99;
@@ -734,11 +576,9 @@ export default function CareerDetailPage() {
                     const ctColor = COURSE_TYPE_COLORS[course.courseType ?? "elective"] || COURSE_TYPE_COLORS.elective;
                     const yColor = YEAR_COLORS[course.typicalYear] || { bg: "bg-gray-50", text: "text-gray-600" };
                     const deptColor = getDeptColor(course.code);
-                    const inPlan = planCourseCodes.has(course.code);
-                    const isAdding = addingToPlan === course.code;
                     return (
                       <div key={i} className="bg-white border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${deptColor.bg} ${deptColor.text}`}>
@@ -754,21 +594,13 @@ export default function CareerDetailPage() {
                             <h4 className="font-medium text-sm text-[#111111]">{course.name}</h4>
                             <p className="text-xs text-gray-500 mt-1 leading-relaxed">{course.reason}</p>
                           </div>
-                          <div className="shrink-0">
-                            {inPlan ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
-                                <Check className="h-3 w-3" /> In Plan
-                              </span>
-                            ) : (
-                              <button
-                                disabled={isAdding}
-                                onClick={() => addCourseToPlan(course.code, course.name)}
-                                className="inline-flex items-center gap-1 text-[10px] font-medium text-davidson bg-davidson-light hover:bg-davidson hover:text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
-                              >
-                                {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                                Add to Plan
-                              </button>
-                            )}
+                          <div className="shrink-0 self-end sm:self-start">
+                            <AddToPlan
+                              courseCode={course.code}
+                              courseName={course.name}
+                              inPlan={planCourseCodes.has(course.code)}
+                              onAdded={setUserPlanCourses}
+                            />
                           </div>
                         </div>
                       </div>
@@ -838,7 +670,7 @@ export default function CareerDetailPage() {
                 </div>
               </section>
 
-              {/* Regenerate button */}
+              {/* Regenerate button (this plan is cached per student) */}
               <div className="text-center pt-2">
                 <Button
                   onClick={() => generateRoadmap(true)}
@@ -855,8 +687,8 @@ export default function CareerDetailPage() {
         </div>
       )}
 
-      {/* Cold Email Modal */}
-      {typeof document !== "undefined" && createPortal(
+      {/* Cold Email Modal (hidden while ALUMNI_NETWORKING_ENABLED is false) */}
+      {ALUMNI_NETWORKING_ENABLED && typeof document !== "undefined" && createPortal(
       <AnimatePresence>
         {selectedAlumni && (
           <motion.div
