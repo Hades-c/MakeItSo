@@ -28,7 +28,8 @@ import { defineContent, latestVerifiedAt } from "@/server/content/define";
  *   whose two candidate LinkedIn profiles leave the canonical URL unconfirmed (the Sarah Duncan precedent).
  *
  * Every alumni view says "Compiled from public sources · checked <ALUMNI_CHECKED_AT> · Request removal/correction"
- * and is limited to verified @davidson.edu accounts with FEATURE_ALUMNI on (the pages and search enforce it).
+ * and is limited to verified @davidson.edu accounts while the Alumni section is on: FEATURE_ALUMNI and
+ * FEATURE_CAREERS (PLAN §9 featureEnabled(flags, "alumni"); the pages and search enforce it).
  */
 
 const CONVOCATION_2023 = "https://www.davidson.edu/media/9498/download";
