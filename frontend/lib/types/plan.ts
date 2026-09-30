@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { MeetingDaySchema, MeetingSchema, reqCodesOrNull } from "@/lib/types/catalog";
+import {
+  CrossListingSchema,
+  MeetingDaySchema,
+  MeetingSchema,
+  reqCodesOrNull,
+} from "@/lib/types/catalog";
 import {
   ClockTimeSchema,
   CourseCodeSchema,
@@ -157,11 +162,15 @@ export const ScheduleConflictSchema = z.object({
 });
 export type ScheduleConflict = z.infer<typeof ScheduleConflictSchema>;
 
-/** Input to `detectConflicts`: a section's identity and meetings (TBA meetings are ignored). */
+/**
+ * Input to `detectConflicts`: a section's identity and meetings (TBA meetings are ignored). A Section is a valid
+ * ConflictInput. Two inputs are siblings (one class, never a conflict) when either lists the other's CRN in
+ * `crossListings`; codes are not enough ("PHY 214" A and B pair with different ENV 214 sections).
+ */
 export const ConflictInputSchema = z.object({
   crn: CrnSchema,
   courseCode: CourseCodeSchema,
-  crossListings: z.array(CourseCodeSchema).default([]),
+  crossListings: z.array(CrossListingSchema).default([]),
   meetings: z.array(MeetingSchema),
 });
 export type ConflictInput = z.input<typeof ConflictInputSchema>;

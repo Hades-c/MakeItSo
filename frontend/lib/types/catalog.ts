@@ -113,6 +113,21 @@ export const SectionRestrictionsSchema = z.object({
 });
 export type SectionRestrictions = z.infer<typeof SectionRestrictionsSchema>;
 
+/** One cross-listed sibling listing of a section (from upstream `cross_listings[]`). */
+export const CrossListingSchema = z.object({
+  crn: CrnSchema,
+  courseCode: CourseCodeSchema,
+  section: z.string().min(1).max(4),
+});
+export type CrossListing = z.infer<typeof CrossListingSchema>;
+
+/** The distinct sibling course codes of a section's cross-listings, in order ("PSY 303"). */
+export function crossListedCodes(
+  crossListings: readonly Pick<CrossListing, "courseCode">[],
+): string[] {
+  return [...new Set(crossListings.map((listing) => listing.courseCode))];
+}
+
 /**
  * One section of a course in one term (the listing the student registers under).
  * - courseCode: this listing's code ("HIS 357"); subject "HIS"; number "357"; section "A".
@@ -122,8 +137,10 @@ export type SectionRestrictions = z.infer<typeof SectionRestrictionsSchema>;
  * - prerequisitesText: the official "Prerequisites" block as plain text; null when there is none.
  * - descriptionText: HTML → text, leading "Instructor" paragraph and the Prerequisites block removed.
  * - notes: upstream note descriptions, verbatim, in upstream order (codes are parsed into `restrictions`).
- * - crossListings: course codes of the cross-listed siblings ("PSY 303"): one class, counted once. A listing with
- *   `enrollment.max === 0` shows "Register as <sibling>".
+ * - crossListings: the cross-listed sibling LISTINGS (upstream `cross_listings[]`: crn, course code, section): one
+ *   class, counted once. A listing with `enrollment.max === 0` shows "Register as <courseCode> <section>" and
+ *   "Copy for WebTree" uses the sibling's `crn`. Match siblings by CRN, never by code: "PHY 214" has sections A and
+ *   B, each cross-listed with a different ENV 214 section.
  * - crossPostings: department codes the course is also browsable under ("IGEN"); browse tags only.
  * - regFor: when this listing is a registration section for another course (upstream `reg_fors`), that course's
  *   code, shown as "Registration section for <title>"; else null.
@@ -145,7 +162,7 @@ export const SectionSchema = z.object({
   descriptionText: z.string(),
   notes: z.array(z.string()),
   restrictions: SectionRestrictionsSchema,
-  crossListings: z.array(CourseCodeSchema),
+  crossListings: z.array(CrossListingSchema),
   crossPostings: z.array(z.string()),
   regFor: CourseCodeSchema.nullable(),
 });
@@ -177,6 +194,7 @@ export const CourseSummarySchema = z.object({
   openSeats: z.number().int().min(0),
   /** "First Last" of every non-staff instructor, deduplicated, upstream order. */
   instructorNames: z.array(z.string()),
+  /** Distinct sibling course codes over all sections (crossListedCodes); a course-level summary only. */
   crossListings: z.array(CourseCodeSchema),
   /** True when at least one section has only TBA meetings. */
   hasTba: z.boolean(),
@@ -185,10 +203,17 @@ export type CourseSummary = z.infer<typeof CourseSummarySchema>;
 
 /**
  * Canonical code among cross-listed siblings (PLAN §5 "Plan items"): the alphabetically first of the listing's own
- * code and its crossListings, so every sibling maps to the same key ("BIO 331" + ["PSY 303"] → "BIO 331").
+ * code and its sibling codes, so every sibling maps to the same key ("BIO 331" + ["PSY 303"] → "BIO 331").
+ * Takes sibling codes or a section's `crossListings` objects.
  */
-export function canonicalCourseCode(code: string, crossListings: readonly string[] = []): string {
-  return [code, ...crossListings].sort()[0] ?? code;
+export function canonicalCourseCode(
+  code: string,
+  crossListings: readonly (string | Pick<CrossListing, "courseCode">)[] = [],
+): string {
+  const siblings = crossListings.map((listing) =>
+    typeof listing === "string" ? listing : listing.courseCode,
+  );
+  return [code, ...siblings].sort()[0] ?? code;
 }
 
 // ---- Queries -----------------------------------------------------------------------------------------------------

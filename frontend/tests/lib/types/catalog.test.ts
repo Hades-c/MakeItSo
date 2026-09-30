@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AvailabilitySchema,
   canonicalCourseCode,
+  crossListedCodes,
   CatalogQuerySchema,
   CourseSchema,
   SectionSchema,
@@ -10,6 +11,7 @@ import {
   type Section,
 } from "@/lib/types/catalog";
 import { CourseCodeSchema, normalizeCourseCode } from "@/lib/types/common";
+import { ConflictInputSchema } from "@/lib/types/plan";
 
 /** BIO 331 A, Fall 2026, as W1 should normalise it (cross-listed with PSY 303 A, max 0 seats). */
 const bio331: Section = {
@@ -47,7 +49,7 @@ const bio331: Section = {
     permissionRequired: false,
     notIfCompMet: false,
   },
-  crossListings: ["PSY 303"],
+  crossListings: [{ crn: "10440", courseCode: "PSY 303", section: "A" }],
   crossPostings: ["IGEN", "INEU", "PBH", "PSY"],
   regFor: null,
 };
@@ -94,6 +96,28 @@ describe("catalog types (PLAN §4.1.2)", () => {
     expect(canonicalCourseCode("PSY 303", ["BIO 331"])).toBe("BIO 331");
     expect(canonicalCourseCode("BIO 331", ["PSY 303"])).toBe("BIO 331");
     expect(canonicalCourseCode("CSC 221")).toBe("CSC 221");
+    expect(canonicalCourseCode("PSY 303", bio331.crossListings)).toBe("PSY 303");
+    expect(canonicalCourseCode(bio331.courseCode, bio331.crossListings)).toBe("BIO 331");
+  });
+
+  it("keys cross-listed siblings by CRN (ENV 214 A → PHY 214 A, not PHY 214 B)", () => {
+    const env214a = {
+      ...bio331,
+      crn: "10227",
+      courseCode: "ENV 214",
+      subject: "ENV",
+      number: "214",
+      enrollment: { current: 0, max: 0, remaining: 0 },
+      crossListings: [{ crn: "10393", courseCode: "phy214", section: "A" }],
+    };
+    const parsed = SectionSchema.parse(env214a);
+    expect(parsed.crossListings).toEqual([{ crn: "10393", courseCode: "PHY 214", section: "A" }]);
+    expect(crossListedCodes([...parsed.crossListings, { courseCode: "PHY 214" }])).toEqual([
+      "PHY 214",
+    ]);
+    // The old code-only form is rejected: it cannot say which PHY 214 section to register in.
+    expect(SectionSchema.safeParse({ ...env214a, crossListings: ["PHY 214"] }).success).toBe(false);
+    expect(ConflictInputSchema.parse(parsed).crossListings[0]?.crn).toBe("10393");
   });
 
   it("parses URL-shaped catalog queries with defaults", () => {

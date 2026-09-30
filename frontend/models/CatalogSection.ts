@@ -68,7 +68,20 @@ const CatalogSectionSchema = new Schema(
       permissionRequired: { type: Boolean, default: false },
       notIfCompMet: { type: Boolean, default: false },
     },
-    crossListings: { type: [String], default: [] },
+    /** Sibling listings (lib/types/catalog.ts CrossListing): match them by crn. */
+    crossListings: {
+      type: [
+        new Schema(
+          {
+            crn: { type: String, required: true },
+            courseCode: { type: String, required: true },
+            section: { type: String, required: true },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     crossPostings: { type: [String], default: [] },
     regFor: { type: String, default: null },
     searchText: { type: String, default: "" },
