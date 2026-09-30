@@ -4,11 +4,11 @@ import * as feeds from "@/server/feeds";
 import { ApiError } from "@/server/http";
 import * as plan from "@/server/plan";
 import * as programs from "@/server/programs";
-import * as rmp from "@/server/rmp";
 
 /**
  * The frozen service surfaces (PLAN §4.1.3–7). Until each workstream lands, every export is a typed stub that
  * throws ApiError(501, "unavailable"). This test pins the export names so a rename is a visible contract change.
+ * Implemented services leave this list and pin their names in their own tests (server/rmp: tests/rmp).
  */
 const SURFACES = {
   catalog: [
@@ -51,7 +51,6 @@ const SURFACES = {
     ],
   ],
   feeds: [feeds, ["getLibraryHours", "listEvents", "syncFeeds"]],
-  rmp: [rmp, ["getRatings", "syncRoster"]],
   programs: [programs, ["getProgram", "listPrograms", "officialProgramNames", "syncPrograms"]],
 } as const;
 
