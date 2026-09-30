@@ -10,16 +10,23 @@ import Program, { type ProgramDoc } from "@/models/Program";
 import { now as serverNow } from "@/server/clock";
 import { getDb, trusted } from "@/server/db";
 import { ApiError, isDuplicateKeyError } from "@/server/http/errors";
+import { MissingFixtureError } from "@/server/http/fixtures";
 import {
   ACALOG_CATALOG,
+  MAX_LIST_DROP_SHARE,
+  PROGRAM_DETAIL_RETRY_MS,
   PROGRAM_DETAIL_TTL_MS,
   programPublicUrl,
   SYNC_DETAIL_BUDGET_MS,
   SYNC_DETAIL_CONCURRENCY,
 } from "@/server/programs/catalog-info";
 import { cleanText } from "@/server/programs/html";
-import { matchProgramName } from "@/server/programs/names";
-import { parseProgramDetail, requirementsTextOf } from "@/server/programs/parse";
+import { matchProgramName, programKey } from "@/server/programs/names";
+import {
+  type ParsedSection,
+  parseProgramDetail,
+  requirementsTextOf,
+} from "@/server/programs/parse";
 import { programSnapshot, type SnapshotProgram } from "@/server/programs/snapshot";
 import {
   type AcalogProgramListItem,
@@ -41,7 +48,7 @@ import { recordSync } from "@/server/sync";
  *     until a list sync has succeeded;
  *   - each program's offerings: its parsed page when one was read, else the snapshot's names;
  *   - requirement text: the parsed page only, read on first request and cached for PROGRAM_DETAIL_TTL_MS (a
- *     failed refresh keeps serving the cached copy).
+ *     failed refresh keeps serving the cached copy, and no request asks Acalog again for PROGRAM_DETAIL_RETRY_MS).
  */
 
 export interface ProgramsDeps {
@@ -60,10 +67,15 @@ interface OfferingName {
 }
 
 /**
- * What the list paths read of a stored program: everything but the requirement text (a department page's sections
- * run to tens of kilobytes; only getProgram needs them, and it loads its one document in full).
+ * What the list paths read of a stored program: everything but the text (a department page's sections run to
+ * tens of kilobytes; only getProgram needs them, and it loads its one document in full).
  */
-const ROW_PROJECTION = { "offerings.sections": 0, descriptionText: 0 } as const;
+const ROW_PROJECTION = {
+  "offerings.sections": 0,
+  pageSections: 0,
+  "elsewhereOfferings.text": 0,
+  descriptionText: 0,
+} as const;
 
 /** One program as the read paths see it. */
 export interface CatalogRow {
@@ -72,7 +84,7 @@ export interface CatalogRow {
   name: string;
   code: string;
   offerings: OfferingName[];
-  /** The stored document without requirement text (ROW_PROJECTION), when there is one. */
+  /** The stored document without its text (ROW_PROJECTION), when there is one. */
   doc: ProgramLean | null;
   /** The snapshot's entry, when there is one. */
   snapshot: SnapshotProgram | null;
@@ -208,23 +220,38 @@ export function findIn(
 
 // ---- Program pages -----------------------------------------------------------------------------------------------
 
-/** The contract shape of a stored program page (validated: nothing unparsed leaves the service). */
-export function toAcademicProgram(doc: ProgramLean): AcademicProgram {
+/**
+ * The contract shape of a stored program page (validated: nothing unparsed leaves the service). `notes` adds
+ * sections to offerings by index (the other pages' statements of an offering, see restatementNotes).
+ */
+export function toAcademicProgram(
+  doc: ProgramLean,
+  notes: ReadonlyMap<number, readonly ParsedSection[]> = new Map(),
+): AcademicProgram {
   return AcademicProgramSchema.parse({
     acalogId: doc.acalogId,
     catalogId: doc.catalogId,
     catalogYear: doc.catalogYear,
     name: doc.name,
     url: doc.url,
-    offerings: doc.offerings.map((offering) => ({
+    offerings: doc.offerings.map((offering, index) => ({
       kind: offering.kind,
       name: offering.name,
       degree: offering.degree ?? null,
-      requirementsText: requirementsTextOf(offering.sections),
+      requirementsText: requirementsTextOf([
+        ...sectionsOf(offering.sections),
+        ...(notes.get(index) ?? []),
+      ]),
       courseCodes: offering.courseCodes,
     })),
     fetchedAt: (doc.detailFetchedAt ?? doc.fetchedAt).toISOString(),
   });
+}
+
+function sectionsOf(
+  sections: readonly { heading?: string | null; text?: string | null }[],
+): ParsedSection[] {
+  return sections.map((section) => ({ heading: section.heading ?? "", text: section.text ?? "" }));
 }
 
 type LoadResult = { ok: true; doc: ProgramLean } | { ok: false; error: string };
@@ -239,7 +266,7 @@ async function upsertProgram(
   const write = () =>
     Program.findOneAndUpdate({ catalogId: ACALOG_CATALOG.id, acalogId }, update, {
       upsert: true,
-      new: true,
+      returnDocument: "after",
       lean: true,
     }) as unknown as Promise<ProgramLean | null>;
   try {
@@ -324,6 +351,8 @@ export function loadProgramPage(
           missingCourseRefs: offering.missingCourseRefs,
           acalogCoreId: offering.acalogCoreId,
         })),
+        pageSections: parsed.pageSections,
+        elsewhereOfferings: parsed.elsewhere,
         descriptionText: parsed.descriptionText,
         detailModified: parsed.modified,
         detailFetchedAt: at,
@@ -345,6 +374,123 @@ export function loadProgramPage(
 export const CATALOG_UNAVAILABLE =
   "The Davidson catalog could not be reached, so this program's requirements are not available right now. Try again later.";
 
+function isFresh(doc: ProgramLean, at: Date): boolean {
+  if (!doc.detailFetchedAt) return false;
+  const age = at.getTime() - doc.detailFetchedAt.getTime();
+  return age >= 0 && age < PROGRAM_DETAIL_TTL_MS;
+}
+
+/** Milliseconds until a page whose last read failed may be asked for again (0 = now). */
+function retryWait(doc: Pick<ProgramLean, "lastDetailErrorAt"> | null, at: Date): number {
+  const failedAt = doc?.lastDetailErrorAt?.getTime();
+  if (failedAt === undefined) return 0;
+  return Math.max(0, failedAt + PROGRAM_DETAIL_RETRY_MS - at.getTime());
+}
+
+/**
+ * The stored page of a program, fresh or refreshed from Acalog: its last good copy when a refresh fails or a
+ * recent failure holds off asking again; `null` (with how long to wait) when there is none.
+ */
+async function pageOf(
+  row: CatalogRow,
+  rows: readonly CatalogRow[],
+  deps: ProgramsDeps,
+): Promise<{ doc: ProgramLean } | { doc: null; retryAfterMs: number }> {
+  const doc = row.doc
+    ? ((await Program.findOne({
+        catalogId: ACALOG_CATALOG.id,
+        acalogId: row.acalogId,
+      }).lean()) as ProgramLean | null)
+    : null;
+  const at = deps.now();
+  if (doc && isFresh(doc, at)) return { doc };
+  const wait = retryWait(doc, at);
+  if (wait === 0) {
+    const loaded = await loadProgramPage(
+      row,
+      rows.map((candidate) => candidate.name),
+      deps,
+    );
+    if (loaded.ok) return { doc: loaded.doc };
+  }
+  if (doc?.detailFetchedAt) return { doc };
+  return { doc: null, retryAfterMs: wait || PROGRAM_DETAIL_RETRY_MS };
+}
+
+const warnedRestatements = new Set<string>();
+
+function familyOf(kind: ProgramOfferingKind): "major" | "minor" | null {
+  if (kind === "major") return "major";
+  if (kind === "minor" || kind === "interdisciplinary-minor") return "minor";
+  return null;
+}
+
+/** " (updated 2026-08-19)" from Acalog's "2026-08-19 10:11:12" stamp. */
+function updated(stamp: string | null | undefined): string {
+  return stamp ? ` (updated ${stamp.slice(0, 10)})` : "";
+}
+
+/**
+ * Sections to add when another page of the catalog also states one of this page's offerings (the FMDS page's
+ * "Digital Studies Minor Requirements" next to the Digital Studies page; the Greek minor on the Classics page):
+ * both texts are shown, with a note, rather than one being chosen silently (PLAN §8: the Registrar decides). A
+ * restatement whose text is not already part of this page's is logged for the owner.
+ */
+async function restatementNotes(
+  doc: ProgramLean,
+  row: CatalogRow,
+  rows: readonly CatalogRow[],
+  deps: ProgramsDeps,
+): Promise<Map<number, ParsedSection[]>> {
+  const key = programKey(doc.name);
+  const hinted = new Set(row.snapshot?.restatedBy ?? []);
+  const stored = (await Program.find(
+    {
+      catalogId: ACALOG_CATALOG.id,
+      acalogId: trusted({ $ne: doc.acalogId }),
+      "elsewhereOfferings.subjectKey": key,
+    },
+    { acalogId: 1 },
+  ).lean()) as { acalogId: number }[];
+  for (const other of stored) hinted.add(other.acalogId);
+
+  const notes = new Map<number, ParsedSection[]>();
+  for (const acalogId of hinted) {
+    const otherRow = rows.find((candidate) => candidate.acalogId === acalogId);
+    if (!otherRow || acalogId === doc.acalogId) continue;
+    const other = await pageOf(otherRow, rows, deps);
+    if (!other.doc) continue;
+    for (const restated of other.doc.elsewhereOfferings) {
+      if (restated.subjectKey !== key) continue;
+      doc.offerings.forEach((offering, index) => {
+        if (familyOf(offering.kind) !== restated.family) return;
+        notes.set(index, [
+          ...(notes.get(index) ?? []),
+          {
+            heading: `Also described on the ${other.doc.name} page`,
+            text: [
+              `The ${other.doc.name} page of the ${ACALOG_CATALOG.year} catalog${updated(other.doc.detailModified)} also describes this ${restated.family}; this page${updated(doc.detailModified)} is the one above. Where the two differ, ask the program director or the Registrar which one applies.`,
+              restated.text ?? "",
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
+          },
+        ]);
+        const own = programKey(requirementsTextOf(sectionsOf(offering.sections)));
+        const theirs = programKey(restated.text ?? "");
+        const warning = `${doc.acalogId}:${acalogId}:${offering.name}`;
+        if (!own.includes(theirs) && !warnedRestatements.has(warning)) {
+          warnedRestatements.add(warning);
+          console.warn(
+            `[programs] "${offering.name}" (${doc.name}, Acalog ${doc.acalogId}) is also described, differently, on ${other.doc.name} (Acalog ${acalogId}); both texts are shown.`,
+          );
+        }
+      });
+    }
+  }
+  return notes;
+}
+
 /** One program with requirement text; null for a program the catalog does not list. */
 export async function getProgramWith(
   acalogId: number,
@@ -354,24 +500,13 @@ export async function getProgramWith(
   const rows = await catalogRows();
   const row = rows.find((candidate) => candidate.acalogId === acalogId);
   if (!row) return null;
-  const doc = row.doc
-    ? ((await Program.findOne({
-        catalogId: ACALOG_CATALOG.id,
-        acalogId,
-      }).lean()) as ProgramLean | null)
-    : null;
-  if (doc?.detailFetchedAt) {
-    const age = deps.now().getTime() - doc.detailFetchedAt.getTime();
-    if (age >= 0 && age < PROGRAM_DETAIL_TTL_MS) return toAcademicProgram(doc);
+  const page = await pageOf(row, rows, deps);
+  if (!page.doc) {
+    throw new ApiError(503, "unavailable", CATALOG_UNAVAILABLE, undefined, {
+      "Retry-After": String(Math.ceil(page.retryAfterMs / 1000)),
+    });
   }
-  const loaded = await loadProgramPage(
-    row,
-    rows.map((candidate) => candidate.name),
-    deps,
-  );
-  if (loaded.ok) return toAcademicProgram(loaded.doc);
-  if (doc?.detailFetchedAt) return toAcademicProgram(doc);
-  throw new ApiError(503, "unavailable", CATALOG_UNAVAILABLE);
+  return toAcademicProgram(page.doc, await restatementNotes(page.doc, row, rows, deps));
 }
 
 // ---- Weekly sync -------------------------------------------------------------------------------------------------
@@ -424,6 +559,8 @@ function listRowUpdate(item: AcalogProgramListItem, at: Date) {
     },
     $setOnInsert: {
       offerings: [],
+      pageSections: [],
+      elsewhereOfferings: [],
       descriptionText: "",
       detailModified: null,
       detailFetchedAt: null,
@@ -431,24 +568,29 @@ function listRowUpdate(item: AcalogProgramListItem, at: Date) {
   };
 }
 
-/**
- * The weekly refresh (PLAN §6.1 W1b): read the program list; on any failure keep everything as it is and record
- * the error. Otherwise store the list (programs that left it stop being listed) and re-read the pages whose
- * `modified` stamp differs from the copy we have (the stored page, else the snapshot), a few at a time within a
- * time budget. One recordSync("catalog", …) per run.
- */
-export async function runProgramSync(deps: ProgramsDeps): Promise<ProgramSyncResult> {
-  const startedMs = performance.now();
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+}
+
+/** One sync run without the recordSync call (runProgramSync records its outcome exactly once). */
+async function syncOnce(deps: ProgramsDeps, startedMs: number): Promise<ProgramSyncResult> {
   await getDb();
   const list = await fetchProgramList(deps.fetcher);
   const at = deps.now();
-  if (!list.ok) {
-    await recordSync("catalog", { ok: false, count: 0, error: list.error, at });
-    return { ok: false, count: 0, error: list.error };
-  }
+  if (!list.ok) return { ok: false, count: 0, error: list.error };
 
   const items = list.data.filter(isPublicProgram);
-  const ids = items.map((item) => item.id);
+  const ids = new Set(items.map((item) => item.id));
+  const before = await catalogRows();
+  const dropped = before.filter((row) => !ids.has(row.acalogId)).length;
+  if (before.length > 0 && dropped > before.length * MAX_LIST_DROP_SHARE) {
+    return {
+      ok: false,
+      count: 0,
+      error: `Acalog's list would drop ${dropped} of the ${before.length} programs we have; the last good copy is kept`,
+    };
+  }
+
   const writes = items.map((item) => ({
     updateOne: {
       filter: { catalogId: ACALOG_CATALOG.id, acalogId: item.id },
@@ -460,7 +602,7 @@ export async function runProgramSync(deps: ProgramsDeps): Promise<ProgramSyncRes
     ordered: false,
   });
   await Program.updateMany(
-    { catalogId: ACALOG_CATALOG.id, acalogId: trusted({ $nin: ids }) },
+    { catalogId: ACALOG_CATALOG.id, acalogId: trusted({ $nin: [...ids] }) },
     { $set: { listed: false } },
   );
 
@@ -481,7 +623,13 @@ export async function runProgramSync(deps: ProgramsDeps): Promise<ProgramSyncRes
       pages.deferred += 1;
       return;
     }
-    const result = await loadProgramPage(row, names, deps);
+    let result: LoadResult;
+    try {
+      result = await loadProgramPage(row, names, deps);
+    } catch (error) {
+      if (error instanceof MissingFixtureError) throw error;
+      result = { ok: false, error: errorMessage(error) };
+    }
     if (result.ok) pages.updated += 1;
     else {
       pages.failed += 1;
@@ -494,7 +642,30 @@ export async function runProgramSync(deps: ProgramsDeps): Promise<ProgramSyncRes
       failures,
     );
   }
-
-  await recordSync("catalog", { ok: true, count: items.length, at });
   return { ok: true, count: items.length, pages };
+}
+
+/**
+ * The weekly refresh (PLAN §6.1 W1b): read the program list; on any failure keep everything as it is and record
+ * the error. Otherwise store the list (programs that left it stop being listed) and re-read the pages whose
+ * `modified` stamp differs from the copy we have (the stored page, else the snapshot), a few at a time within a
+ * time budget. Exactly one recordSync("catalog", …) per run, also when something unexpected throws.
+ */
+export async function runProgramSync(deps: ProgramsDeps): Promise<ProgramSyncResult> {
+  const startedMs = performance.now();
+  let result: ProgramSyncResult;
+  try {
+    result = await syncOnce(deps, startedMs);
+  } catch (error) {
+    if (error instanceof MissingFixtureError) throw error;
+    console.error("[programs] the program sync failed", error);
+    result = { ok: false, count: 0, error: `The program sync failed: ${errorMessage(error)}` };
+  }
+  await recordSync("catalog", {
+    ok: result.ok,
+    count: result.ok ? result.count : 0,
+    ...(result.error ? { error: result.error } : {}),
+    at: deps.now(),
+  });
+  return result;
 }

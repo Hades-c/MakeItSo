@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
 import { AcademicProgramSchema } from "@/lib/types/catalog";
 import { MAJORS } from "@/lib/utils";
@@ -16,10 +16,15 @@ import {
   officialProgramNames,
   programNames,
 } from "@/server/programs";
-import { PROGRAM_DETAIL_TTL_MS } from "@/server/programs/catalog-info";
+import {
+  PROGRAM_DETAIL_RETRY_MS,
+  PROGRAM_DETAIL_TTL_MS,
+  programDetailUrl,
+} from "@/server/programs/catalog-info";
 import { getProgramWith, type ProgramsDeps } from "@/server/programs/service";
 import { programSnapshot } from "@/server/programs/snapshot";
 import { type CatalogFetcher, fetchCatalog } from "@/server/programs/upstream";
+import { recordedPageJson } from "./recorded";
 
 let testDb: TestDb;
 
@@ -54,6 +59,18 @@ function deps(fetcher: CatalogFetcher, at: Date = now()): ProgramsDeps {
 }
 
 const WAF = { status: 202, text: "", headers: new Headers({ "x-amzn-waf-action": "challenge" }) };
+const MINUTE = 60_000;
+
+/** Answers program pages from the recorded 2026-2027 pages (tests/programs/recorded), counting requests. */
+function recordedFetcher() {
+  const urls: string[] = [];
+  const fetcher: CatalogFetcher = async (url) => {
+    urls.push(url);
+    const id = Number(/\/program\/(\d+)$/.exec(url)?.[1]);
+    return { status: 200, headers: new Headers(), text: recordedPageJson(id) };
+  };
+  return { urls, fetcher };
+}
 
 function pageWith(id: number, patch: (page: Record<string, unknown>) => void) {
   const page = JSON.parse(
@@ -318,6 +335,108 @@ describe("getProgram (lazy program pages, cached 7 days)", () => {
       "Minor in Economics",
     ]);
     expect(await listPrograms()).toHaveLength(51);
+  });
+
+  it("does not ask Acalog again for a while after a failed read (stale copy, or 503 with Retry-After)", async () => {
+    const t0 = now();
+    await getProgramWith(174, deps(counting().fetcher, t0));
+    const failing = counting(() => WAF);
+    const stale = new Date(t0.getTime() + 8 * DAY);
+    await getProgramWith(174, deps(failing.fetcher, stale));
+    expect(failing.urls).toHaveLength(1);
+    for (let i = 1; i <= 5; i++) {
+      const again = await getProgramWith(
+        174,
+        deps(failing.fetcher, new Date(stale.getTime() + i * MINUTE)),
+      );
+      expect(again?.fetchedAt).toBe(t0.toISOString());
+    }
+    expect(failing.urls).toHaveLength(1);
+    await getProgramWith(
+      174,
+      deps(failing.fetcher, new Date(stale.getTime() + PROGRAM_DETAIL_RETRY_MS)),
+    );
+    expect(failing.urls).toHaveLength(2);
+
+    // A page never read: 503 with Retry-After, and no new request until the wait is over.
+    const never = counting(() => WAF);
+    await expect(getProgramWith(188, deps(never.fetcher, t0))).rejects.toMatchObject({
+      status: 503,
+      headers: { "Retry-After": String(PROGRAM_DETAIL_RETRY_MS / 1000) },
+    });
+    const error = await getProgramWith(
+      188,
+      deps(never.fetcher, new Date(t0.getTime() + 10 * MINUTE)),
+    ).catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 503, headers: { "Retry-After": String(20 * 60) } });
+    expect(never.urls).toHaveLength(1);
+    const ok = counting();
+    const read = await getProgramWith(188, deps(ok.fetcher, new Date(t0.getTime() + 31 * MINUTE)));
+    expect(read?.name).toBe("Mathematics");
+    expect(ok.urls).toHaveLength(1);
+  });
+
+  it("stores the page's other sections and the offerings it states for other pages", async () => {
+    const { fetcher } = recordedFetcher();
+    await getProgramWith(213, deps(fetcher));
+    const doc = await Program.findOne({ acalogId: 213 }).lean();
+    expect(doc?.pageSections.map((section) => section.heading)).toEqual([
+      "Honors Requirements",
+      "Digital Studies Minor Requirements",
+      "Course Numbering Rationale",
+    ]);
+    expect(doc?.elsewhereOfferings).toEqual([
+      expect.objectContaining({
+        family: "minor",
+        subjectKey: "digital studies",
+        name: "Minor in Digital Studies",
+      }),
+    ]);
+    // Heading-only sections (the statement is the heading) are stored with empty text.
+    await getProgramWith(210, deps(fetcher));
+    const eas = await Program.findOne({ acalogId: 210 }).lean();
+    expect(eas?.offerings[1]?.sections).toContainEqual({
+      heading: "(3) An international Experience in East Asia of at least one month's duration",
+      text: "",
+    });
+    // List reads leave the text out.
+    expect((await listPrograms()).find((p) => p.acalogId === 213)?.offerings).toHaveLength(2);
+  });
+
+  it("shows another page's statement of an offering next to this page's, and logs the difference once", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { urls, fetcher } = recordedFetcher();
+    const digital = await getProgramWith(211, deps(fetcher));
+    // The Digital Studies page (211) is restated by the FMDS page (213), which is read with it.
+    expect(urls).toEqual([programDetailUrl(211), programDetailUrl(213)]);
+    const text = digital?.offerings[0]?.requirementsText ?? "";
+    expect(text).toContain(
+      "The Digital Studies Interdisciplinary minor requires six courses, including an introductory class",
+    );
+    expect(text).toContain("Also described on the Film, Media, and Digital Studies page\n");
+    expect(text).toContain(
+      "The Film, Media, and Digital Studies page of the 2026-2027 catalog (updated 2026-08-19) also describes this minor; this page (updated 2026-06-08) is the one above.",
+    );
+    expect(text).toContain("And 5 electives from this list, including one 300 or 400-level class");
+    expect(text.indexOf("Also described on")).toBeGreaterThan(
+      text.indexOf("Application Procedure"),
+    );
+    expect(
+      warn.mock.calls.filter(([message]) => String(message).includes("also described")),
+    ).toHaveLength(1);
+
+    await getProgramWith(211, deps(fetcher));
+    expect(urls).toHaveLength(2); // both pages cached
+    expect(
+      warn.mock.calls.filter(([message]) => String(message).includes("also described")),
+    ).toHaveLength(1);
+    warn.mockRestore();
+
+    // Pages nobody restates get no note and no extra read.
+    const plain = counting();
+    const cs = await getProgramWith(172, deps(plain.fetcher));
+    expect(plain.urls).toEqual([programDetailUrl(172)]);
+    expect(cs?.offerings[0]?.requirementsText).not.toContain("Also described on");
   });
 
   it("getProgram uses fetchExternal (fixtures in tests)", async () => {

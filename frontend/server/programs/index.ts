@@ -25,8 +25,13 @@ import {
  * checked-in snapshot (server/programs/snapshot.json: every public program and its official offering names), so
  * everything here works before the first sync. The weekly sync (GET /api/cron/programs) refreshes the list and the
  * pages Acalog reports as changed; other pages load on first request and are cached for 7 days. A failed refresh
- * (non-200, WAF 202 challenge, empty or non-JSON body, fewer than 45 programs) keeps the last good copy and is
- * recorded (recordSync("catalog", …) for the sync, the program document for a page).
+ * (non-200, WAF 202 challenge, empty or non-JSON body, fewer than 45 public programs, or a list that would drop
+ * more than a fifth of the programs) keeps the last good copy and is recorded (recordSync("catalog", …) once per
+ * sync run; the program document for a page, which also holds off asking Acalog again for 30 minutes).
+ *
+ * Requirement text is Acalog's, as text: each offering gets its own sections plus the page's sections that apply
+ * to it (see server/programs/parse.ts); the page's other sections (honors, course catalog, numbering rationale)
+ * are stored too. When another page also states an offering (FMDS's Digital Studies minor), both texts are shown.
  *
  * Official names are "<Kind> in <Subject> (<Degree> Degree)", from Acalog's headings: "Major in Computer Science
  * (B.S. Degree)", "Minor in Economics", "Interdisciplinary Minor in Data Science". The profile stores these names;
@@ -84,8 +89,10 @@ export async function programNames(): Promise<ProgramNames> {
 
 /**
  * The official offering a free-text name means: the official name in any spelling ("&" or "and", punctuation,
- * case), a subject ("Economics" → the major, "Economics minor" → the minor), or a department page with a single
- * offering of that kind. Null when nothing or more than one offering matches ("Classics" has two majors).
+ * case), a subject ("Economics" → the major, "Economics (minor)" → the minor, "Computer Science, B.S." → the
+ * major), or a department page with a single offering of that kind. A kind the text names is a constraint:
+ * "Physics minor" is null (two Physics minors, no fallback to the major), and so is "Minor in Economics" with
+ * `kinds: ["major"]`. Null when nothing or more than one offering matches ("Classics" has two majors).
  * `kinds` restricts the candidates (e.g. ["minor", "interdisciplinary-minor"] for Profile.minors).
  */
 export async function findProgramByName(

@@ -5,11 +5,11 @@ import { startTestDb, type TestDb } from "../helpers/db";
 import Program from "@/models/Program";
 import SourceSync from "@/models/SourceSync";
 import { now } from "@/server/clock";
-import { getDb } from "@/server/db";
+import { getDb, trusted } from "@/server/db";
 import { z } from "zod";
-import { ExternalFetchError } from "@/server/http";
+import { ExternalFetchError, MissingFixtureError } from "@/server/http";
 import { getProgram, listPrograms, programNames, syncPrograms } from "@/server/programs";
-import { programListUrl } from "@/server/programs/catalog-info";
+import { MAX_LIST_DROP_SHARE, programListUrl } from "@/server/programs/catalog-info";
 import { getProgramWith, type ProgramsDeps, runProgramSync } from "@/server/programs/service";
 import { type CatalogFetcher, fetchCatalog, type RawResponse } from "@/server/programs/upstream";
 import { getSourceStatuses } from "@/server/sync";
@@ -179,6 +179,90 @@ describe("syncPrograms (weekly list refresh)", () => {
       z.enum(names.majors as [string, ...string[]]).safeParse("Major in Economics (A.B. Degree)")
         .success,
     ).toBe(true);
+  });
+
+  it(`refuses a list that would drop more than ${MAX_LIST_DROP_SHARE * 100}% of the programs we have`, async () => {
+    const t0 = now();
+    await runProgramSync(deps(upstream(json(LIST)).fetcher, t0));
+    // A catalog that had grown to 66 programs; the new list has only the recorded 51 public ones.
+    await Program.insertMany(
+      Array.from({ length: 15 }, (_, i) => ({
+        acalogId: 6000 + i,
+        catalogId: 4,
+        catalogYear: "2026-2027",
+        name: `Program ${i}`,
+        url: "https://catalog.davidson.edu/content.php?catoid=28&navoid=1340",
+        listed: true,
+        listSyncedAt: t0,
+        fetchedAt: t0,
+      })),
+    );
+    const result = await runProgramSync(deps(upstream(json(LIST)).fetcher));
+    expect(result).toEqual({
+      ok: false,
+      count: 0,
+      error: "Acalog's list would drop 15 of the 66 programs we have; the last good copy is kept",
+    });
+    expect(await Program.countDocuments({ listed: true })).toBe(66);
+    expect(await catalogStatus()).toMatchObject({ status: "error" });
+
+    // Dropping fewer is a normal change.
+    await Program.deleteMany({ acalogId: trusted({ $gte: 6005 }) });
+    expect(await runProgramSync(deps(upstream(json(LIST)).fetcher))).toMatchObject({
+      ok: true,
+      count: 51,
+    });
+    expect(await Program.countDocuments({ listed: true })).toBe(51);
+  });
+
+  it("records exactly one failure when something unexpected throws, after or before the list is stored", async () => {
+    const spy = vi.spyOn(Program, "bulkWrite").mockRejectedValueOnce(new Error("mongo is down"));
+    const result = await runProgramSync(deps(upstream(json(LIST)).fetcher));
+    spy.mockRestore();
+    expect(result).toEqual({
+      ok: false,
+      count: 0,
+      error: "The program sync failed: Error: mongo is down",
+    });
+    expect(await SourceSync.findOne({ sourceId: "catalog" }).lean()).toMatchObject({
+      ok: false,
+      consecutiveFailures: 1,
+      lastError: "The program sync failed: Error: mongo is down",
+    });
+  });
+
+  it("counts a page that throws or cannot be validated as failed, and the run as a success", async () => {
+    const changed = LIST["program-list"].map((item) =>
+      [172, 174].includes(item.id) ? { ...item, modified: "2026-10-05 09:00:00" } : item,
+    );
+    const depth = 3000;
+    const nested =
+      '{"id":1,"name":"x","courses":[],"children":['.repeat(depth) + "]}".repeat(depth);
+    const page172 = readFileSync(path.join(FIXTURES, "program-172.json"), "utf8").replace(
+      '"cores":[',
+      `"cores":[${nested},`,
+    );
+    const fetcher: CatalogFetcher = async (url) => {
+      if (url === programListUrl()) return listResponse(changed);
+      if (url.endsWith("/program/172"))
+        return { status: 200, headers: new Headers(), text: page172 };
+      if (url.endsWith("/program/174")) throw new TypeError("socket hang up");
+      return fetchCatalog(url);
+    };
+    const result = await runProgramSync(deps(fetcher));
+    expect(result).toEqual({ ok: true, count: 51, pages: { updated: 0, failed: 2, deferred: 0 } });
+    expect((await Program.findOne({ acalogId: 172 }).lean())?.lastDetailError).toMatch(
+      /nested deeper/,
+    );
+    expect(await catalogStatus()).toMatchObject({ status: "ok", count: 51 });
+  });
+
+  it("lets MissingFixtureError through without recording anything", async () => {
+    const fetcher: CatalogFetcher = async (url) => {
+      throw new MissingFixtureError("catalog", "GET", url);
+    };
+    await expect(runProgramSync(deps(fetcher))).rejects.toBeInstanceOf(MissingFixtureError);
+    expect(await SourceSync.countDocuments({ sourceId: "catalog" })).toBe(0);
   });
 
   it("stops listing a program that left the catalog", async () => {

@@ -29,8 +29,20 @@ export const PROGRAM_LIST_MAX_PAGES = 5;
  */
 export const MIN_PROGRAM_COUNT = 45;
 
+/**
+ * A list that would stop listing more than this share of the programs we have is refused as a failed ingest too
+ * (Acalog hiding programs by mistake), even when enough remain.
+ */
+export const MAX_LIST_DROP_SHARE = 0.2;
+
 /** Program pages (requirement text) are cached this long before a read refreshes them (PLAN §6.1 W1b). */
 export const PROGRAM_DETAIL_TTL_MS = 7 * 24 * 60 * 60_000;
+
+/**
+ * After a failed page read, requests do not ask Acalog again for this long: they get the stale copy, or a 503 with
+ * Retry-After (so an outage or a WAF challenge is not retried on every request).
+ */
+export const PROGRAM_DETAIL_RETRY_MS = 30 * 60_000;
 
 /** The weekly sync refreshes changed program pages with this much parallelism... */
 export const SYNC_DETAIL_CONCURRENCY = 4;

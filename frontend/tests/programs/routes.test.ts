@@ -141,6 +141,7 @@ describe("GET /api/programs/[id]", () => {
     const res = await program("188");
     expect(res.status).toBe(503);
     expect(res.headers.get("Cache-Control")).toBe(NO_STORE);
+    expect(res.headers.get("Retry-After")).toBe("1800");
     expect((await errorOf(res)).code).toBe("unavailable");
   });
 });
