@@ -11,6 +11,7 @@ import { CAREER_CLUSTERS } from "@/lib/types/content";
 import { CAREERS } from "@/server/content/careers";
 
 const slugs = (careers: readonly { slug: string }[]) => careers.map((career) => career.slug);
+const getCareerBySlug = (slug: string) => CAREERS.find((career) => career.slug === slug)!;
 
 describe("career clusters in the URL", () => {
   it("round-trips every cluster through a readable slug", () => {
@@ -75,6 +76,50 @@ describe("filterCareers", () => {
     );
     // Every word has to match somewhere.
     expect(filterCareers(CAREERS, { cluster: null, q: "software zzzqqq" })).toEqual([]);
+  });
+
+  it("matches at the start of a word, never inside one", () => {
+    const art = slugs(filterCareers(CAREERS, { cluster: null, q: "art" }));
+    // "art" is Art, Arts, "Digital Art"; not "start", "smart" or "department".
+    expect(art).toContain("arts-museum-curation");
+    for (const slug of [
+      "software-engineering",
+      "investment-banking",
+      "medicine",
+      "sports-management",
+    ]) {
+      expect(art).not.toContain(slug);
+    }
+    expect(art.length).toBeLessThan(10);
+    // "ai" is not in "maintain" or "detail".
+    const ai = filterCareers(CAREERS, { cluster: null, q: "ai" });
+    for (const career of ai) {
+      const words = `${career.name} ${career.summary} ${career.whatYouDo.join(" ")}`.toLowerCase();
+      expect(words).toMatch(/\bai/);
+    }
+    // A word's start still finds it: "econ" → Economics, "221" → CSC 221.
+    expect(slugs(filterCareers(CAREERS, { cluster: null, q: "econ" }))).toContain(
+      "investment-banking",
+    );
+    expect(slugs(filterCareers(CAREERS, { cluster: null, q: "221" }))).toContain(
+      "software-engineering",
+    );
+  });
+
+  it("finds a whole word of a career's description, singular or plural", () => {
+    const hospital = CAREERS.filter((c) =>
+      /\bhospitals?\b/i.test([c.summary, ...c.whatYouDo].join(" ")),
+    );
+    expect(hospital.length).toBeGreaterThan(0);
+    expect(slugs(filterCareers(CAREERS, { cluster: null, q: "hospital" }))).toEqual(
+      slugs(hospital),
+    );
+    // Only whole words of the prose: "doctor" does not find Research & Academia's "doctorate".
+    const research = getCareerBySlug("research-academia");
+    expect([research.summary, ...research.whatYouDo].join(" ")).toMatch(/\bdoctorate\b/i);
+    expect(slugs(filterCareers(CAREERS, { cluster: null, q: "doctor" }))).not.toContain(
+      "research-academia",
+    );
   });
 
   it("combines the cluster and the text", () => {

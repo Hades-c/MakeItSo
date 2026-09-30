@@ -55,10 +55,11 @@ export default async function CareersPage({
       />
       <CareerFilters
         filters={filters}
-        total={CAREERS.length}
+        total={filterCareers(CAREERS, { cluster: null, q: filters.q }).length}
         clusters={groups.map((group) => ({
           cluster: group.cluster,
-          count: group.careers.length,
+          // What the chip leads to: this cluster with the current search text.
+          count: filterCareers(group.careers, { cluster: group.cluster, q: filters.q }).length,
         }))}
       />
       {filtered ? (

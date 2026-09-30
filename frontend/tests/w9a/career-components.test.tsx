@@ -102,10 +102,48 @@ describe("CareerFilters", () => {
     const form = container.querySelector("form")!;
     expect(form).toHaveAttribute("method", "get");
     expect(form).toHaveAttribute("action", "/careers");
+    expect(form).toHaveAttribute("autocomplete", "off");
     expect(screen.getByLabelText("Search careers")).toHaveAttribute("name", "q");
     expect(container.querySelector("input[type=hidden][name=cluster]")).toHaveValue(
       "business-and-finance",
     );
+  });
+
+  it("mutes a cluster with nothing to show and still says 0", () => {
+    render(
+      <CareerFilters
+        filters={{ cluster: null, q: "law" }}
+        clusters={[
+          { cluster: "Technology", count: 0 },
+          { cluster: "Business & Finance", count: 1 },
+        ]}
+        total={3}
+      />,
+    );
+    const nav = screen.getByRole("navigation", { name: "Career clusters" });
+    const tech = within(nav).getByRole("link", { name: /Technology/ });
+    expect(tech).toHaveTextContent("Technology 0");
+    expect(tech).toHaveClass("border-dashed", "text-fg-3");
+    expect(within(nav).getByRole("link", { name: /Business/ })).not.toHaveClass("border-dashed");
+    expect(within(nav).getByRole("link", { name: /All/ })).toHaveTextContent("All 3");
+  });
+
+  it("shows the URL's text after a chip navigation, not words typed and never submitted", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <CareerFilters filters={{ cluster: null, q: "" }} clusters={clusters} total={24} />,
+    );
+    await user.type(screen.getByLabelText("Search careers"), "law");
+    expect(screen.getByLabelText("Search careers")).toHaveValue("law");
+    // A chip is a client-side navigation: the server renders the filters of the new URL.
+    rerender(
+      <CareerFilters filters={{ cluster: "Health", q: "" }} clusters={clusters} total={24} />,
+    );
+    expect(screen.getByLabelText("Search careers")).toHaveValue("");
+    rerender(
+      <CareerFilters filters={{ cluster: "Health", q: "nurse" }} clusters={clusters} total={24} />,
+    );
+    expect(screen.getByLabelText("Search careers")).toHaveValue("nurse");
   });
 });
 

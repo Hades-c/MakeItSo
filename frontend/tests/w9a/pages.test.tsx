@@ -1,5 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { filterCareers } from "@/app/(hub)/careers/_lib/filters";
+import { CAREER_CLUSTERS } from "@/lib/types/content";
 import { CAREERS, getCareer } from "@/server/content/careers";
 
 /**
@@ -87,6 +89,30 @@ describe("/careers", () => {
     expect(screen.getByTestId("careers-count")).toHaveTextContent(
       "Showing 0 of 24 career paths for “underwater basket weaving”",
     );
+  });
+
+  it("counts on each cluster chip what it leads to: that cluster with the current search", async () => {
+    render(await careersPage.default(search({ q: "law" })));
+    const nav = screen.getByRole("navigation", { name: "Career clusters" });
+    const all = filterCareers(CAREERS, { cluster: null, q: "law" });
+    expect(all.length).toBeGreaterThan(0);
+    expect(all.length).toBeLessThan(24);
+    expect(within(nav).getByRole("link", { name: /^All/ })).toHaveTextContent(`All ${all.length}`);
+    let empty = 0;
+    for (const cluster of CAREER_CLUSTERS) {
+      const count = filterCareers(CAREERS, { cluster, q: "law" }).length;
+      const chip = within(nav).getByRole("link", {
+        name: new RegExp(`^${cluster.replace("&", "&")}`),
+      });
+      expect(chip).toHaveTextContent(`${cluster} ${count}`);
+      if (count === 0) {
+        empty++;
+        expect(chip).toHaveClass("border-dashed");
+      }
+    }
+    // Some cluster has no match for "law": its chip says 0 instead of its full size.
+    expect(empty).toBeGreaterThan(0);
+    expect(screen.getAllByRole("article")).toHaveLength(all.length);
   });
 
   it("ignores filters it cannot use", async () => {

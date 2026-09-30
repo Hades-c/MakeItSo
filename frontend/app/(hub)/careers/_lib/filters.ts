@@ -49,43 +49,72 @@ export function parseCareerFilters(params: SearchParamsRecord | undefined): Care
   return parsed.success ? parsed.data : { cluster: null, q: "" };
 }
 
-/** Everything a career's text search looks at (folded): what the card and the page show about it. */
-function haystack(career: Career): string {
-  return foldText(
-    [
-      career.name,
-      career.cluster,
-      career.summary,
-      ...career.whatYouDo,
-      ...career.departments.flatMap((d) => [d.code, d.name]),
-      ...career.relatedPrograms.map((p) => p.name),
-      ...career.courses.flatMap((c) => [c.code, c.title]),
-      career.handshakeQuery,
-    ].join(" | "),
-  );
+/** Folded words of a text: "Data Science & Analytics" → ["data", "science", "and", "analytics"]. */
+function words(text: string): string[] {
+  return foldText(text)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
 }
 
-const HAYSTACKS = new WeakMap<Career, string>();
+interface SearchText {
+  /** Names a student searches by: the career, its cluster, departments, programs, courses, Handshake words. */
+  names: string[];
+  /** The career's prose (summary, what you'd do): whole words only, so "art" never finds "start". */
+  prose: Set<string>;
+}
 
-function textOf(career: Career): string {
-  let text = HAYSTACKS.get(career);
+function searchText(career: Career): SearchText {
+  return {
+    names: words(
+      [
+        career.name,
+        career.cluster,
+        ...career.departments.flatMap((d) => [d.code, d.name]),
+        ...career.relatedPrograms.map((p) => p.name),
+        ...career.courses.flatMap((c) => [c.code, c.title]),
+        career.handshakeQuery,
+      ].join(" "),
+    ),
+    prose: new Set(words([career.summary, ...career.whatYouDo].join(" "))),
+  };
+}
+
+const SEARCH_TEXT = new WeakMap<Career, SearchText>();
+
+function textOf(career: Career): SearchText {
+  let text = SEARCH_TEXT.get(career);
   if (text === undefined) {
-    text = haystack(career);
-    HAYSTACKS.set(career, text);
+    text = searchText(career);
+    SEARCH_TEXT.set(career, text);
   }
   return text;
 }
 
 /**
+ * One query word against a career: the start of a word in its names ("art" → Art, Arts, "Digital Art"; "econ" →
+ * Economics; "221" → CSC 221), or a whole word of its prose, singular or plural ("hospital" → "hospitals").
+ */
+function matchesWord(text: SearchText, word: string): boolean {
+  if (text.names.some((name) => name.startsWith(word))) return true;
+  return (
+    text.prose.has(word) ||
+    text.prose.has(`${word}s`) ||
+    text.prose.has(`${word}es`) ||
+    (word.length > 3 && word.endsWith("s") && text.prose.has(word.slice(0, -1)))
+  );
+}
+
+/**
  * The careers matching the filters, in their original order: the cluster (when set), and every word of the query
- * somewhere in the career's text ("data science" matches Data Science; "csc 221" matches careers with CSC 221).
+ * matching (matchesWord) at a word boundary, never inside a word ("data science" matches Data Science; "csc 221"
+ * matches careers with CSC 221; "art" does not match "start", "ai" does not match "maintain").
  */
 export function filterCareers(careers: readonly Career[], filters: CareerFilters): Career[] {
-  const words = foldText(filters.q).split(" ").filter(Boolean);
+  const query = words(filters.q);
   return careers.filter(
     (career) =>
       (filters.cluster === null || career.cluster === filters.cluster) &&
-      words.every((word) => textOf(career).includes(word)),
+      query.every((word) => matchesWord(textOf(career), word)),
   );
 }
 
