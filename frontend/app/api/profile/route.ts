@@ -1,59 +1,48 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/mongodb";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import User from "@/models/User";
+import { requireApiUser } from "@/server/auth/session";
+import { getDb } from "@/server/db";
+import { ApiError, parseJsonBody, withApi } from "@/server/http";
 
-// GET /api/profile - get current user's profile
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+// GET /api/profile — the signed-in user's profile.
+export const GET = withApi(async () => {
+  const { id } = await requireApiUser();
+  await getDb();
 
-    await connectToDatabase();
+  const user = await User.findById(id).lean();
+  if (!user) throw new ApiError(404, "not_found", "User not found");
 
-    const userId = (session.user as { id: string }).id;
-    const user = await User.findById(userId).lean();
+  return NextResponse.json({ user });
+});
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+// Only these fields may be changed through this route (no mass assignment: audit
+// security/profile-patch-mass-assignment-proto-pollution). Wave 1 replaces this with the full profile schema.
+const ProfilePatch = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    major: z.string().trim().min(1).max(100),
+    minor: z.string().trim().max(100),
+    graduationYear: z.number().int().min(2000).max(2100),
+    currentYear: z.enum(["Freshman", "Sophomore", "Junior", "Senior", "Graduate"]),
+    bio: z.string().max(500),
+    careerInterests: z.array(z.string().trim().min(1).max(100)).max(50),
+  })
+  .partial()
+  .strict();
 
-    return NextResponse.json({ user });
-  } catch (error) {
-    console.error("GET /api/profile error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+// PATCH /api/profile — update whitelisted profile fields.
+export const PATCH = withApi(async (req: Request) => {
+  const { id } = await requireApiUser();
+  const updates = await parseJsonBody(req, ProfilePatch);
+  await getDb();
 
-// PATCH /api/profile - update profile
-export async function PATCH(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const user = await User.findByIdAndUpdate(
+    id,
+    { $set: updates },
+    { returnDocument: "after", runValidators: true },
+  ).lean();
+  if (!user) throw new ApiError(404, "not_found", "User not found");
 
-    await connectToDatabase();
-
-    const userId = (session.user as { id: string }).id;
-    const updates = await req.json();
-
-    // Prevent email/password updates through this route
-    delete updates.email;
-    delete updates.password;
-
-    const user = await User.findByIdAndUpdate(userId, { $set: updates }, { new: true }).lean();
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ user });
-  } catch (error) {
-    console.error("PATCH /api/profile error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+  return NextResponse.json({ user });
+});
