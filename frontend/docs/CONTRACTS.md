@@ -58,6 +58,11 @@ The frozen interfaces every workstream codes against. They change only through t
 - `validateCourseCodes(codes, terms?)`: a code is valid when it has a listing of its own in one of the terms
   (default: every ingested term); hidden registration-only aliases are invalid, so every valid code resolves with
   `getCourse` / `getCourseHistory`.
+- `AcademicProgram`: program-level `pageSections` (department sections outside every offering: honors, course
+  lists, numbering rationale) and, per offering, `requirementSections` (`{heading, text}`, the text of
+  `requirementsText` with its headings) and `missingCourseRefs` (course links Acalog leaves unnamed, shown as
+  "[course]": say "Some course names are missing from the catalog's data" and link `url`). They default to `[]`
+  / `0` when parsing older data.
 - `server/programs`: `listPrograms({kinds?})`, `getProgram(id)` (null when not listed; 503 `unavailable` with
   Retry-After while a never-read page cannot be fetched, no retry for 30 minutes after a failure),
   `programNames()` → `{catalogYear, majors, minors, all}` (sorted official names, for zod enums: profile, AI),

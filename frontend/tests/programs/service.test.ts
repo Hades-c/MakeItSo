@@ -21,6 +21,7 @@ import {
   PROGRAM_DETAIL_TTL_MS,
   programDetailUrl,
 } from "@/server/programs/catalog-info";
+import { requirementsTextOf } from "@/server/programs/parse";
 import { getProgramWith, type ProgramsDeps } from "@/server/programs/service";
 import { programSnapshot } from "@/server/programs/snapshot";
 import { type CatalogFetcher, fetchCatalog } from "@/server/programs/upstream";
@@ -437,6 +438,41 @@ describe("getProgram (lazy program pages, cached 7 days)", () => {
     const cs = await getProgramWith(172, deps(plain.fetcher));
     expect(plain.urls).toEqual([programDetailUrl(172)]);
     expect(cs?.offerings[0]?.requirementsText).not.toContain("Also described on");
+  });
+
+  it("serves every section Acalog publishes, with headings, and counts unnamed course links", async () => {
+    const { fetcher } = recordedFetcher();
+    const cs = AcademicProgramSchema.parse(await getProgramWith(172, deps(fetcher)));
+    // The department's own sections (graduate school, honors, the course list) are the page's.
+    expect(cs.pageSections.map((section) => section.heading).slice(0, 2)).toEqual([
+      "Graduate Studies in Computer Science",
+      "Honors in Computer Science",
+    ]);
+    const [major, minor] = cs.offerings;
+    expect(major?.requirementSections[0]?.heading).toBe("Major in Computer Science (B.S. Degree)");
+    // requirementsText is exactly the sections joined; nothing is left out of either form.
+    for (const offering of cs.offerings) {
+      expect(offering.requirementsText).toBe(requirementsTextOf(offering.requirementSections));
+    }
+    expect(major?.missingCourseRefs).toBe(40);
+    expect(minor?.missingCourseRefs).toBe(7);
+    expect(minor?.requirementsText.split("[course]")).toHaveLength(8);
+
+    // Another page's statement of an offering is part of its sections too (and counted).
+    const digital = AcademicProgramSchema.parse(await getProgramWith(211, deps(fetcher)));
+    const minorText = digital.offerings[0]!;
+    expect(minorText.requirementSections.map((section) => section.heading)).toContain(
+      "Also described on the Film, Media, and Digital Studies page",
+    );
+    expect(minorText.missingCourseRefs).toBe(
+      minorText.requirementsText.split("[course]").length - 1,
+    );
+    const fmds = AcademicProgramSchema.parse(await getProgramWith(213, deps(fetcher)));
+    expect(fmds.pageSections.map((section) => section.heading)).toEqual([
+      "Honors Requirements",
+      "Digital Studies Minor Requirements",
+      "Course Numbering Rationale",
+    ]);
   });
 
   it("getProgram uses fetchExternal (fixtures in tests)", async () => {

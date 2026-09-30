@@ -21,7 +21,7 @@ import {
   SYNC_DETAIL_BUDGET_MS,
   SYNC_DETAIL_CONCURRENCY,
 } from "@/server/programs/catalog-info";
-import { cleanText } from "@/server/programs/html";
+import { cleanText, MISSING_COURSE } from "@/server/programs/html";
 import { matchProgramName, programKey } from "@/server/programs/names";
 import {
   type ParsedSection,
@@ -235,16 +235,21 @@ export function toAcademicProgram(
     catalogYear: doc.catalogYear,
     name: doc.name,
     url: doc.url,
-    offerings: doc.offerings.map((offering, index) => ({
-      kind: offering.kind,
-      name: offering.name,
-      degree: offering.degree ?? null,
-      requirementsText: requirementsTextOf([
-        ...sectionsOf(offering.sections),
-        ...(notes.get(index) ?? []),
-      ]),
-      courseCodes: offering.courseCodes,
-    })),
+    offerings: doc.offerings.map((offering, index) => {
+      const sections = [...sectionsOf(offering.sections), ...(notes.get(index) ?? [])];
+      const requirementsText = requirementsTextOf(sections);
+      return {
+        kind: offering.kind,
+        name: offering.name,
+        degree: offering.degree ?? null,
+        requirementsText,
+        requirementSections: sections,
+        courseCodes: offering.courseCodes,
+        // Counted in the text served (other pages' statements included), as parse.ts counts a page's own.
+        missingCourseRefs: requirementsText.split(MISSING_COURSE).length - 1,
+      };
+    }),
+    pageSections: sectionsOf(doc.pageSections ?? []),
     fetchedAt: (doc.detailFetchedAt ?? doc.fetchedAt).toISOString(),
   });
 }

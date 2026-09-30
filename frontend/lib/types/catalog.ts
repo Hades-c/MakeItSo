@@ -407,10 +407,19 @@ export const ProgramOfferingKindSchema = z.enum([
 ]);
 export type ProgramOfferingKind = z.infer<typeof ProgramOfferingKindSchema>;
 
+/** One headed block of Acalog text ("Requirements for the Major", "Honors in Physics"); `text` may be "". */
+export const ProgramTextSectionSchema = z.object({ heading: z.string(), text: z.string() });
+export type ProgramTextSection = z.infer<typeof ProgramTextSectionSchema>;
+
 /**
  * A department/program page from the Acalog catalog (`/widget-api/catalog/{id}/program/{id}`). Official
  * major/minor names (for onboarding and the AI enums) are the `offerings[].name` values. Requirement text is shown
- * verbatim (`requirementsText`), with parsed course lists only where Acalog structures them.
+ * verbatim (`requirementsText`, or the same text with its headings as `requirementSections`), with parsed course
+ * lists only where Acalog structures them. Nothing Acalog publishes is withheld: the department's sections that
+ * belong to no offering (honors, course lists, numbering rationale, college-wide requirements) are `pageSections`
+ * ("About the department"). `missingCourseRefs` counts the course links Acalog leaves unnamed (shown as "[course]"
+ * in the text): when > 0, say "Some course names are missing from the catalog's data: see the official catalog
+ * page" and link `url`. The three additive fields default to [] / 0 when parsing older data.
  */
 export const AcademicProgramSchema = z.object({
   acalogId: z.number().int(),
@@ -427,9 +436,15 @@ export const AcademicProgramSchema = z.object({
       /** Degree as Acalog prints it ("A.B.", "B.S.", "B.A. or B.S."); null when the offering names none. */
       degree: z.string().nullable(),
       requirementsText: z.string(),
+      /** `requirementsText` as headed sections, in order (Acalog's own headings). */
+      requirementSections: z.array(ProgramTextSectionSchema).default([]),
       courseCodes: z.array(CourseCodeSchema),
+      /** Course links in the requirement text whose course Acalog does not name ("[course]"). */
+      missingCourseRefs: z.number().int().min(0).default(0),
     }),
   ),
+  /** The page's sections outside every offering (honors, course catalog, numbering rationale, …). */
+  pageSections: z.array(ProgramTextSectionSchema).default([]),
   fetchedAt: IsoDateTimeSchema,
 });
 export type AcademicProgram = z.infer<typeof AcademicProgramSchema>;
