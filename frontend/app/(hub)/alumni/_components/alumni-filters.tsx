@@ -7,6 +7,7 @@ import { clusterSlug } from "@/app/(hub)/careers/_lib/filters";
 import { cn } from "@/lib/utils";
 import {
   ALUMNI_QUERY_MAX,
+  alumniHref,
   hasAlumniFilters,
   type AlumniFacets,
   type AlumniFilters as Filters,
@@ -16,13 +17,19 @@ import {
  * The directory's filters as a plain GET form (PLAN §7 "State": everything in the URL, so a filtered view can be
  * shared and works without JavaScript): search, career path, class year and industry, then "Apply". Choosing an
  * option never submits by itself (no change of context on input).
+ *
+ * The controls always show the URL's filters: autoComplete="off" stops the browser restoring earlier choices when
+ * the student goes Back (the list would match the URL, the selects would not), and the form is keyed on the
+ * filters so a client-side navigation ("Clear filters") remounts it with the new values.
  */
 export function AlumniFilters({ filters, facets }: { filters: Filters; facets: AlumniFacets }) {
   const select = cn(controlClass, "h-11 px-3 md:h-10");
   return (
     <form
+      key={alumniHref(filters)}
       method="get"
       action="/alumni"
+      autoComplete="off"
       aria-label="Filter alumni"
       className="mb-5 grid gap-3 rounded-xl border border-line bg-surface p-4 shadow-card md:grid-cols-2 xl:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))_auto] xl:items-end"
     >
@@ -42,6 +49,7 @@ export function AlumniFilters({ filters, facets }: { filters: Filters; facets: A
         <Label htmlFor="alumni-career">Career path</Label>
         <select
           id="alumni-career"
+          autoComplete="off"
           name="career"
           defaultValue={filters.career ?? ""}
           className={select}
@@ -58,6 +66,7 @@ export function AlumniFilters({ filters, facets }: { filters: Filters; facets: A
         <Label htmlFor="alumni-year">Class year</Label>
         <select
           id="alumni-year"
+          autoComplete="off"
           name="year"
           defaultValue={filters.year !== null ? String(filters.year) : ""}
           className={select}
@@ -74,6 +83,7 @@ export function AlumniFilters({ filters, facets }: { filters: Filters; facets: A
         <Label htmlFor="alumni-industry">Industry</Label>
         <select
           id="alumni-industry"
+          autoComplete="off"
           name="industry"
           defaultValue={filters.industry ? clusterSlug(filters.industry) : ""}
           className={select}

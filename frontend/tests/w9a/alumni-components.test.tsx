@@ -1,10 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { SUPPORT_CONTACT } from "@/app/(auth)/_lib/support";
 import { AlumniFilters } from "@/app/(hub)/alumni/_components/alumni-filters";
 import { AlumniGateNotice } from "@/app/(hub)/alumni/_components/alumni-gate-notice";
 import { AlumnusCard } from "@/app/(hub)/alumni/_components/alumnus-card";
-import { ProvenanceLine } from "@/app/(hub)/alumni/_components/provenance-line";
+import { ProvenanceLine, REMOVAL_HREF } from "@/app/(hub)/alumni/_components/provenance-line";
 import { NO_ALUMNI_FILTERS } from "@/app/(hub)/alumni/_lib/directory";
 import type { Alumnus } from "@/lib/types/content";
 
@@ -89,7 +89,28 @@ describe("AlumnusCard", () => {
       "https://example.org/team/casey",
     ]);
     expect(sources[0]).toHaveTextContent("davidson.edu/news/2019/05/20/example");
-    for (const link of sources) expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    for (const link of sources) {
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      // 44px tall on phones (PLAN §7).
+      expect(link).toHaveClass("min-h-11", "md:min-h-0");
+    }
+  });
+
+  it("shows that the sources disclosure opens: a chevron that turns when it is open", async () => {
+    const user = userEvent.setup();
+    render(<AlumnusCard alumnus={FULL} />);
+    const card = screen.getByRole("article", { name: "Casey Example" });
+    const summary = card.querySelector("summary")!;
+    const chevron = summary.querySelector("svg")!;
+    expect(chevron).toHaveAttribute("aria-hidden", "true");
+    expect(chevron).toHaveClass("group-open:rotate-90");
+    // A flex summary loses the browser's triangle: it is hidden on purpose and replaced by the chevron.
+    expect(summary).toHaveClass("list-none");
+    const details = card.querySelector("details")!;
+    expect(details).toHaveClass("group");
+    expect(details).not.toHaveAttribute("open");
+    await user.click(summary);
+    expect(details).toHaveAttribute("open");
   });
 
   it("says “see LinkedIn” for every field whose only source is LinkedIn", () => {
@@ -144,9 +165,12 @@ describe("ProvenanceLine", () => {
     expect(line).toHaveTextContent(
       "Compiled from public sources · checked Sep 30, 2026 · Request removal/correction",
     );
+    // The privacy notice's alumni section (how to ask without posting personal details in public), never the
+    // public code repository.
     const link = screen.getByRole("link", { name: "Request removal/correction" });
-    expect(link).toHaveAttribute("href", SUPPORT_CONTACT.url);
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(REMOVAL_HREF).toBe("/privacy#alumni");
+    expect(link).toHaveAttribute("href", "/privacy#alumni");
+    expect(link.getAttribute("href")).not.toMatch(/github\.com/);
     expect(line.querySelector("time")).toHaveAttribute("datetime", "2026-09-30");
   });
 });
@@ -200,6 +224,11 @@ describe("AlumniFilters", () => {
     const form = screen.getByRole("form", { name: "Filter alumni" });
     expect(form).toHaveAttribute("method", "get");
     expect(form).toHaveAttribute("action", "/alumni");
+    // Back never shows choices the URL does not hold (the browser does not restore them).
+    expect(form).toHaveAttribute("autocomplete", "off");
+    for (const label of ["Career path", "Class year", "Industry"]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute("autocomplete", "off");
+    }
     expect(screen.getByLabelText("Search")).toHaveAttribute("name", "q");
     const career = screen.getByLabelText("Career path");
     expect(career).toHaveAttribute("name", "career");
@@ -230,5 +259,18 @@ describe("AlumniFilters", () => {
     expect(screen.getByLabelText("Class year")).toHaveValue("2017");
     expect(screen.getByLabelText("Industry")).toHaveValue("law-and-government");
     expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", "/alumni");
+  });
+
+  it("follows the URL on a client-side navigation, whatever was chosen and not applied", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <AlumniFilters filters={{ ...NO_ALUMNI_FILTERS, year: 2017 }} facets={facets} />,
+    );
+    await user.selectOptions(screen.getByLabelText("Career path"), "law");
+    expect(screen.getByLabelText("Career path")).toHaveValue("law");
+    // "Clear filters" (a Link) renders the page again with no filters.
+    rerender(<AlumniFilters filters={NO_ALUMNI_FILTERS} facets={facets} />);
+    expect(screen.getByLabelText("Career path")).toHaveValue("");
+    expect(screen.getByLabelText("Class year")).toHaveValue("");
   });
 });

@@ -1,7 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
-import { SUPPORT_CONTACT } from "@/app/(auth)/_lib/support";
 import type { SessionUser } from "@/server/auth/session";
 import { VERIFICATION_UNAVAILABLE_MESSAGE } from "@/server/auth/verification";
 import { ALUMNI, alumniForCareer } from "@/server/content/alumni";
@@ -99,7 +98,7 @@ describe("AlumniDirectory (verified @davidson.edu only)", () => {
     );
     expect(screen.getByRole("link", { name: "Request removal/correction" })).toHaveAttribute(
       "href",
-      SUPPORT_CONTACT.url,
+      "/privacy#alumni",
     );
     expect(screen.getByTestId("alumni-count")).toHaveTextContent(
       `${ALUMNI.length} verified alumni`,

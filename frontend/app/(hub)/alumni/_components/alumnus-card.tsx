@@ -1,5 +1,6 @@
 import type * as React from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatContentDate, formatMonthYear, shortUrl } from "@/app/(hub)/careers/_lib/format";
 import { routes } from "@/lib/routes";
@@ -134,22 +135,28 @@ export function AlumnusCard({
       </div>
 
       <details className="group mt-1 text-xs text-fg-3">
-        <summary className="inline-flex min-h-11 items-center rounded-sm font-semibold text-fg-2 md:min-h-8">
-          Sources ({publicSources.length}) · checked{" "}
-          <time dateTime={alumnus.verifiedAt} className="ml-1">
-            {formatContentDate(alumnus.verifiedAt)}
-          </time>
+        {/* A flex summary loses its disclosure triangle, so a chevron turns with the open state instead. */}
+        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-sm font-semibold text-fg-2 md:min-h-8 [&::-webkit-details-marker]:hidden">
+          <ChevronRight
+            aria-hidden
+            className="size-4 shrink-0 text-fg-3 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+          />
+          <span>
+            Sources ({publicSources.length}) · checked{" "}
+            <time dateTime={alumnus.verifiedAt}>{formatContentDate(alumnus.verifiedAt)}</time>
+          </span>
         </summary>
-        <ul className="mt-1 flex flex-col gap-1 pb-1">
+        <ul className="flex flex-col pb-1 md:mt-1 md:gap-1">
           {publicSources.map((url) => (
             <li key={url} className="min-w-0">
+              {/* 44px tall below 720px (PLAN §7 tap targets). */}
               <a
                 href={url}
                 rel="noopener noreferrer"
                 title={url}
-                className="block truncate text-primary underline underline-offset-2"
+                className="flex min-h-11 min-w-0 items-center text-primary underline underline-offset-2 md:block md:min-h-0"
               >
-                {shortUrl(url)}
+                <span className="block min-w-0 truncate">{shortUrl(url)}</span>
               </a>
             </li>
           ))}
