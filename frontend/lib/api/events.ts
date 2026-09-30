@@ -16,6 +16,8 @@ import {
 
 export const EventsResponseSchema = z.object({
   items: z.array(FeedItemSchema),
+  /** More items match than `limit` returned: narrow the window or raise the limit. */
+  hasMore: z.boolean(),
   /** Last successful sync per feed source, for the tags' "as of" and the Sources panel. */
   sources: z.array(z.object({ id: FeedSourceIdSchema, lastSync: IsoDateTimeSchema.nullable() })),
 });

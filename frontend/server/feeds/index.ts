@@ -22,5 +22,5 @@ import "server-only";
  * due library sync (at most one per 30 min). A failing source keeps its last good items; a feed that parses but
  * yields no readable entries counts as failing.
  */
-export { getLibraryHours, listEvents, listNews } from "./query";
+export { getLibraryHours, listEvents, listEventsPage, listNews } from "./query";
 export { syncFeeds } from "./sync";

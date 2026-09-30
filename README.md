@@ -195,4 +195,15 @@ CI (`.github/workflows/ci.yml`) runs all of the above on every pull request and 
    `ANTHROPIC_API_KEY` (and `NEXTAUTH_URL` if you use a custom domain).
 4. Deploy.
 
+Scheduled jobs live in `frontend/vercel.json` (the Root Directory's config; the repository-root `vercel.json` is not
+read when the Root Directory is `frontend`). Vercel Cron calls each route with `Authorization: Bearer $CRON_SECRET`,
+so `CRON_SECRET` must be set in Production. The schedules are Hobby-plan safe (at most daily); reads also refresh
+stale data in the background, so the jobs only keep data warm. On the Pro plan you can raise the feeds job to every
+30 minutes.
+
+| Route             | Schedule (UTC) | Job                                   |
+| ----------------- | -------------- | ------------------------------------- |
+| `/api/cron/feeds` | daily 10:23    | campus feeds (WildcatSync, Hurt Hub…) |
+| `/api/cron/rmp`   | Mondays 07:17  | RateMyProfessors roster               |
+
 Production: https://make-it-so.vercel.app

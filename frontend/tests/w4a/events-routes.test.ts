@@ -82,9 +82,24 @@ describe("GET /api/events", () => {
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     const body = EventsResponseSchema.parse(await res.json());
     expect(body.items.length).toBeGreaterThan(20);
+    expect(body.hasMore).toBe(false);
     expect(body.sources).toEqual(
       FEED_SOURCE_IDS.map((id) => ({ id, lastSync: "2026-09-30T16:00:00.000Z" })),
     );
+  });
+
+  it("says when more items match than the limit returned", async () => {
+    session.user = SAM;
+    await syncFeeds();
+    const all = EventsResponseSchema.parse(await json(await get(eventsGet, "/api/events")));
+    expect(all.items.length).toBeGreaterThan(3);
+    const cut = EventsResponseSchema.parse(await json(await get(eventsGet, "/api/events?limit=3")));
+    expect(cut.items).toHaveLength(3);
+    expect(cut.hasMore).toBe(true);
+    const exact = EventsResponseSchema.parse(
+      await json(await get(eventsGet, `/api/events?limit=${all.items.length}`)),
+    );
+    expect(exact.hasMore).toBe(false);
   });
 
   it("applies the query filters (repeated or comma-separated lists, q, limit, window)", async () => {
