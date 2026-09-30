@@ -6,11 +6,12 @@ import "server-only";
  *
  *   gate        aiGateInput(userId, feature) → pass to lib/types/ai.ts aiGateFailure (disabled → not_configured
  *               → unverified → consent_required); aiConfigured(); aiFeatureEnabled(flags, feature)
- *   features    generateCourseAbout (returns an AiResult; an unknown course throws ApiError 404)
+ *   features    generateCourseAbout, generatePlanSuggestions, generateCareerPlan (each returns an AiResult; bad
+ *               ids or terms throw ApiError 400/404)
  *   jobs        pregenerateCourseAbout (GET /api/cron/ai)
  *   internals   server/ai/client.ts generate() (the only model call), mock.ts (AI_PROVIDER=mock), payloads.ts
  *               (the allow-list), prompts/*.ts (frozen system prompts with PROMPT_VERSION), grounding.ts,
- *               sanitize.ts, cache.ts, usage.ts (budget + quotas)
+ *               candidates.ts, sanitize.ts, cache.ts, usage.ts (budget + quotas)
  */
 
 export { aiConfigured, aiProvider } from "./provider";
@@ -24,6 +25,8 @@ export {
   DAILY_REGENERATION_QUOTA,
 } from "./config";
 export { generateCourseAbout, type CourseAboutResult } from "./features/course-about";
+export { generatePlanSuggestions, type PlanSuggestionsResult } from "./features/plan-suggestions";
+export { generateCareerPlan, type CareerPlanResult } from "./features/career-plan";
 export {
   pregenerateCourseAbout,
   PregenerateResultSchema,
