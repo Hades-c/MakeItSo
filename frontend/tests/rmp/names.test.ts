@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { matchGivenNames, matchName, matchSurnames } from "@/server/rmp/match";
-import { areNicknames, NICKNAME_GROUPS } from "@/server/rmp/nicknames";
+import { areNicknames, NICKNAME_GROUPS, STANDALONE_GIVEN_NAMES } from "@/server/rmp/nicknames";
 import { nameTokens, normalizeName, surnameTokens } from "@/server/rmp/normalize";
 
 const given = (a: string, b: string) => matchGivenNames(nameTokens(a), nameTokens(b));
@@ -18,11 +18,16 @@ describe("nickname table", () => {
     ["josh", "joshua"],
     ["tim", "timothy"],
     ["jake", "jacob"],
-    ["tori", "victoria"],
-    ["sally", "sarah"],
-    ["drew", "andrew"],
+    ["vicky", "victoria"],
+    ["andy", "andrew"],
     ["fred", "frederick"],
     ["fred", "alfred"],
+    ["nate", "nathaniel"],
+    ["nate", "nathan"],
+    ["sue", "susan"],
+    ["sue", "suzanne"],
+    ["brad", "bradley"],
+    ["maggie", "margaret"],
   ])("%s ↔ %s", (a, b) => {
     expect(areNicknames(a, b)).toBe(true);
     expect(areNicknames(b, a)).toBe(true);
@@ -38,8 +43,42 @@ describe("nickname table", () => {
     ["joshua", "jacob"],
     ["lenny", "lengxob"],
     ["tim", "tim"],
+    // Common given names in their own right are never nicknames of another name.
+    ["nathan", "nathaniel"],
+    ["liam", "william"],
+    ["leo", "leonard"],
+    ["nora", "eleanor"],
+    ["nell", "eleanor"],
+    ["gail", "abigail"],
+    ["greta", "margaret"],
+    ["kay", "katherine"],
+    ["mae", "mary"],
+    ["molly", "mary"],
+    ["jamie", "james"],
+    ["jack", "john"],
+    ["drew", "andrew"],
+    ["tori", "victoria"],
+    ["sally", "sarah"],
+    ["terry", "teresa"],
+    ["tina", "christina"],
+    // Distinct formal names never match each other.
+    ["susan", "suzanne"],
+    ["randall", "randolph"],
+    ["christina", "christine"],
+    ["andrew", "andres"],
+    ["alexander", "alejandro"],
   ])("never %s ↔ %s", (a, b) => {
     expect(areNicknames(a, b)).toBe(false);
+    expect(areNicknames(b, a)).toBe(false);
+  });
+
+  it("lists no standalone given name as a nickname", () => {
+    for (const group of NICKNAME_GROUPS) {
+      for (const name of group.slice(1)) {
+        expect(STANDALONE_GIVEN_NAMES, `${name} in ${group[0]}`).not.toContain(name);
+      }
+    }
+    for (const name of STANDALONE_GIVEN_NAMES) expect(normalizeName(name)).toBe(name);
   });
 
   it("is written in normalizeName form, without duplicates inside a group", () => {
