@@ -175,6 +175,43 @@ describe("findProgramByName", () => {
     expect(await findProgramByName("Neuroscience", { kinds: ["major"] })).toBeNull();
     expect(await findProgramByName("x".repeat(500))).toBeNull();
   });
+
+  it("never turns a name of one kind into another kind", async () => {
+    for (const input of [
+      "Physics minor",
+      "Minor in Biology",
+      "Biology minor",
+      "Chemistry minor",
+      "Political Science minor",
+      "Psychology minor",
+      "Sociology minor",
+    ]) {
+      expect(await findProgramByName(input), input).toBeNull();
+    }
+    expect(await findProgramByName("Minor in Economics", { kinds: ["major"] })).toBeNull();
+    expect(
+      await findProgramByName("Major in Economics (A.B. Degree)", { kinds: ["minor"] }),
+    ).toBeNull();
+    expect((await findProgramByName("Physics"))?.name).toBe("Major in Physics (B.S. Degree)");
+    expect((await findProgramByName("Astrophysics minor"))?.name).toBe("Minor in Astrophysics");
+  });
+
+  it("tolerates punctuation around kind and degree words", async () => {
+    const cases: [string, string][] = [
+      ["Economics (minor)", "Minor in Economics"],
+      ["Minor: Economics", "Minor in Economics"],
+      ["Major - Computer Science", "Major in Computer Science (B.S. Degree)"],
+      ["Computer Science (B.S.)", "Major in Computer Science (B.S. Degree)"],
+      ["Computer Science, B.S.", "Major in Computer Science (B.S. Degree)"],
+      ["B.S. in Computer Science", "Major in Computer Science (B.S. Degree)"],
+      [
+        "Environmental Studies (B.A.)",
+        "Interdisciplinary Major in Environmental Studies (B.A. or B.S. Degree)",
+      ],
+    ];
+    for (const [input, name] of cases)
+      expect((await findProgramByName(input))?.name, input).toBe(name);
+  });
 });
 
 describe("getProgram (lazy program pages, cached 7 days)", () => {

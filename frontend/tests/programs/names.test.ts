@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ProgramOfferingKind } from "@/lib/types/catalog";
 import {
-  kindPreference,
   matchProgramName,
   offeringName,
+  parseNameQuery,
   programKey,
-  subjectOf,
+  subjectKey,
 } from "@/server/programs/names";
 
 describe("programKey", () => {
@@ -35,23 +35,43 @@ describe("offering names and subjects", () => {
   });
 
   it.each([
-    ["Major in Economics (A.B. Degree)", "Economics"],
+    ["Major in Economics (A.B. Degree)", "economics"],
     [
       "Interdisciplinary Major in Environmental Studies (B.A. or B.S. Degree)",
-      "Environmental Studies",
+      "environmental studies",
     ],
-    ["Interdisciplinary Minor in Latin American Studies", "Latin American Studies"],
-    ["Computer Science Major", "Computer Science"],
+    ["Interdisciplinary Minor in Latin American Studies", "latin american studies"],
+    ["Major in Philosophy, Politics, and Economics", "philosophy politics economics"],
+    ["Computer Science Major", "computer science"],
     ["economics minor", "economics"],
-    ["Economics", "Economics"],
-  ])("subjectOf(%j) = %j", (name, subject) => {
-    expect(subjectOf(name)).toBe(subject);
+    ["Economics", "economics"],
+    ["Russian Studies Major Requirements", "russian studies"],
+  ])("subjectKey(%j) = %j", (name, subject) => {
+    expect(subjectKey(name)).toBe(subject);
   });
 
-  it("prefers minors when the text says minor, else majors", () => {
-    expect(kindPreference("Economics minor")[0]).toBe("minor");
-    expect(kindPreference("Economics")[0]).toBe("major");
-    expect(kindPreference("Concentration in X")[0]).toBe("concentration");
+  it.each([
+    ["Economics (minor)", "economics", "minor"],
+    ["Minor: Economics", "economics", "minor"],
+    ["Major - Computer Science", "computer science", "major"],
+    ["Computer Science (B.S.)", "computer science", null],
+    ["Computer Science, B.S.", "computer science", null],
+    ["B.S. in Computer Science", "computer science", null],
+    ["BS Computer Science", "computer science", null],
+    ["Environmental Studies (B.A.)", "environmental studies", null],
+    ["Computer Science (B.S. Degree) Major", "computer science", "major"],
+    ["Concentration in Film", "film", "concentration"],
+    ["Minors in Greek", "greek", "minor"],
+  ] as const)("parseNameQuery(%j) → subject %j, kind %j", (input, subject, family) => {
+    expect(parseNameQuery(input)).toMatchObject({ subject, family, conflicting: false });
+  });
+
+  it("notices when the text names two kinds", () => {
+    expect(parseNameQuery("Economics major and minor")).toMatchObject({
+      subject: "economics",
+      family: null,
+      conflicting: true,
+    });
   });
 });
 
@@ -93,6 +113,14 @@ const programs: { name: string; offerings: Offering[] }[] = [
       { kind: "interdisciplinary-minor", name: "Interdisciplinary Minor in Data Science" },
     ],
   },
+  {
+    name: "Physics",
+    offerings: [
+      { kind: "major", name: "Major in Physics (B.S. Degree)" },
+      { kind: "minor", name: "Minor in Applied Physics" },
+      { kind: "minor", name: "Minor in Astrophysics" },
+    ],
+  },
   { name: "Humanities", offerings: [] },
 ];
 
@@ -121,6 +149,29 @@ describe("matchProgramName", () => {
     expect(match("Classical Studies")).toBe("Major in Classical Studies (A.B. Degree)");
     expect(match("Genomics")).toBe("Major in Genomics (B.S. Degree)");
     expect(match("Data Science")).toBe("Interdisciplinary Minor in Data Science");
+    expect(match("Data Science minor")).toBe("Interdisciplinary Minor in Data Science");
+  });
+
+  it("tolerates punctuation around the kind and degree words", () => {
+    expect(match("Economics (minor)")).toBe("Minor in Economics");
+    expect(match("Minor: Economics")).toBe("Minor in Economics");
+    expect(match("Major - Economics")).toBe("Major in Economics (A.B. Degree)");
+    expect(match("Economics (A.B.)")).toBe("Major in Economics (A.B. Degree)");
+    expect(match("Economics, A.B.")).toBe("Major in Economics (A.B. Degree)");
+    expect(match("A.B. in Economics")).toBe("Major in Economics (A.B. Degree)");
+    expect(match("french and francophone studies (major)")).toBe(
+      "Major in French and Francophone Studies (A.B. Degree)",
+    );
+  });
+
+  it("treats a kind named in the text as a constraint, never falling back to another kind", () => {
+    expect(match("Physics minor")).toBeNull();
+    expect(match("Minor in Physics")).toBeNull();
+    expect(match("Economics major", ["minor", "interdisciplinary-minor"])).toBeNull();
+    expect(match("Minor in Economics", ["major"])).toBeNull();
+    expect(match("Major in Economics (A.B. Degree)", ["minor"])).toBeNull();
+    expect(match("Data Science major")).toBeNull();
+    expect(match("Economics major and minor")).toBeNull();
   });
 
   it("restricts candidates to the requested kinds", () => {
@@ -131,11 +182,12 @@ describe("matchProgramName", () => {
     expect(match("Data Science", ["major"])).toBeNull();
   });
 
-  it("resolves a department page only when it has one offering of the preferred kind", () => {
+  it("resolves a department page only when it has one offering of the kind asked for", () => {
     expect(match("Genomics, Bioinformatics")).toBeNull(); // two majors: ambiguous, never a guess
     expect(match("Genomics & Bioinformatics minor")).toBe("Interdisciplinary Minor in Genomics");
     expect(match("Classics")).toBeNull();
     expect(match("Classics minor")).toBe("Minor in Classical Studies");
+    expect(match("Physics minor")).toBeNull(); // Applied Physics and Astrophysics
   });
 
   it("returns null for unknown, empty and offering-less names", () => {
@@ -143,5 +195,7 @@ describe("matchProgramName", () => {
     expect(match("Humanities")).toBeNull();
     expect(match("   ")).toBeNull();
     expect(match("Undecided")).toBeNull();
+    expect(match("Minor")).toBeNull();
+    expect(match("B.S.")).toBeNull();
   });
 });

@@ -42,31 +42,69 @@ export function offeringName(label: string, subject: string, degree: string | nu
   return `${label} in ${subject}${degree ? ` (${degree} Degree)` : ""}`;
 }
 
-const NAME_PREFIX =
-  /^\s*(?:(?:interdisciplinary\s+)?(?:major|minor)|concentration|program)\s+(?:in|of)\s+/i;
-const DEGREE_SUFFIX = /\s*\([^()]*\bdegree\b[^()]*\)\s*$/i;
-const KIND_SUFFIX = /\s+(?:interdisciplinary\s+)?(?:major|minor)(?:\s+requirements?)?\s*$/i;
+/** The kind of offering a name asks for: "… minor" means a minor or an interdisciplinary minor. */
+export type NameFamily = "major" | "minor" | "concentration";
 
-/**
- * The subject of an offering name or free text: "Major in Economics (A.B. Degree)" → "Economics",
- * "Computer Science Major" → "Computer Science", "Economics" → "Economics".
- */
-export function subjectOf(name: string): string {
-  const withoutDegree = name.replace(DEGREE_SUFFIX, "");
-  const withoutPrefix = withoutDegree.replace(NAME_PREFIX, "");
-  if (withoutPrefix !== withoutDegree) return withoutPrefix.trim();
-  return withoutDegree.replace(KIND_SUFFIX, "").trim();
+export const FAMILY_KINDS: Readonly<Record<NameFamily, readonly ProgramOfferingKind[]>> = {
+  major: ["major"],
+  minor: ["minor", "interdisciplinary-minor"],
+  concentration: ["concentration"],
+};
+
+export interface NameQuery {
+  /** programKey of the whole input. */
+  key: string;
+  /** programKey of its subject: "Major in Economics (A.B. Degree)", "Economics (minor)" → "economics". */
+  subject: string;
+  /** The kind the input names ("Physics minor" → minor), null when it names none. */
+  family: NameFamily | null;
+  /** The input names more than one kind ("Economics major and minor"). */
+  conflicting: boolean;
 }
 
-/** Which kinds a free-text name asks for ("… minor" → minors first), else majors first. */
-export function kindPreference(input: string): ProgramOfferingKind[] {
-  if (/\bminor\b/i.test(input)) {
-    return ["minor", "interdisciplinary-minor", "major", "concentration", "other"];
+// On programKey form (lower case, punctuation as spaces, "and" dropped): "b s" = B.S., "a b" = A.B.
+const DEGREE = String.raw`(?:a b|b a|b s|ab|ba|bs)`;
+const DEGREE_AT_END = new RegExp(
+  String.raw`(?:^| )(?:${DEGREE}(?: or ${DEGREE})*(?: degree)?|degree)$`,
+);
+const DEGREE_AT_START = new RegExp(String.raw`^${DEGREE}(?: degree)?(?: (?:in|of))?(?: |$)`);
+const KIND_AT_START =
+  /^(?:interdisciplinary )?(?:majors?|minors?|concentrations?|program)(?: (?:in|of))?(?: |$)/;
+const KIND_AT_END =
+  /(?:^| )(?:interdisciplinary )?(?:majors?|minors?|concentrations?)(?: requirements?)?$/;
+
+/**
+ * Read a free-text program name: its subject and the kind it names, tolerant of punctuation around the kind and
+ * degree words ("Economics (minor)", "Minor: Economics", "Major - Computer Science", "Computer Science, B.S.",
+ * "B.S. in Computer Science", "Environmental Studies (B.A.)").
+ */
+export function parseNameQuery(input: string): NameQuery {
+  const key = programKey(input);
+  const families: NameFamily[] = [];
+  if (/\bmajors?\b/.test(key)) families.push("major");
+  if (/\bminors?\b/.test(key)) families.push("minor");
+  if (/\bconcentrations?\b/.test(key)) families.push("concentration");
+  let subject = key;
+  for (let previous = ""; previous !== subject;) {
+    previous = subject;
+    subject = subject
+      .replace(DEGREE_AT_END, "")
+      .replace(KIND_AT_END, "")
+      .replace(KIND_AT_START, "")
+      .replace(DEGREE_AT_START, "")
+      .trim();
   }
-  if (/\bconcentration\b/i.test(input)) {
-    return ["concentration", "major", "minor", "interdisciplinary-minor", "other"];
-  }
-  return ["major", "interdisciplinary-minor", "minor", "concentration", "other"];
+  return {
+    key,
+    subject,
+    family: families.length === 1 ? (families[0] ?? null) : null,
+    conflicting: families.length > 1,
+  };
+}
+
+/** The subject key of an offering name or free text ("Major in Economics (A.B. Degree)" → "economics"). */
+export function subjectKey(name: string): string {
+  return parseNameQuery(name).subject;
 }
 
 export interface NamedOffering {
@@ -79,47 +117,62 @@ export interface NamedProgram<O extends NamedOffering = NamedOffering> {
   offerings: readonly O[];
 }
 
+/** Without a kind in the text, majors first ("Economics" is the Economics major). */
+const DEFAULT_ORDER: readonly ProgramOfferingKind[] = [
+  "major",
+  "interdisciplinary-minor",
+  "minor",
+  "concentration",
+  "other",
+];
+
 /**
  * Resolve free text to one offering (pure core of findProgramByName):
  *   1. the official name itself (any spelling of "&"/"and", punctuation, case);
- *   2. the subject ("Economics", "Economics minor"), preferring the kind the text names, majors otherwise;
- *   3. the department page's name ("Genomics & Bioinformatics") when that page has exactly one offering of the
- *      preferred kind.
- * Ambiguous text (two majors with the same subject or page, e.g. "Classics") resolves to null, never a guess.
+ *   2. the subject ("Economics", "Economics minor", "Computer Science (B.S.)");
+ *   3. the department page's name ("Genomics & Bioinformatics minor") when that page has exactly one offering.
+ * A kind named in the text is a constraint, not a preference: "Physics minor" never resolves to the Physics major,
+ * and neither does "Minor in Economics" when only majors are allowed (`kinds`). Ambiguous text (two offerings of
+ * the same kind, e.g. "Classics" or "Physics minor"; or two kinds, "Economics major and minor") resolves to null,
+ * never a guess.
  */
 export function matchProgramName<P extends NamedProgram>(
   programs: readonly P[],
   input: string,
   kinds?: readonly ProgramOfferingKind[],
 ): { program: P; offering: P["offerings"][number] } | null {
-  const key = programKey(input);
-  if (!key) return null;
-  const allowed = kinds && kinds.length > 0 ? new Set(kinds) : null;
-  const all = programs.flatMap((program) =>
+  const query = parseNameQuery(input);
+  if (!query.key || query.conflicting) return null;
+  const allowed = new Set<ProgramOfferingKind>(kinds && kinds.length > 0 ? kinds : DEFAULT_ORDER);
+  const order = (query.family ? FAMILY_KINDS[query.family] : DEFAULT_ORDER).filter((kind) =>
+    allowed.has(kind),
+  );
+  if (order.length === 0) return null;
+  const candidates = programs.flatMap((program) =>
     program.offerings
-      .filter((offering) => !allowed || allowed.has(offering.kind))
+      .filter((offering) => order.includes(offering.kind))
       .map((offering) => ({ program, offering })),
   );
 
-  const exact = all.find(({ offering }) => programKey(offering.name) === key);
+  const exact = candidates.find(({ offering }) => programKey(offering.name) === query.key);
   if (exact) return exact;
 
-  const order = kindPreference(input);
-  const pick = (candidates: typeof all) => {
+  const pick = (list: typeof candidates) => {
     for (const kind of order) {
-      const ofKind = candidates.filter(({ offering }) => offering.kind === kind);
+      const ofKind = list.filter(({ offering }) => offering.kind === kind);
       if (ofKind.length === 1) return ofKind[0] ?? null;
       if (ofKind.length > 1) return null;
     }
     return null;
   };
 
-  const subject = programKey(subjectOf(input));
-  if (!subject) return null;
-  const bySubject = all.filter(({ offering }) => programKey(subjectOf(offering.name)) === subject);
+  if (!query.subject) return null;
+  const bySubject = candidates.filter(
+    ({ offering }) => subjectKey(offering.name) === query.subject,
+  );
   if (bySubject.length > 0) return pick(bySubject);
 
-  const byPage = all.filter(({ program }) => programKey(program.name) === subject);
+  const byPage = candidates.filter(({ program }) => programKey(program.name) === query.subject);
   if (byPage.length > 0) return pick(byPage);
   return null;
 }
