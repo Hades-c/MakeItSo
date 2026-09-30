@@ -26,9 +26,9 @@ function event(id: string) {
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe("academic calendar data", () => {
-  it("holds the 89 verified rows, each valid, sourced and unique", () => {
-    expect(ACADEMIC_CALENDAR).toHaveLength(89);
-    expect(new Set(ids(ACADEMIC_CALENDAR)).size).toBe(89);
+  it("holds the 88 kept rows (89 verified, minus Easter Sunday), each valid, sourced and unique", () => {
+    expect(ACADEMIC_CALENDAR).toHaveLength(88);
+    expect(new Set(ids(ACADEMIC_CALENDAR)).size).toBe(88);
     for (const row of ACADEMIC_CALENDAR) {
       expect(CalendarEventSchema.parse(row)).toEqual(row);
       expect(row.sources.length).toBeGreaterThan(0);
@@ -123,7 +123,44 @@ describe("academic calendar data", () => {
     expect(calendarEventSource(event("f26-thanksgiving-holiday"))).toBe("davidson-offices"); // HR
     expect(calendarEventSource(event("f26-halls-close"))).toBe("davidson-offices"); // Residence Life
     expect(calendarEventSource(event("s27-cis-application"))).toBe("davidson-offices");
-    expect(calendarEventSource(event("s27-easter"))).toBe("davidson-offices");
+    expect(calendarEventSource(event("s27-easter-holiday-offices"))).toBe("davidson-offices"); // HR
+  });
+
+  it("lists no single religious observance as a student holiday", () => {
+    expect(getCalendarEvent("s27-easter")).toBeUndefined();
+    const holidays = ACADEMIC_CALENDAR.filter((row) => row.category === "holiday");
+    for (const row of holidays) {
+      expect(row.sources.join(" ")).not.toMatch(/religious-and-spiritual-life/);
+      if (/easter/i.test(row.title)) expect(isStudentFacing(row)).toBe(false); // HR's staff holiday only
+    }
+    // The no-class days stay covered by the Registrar's break.
+    expect(event("s27-march-april-break")).toMatchObject({
+      start: "2027-03-26",
+      end: "2027-03-29",
+    });
+  });
+
+  it("cites the pages its descriptions quote, after the row's own source", () => {
+    const overview =
+      "https://www.davidson.edu/offices-and-services/registrar/course-registration-and-webtree-overview";
+    const exams =
+      "https://www.davidson.edu/offices-and-services/registrar/course-offerings/self-scheduled-exam-procedures";
+    const regulations = "https://www.davidson.edu/media/15696/download?attachment";
+    expect(event("f26-adddrop-reopen").sources).toEqual([REGISTRAR_2026_27, overview]);
+    expect(event("s27-adddrop-opens").sources).toEqual([REGISTRAR_2026_27, overview]);
+    const examRows = ACADEMIC_CALENDAR.filter((row) => row.id.includes("-exam-center-"));
+    expect(examRows).toHaveLength(8);
+    for (const row of examRows) expect(row.sources).toEqual([REGISTRAR_2026_27, exams]);
+    for (const id of ["f26-reading-day", "s27-reading-day"]) {
+      expect(event(id).sources).toEqual([REGISTRAR_2026_27, regulations]);
+      // The regulation's own exception is kept: "unless requested by the student and approved by the instructor".
+      expect(event(id).description).toMatch(
+        /unless the student requests it and the instructor approves/,
+      );
+    }
+    // The tag still comes from the row's own (first) source.
+    expect(calendarEventSource(event("f26-reading-day"))).toBe("registrar");
+    expect(calendarEventSource(event("s27-easter-holiday-offices"))).toBe("davidson-offices");
   });
 
   it("is frozen", () => {

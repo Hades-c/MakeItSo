@@ -38,9 +38,14 @@ import {
  *   Courses page says "Summer - September 1st"; the calendar date is used.
  *
  * Source tag: REGISTRAR for rows from Registrar pages (the calendar, the Academic Regulations, personal leave, the
- * Banner terms), DAVIDSON OFFICES for rows from other offices' pages (HR holidays, Residence Life, CIS, Religious
- * and Spiritual Life): see calendarEventSource(). Faculty/staff-only rows (textbooks, grades due, chair reviews,
- * office closures) are kept with their audience; the student views leave them out (isStudentFacing()).
+ * Banner terms), DAVIDSON OFFICES for rows from other offices' pages (HR holidays, Residence Life, CIS): see
+ * calendarEventSource(), which reads a row's first source. Any other page a description quotes (the WebTree
+ * overview, the self-scheduled exam procedures, the Academic Regulations) is listed after it.
+ * Faculty/staff-only rows (textbooks, grades due, chair reviews, office closures) are kept with their audience;
+ * the student views leave them out (isStudentFacing()).
+ * - Religious observances are not listed: the research held one (Easter Sunday), which would single out one faith
+ *   as a student "holiday". The March/April Break row covers the no-class days, and HR's staff "Easter" holiday
+ *   (Fri. March 26) has its own row. An even-handed observance feed would need the owner's approval.
  */
 
 export type CalendarCategory = (typeof CALENDAR_CATEGORIES)[number];
@@ -56,8 +61,12 @@ const PERSONAL_LEAVE =
 const ACADEMIC_REGULATIONS_2026_27 = "https://www.davidson.edu/media/15696/download?attachment";
 const CIS_APPLICATION_GUIDELINES =
   "https://www.davidson.edu/academic-departments/interdisciplinary-studies/majors/application-guidelines";
-const RELIGIOUS_OBSERVANCE_CALENDAR =
-  "https://www.davidson.edu/offices-and-services/religious-and-spiritual-life/observance-calendar";
+const CATALOG_2026_27_REGULATIONS =
+  "https://catalog.davidson.edu/content.php?catoid=28&navoid=1332";
+const WEBTREE_OVERVIEW =
+  "https://www.davidson.edu/offices-and-services/registrar/course-registration-and-webtree-overview";
+const SELF_SCHEDULED_EXAMS =
+  "https://www.davidson.edu/offices-and-services/registrar/course-offerings/self-scheduled-exam-procedures";
 const BANNER_TERMS = "https://api.davidson.edu/api/public/v2/terms?limit=1000";
 
 const EVENTS = [
@@ -127,7 +136,7 @@ const EVENTS = [
     audience: "Sophomores, juniors, and seniors",
     description:
       "Add/drop re-opens at 7 a.m. on Aug. 22 for continuing students (the Registrar's registration overview describes this as the two days before the start of classes; add/drop Week 1 then runs Aug. 24-28).",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, WEBTREE_OVERVIEW],
     verifiedAt: "2026-09-30",
   },
   {
@@ -261,7 +270,7 @@ const EVENTS = [
     audience: "Seniors (Class of 2027)",
     description:
       "Seniors may declare a minor through the Registrar's Office no later than October 1 of the senior year (2026-2027 Academic Regulations; the 2026-2027 catalog's Academic Regulations page says the same). For the Class of 2027 this is Thu., Oct. 1, 2026.",
-    sources: [ACADEMIC_REGULATIONS_2026_27],
+    sources: [ACADEMIC_REGULATIONS_2026_27, CATALOG_2026_27_REGULATIONS],
     verifiedAt: "2026-09-30",
   },
   {
@@ -477,8 +486,9 @@ const EVENTS = [
     time: null,
     termCode: "202601",
     audience: "All students",
-    description: "Reading and Reflection Day; no for-credit assessments.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    description:
+      "Reading and Reflection Day. The Academic Regulations say there should be no for-credit assessment, exercise or activity (such as juries, thesis defenses or oral exams) that day unless the student requests it and the instructor approves.",
+    sources: [REGISTRAR_CALENDAR_2026_27, ACADEMIC_REGULATIONS_2026_27],
     verifiedAt: "2026-09-30",
   },
   {
@@ -505,7 +515,7 @@ const EVENTS = [
     audience: "Students with self-scheduled exams",
     description:
       "Exam Center open Thu.; exam pickup at 8:40 a.m. and 1:40 p.m. per the academic calendar. The Self-Scheduled Exam Procedures page gives the pickup windows as 8:40-9:15 a.m. and 1:40-2:15 p.m. in the Chambers lobby Exam Center.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, SELF_SCHEDULED_EXAMS],
     verifiedAt: "2026-09-30",
   },
   {
@@ -533,7 +543,7 @@ const EVENTS = [
     audience: "Students with self-scheduled exams",
     description:
       "Exam Center open Fri.; exam pickup at 8:40 a.m. and 1:40 p.m. per the academic calendar. The Self-Scheduled Exam Procedures page gives the pickup windows as 8:40-9:15 a.m. and 1:40-2:15 p.m. in the Chambers lobby Exam Center.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, SELF_SCHEDULED_EXAMS],
     verifiedAt: "2026-09-30",
   },
   {
@@ -547,7 +557,7 @@ const EVENTS = [
     audience: "Students with self-scheduled exams",
     description:
       "Exam Center open Mon.; exam pickup at 8:40 a.m. and 1:40 p.m. per the academic calendar. The Self-Scheduled Exam Procedures page gives the pickup windows as 8:40-9:15 a.m. and 1:40-2:15 p.m. in the Chambers lobby Exam Center.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, SELF_SCHEDULED_EXAMS],
     verifiedAt: "2026-09-30",
   },
   {
@@ -561,7 +571,7 @@ const EVENTS = [
     audience: "Students with self-scheduled exams",
     description:
       "Exam Center open Tue.; exam pickup at 8:40 a.m. and 1:40 p.m. per the academic calendar. The Self-Scheduled Exam Procedures page gives the pickup windows as 8:40-9:15 a.m. and 1:40-2:15 p.m. in the Chambers lobby Exam Center.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, SELF_SCHEDULED_EXAMS],
     verifiedAt: "2026-09-30",
   },
   {
@@ -629,7 +639,7 @@ const EVENTS = [
     audience: "All students",
     description:
       'Banner Self-Service add/drop for Spring 2027 opens at 7 a.m. The Registrar\'s Course Registration & WebTree Overview says this early-January add/drop window runs "through the beginning of classes" (classes begin Jan. 19). No separate closing time is published.',
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, WEBTREE_OVERVIEW],
     verifiedAt: "2026-09-30",
   },
   {
@@ -871,7 +881,7 @@ const EVENTS = [
     audience: "Faculty and staff (college offices closed)",
     description:
       "HR's 2026-2027 staff holiday schedule lists \"Easter\" on Fri., March 26, 2027 (Good Friday). This is also a no-class day, part of the Registrar's March/April Break (March 26 and 29).",
-    sources: [HR_COLLEGE_HOLIDAYS],
+    sources: [HR_COLLEGE_HOLIDAYS, REGISTRAR_CALENDAR_2026_27],
     verifiedAt: "2026-09-30",
   },
   {
@@ -885,20 +895,6 @@ const EVENTS = [
     audience: "All students",
     description: "No classes Fri., March 26 and Mon., March 29 (with the weekend between).",
     sources: [REGISTRAR_CALENDAR_2026_27],
-    verifiedAt: "2026-09-30",
-  },
-  {
-    id: "s27-easter",
-    title: "Easter Sunday",
-    category: "holiday",
-    start: "2027-03-28",
-    end: null,
-    time: null,
-    termCode: "202602",
-    audience: "All students",
-    description:
-      "Easter (Catholic/Protestant Christian), Sun., March 28, 2027, per Davidson's 2026-2027 Religious & Spiritual Observance Calendar (Good Friday is March 26). The Registrar calendar does not name Easter. It falls within the March/April Break (no classes Fri. March 26 and Mon. March 29), and HR's staff \"Easter\" holiday is Fri. March 26.",
-    sources: [RELIGIOUS_OBSERVANCE_CALENDAR],
     verifiedAt: "2026-09-30",
   },
   {
@@ -993,8 +989,9 @@ const EVENTS = [
     time: null,
     termCode: "202602",
     audience: "All students",
-    description: "Reading and Reflection Day; no for-credit assessments.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    description:
+      "Reading and Reflection Day. The Academic Regulations say there should be no for-credit assessment, exercise or activity (such as juries, thesis defenses or oral exams) that day unless the student requests it and the instructor approves.",
+    sources: [REGISTRAR_CALENDAR_2026_27, ACADEMIC_REGULATIONS_2026_27],
     verifiedAt: "2026-09-30",
   },
   {
@@ -1008,7 +1005,7 @@ const EVENTS = [
     audience: "Students with self-scheduled exams",
     description:
       "Exam Center open Sat.; exam pickup at 8:40 a.m. and 1:40 p.m. per the academic calendar. The Self-Scheduled Exam Procedures page gives the pickup windows as 8:40-9:15 a.m. and 1:40-2:15 p.m. in the Chambers lobby Exam Center.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, SELF_SCHEDULED_EXAMS],
     verifiedAt: "2026-09-30",
   },
   {
@@ -1048,7 +1045,7 @@ const EVENTS = [
     audience: "Students with self-scheduled exams",
     description:
       "Exam Center open Sun.; exam pickup at 8:40 a.m. and 1:40 p.m. per the academic calendar. The Self-Scheduled Exam Procedures page gives the pickup windows as 8:40-9:15 a.m. and 1:40-2:15 p.m. in the Chambers lobby Exam Center.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, SELF_SCHEDULED_EXAMS],
     verifiedAt: "2026-09-30",
   },
   {
@@ -1062,7 +1059,7 @@ const EVENTS = [
     audience: "Students with self-scheduled exams",
     description:
       "Exam Center open Mon.; exam pickup at 8:40 a.m. and 1:40 p.m. per the academic calendar. The Self-Scheduled Exam Procedures page gives the pickup windows as 8:40-9:15 a.m. and 1:40-2:15 p.m. in the Chambers lobby Exam Center.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, SELF_SCHEDULED_EXAMS],
     verifiedAt: "2026-09-30",
   },
   {
@@ -1090,7 +1087,7 @@ const EVENTS = [
     audience: "Non-seniors with self-scheduled exams",
     description:
       "Exam Center open Wed. (non-seniors only); exam pickup at 8:40 a.m. and 1:40 p.m. per the academic calendar. The Self-Scheduled Exam Procedures page gives the pickup windows as 8:40-9:15 a.m. and 1:40-2:15 p.m. in the Chambers lobby Exam Center.",
-    sources: [REGISTRAR_CALENDAR_2026_27],
+    sources: [REGISTRAR_CALENDAR_2026_27, SELF_SCHEDULED_EXAMS],
     verifiedAt: "2026-09-30",
   },
   {
@@ -1184,7 +1181,7 @@ const EVENTS = [
     audience: "Students taking Summer 2027 contract courses or special programs",
     description:
       'Davidson\'s official course API lists term 202603 "Summer 2027" (Academic Year 2026-2027) as running May 19 - Aug. 10, 2027. Davidson publishes no separate summer academic calendar. The Academic Regulations say summer is for special programs (study abroad, summer contract courses) and that contract-course registration and completion deadlines and fees are announced by the Registrar during the spring semester.',
-    sources: [BANNER_TERMS],
+    sources: [BANNER_TERMS, ACADEMIC_REGULATIONS_2026_27],
     verifiedAt: "2026-09-30",
   },
   {
