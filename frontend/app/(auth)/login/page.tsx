@@ -1,21 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,11 +22,7 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    const result = await signIn("credentials", { email, password, redirect: false });
 
     setLoading(false);
 
@@ -47,85 +36,50 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
-      {/* Background */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-red-50 via-white to-rose-50" />
-        <div className="animate-float absolute left-1/4 top-0 h-96 w-96 rounded-full bg-red-100/30 blur-3xl" />
-        <div
-          className="animate-float absolute bottom-0 right-1/4 h-80 w-80 rounded-full bg-rose-100/30 blur-3xl"
-          style={{ animationDelay: "3s" }}
-        />
-      </div>
+    <Card className="p-6 md:p-8">
+      <h1 className="text-xl font-strong">Sign in</h1>
+      <p className="mt-1.5 text-sm text-fg-2">Welcome back. Pick up your plan where you left it.</p>
 
-      <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-800 shadow-md shadow-red-800/20">
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">MakeItSo</span>
-          </Link>
-        </div>
-        <Card className="border-gray-200/50 shadow-xl shadow-gray-200/50">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome back</CardTitle>
-            <CardDescription>Sign in to continue planning your future</CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              {error && (
-                <div
-                  role="alert"
-                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-                >
-                  {error}
-                </div>
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@davidson.edu"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  className="h-11"
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button
-                type="submit"
-                className="h-11 w-full bg-red-800 shadow-lg shadow-red-800/20 hover:bg-red-900"
-                disabled={loading}
-              >
-                {loading ? "Signing in..." : "Sign In"}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground">
-                Don&apos;t have an account?{" "}
-                <Link href="/register" className="font-medium text-red-800 hover:underline">
-                  Create one
-                </Link>
-              </p>
-            </CardFooter>
-          </form>
-        </Card>
-      </div>
-    </div>
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        {error ? (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-md border border-danger bg-danger-wash px-3.5 py-2.5 text-sm font-medium text-danger"
+          >
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+        <Field id="email" label="Email">
+          <Input
+            type="email"
+            placeholder="you@davidson.edu"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+        </Field>
+        <Field id="password" label="Password">
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+        </Field>
+        <Button type="submit" size="lg" className="mt-1 w-full" disabled={loading}>
+          {loading ? "Signing in…" : "Sign in"}
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-fg-2">
+        New to MakeItSo?{" "}
+        <Link href="/register" className="font-semibold text-primary hover:underline">
+          Create an account
+        </Link>
+      </p>
+    </Card>
   );
 }
