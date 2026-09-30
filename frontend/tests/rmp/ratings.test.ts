@@ -266,13 +266,15 @@ describe("instructors of all-interdisciplinary courses (WRI, HUM, ...)", () => {
     }),
   ]);
 
-  it("never match a specific-department profile by nickname alone", async () => {
-    // Default resolver: the catalog search (still W1's 501 stub here) cannot say → review.
+  it("never match a specific-department profile by nickname alone; the catalog settles it", async () => {
+    // Default resolver: the real catalog search (fixtures). Tim Chartier teaches MAT/CSC this term, which agrees with
+    // RMP 'Timothy Chartier' (Mathematics) → matched. Christopher Alexander's CHE sections conflict with RMP
+    // 'Chris Alexander' (Political Science) → review. Sharon Green is an exact name.
     const ratings = await getCourseRatings(wri);
-    expect(ratings.map((r) => [r.instructor.last, r.status])).toEqual([
-      ["Alexander", "review"],
-      ["Chartier", "review"],
-      ["Green", "matched"],
+    expect(ratings.map((r) => [r.instructor.last, r.status, r.rmp?.legacyId])).toEqual([
+      ["Alexander", "review", undefined],
+      ["Chartier", "matched", 9000025],
+      ["Green", "matched", 9000009],
     ]);
     expect(ratings[0]?.rmp).toBeUndefined();
   });
