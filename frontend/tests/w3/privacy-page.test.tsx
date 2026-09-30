@@ -25,13 +25,18 @@ describe("/privacy", () => {
     expect(text).toMatch(/Download my data/);
     expect(text).toMatch(/Delete account/);
     // Review corrections: the cookies NextAuth really sets, the mail provider, the replacement rule's
-    // condition, the legacy profile fields, and what the export and deletion do not cover yet.
+    // condition, the legacy profile fields, and what the export and deletion cover (server/account/erasers.ts:
+    // the earlier version's plan, career goals and AI answers; not its name-keyed cold-email drafts).
     expect(text).toMatch(/three cookies/);
     expect(text).toMatch(/Resend/);
     expect(text).toMatch(/Once email verification is available/);
     expect(text).toMatch(/never sent a code is never replaced/);
     expect(text).toMatch(/a short bio,\s+your year, career interests/);
-    expect(text).toMatch(/not yet part of the download or of account\s+deletion/);
+    expect(text).toMatch(
+      /career goals you entered there\s+and the AI answers it generated for you/,
+    );
+    expect(text).toMatch(/cold-email drafts under your name only/);
+    expect(text).not.toMatch(/not yet part of the download/);
     expect(text).not.toMatch(/one session cookie/);
     for (const id of ["what-we-store", "ai", "alumni", "retention", "your-data", "contact"]) {
       expect(document.getElementById(id)).not.toBeNull();

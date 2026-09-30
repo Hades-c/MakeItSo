@@ -11,9 +11,11 @@ import {
 } from "@/server/account/erasers";
 import { getDb } from "@/server/db";
 
-// A registry unit test: keep the service modules' own registrations (W3: verificationcodes, ratelimits; tested in
-// tests/w3/account-data.test.ts) out of the exact-name assertions below.
+// A registry unit test: keep the service modules' own registrations (W3: verificationcodes, ratelimits, tested in
+// tests/w3/account-data.test.ts; W5s: plans) out of the exact-name assertions below, and keep the real plans
+// handler from replacing this test's own "plans" registration.
 vi.mock("@/server/auth", () => ({}));
+vi.mock("@/server/plan", () => ({}));
 
 let testDb: TestDb;
 
@@ -50,12 +52,16 @@ describe("account data registry (PLAN §4.1.12)", () => {
     });
     expect(accountDataNames()).toEqual(["aiusages", "plans"]);
     expect(await exportAccountData("u1")).toEqual({
+      "aicaches-legacy": [],
       aiusages: [],
+      "careergoals-legacy": [],
       "courseplans-legacy": [],
       plans: { userId: "u1", items: 3 },
     });
     expect(await eraseAccountData("u1")).toEqual({
+      "aicaches-legacy": 0,
       aiusages: 4,
+      "careergoals-legacy": 0,
       "courseplans-legacy": 0,
       plans: 1,
     });
@@ -108,5 +114,63 @@ describe("account data registry (PLAN §4.1.12)", () => {
     expect(await plans.countDocuments({ userId: theirs })).toBe(1);
     // A malformed id matches nothing (and never throws a CastError).
     expect(await eraseAccountData("not-an-id")).toMatchObject({ "courseplans-legacy": 0 });
+  });
+
+  it("exports and erases the student's legacy career goals", async () => {
+    await loadAccountDataRegistrations();
+    const goals = mongoose.connection.db!.collection("careergoals");
+    const mine = new mongoose.Types.ObjectId();
+    const theirs = new mongoose.Types.ObjectId();
+    await goals.insertMany([
+      { userId: mine, targetRole: "Analyst", careerField: "Consulting", milestones: [] },
+      { userId: theirs, targetRole: "Engineer", careerField: "Software Engineering" },
+    ]);
+    const exported = (await exportAccountData(mine.toString()))["careergoals-legacy"];
+    expect(exported).toEqual([expect.objectContaining({ targetRole: "Analyst" })]);
+    expect(await eraseAccountData(mine.toString())).toMatchObject({ "careergoals-legacy": 1 });
+    expect(await goals.countDocuments()).toBe(1);
+    expect(await goals.countDocuments({ userId: theirs })).toBe(1);
+  });
+
+  it("exports and erases the student's own legacy AI answers, keyed by id or e-mail, and nothing else", async () => {
+    await loadAccountDataRegistrations();
+    const caches = mongoose.connection.db!.collection("aicaches");
+    const users = mongoose.connection.db!.collection("users");
+    const mine = new mongoose.Types.ObjectId();
+    await users.insertOne({ _id: mine, name: "Sam Lee", email: "Sam.Lee@davidson.edu" });
+    // As the legacy routes wrote them: JSON.stringify({ userId: session id || session e-mail, … }).
+    const key = (userId: string, rest: Record<string, unknown> = {}) =>
+      JSON.stringify({ userId, major: "Economics", ...rest });
+    await caches.insertMany([
+      { type: "roadmap", cacheKey: key(mine.toString()), data: { a: 1 } },
+      { type: "career-plan", cacheKey: key("Sam.Lee@davidson.edu"), data: { b: 1 } },
+      { type: "recommendations", cacheKey: key("sam.lee@davidson.edu"), data: { c: 1 } },
+      // Someone else's, including an address that merely starts with this one's.
+      { type: "roadmap", cacheKey: key(new mongoose.Types.ObjectId().toString()), data: {} },
+      { type: "roadmap", cacheKey: key("sam.lee@davidson.education"), data: {} },
+      // Not attributable (keyed by the student's name) or shared by everyone: never touched.
+      {
+        type: "cold-email",
+        cacheKey: JSON.stringify({ alumniName: "x", studentName: "sam lee" }),
+        data: {},
+      },
+      { type: "course-insights", cacheKey: JSON.stringify({ courseCode: "ECO 101" }), data: {} },
+      // The same key under a shared type is not the student's.
+      { type: "professor-summary", cacheKey: key(mine.toString()), data: {} },
+    ]);
+    const exported = (await exportAccountData(mine.toString()))["aicaches-legacy"] as {
+      type: string;
+    }[];
+    expect(exported.map((row) => row.type).sort()).toEqual([
+      "career-plan",
+      "recommendations",
+      "roadmap",
+    ]);
+    expect(await eraseAccountData(mine.toString())).toMatchObject({ "aicaches-legacy": 3 });
+    expect(await caches.countDocuments()).toBe(5);
+    expect(await caches.countDocuments({ type: "cold-email" })).toBe(1);
+    // An id with regex characters or no account matches nothing and never throws.
+    expect(await eraseAccountData("u.*")).toMatchObject({ "aicaches-legacy": 0 });
+    expect(await caches.countDocuments()).toBe(5);
   });
 });

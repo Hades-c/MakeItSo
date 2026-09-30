@@ -1,6 +1,7 @@
 import "server-only";
 import mongoose from "mongoose";
 import CoursePlanV1 from "@/models/legacy/CoursePlanV1";
+import User from "@/models/User";
 import { getDb } from "@/server/db";
 
 /**
@@ -18,10 +19,17 @@ import { getDb } from "@/server/db";
  * ACCOUNT_DATA_MODULES below (the orchestrator adds entries on request). The users document itself is deleted by
  * W3 after the erasers ran.
  *
- * Built in: "courseplans-legacy", the student's hackathon-era plan in the legacy `courseplans` collection
- * (models/legacy/CoursePlanV1.ts). Erasing it on account deletion is the ONE permitted write to that collection.
- * The other legacy collections hold nothing per user (the legacy `aicaches` has no userId; `courses` is catalog
- * data), so they have no eraser.
+ * Built in: the student's own rows in the hackathon-era collections. Each runs only when that student exports or
+ * deletes their own account, and erasing them on account deletion is the ONE permitted write to those collections.
+ *   courseplans-legacy  the plan in `courseplans` (models/legacy/CoursePlanV1.ts), by userId.
+ *   careergoals-legacy  the career goals in `careergoals`, by userId.
+ *   aicaches-legacy     the personal AI answers in `aicaches`: the legacy routes keyed "roadmap", "career-plan" and
+ *                       "recommendations" rows as JSON.stringify({ userId: <session id, else e-mail>, … }), so a
+ *                       row is the student's when its cacheKey starts with {"userId":"<id>" or {"userId":"<e-mail>"
+ *                       (the e-mail is read from the users document, which W3 deletes only after the erasers ran).
+ * Not attributable, so not covered: legacy "cold-email" rows are keyed by the lower-cased student NAME only (names
+ * are not unique: another student's drafts would match), and "course-insights" / "professor-summary" rows are
+ * shared by everyone (no user in the key). `courses` is catalog data.
  */
 
 export interface AccountDataHandler {
@@ -48,9 +56,42 @@ function legacyUserFilter(userId: string) {
   return { userId: { $in: ids } };
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Legacy AI answer types whose cache keys start with the student's userId (the per-student legacy routes). */
+export const LEGACY_PERSONAL_AI_TYPES = ["roadmap", "career-plan", "recommendations"] as const;
+
+/**
+ * The student's rows in the legacy `aicaches`: a personal type whose cacheKey starts with {"userId":<id or e-mail>
+ * as the legacy routes wrote it (JSON.stringify, so the value is JSON-quoted; the closing quote keeps
+ * "sam@davidson.edu" from matching "sam@davidson.education").
+ */
+async function legacyAiCacheFilter(userId: string) {
+  const owners = new Set<string>([userId]);
+  if (mongoose.isValidObjectId(userId)) {
+    const user = await User.findById(userId).select("email").lean();
+    const email = typeof user?.email === "string" ? user.email.trim() : "";
+    if (email) {
+      owners.add(email);
+      owners.add(email.toLowerCase());
+    }
+  }
+  return {
+    type: { $in: [...LEGACY_PERSONAL_AI_TYPES] },
+    $or: [...owners].map((owner) => ({
+      cacheKey: { $regex: `^${escapeRegExp(`{"userId":${JSON.stringify(owner)}`)}` },
+    })),
+  };
+}
+
+/** The legacy collections, through the raw driver: no mongoose casting or hooks, and the only writes are deletes. */
+const legacyCollection = (name: "careergoals" | "aicaches") => mongoose.connection.collection(name);
+
 /**
  * Registrations that belong to no service module. Raw driver calls: no mongoose casting or hooks on the legacy
- * collection, and the only write is this delete (models/legacy/CoursePlanV1.ts).
+ * collections, and the only write is the delete (models/legacy/CoursePlanV1.ts).
  */
 const BUILT_IN: Readonly<Record<string, AccountDataHandler>> = {
   "courseplans-legacy": {
@@ -61,6 +102,30 @@ const BUILT_IN: Readonly<Record<string, AccountDataHandler>> = {
     async erase(userId) {
       await getDb();
       return (await CoursePlanV1.collection.deleteMany(legacyUserFilter(userId))).deletedCount;
+    },
+  },
+  "careergoals-legacy": {
+    async export(userId) {
+      await getDb();
+      return legacyCollection("careergoals").find(legacyUserFilter(userId)).toArray();
+    },
+    async erase(userId) {
+      await getDb();
+      return (await legacyCollection("careergoals").deleteMany(legacyUserFilter(userId)))
+        .deletedCount;
+    },
+  },
+  "aicaches-legacy": {
+    async export(userId) {
+      await getDb();
+      return legacyCollection("aicaches")
+        .find(await legacyAiCacheFilter(userId))
+        .toArray();
+    },
+    async erase(userId) {
+      await getDb();
+      const filter = await legacyAiCacheFilter(userId);
+      return (await legacyCollection("aicaches").deleteMany(filter)).deletedCount;
     },
   },
 };

@@ -19,9 +19,10 @@ const LAST_UPDATED = "September 30, 2026";
  * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Static. Every statement here must stay true: the
  * retention periods match the models (verification codes valid 15 min and deleted after 24 h, per-user AI cache
  * 30 days, feed items 60 days, rate limits by window), the AI payload allow-list (server/ai/payloads.ts), the
- * account data registry (server/account/erasers.ts: the legacy `aicaches` and `careergoals` are NOT in it yet,
- * contractRequest), the cookies NextAuth sets, and the mail adapter (server/auth/mailer.ts: Resend). Change the
- * text in the same commit as the behaviour.
+ * account data registry (server/account/erasers.ts: the built-in legacy erasers cover `courseplans`,
+ * `careergoals` and the personal `aicaches` rows; legacy cold-email rows are keyed by name only and are not
+ * covered), the cookies NextAuth sets, and the mail adapter (server/auth/mailer.ts: Resend). Change the text in
+ * the same commit as the behaviour.
  */
 
 function Section({
@@ -129,10 +130,12 @@ export default function PrivacyPage() {
                 <b>From the earlier version of MakeItSo:</b> if you used the hackathon version, the
                 plan you saved there, and the profile fields it kept on your account (a short bio,
                 your year, career interests, a picture address and a credit total), are kept
-                (read-only) so they can be carried over. They are in your download and deleted with
-                your account. That version also saved the AI answers it generated for you and any
-                career goals you entered: those are not yet part of the download or of account
-                deletion, so ask us (see Contact) and we will delete them.
+                (read-only) so they can be carried over. So are the career goals you entered there
+                and the AI answers it generated for you (course plans, career plans and course
+                recommendations). All of these are in your download and deleted with your account.
+                That version also saved cold-email drafts under your name only, not linked to your
+                account, so we cannot find them reliably: ask us (see Contact) and we will delete
+                them.
               </li>
             </ul>
             <p>
@@ -257,12 +260,12 @@ export default function PrivacyPage() {
                   profile
                 </Link>{" "}
                 gives you a JSON file of everything MakeItSo stores about you (up to 5 times a day),
-                except the earlier version&apos;s AI answers and career goals described above.
+                except the earlier version&apos;s cold-email drafts described above.
               </li>
               <li>
                 <b>Delete account</b> asks for your password, then immediately deletes your account
-                and everything tied to it: profile, plan, AI results, codes and counters, and any
-                plan from the earlier version (for that version&apos;s AI answers and career goals,
+                and everything tied to it: profile, plan, AI results, codes and counters, and the
+                earlier version&apos;s plan, career goals and AI answers (for its cold-email drafts,
                 ask us). This cannot be undone.
               </li>
               <li>
