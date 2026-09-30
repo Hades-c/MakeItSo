@@ -14,9 +14,18 @@ export function isExplicitTheme(value: unknown): value is ResolvedTheme {
 }
 
 /**
- * Inline <head> script that applies a stored explicit theme before first paint (no flash of the wrong theme).
- * Kept tiny and dependency-free; it runs before React. The CSP allows inline scripts.
+ * localStorage keys written by the hackathon version that must not linger on shared computers: the old Roadmap page
+ * saved a student's roadmap under an un-namespaced key (audit design-ux/roadmap-localstorage-not-user-scoped).
  */
-export const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(
+export const LEGACY_STORAGE_KEYS = ["makeItSo_savedRoadmap"] as const;
+
+/**
+ * Inline <head> script that applies a stored explicit theme before first paint (no flash of the wrong theme) and
+ * clears the legacy keys above on every page load (sign-out lands on /login, so it runs then too). Kept tiny and
+ * dependency-free; it runs before React. The CSP allows inline scripts.
+ */
+export const THEME_INIT_SCRIPT = `(function(){try{var s=localStorage;${LEGACY_STORAGE_KEYS.map(
+  (key) => `s.removeItem(${JSON.stringify(key)});`,
+).join("")}var t=s.getItem(${JSON.stringify(
   THEME_STORAGE_KEY,
 )});if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}})();`;

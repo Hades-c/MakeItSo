@@ -44,7 +44,7 @@ export function UserMenu({ name, email }: UserMenuProps) {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Account menu for ${name || email}`}
-        className="grid size-11 shrink-0 place-items-center rounded-full border border-line-2 bg-sand text-sm font-strong text-fg transition-colors hover:border-control md:size-9.5"
+        className="grid size-11 shrink-0 place-items-center rounded-full border border-line-2 bg-sand text-sm font-strong text-fg transition-colors hover:border-line-strong md:size-9.5"
       >
         <span aria-hidden>{initials(name, email)}</span>
       </DropdownMenuTrigger>

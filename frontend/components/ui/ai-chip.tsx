@@ -12,7 +12,7 @@ export function AiChip({ className, label = "verify with your advisor" }: AiChip
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-dashed border-control bg-surface-2 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-fg-2",
+        "inline-flex items-center gap-1.5 rounded-full border border-dashed border-line-strong bg-surface-2 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-fg-2",
         className,
       )}
     >

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 /** Shared look for text-like controls (Input, Textarea, Select trigger). */
 export const controlClass = [
-  "w-full min-w-0 rounded-md border border-control bg-surface text-base text-fg md:text-sm",
+  "w-full min-w-0 rounded-md border border-line-strong bg-surface text-base text-fg md:text-sm",
   "placeholder:text-fg-3 transition-colors",
   "disabled:cursor-not-allowed disabled:opacity-50",
   "aria-invalid:border-danger",

@@ -49,7 +49,7 @@ const ToggleChip = React.forwardRef<HTMLButtonElement, ToggleChipProps>(
       type={type ?? "button"}
       aria-pressed={pressed}
       className={cn(
-        "inline-flex h-11 items-center gap-1.5 rounded-full border border-control bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-fg-2 transition-colors md:h-8.5 md:px-3",
+        "inline-flex h-11 items-center gap-1.5 rounded-full border border-line-strong bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-fg-2 transition-colors md:h-8.5 md:px-3",
         "hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:opacity-50",
         "aria-pressed:border-primary aria-pressed:bg-primary-wash aria-pressed:text-primary",
         "[&_svg]:size-3.5 [&_svg]:shrink-0",

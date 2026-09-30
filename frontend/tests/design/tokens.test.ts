@@ -133,7 +133,7 @@ describe("Lakeside tokens", () => {
 
     it("form-control borders and decor ≥ 3:1 (non-text)", () => {
       for (const s of ["bg", "surface"]) {
-        expect(contrast(t.control, t[s])).toBeGreaterThanOrEqual(3);
+        expect(contrast(t["line-strong"], t[s])).toBeGreaterThanOrEqual(3);
         expect(contrast(t.taupe, t[s])).toBeGreaterThanOrEqual(3);
       }
     });
