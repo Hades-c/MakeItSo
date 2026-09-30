@@ -52,11 +52,11 @@ export default async function EventsPage({
             <EventsResults view={view} window={window} now={at} timeZone={timeZone} />
           </Suspense>
         </div>
-        <aside aria-label="Library hours and sources" className="flex min-w-0 flex-col gap-5">
+        <aside aria-label="Library hours and calendars" className="flex min-w-0 flex-col gap-5">
           <Suspense fallback={<CardSkeleton title="Library hours" />}>
             <LibraryHoursCard today={window.today} now={at} timeZone={timeZone} />
           </Suspense>
-          <Suspense fallback={<CardSkeleton title="Sources" />}>
+          <Suspense fallback={<CardSkeleton title="Calendars" />}>
             <EventSourcesCard now={at} timeZone={timeZone} />
           </Suspense>
         </aside>

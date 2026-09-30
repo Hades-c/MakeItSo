@@ -41,7 +41,7 @@ export function EventSourcesView({
   timeZone: string;
 }) {
   return (
-    <SectionCard id="event-sources" title="Sources">
+    <SectionCard id="event-sources" title="Calendars">
       {statuses ? (
         <ul className="divide-y divide-line" data-testid="event-sources">
           {statuses.map((row) => (

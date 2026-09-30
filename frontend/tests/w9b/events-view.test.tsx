@@ -394,6 +394,8 @@ describe("EventSourcesView", () => {
         ]}
       />,
     );
+    // No "sources" in the name: that belongs to the shell's Sources panel (landmark names stay distinct).
+    expect(screen.getByRole("region", { name: "Calendars" })).toBeInTheDocument();
     const rows = within(screen.getByTestId("event-sources")).getAllByRole("listitem");
     expect(rows.map((r) => r.textContent)).toEqual([
       "Source: WildcatSyncas of Sep 30, 12:00 PM",

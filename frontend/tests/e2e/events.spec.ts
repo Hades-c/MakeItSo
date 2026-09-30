@@ -120,6 +120,10 @@ test("events: grouped by campus day, every item tagged and linked out, accessibl
     await expect(hours.getByText("Music Library (Sloan 101)")).toBeVisible();
     await expect(hours.getByText("Open now").first()).toBeVisible();
     await expect(hours.getByText(/as of Sep 30/)).toBeVisible();
+    await expect(page.getByRole("region", { name: "Calendars", exact: true })).toBeVisible();
+    // The shell's Sources panel keeps its name to itself (desktop; phones have no panel). Role names match
+    // as substrings, so no other region may mention "sources".
+    expect(await page.getByRole("region", { name: "Sources" }).count()).toBeLessThanOrEqual(1);
     const sources = page.getByTestId("event-sources").getByRole("listitem");
     await expect(sources).toHaveCount(4);
     await expect(sources.filter({ hasText: "as of Sep 30, 12:00 PM" })).toHaveCount(4);
