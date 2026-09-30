@@ -34,6 +34,7 @@ interface CourseSection {
   section: string;
   crn?: number;
   title: string;
+  description?: string; // only for topics courses whose sections differ
   instructors: string[];
   schedule: string;
   location: string;
@@ -880,7 +881,10 @@ function CourseCard({
               )}
 
               <p className="text-sm text-[#555555] leading-relaxed" data-testid="course-description">
-                {course.description || "No description has been published for this course yet."}
+                {course.description ||
+                  (course.sectionList.some((s) => s.description)
+                    ? "Topics vary by section. Each section's title and description are listed below."
+                    : "No description has been published for this course yet.")}
               </p>
 
               <div className="text-sm" data-testid="course-prerequisites">
@@ -907,6 +911,7 @@ function CourseCard({
                         <span>{s.enrollment.remaining} of {s.enrollment.max} seats open</span>
                       )}
                       {s.credits !== course.credits && <span>{formatCredits(s.credits)}</span>}
+                      {s.description && <p className="basis-full text-[#555555] leading-relaxed">{s.description}</p>}
                     </li>
                   ))}
                 </ul>

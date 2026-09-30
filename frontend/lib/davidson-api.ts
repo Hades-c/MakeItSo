@@ -71,6 +71,8 @@ export interface CourseSection {
   section: string;
   crn?: number;
   title: string;
+  /** Only set when sections of this course have different titles (topics courses). */
+  description?: string;
   instructors: string[];
   schedule: string;
   location: string;
@@ -81,7 +83,8 @@ export interface CourseSection {
 export interface LiveCourse {
   code: string;
   name: string;
-  /** Official catalog description (instructor line removed, entities decoded). */
+  /** Official catalog description (instructor line removed, entities decoded).
+   *  Empty for topics courses whose sections differ (see sectionList[].description). */
   description: string;
   /** Official prerequisites/notes text from the description's Prerequisites block ("" if none). */
   prerequisites: string;
@@ -287,9 +290,26 @@ export function transformSections(raw: RawSection[]): LiveCourse[] {
 
   const courses: LiveCourse[] = [];
   for (const [code, sections] of Array.from(byCode.entries())) {
-    const first = sections[0];
-    const { description, prerequisites } = parseCourseDescription(first.course_description ?? "");
-    const name = cleanTitle(first.course_title);
+    // Topics courses (e.g. WRI 101) share one code but sections can have
+    // their own titles and descriptions. Use a title only if most sections
+    // share it, and keep per-section descriptions only when they differ.
+    const titleCounts = new Map<string, number>();
+    for (const s of sections) {
+      const t = cleanTitle(s.course_title);
+      titleCounts.set(t, (titleCounts.get(t) ?? 0) + 1);
+    }
+    const titlesVary = titleCounts.size > 1;
+    const majorityTitle = Array.from(titleCounts.entries()).find(([, n]) => n > sections.length / 2)?.[0];
+    const first =
+      sections.find((s) => cleanTitle(s.course_title) === (majorityTitle ?? cleanTitle(sections[0].course_title))) ?? sections[0];
+    const parsed = parseCourseDescription(first.course_description ?? "");
+    const sectionDescriptions = titlesVary
+      ? sections.map((s) => parseCourseDescription(s.course_description ?? "").description)
+      : [];
+    const descriptionsVary = new Set(sectionDescriptions).size > 1;
+    const description = descriptionsVary && !majorityTitle ? "" : parsed.description;
+    const prerequisites = parsed.prerequisites;
+    const name = titlesVary && !majorityTitle ? "Topics vary by section" : cleanTitle(first.course_title);
     const instructors = Array.from(
       new Set(sections.flatMap((s) => (s.instructors ?? []).map(instructorName)).filter(Boolean))
     );
@@ -300,10 +320,11 @@ export function transformSections(raw: RawSection[]): LiveCourse[] {
       }
     }
     const sectionList: CourseSection[] = sections
-      .map((s) => ({
+      .map((s, i) => ({
         section: s.section ?? "",
         crn: s.crn,
         title: cleanTitle(s.course_title) || name,
+        ...(descriptionsVary ? { description: sectionDescriptions[i] } : {}),
         instructors: (s.instructors ?? []).map(instructorName).filter(Boolean),
         schedule: formatSchedule(s.meetings),
         location: formatLocation(s.meetings),
