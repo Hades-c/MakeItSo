@@ -1,29 +1,15 @@
 import { describe, expect, it } from "vitest";
-import * as catalog from "@/server/catalog";
 import { ApiError } from "@/server/http";
 import * as plan from "@/server/plan";
-import * as programs from "@/server/programs";
 
 /**
  * The frozen service surfaces (PLAN §4.1.3–7). Until each workstream lands, every export is a typed stub that
  * throws ApiError(501, "unavailable"). This test pins the export names so a rename is a visible contract change.
- * Implemented services leave this list and pin their surface in their own tests (server/rmp: tests/rmp/service.test.ts;
- * server/feeds: tests/w4a/surface.test.ts).
+ * Implemented services leave this list and pin their surface in their own tests (server/catalog:
+ * tests/catalog/service.test.ts; server/rmp: tests/rmp/service.test.ts; server/feeds: tests/w4a/surface.test.ts;
+ * server/programs: tests/programs/service.test.ts).
  */
 const SURFACES = {
-  catalog: [
-    catalog,
-    [
-      "countCourses",
-      "getCatalogFilters",
-      "getCourse",
-      "getCourseHistory",
-      "getSection",
-      "resolveTerms",
-      "searchCourses",
-      "validateCourseCodes",
-    ],
-  ],
   plan: [
     plan,
     [
@@ -50,7 +36,6 @@ const SURFACES = {
       "updateSummerActivity",
     ],
   ],
-  programs: [programs, ["getProgram", "listPrograms", "officialProgramNames", "syncPrograms"]],
 } as const;
 
 describe("service stubs", () => {
