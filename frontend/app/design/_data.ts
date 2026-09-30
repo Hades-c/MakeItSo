@@ -203,8 +203,31 @@ export const THURSDAY_EDGE_CASES: TimelineItem[] = [
     location: "Union",
     source: "wildcatsync",
   },
+  {
+    id: "late",
+    kind: "event",
+    title: "Late study session (sample)",
+    start: "22:00",
+    end: "00:30",
+    location: "Library",
+    source: "my-plan",
+  },
 ];
 export const THURSDAY_NOW = new Date("2026-10-01T16:40:00Z"); // 12:40 PM EDT
+
+/** Wednesday again at 10:45, in the middle of CSC 221 A, with a deadline due during it (sample). */
+export const WEDNESDAY_BUSY: TimelineItem[] = [
+  ...WEDNESDAY,
+  {
+    id: "quiz",
+    kind: "deadline",
+    code: "ECO 232",
+    title: "Reading quiz (sample)",
+    start: "11:00",
+    source: "my-plan",
+  },
+];
+export const BUSY_NOW = new Date("2026-09-30T14:45:00Z"); // 10:45 AM EDT
 
 export const WEEK_STRIP: FiveDayStripDay[] = [
   { date: "2026-09-28", label: "Mon", count: 3, isToday: false, href: "/design?day=2026-09-28" },
@@ -291,6 +314,15 @@ export const PLAN_HUMANITIES: PlanMapTerm[] = [
   { termCode: "202702", label: "Spring 2028", slots: [] },
   { termCode: "202801", label: "Fall 2028", slots: [] },
   { termCode: "202802", label: "Spring 2029", slots: [] },
+];
+
+/** The humanities plan with a summer after every year: empty summers drop out of the compact preview. */
+export const PLAN_HUMANITIES_SUMMERS: PlanMapTerm[] = [
+  ...PLAN_HUMANITIES.slice(0, 5),
+  { termCode: "202603", label: "Summer 2027", slots: [] },
+  ...PLAN_HUMANITIES.slice(5, 7),
+  { termCode: "202703", label: "Summer 2028", slots: [] },
+  ...PLAN_HUMANITIES.slice(7),
 ];
 
 /** What HIS 357 fills (course mockup). */

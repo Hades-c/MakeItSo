@@ -17,9 +17,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import {
   ADD_TO_PLAN_TERMS,
+  BUSY_NOW,
   NOW,
   PLAN_2029,
   PLAN_HUMANITIES,
+  PLAN_HUMANITIES_SUMMERS,
   PLAN_PREVIEW,
   REQUIREMENTS,
   REQUIREMENTS_PLANNED,
@@ -29,6 +31,7 @@ import {
   THURSDAY_NOW,
   TIME_ZONE,
   WEDNESDAY,
+  WEDNESDAY_BUSY,
   WEEK_EDGE_CASES,
   WEEK_STRIP,
   WEEK_WITH_HIS_357,
@@ -240,6 +243,17 @@ export default function DesignGalleryPage() {
               label="Schedule for Thursday, October 1"
             />
           </SectionCard>
+          <SectionCard id="busy" title="Timeline · now and a deadline during class" count="10:45a">
+            <DayTimeline
+              now={BUSY_NOW}
+              timeZone={TIME_ZONE}
+              startHour={9}
+              endHour={16}
+              items={WEDNESDAY_BUSY}
+              showFreeGaps
+              label="Schedule for Wednesday, September 30, at 10:45"
+            />
+          </SectionCard>
           <SectionCard id="week-edge" title="Week · conflict, TBA, weekend, evening">
             <WeekGrid
               days={["M", "T", "W", "R", "F", "S"]}
@@ -271,6 +285,7 @@ export default function DesignGalleryPage() {
                   avgRating={4.6}
                   numRatings={1}
                   size="sm"
+                  url="https://www.ratemyprofessors.com/search/professors/3965"
                   asOf="2026-09-29T09:00:00Z"
                   timeZone={TIME_ZONE}
                 />
@@ -306,6 +321,15 @@ export default function DesignGalleryPage() {
               ]}
               initialValue={null}
               courseCode="CSC 221"
+            />
+          </SectionCard>
+          <SectionCard id="preview-summers" title="Plan preview · summers">
+            <PlanMap
+              variant="compact"
+              terms={PLAN_HUMANITIES_SUMMERS}
+              requiredCredits={32}
+              highlightTermCode="202602"
+              label="Humanities plan preview"
             />
           </SectionCard>
           <SectionCard id="strip-states" title="Five-day strip · no links">
