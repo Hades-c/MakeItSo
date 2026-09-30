@@ -49,7 +49,7 @@ describe("normalizeDigest", () => {
       `<![CDATA[<h3><a href="https://www.davidson.edu/events/booking/abc"><span>${title}</span></a></h3><strong><em>Oct 20, 2026 07:00 pm</em></strong>]]>`;
     const doubled = parseRss(
       rss([
-        `<title>Issue 2</title><link>https://us6.campaign-archive.com/?u=a&amp;id=2</link><pubDate>Fri, 02 Oct 2026 15:00:00 +0000</pubDate><description>${html("Concert")}</description>`,
+        `<title>Issue 2</title><link>https://us6.campaign-archive.com/?u=a&amp;id=2</link><pubDate>Tue, 29 Sep 2026 15:00:00 +0000</pubDate><description>${html("Concert")}</description>`,
         `<title>Issue 1</title><link>https://us6.campaign-archive.com/?u=a&amp;id=1</link><pubDate>Fri, 25 Sep 2026 15:00:00 +0000</pubDate><description>${html("Concert (old title)")}</description>`,
       ]),
     );
@@ -74,7 +74,7 @@ describe("normalizeDigest", () => {
     ]);
   });
 
-  it("entries with off-list links fall back to the issue link; entries without a date are skipped", () => {
+  it("entries with off-list links fall back to the issue link; headings without a date are not events", () => {
     const entries = extractDigestEntries(
       '<h3><a href="https://evil.example/x">Bad link</a></h3><em>Oct 20, 2026 07:00 pm</em><h3>No date</h3><p>TBA</p>',
       TZ,
@@ -92,6 +92,60 @@ describe("normalizeDigest", () => {
     expect(items.map((i) => [i.title, i.url])).toEqual([
       ["Bad link", "https://us6.campaign-archive.com/?u=a&id=3"],
     ]);
-    expect(skipped).toBe(1);
+    expect(skipped).toBe(0);
+  });
+});
+
+describe("normalizeDigest: layout and date-format changes", () => {
+  /** The live archive with every "Oct 05, 2026 05:00 pm" rewritten as "05/2026 at 05:00 pm". */
+  function rewrittenDates(): string {
+    const text = fixture("events-digest/feed.rss").replace(
+      /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{2}), (\d{4}) (\d{2}:\d{2} [ap]m)/g,
+      "$1/$2 at $3",
+    );
+    expect(text).not.toMatch(/\bOct \d{2}, 2026 \d{2}:\d{2} [ap]m/);
+    return text;
+  }
+
+  it("issues without a dated entry become news items, and the newest one raises a warning", () => {
+    const { items, warning, skipped } = normalizeDigest(
+      parseRss(rewrittenDates()),
+      context("events-digest"),
+    );
+    expect(items.length).toBe(5); // the five issues within 60 days of the newest
+    expect(items.every((i) => i.kind === "news" && i.channel === "issues")).toBe(true);
+    expect(items.every((i) => i.url.startsWith("https://us6.campaign-archive.com/"))).toBe(true);
+    expect(warning).toBe(
+      "the newest issue (2026-09-25) lists no dated events; stored it as a news item",
+    );
+    expect(skipped).toBe(0);
+  });
+
+  it("the live layout (dated entries after an undated heading) raises no warning", () => {
+    const { warning } = normalizeDigest(
+      parseRss(fixture("events-digest/feed.rss")),
+      context("events-digest"),
+    );
+    expect(warning).toBeUndefined();
+    const withQuickLinks = parseRss(
+      rss([
+        `<title>I</title><link>https://us6.campaign-archive.com/?u=a&amp;id=4</link><pubDate>Fri, 25 Sep 2026 15:00:00 +0000</pubDate><description><![CDATA[<h3>Quick Links</h3><p>…</p><h3><a href="https://www.davidson.edu/events/booking/x">Talk</a></h3><em>Oct 20, 2026 07:00 pm</em>]]></description>`,
+      ]),
+    );
+    const result = normalizeDigest(withQuickLinks, context("events-digest"));
+    expect(result.items.map((i) => [i.kind, i.title])).toEqual([["event", "Talk"]]);
+    expect(result.warning).toBeUndefined();
+  });
+
+  it("entry titles are decoded once (escaped markup stays literal)", () => {
+    const channel = parseRss(
+      rss([
+        `<title>I</title><link>https://us6.campaign-archive.com/?u=a&amp;id=5</link><pubDate>Fri, 25 Sep 2026 15:00:00 +0000</pubDate><description><![CDATA[<h3><a href="https://www.davidson.edu/events/booking/y?a=1&amp;region=2"><span>Coding &amp;lt;b&amp;gt; tags &amp; more</span></a></h3><strong><em>Oct 21, 2026 07:00 pm</em></strong>]]></description>`,
+      ]),
+    );
+    const { items } = normalizeDigest(channel, context("events-digest"));
+    expect(items.map((i) => [i.title, i.url])).toEqual([
+      ["Coding &lt;b&gt; tags & more", "https://www.davidson.edu/events/booking/y?a=1&region=2"],
+    ]);
   });
 });

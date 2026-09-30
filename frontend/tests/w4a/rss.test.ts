@@ -91,6 +91,36 @@ describe("stale sticky items (> 60 days older than the newest item)", () => {
   });
 });
 
+describe("misdated items (pubDate far in the future)", () => {
+  it("one item dated 2206 is skipped and does not make the real items stale", () => {
+    const channel = parseRss(
+      rss([
+        "<title>Story A</title><link>https://thedavidsonian.news/a/</link><pubDate>Wed, 16 Sep 2026 14:00:00 +0000</pubDate>",
+        "<title>Story B</title><link>https://thedavidsonian.news/b/</link><pubDate>Wed, 16 Sep 2026 15:00:00 +0000</pubDate>",
+        "<title>Typo year</title><link>https://thedavidsonian.news/t/</link><pubDate>Sat, 16 Sep 2206 14:00:00 +0000</pubDate>",
+        "<title>Tomorrow</title><link>https://thedavidsonian.news/n/</link><pubDate>Thu, 01 Oct 2026 01:00:00 +0000</pubDate>",
+      ]),
+    );
+    const { items, stale, skipped } = normalizeNews(channel, context("davidsonian", "news"));
+    expect(items.map((i) => i.title)).toEqual(["Tomorrow", "Story B", "Story A"]);
+    expect([stale, skipped]).toEqual([0, 1]);
+  });
+
+  it("dropStaleItems anchors the cutoff at the newest plausible date", () => {
+    const now = new Date("2026-09-30T16:00:00Z");
+    const items = [
+      { id: "future", pubDate: new Date("2206-09-16T00:00:00Z") },
+      { id: "recent", pubDate: new Date("2026-09-16T00:00:00Z") },
+      { id: "old", pubDate: new Date("2026-06-01T00:00:00Z") },
+    ];
+    const { kept, stale, future } = dropStaleItems(items, { now });
+    expect(kept.map((i) => i.id)).toEqual(["recent"]);
+    expect([stale, future]).toEqual([1, 1]);
+    // Without `now` nothing is treated as misdated.
+    expect(dropStaleItems(items).kept.map((i) => i.id)).toEqual(["future"]);
+  });
+});
+
 describe("normalizeNews", () => {
   it("The Davidsonian: every story, text summary, on thedavidsonian.news", () => {
     const { items, stale, skipped } = news("davidsonian", "davidsonian/feed.rss");

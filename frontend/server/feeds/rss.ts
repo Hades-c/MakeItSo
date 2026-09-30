@@ -135,20 +135,34 @@ export function parseRss(xml: string): RssChannel {
   return { title: channel.title ?? "", link: nonEmpty(link), items };
 }
 
+/** Items dated more than this after "now" are misdated (a typo in the year): skipped, never the newest. */
+export const MAX_FUTURE_PUBDATE_MS = DAY_MS;
+
+export interface StaleOptions {
+  /** "now": items dated more than a day later are skipped and never anchor the cutoff. */
+  now?: Date;
+  staleDays?: number;
+}
+
 /**
  * Drop stale sticky items: anything published more than `staleDays` before the newest dated item. Items without
- * a date are kept (their age is unknown). Returns the kept items newest first and how many were dropped.
+ * a date are kept (their age is unknown); items dated more than a day after `now` are dropped as misdated (one
+ * "2206" typo must not make every real item look stale). Returns the kept items newest first and the counts.
  */
 export function dropStaleItems<T extends { pubDate: Date | null }>(
   items: readonly T[],
-  staleDays = STALE_NEWS_DAYS,
-): { kept: T[]; stale: number } {
-  const dated = items.filter((item) => item.pubDate).map((item) => item.pubDate!.getTime());
-  if (dated.length === 0) return { kept: [...items], stale: 0 };
-  const cutoff = Math.max(...dated) - staleDays * DAY_MS;
-  const kept = items.filter((item) => !item.pubDate || item.pubDate.getTime() >= cutoff);
+  { now, staleDays = STALE_NEWS_DAYS }: StaleOptions = {},
+): { kept: T[]; stale: number; future: number } {
+  const latest = now ? now.getTime() + MAX_FUTURE_PUBDATE_MS : Number.POSITIVE_INFINITY;
+  const plausible = items.filter((item) => !item.pubDate || item.pubDate.getTime() <= latest);
+  const future = items.length - plausible.length;
+  let newest = Number.NEGATIVE_INFINITY;
+  for (const item of plausible) if (item.pubDate) newest = Math.max(newest, item.pubDate.getTime());
+  if (newest === Number.NEGATIVE_INFINITY) return { kept: [...plausible], stale: 0, future };
+  const cutoff = newest - staleDays * DAY_MS;
+  const kept = plausible.filter((item) => !item.pubDate || item.pubDate.getTime() >= cutoff);
   kept.sort((a, b) => (b.pubDate?.getTime() ?? 0) - (a.pubDate?.getTime() ?? 0));
-  return { kept, stale: items.length - kept.length };
+  return { kept, stale: plausible.length - kept.length, future };
 }
 
 export interface NewsOptions extends ParseContext {
@@ -165,9 +179,9 @@ export function normalizeNews(
   channel: RssChannel,
   options: NewsOptions,
 ): { items: NormalizedFeedItem[]; stale: number; skipped: number } {
-  const { kept, stale } = dropStaleItems(channel.items);
+  const { kept, stale, future } = dropStaleItems(channel.items, { now: options.now });
   const items: NormalizedFeedItem[] = [];
-  let skipped = 0;
+  let skipped = future;
   const base = channel.link ?? undefined;
   for (const item of kept.slice(0, options.maxItems ?? MAX_NEWS_ITEMS)) {
     const title = cleanLine(item.title, TITLE_MAX);

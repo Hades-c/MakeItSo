@@ -1,7 +1,14 @@
 import "server-only";
-import { decode } from "html-entities";
 import { dropStaleItems, type RssChannel } from "@/server/feeds/rss";
-import { cleanLine, htmlToText, oneLine, TITLE_MAX } from "@/server/feeds/text";
+import {
+  cleanLine,
+  htmlToText,
+  LINE_INPUT_MAX,
+  oneLine,
+  sliceText,
+  TITLE_MAX,
+  truncateText,
+} from "@/server/feeds/text";
 import { addDaysToKey, dateKeyInZone, startOfDayInZone, zonedTimeToUtc } from "@/server/feeds/time";
 import type { NormalizedFeedItem, ParseContext } from "@/server/feeds/types";
 import { pickItemUrl, safeItemUrl, urlDedupeKey } from "@/server/feeds/urls";
@@ -14,9 +21,13 @@ import { pickItemUrl, safeItemUrl, urlDedupeKey } from "@/server/feeds/urls";
  * Every listed event becomes an "event" item (source events-digest, link to Davidson's own event page, start in
  * America/New_York, no end time given). Issues older than 60 days before the newest are skipped (stale), the same
  * event listed in several issues is kept once (newest issue wins), and events that ended before today are
- * dropped. An issue whose layout yields no events is kept as a "news" item on channel "issues" so the digest never
- * silently disappears when Mailchimp's markup changes.
+ * dropped. An issue with no dated entry (headings such as "Quick Links" do not count) is kept as a "news" item on
+ * channel "issues", and when that is the newest issue normalizeDigest returns a `warning` (the sync records the
+ * source as failing), so a Mailchimp layout or date-format change never silently empties the source.
  */
+
+/** Only the start of the text after an entry's heading is read for its date (it follows the heading). */
+const DATE_LOOKAHEAD = 1_000;
 
 const MONTHS: Readonly<Record<string, number>> = {
   jan: 1,
@@ -68,41 +79,51 @@ export interface DigestEntry {
   date: DigestDate | null;
 }
 
-/** The event list of one issue's HTML. */
+/** The event list of one issue's HTML (linear: every heading and date lookahead is bounded). */
 export function extractDigestEntries(html: string, timeZone: string): DigestEntry[] {
   const entries: DigestEntry[] = [];
-  const blocks = html.split(/<h3\b[^>]*>/i).slice(1);
+  const blocks = html.split(/<h3\b[^<>]*>/i).slice(1);
   for (const block of blocks) {
     const end = block.search(/<\/h3\s*>/i);
     if (end < 0) continue;
-    const heading = block.slice(0, end);
-    const after = block.slice(end);
+    const heading = sliceText(block.slice(0, end), LINE_INPUT_MAX);
     const title = oneLine(htmlToText(heading));
     if (!title) continue;
-    const href = /<a\b[^>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(heading);
-    const rawHref = href ? decode(href[1] ?? href[2] ?? "") : null;
+    const href = /<a\b[^<>]*?\bhref\s*=\s*(?:"([^"<>]*)"|'([^'<>]*)')/i.exec(heading);
+    // Raw attribute value: safeItemUrl decodes its entities (once).
+    const rawHref = href ? (href[1] ?? href[2] ?? "") : null;
+    const after = sliceText(block.slice(end), DATE_LOOKAHEAD);
     entries.push({ title, href: rawHref, date: parseDigestDate(htmlToText(after), timeZone) });
   }
   return entries;
 }
 
-export function normalizeDigest(
-  channel: RssChannel,
-  context: ParseContext,
-): { items: NormalizedFeedItem[]; stale: number; skipped: number } {
+export interface DigestResult {
+  items: NormalizedFeedItem[];
+  stale: number;
+  skipped: number;
+  /** Set when the newest issue has no dated entry (layout or date format changed?). */
+  warning?: string;
+}
+
+export function normalizeDigest(channel: RssChannel, context: ParseContext): DigestResult {
   const { source, now, timeZone } = context;
   const windowStart = startOfDayInZone(dateKeyInZone(now, timeZone), timeZone);
-  const { kept: issues, stale } = dropStaleItems(channel.items);
+  const { kept: issues, stale, future } = dropStaleItems(channel.items, { now });
   const items: NormalizedFeedItem[] = [];
   const seen = new Set<string>();
-  let skipped = 0;
+  let skipped = future;
+  let warning: string | undefined;
 
-  for (const issue of issues) {
+  for (const [index, issue] of issues.entries()) {
     const issueUrl = pickItemUrl(source, [issue.link, issue.guid], channel.link ?? undefined);
     const html = issue.description ?? issue.content ?? "";
-    const entries = extractDigestEntries(html, timeZone);
-    if (entries.length === 0) {
+    const dated = extractDigestEntries(html, timeZone).filter((entry) => entry.date);
+    if (dated.length === 0) {
       const title = cleanLine(issue.title, TITLE_MAX);
+      if (index === 0) {
+        warning = `the newest issue (${issue.pubDate?.toISOString().slice(0, 10) ?? "undated"}) lists no dated events; stored it as a news item`;
+      }
       if (title && issueUrl) {
         items.push({
           source,
@@ -122,8 +143,9 @@ export function normalizeDigest(
       }
       continue;
     }
-    for (const entry of entries) {
-      const title = cleanLine(entry.title, TITLE_MAX);
+    for (const entry of dated) {
+      // entry.title is already plain one-line text: cut it, do not decode it again.
+      const title = truncateText(entry.title, TITLE_MAX);
       const url = safeItemUrl(source, entry.href) ?? issueUrl;
       if (!title || !url || !entry.date) {
         skipped++;
@@ -154,5 +176,5 @@ export function normalizeDigest(
     }
   }
   items.sort((a, b) => (a.startsAt?.getTime() ?? 0) - (b.startsAt?.getTime() ?? 0));
-  return { items, stale, skipped };
+  return warning ? { items, stale, skipped, warning } : { items, stale, skipped };
 }
