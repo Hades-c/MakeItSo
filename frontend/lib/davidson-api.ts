@@ -304,6 +304,15 @@ export function normalizeCourseCode(code: string): string {
 // Transform: one entry per course code, every section kept in sectionList
 // ---------------------------------------------------------------------------
 
+/** Course name used when sections of one code have different titles (topics courses). */
+export const TOPICS_PLACEHOLDER = "Topics vary by section";
+
+/** A lab that goes with a lecture section of the same code (e.g. MIL 102 L "Leadership Lab ..."). */
+function isCompanionLab(s: RawSection): boolean {
+  const title = cleanTitle(s.course_title);
+  return /\blab\b/i.test(title) || (/^L\d*$/.test(s.section ?? "") && toCredits(s.credits) === 0);
+}
+
 export function transformSections(raw: RawSection[]): LiveCourse[] {
   const byCode = new Map<string, RawSection[]>();
   for (const s of raw) {
@@ -319,15 +328,20 @@ export function transformSections(raw: RawSection[]): LiveCourse[] {
     // Topics courses (e.g. WRI 101) share one code but sections can have
     // their own titles and descriptions. Use a title only if most sections
     // share it, and keep per-section descriptions only when they differ.
+    // Companion lab sections (ROTC "Leadership Lab" L sections, 0-credit
+    // labs) do not count, so MIL 102 = lecture A + lab L keeps the lecture title.
+    const lectures = sections.filter((s) => !isCompanionLab(s));
+    const titleSource = lectures.length > 0 ? lectures : sections;
     const titleCounts = new Map<string, number>();
-    for (const s of sections) {
+    for (const s of titleSource) {
       const t = cleanTitle(s.course_title);
       titleCounts.set(t, (titleCounts.get(t) ?? 0) + 1);
     }
     const titlesVary = titleCounts.size > 1;
-    const majorityTitle = Array.from(titleCounts.entries()).find(([, n]) => n > sections.length / 2)?.[0];
+    const majorityTitle = Array.from(titleCounts.entries()).find(([, n]) => n > titleSource.length / 2)?.[0];
     const first =
-      sections.find((s) => cleanTitle(s.course_title) === (majorityTitle ?? cleanTitle(sections[0].course_title))) ?? sections[0];
+      titleSource.find((s) => cleanTitle(s.course_title) === (majorityTitle ?? cleanTitle(titleSource[0].course_title))) ??
+      titleSource[0];
     const parsed = parseCourseDescription(first.course_description ?? "");
     const sectionDescriptions = titlesVary
       ? sections.map((s) => parseCourseDescription(s.course_description ?? "").description)
@@ -335,7 +349,7 @@ export function transformSections(raw: RawSection[]): LiveCourse[] {
     const descriptionsVary = new Set(sectionDescriptions).size > 1;
     const description = descriptionsVary && !majorityTitle ? "" : parsed.description;
     const prerequisites = parsed.prerequisites;
-    const name = titlesVary && !majorityTitle ? "Topics vary by section" : cleanTitle(first.course_title);
+    const name = titlesVary && !majorityTitle ? TOPICS_PLACEHOLDER : cleanTitle(first.course_title);
     const instructors = Array.from(
       new Set(sections.flatMap((s) => (s.instructors ?? []).map(instructorName)).filter(Boolean))
     );
@@ -382,7 +396,8 @@ export function transformSections(raw: RawSection[]): LiveCourse[] {
       gradRequirementLabels: Array.from(gradReqs.values()),
       schedule: sectionList[0]?.schedule ?? "TBA",
       location: sectionList[0]?.location ?? "TBA",
-      credits: mostCommon(sectionList.map((s) => s.credits)),
+      // Lecture credits: MIL 301 is 1 credit even though its lab section is 0.
+      credits: mostCommon(titleSource.map((s) => toCredits(s.credits))),
     });
   }
   courses.sort((a, b) => a.code.localeCompare(b.code));
