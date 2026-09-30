@@ -99,6 +99,15 @@ export function addDaysToKey(key: string, days: number): string {
   return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
+/** Whole calendar days from key `a` to key `b` ("2026-10-10" → "2026-10-12" is 2). */
+export function daysBetweenKeys(a: string, b: string): number {
+  const x = parseDateKey(a);
+  const y = parseDateKey(b);
+  return Math.round(
+    (Date.UTC(y.year, y.month - 1, y.day) - Date.UTC(x.year, x.month - 1, x.day)) / DAY_MS,
+  );
+}
+
 /** Midnight at the start of the calendar day `key` in `timeZone` (a 23 or 25 hour day around DST changes). */
 export function startOfDayInZone(key: string, timeZone: string = CAMPUS_TIME_ZONE): Date {
   return zonedTimeToUtc(parseDateKey(key), timeZone);
