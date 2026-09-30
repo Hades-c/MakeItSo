@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { activeNavKey, NAV_ITEMS, type NavKey } from "./nav-items";
+import { activeNavKey, ALL_NAV_KEYS, sidebarItems, type NavKey } from "./nav-items";
 
 export interface NavCounts {
   /** Courses in the catalog for the selected term. */
@@ -37,14 +37,23 @@ function CountLabel({ navKey, counts }: { navKey: NavKey; counts?: NavCounts }) 
   return null;
 }
 
-/** Sidebar navigation (≥720px). Full labels from 1180px, an icon rail with visually hidden labels below. */
-export function SidebarNav({ counts }: { counts?: NavCounts }) {
+export interface SidebarNavProps {
+  counts?: NavCounts;
+  /** The sections to show: `hubNavKeys(flags)` from the hub layout (default: all). */
+  nav?: readonly NavKey[];
+}
+
+/**
+ * Sidebar navigation (≥720px). Full labels from 1180px, an icon rail with visually hidden labels below. Lists only
+ * the sections in `nav`, in sidebar order.
+ */
+export function SidebarNav({ counts, nav = ALL_NAV_KEYS }: SidebarNavProps) {
   const pathname = usePathname();
-  const active = activeNavKey(pathname, "sidebar");
+  const active = activeNavKey(pathname, "sidebar", nav);
   return (
     <nav aria-label="Main">
       <ul className="flex flex-col gap-1">
-        {NAV_ITEMS.map(({ key, href, label, icon: Icon }) => {
+        {sidebarItems(nav).map(({ key, href, label, icon: Icon }) => {
           const current = key === active;
           return (
             <li key={key}>

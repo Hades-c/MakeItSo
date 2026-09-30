@@ -1,9 +1,12 @@
 import { cn } from "@/lib/utils";
+import type { NavKey } from "./nav-items";
 import { SidebarNav, type NavCounts } from "./sidebar-nav";
 import { SourcesPanel, type SourceLink, type SourceSync } from "./sources-panel";
 
 export interface SidebarProps {
   counts?: NavCounts;
+  /** The sections to show (default: all). */
+  nav?: readonly NavKey[];
   sources: readonly SourceSync[];
   links?: readonly SourceLink[];
   now: Date;
@@ -12,7 +15,7 @@ export interface SidebarProps {
 }
 
 /** 240px sidebar from 1180px, a 72px icon rail from 720px, hidden on phones (bottom tabs instead). */
-export function Sidebar({ counts, sources, links, now, timeZone, className }: SidebarProps) {
+export function Sidebar({ counts, nav, sources, links, now, timeZone, className }: SidebarProps) {
   return (
     <aside
       className={cn(
@@ -20,7 +23,7 @@ export function Sidebar({ counts, sources, links, now, timeZone, className }: Si
         className,
       )}
     >
-      <SidebarNav counts={counts} />
+      <SidebarNav counts={counts} nav={nav} />
       <SourcesPanel
         sources={sources}
         links={links}

@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { BottomTabs } from "./bottom-tabs";
+import type { NavKey } from "./nav-items";
 import { Sidebar } from "./sidebar";
 import type { NavCounts } from "./sidebar-nav";
 import type { SourceLink, SourceSync } from "./sources-panel";
@@ -9,6 +10,11 @@ export interface AppShellProps {
   user: { name: string; email: string };
   /** Sidebar counts; omit any that are not known (no hardcoded numbers). */
   counts?: NavCounts;
+  /**
+   * The hub sections to show in the sidebar, the bottom tabs and the command palette (default: all). The hub layout
+   * passes `hubNavKeys(flags)`, which leaves out Careers, Events and Alumni when their feature flags are off.
+   */
+  nav?: readonly NavKey[];
   /**
    * Sources panel: synced feeds with their real last-sync time and curated content with its verified date. List
    * only sources that are actually synced or verified.
@@ -31,6 +37,7 @@ export interface AppShellProps {
 export function AppShell({
   user,
   counts,
+  nav,
   sources = [],
   links,
   now,
@@ -45,9 +52,16 @@ export function AppShell({
       >
         Skip to content
       </a>
-      <TopBar user={user} />
+      <TopBar user={user} nav={nav} />
       <div className="md:grid md:grid-cols-[4.5rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)]">
-        <Sidebar counts={counts} sources={sources} links={links} now={now} timeZone={timeZone} />
+        <Sidebar
+          counts={counts}
+          nav={nav}
+          sources={sources}
+          links={links}
+          now={now}
+          timeZone={timeZone}
+        />
         <main
           id="main"
           tabIndex={-1}
@@ -56,7 +70,7 @@ export function AppShell({
           <div className="max-w-300">{children}</div>
         </main>
       </div>
-      <BottomTabs />
+      <BottomTabs nav={nav} />
     </div>
   );
 }

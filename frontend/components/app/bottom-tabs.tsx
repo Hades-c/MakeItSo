@@ -3,17 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { activeNavKey, BOTTOM_TAB_KEYS, NAV_ITEMS } from "./nav-items";
+import { activeNavKey, ALL_NAV_KEYS, bottomTabItems, type NavKey } from "./nav-items";
 
-const TABS = NAV_ITEMS.filter((item) => BOTTOM_TAB_KEYS.includes(item.key));
+export interface BottomTabsProps {
+  /** The sections to show: `hubNavKeys(flags)` from the hub layout (default: all). */
+  nav?: readonly NavKey[];
+  className?: string;
+}
 
 /**
  * Phone navigation (<720px): the only thing fixed to the bottom of the screen. Reserves the home-indicator area
- * (safe-area inset); the shell adds matching bottom padding to <main>.
+ * (safe-area inset); the shell adds matching bottom padding to <main>. Today, Courses and Plan, then Careers and
+ * Events when they are shown, in equal columns (five, four or three tabs).
  */
-export function BottomTabs({ className }: { className?: string }) {
+export function BottomTabs({ nav = ALL_NAV_KEYS, className }: BottomTabsProps) {
   const pathname = usePathname();
-  const active = activeNavKey(pathname, "tabs");
+  const active = activeNavKey(pathname, "tabs", nav);
   return (
     <nav
       aria-label="Main"
@@ -23,8 +28,8 @@ export function BottomTabs({ className }: { className?: string }) {
         className,
       )}
     >
-      <ul className="grid grid-cols-5">
-        {TABS.map(({ key, href, shortLabel, icon: Icon }) => {
+      <ul className="grid auto-cols-fr grid-flow-col">
+        {bottomTabItems(nav).map(({ key, href, shortLabel, icon: Icon }) => {
           const current = key === active;
           return (
             <li key={key}>

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CommandPalette, CommandPaletteTrigger } from "@/components/app/command-palette";
 import { closeCommandPalette, openCommandPalette } from "@/components/app/command-palette-store";
+import type { NavKey } from "@/components/app/nav-items";
 import {
   courseSearchHref,
   fetchSearch,
@@ -40,10 +41,10 @@ const RESULTS: SearchResult[] = [
   { kind: "career", id: "k1", title: "Law and public policy", href: "/careers/law" },
 ];
 
-function renderPalette(search: SearchFn) {
+function renderPalette(search: SearchFn, nav?: readonly NavKey[]) {
   return render(
     <TooltipProvider>
-      <CommandPalette search={search} debounceMs={0} />
+      <CommandPalette search={search} debounceMs={0} nav={nav} />
     </TooltipProvider>,
   );
 }
@@ -347,6 +348,94 @@ describe("CommandPalette", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await waitFor(() => expect(opener).toHaveFocus());
+  });
+
+  describe("with flagged-off sections hidden", () => {
+    const CORE: NavKey[] = ["today", "courses", "plan"];
+    const pageTitles = () =>
+      within(screen.getByRole("group", { name: "Pages" }))
+        .getAllByRole("option")
+        .map((o) => o.textContent);
+
+    it("lists only the shown sections' pages, and names only what it searches", async () => {
+      const { unmount } = renderPalette(vi.fn(), CORE);
+      act(() => openCommandPalette());
+      const dialog = await screen.findByRole("dialog", { name: "Search MakeItSo" });
+      expect(pageTitles()).toEqual(["Today", "Courses", "My plan", "Profile"]);
+      expect(within(dialog).getByRole("combobox")).toHaveAttribute(
+        "placeholder",
+        "Search courses…",
+      );
+      expect(dialog).toHaveAccessibleDescription(/^Search courses and pages\./);
+      act(() => closeCommandPalette());
+      unmount();
+
+      renderPalette(vi.fn(), [...CORE, "careers", "alumni"]);
+      act(() => openCommandPalette());
+      const again = await screen.findByRole("dialog");
+      expect(pageTitles()).toEqual(["Today", "Courses", "My plan", "Careers", "Alumni", "Profile"]);
+      expect(within(again).getByRole("combobox")).toHaveAttribute(
+        "placeholder",
+        "Search courses, careers, alumni…",
+      );
+      expect(again).toHaveAccessibleDescription(/^Search courses, careers, alumni and pages\./);
+    });
+
+    it("keeps every section by default", async () => {
+      renderPalette(vi.fn());
+      act(() => openCommandPalette());
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByRole("combobox")).toHaveAttribute(
+        "placeholder",
+        "Search courses, careers, events…",
+      );
+      expect(dialog).toHaveAccessibleDescription(
+        /^Search courses, careers, events, alumni and pages\./,
+      );
+    });
+
+    it("drops API results that lead into a hidden section", async () => {
+      const user = userEvent.setup();
+      const hidden: SearchResult[] = [
+        ...RESULTS,
+        { kind: "page", id: "alumni", title: "Alumni", href: "/alumni" },
+        { kind: "event", id: "e2", title: "Career fair", href: "/events?q=fair#top" },
+      ];
+      renderPalette(vi.fn<SearchFn>().mockResolvedValue(hidden), [...CORE, "careers"]);
+      act(() => openCommandPalette());
+      await user.type(await screen.findByRole("combobox"), "civil rights");
+      const listbox = screen.getByRole("listbox", { name: "Search results" });
+      await within(listbox).findByRole("group", { name: "Courses" });
+      expect(
+        within(listbox)
+          .getAllByRole("option")
+          .map((o) => o.textContent),
+      ).toEqual([
+        "HIS 357 · The Civil Rights MovementFall 2026Source: Course schedule",
+        "Law and public policy",
+      ]);
+      expect(within(listbox).queryByRole("group", { name: "Events" })).not.toBeInTheDocument();
+      expect(within(listbox).queryByRole("group", { name: "Pages" })).not.toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("2 results");
+    });
+
+    it("says what it searched when only hidden sections matched", async () => {
+      const user = userEvent.setup();
+      // The API answers with a career only; Careers is hidden.
+      renderPalette(vi.fn<SearchFn>().mockResolvedValue([RESULTS[2]!]), [...CORE, "events"]);
+      act(() => openCommandPalette());
+      const input = await screen.findByRole("combobox");
+      await user.type(input, "law");
+      expect(await screen.findByText("No matches for “law”.")).toBeInTheDocument();
+      expect(screen.queryAllByRole("option")).toEqual([]);
+
+      await user.clear(input);
+      await user.type(input, "plan");
+      await waitFor(() =>
+        expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["My plan"]),
+      );
+      expect(await screen.findByText("No courses or events match “plan”.")).toBeInTheDocument();
+    });
   });
 
   it("keeps the top-bar form a plain GET to the catalog", () => {

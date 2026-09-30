@@ -22,7 +22,7 @@ import {
   openCommandPalette,
   useCommandPaletteState,
 } from "./command-palette-store";
-import { NAV_ITEMS } from "./nav-items";
+import { ALL_NAV_KEYS, navSectionOf, sidebarItems, type NavKey } from "./nav-items";
 import {
   courseSearchHref,
   fetchSearch,
@@ -43,21 +43,43 @@ const GROUPS: Record<SearchResultKind, { label: string; icon: LucideIcon }> = {
 /** Shortest query sent to the API. */
 const MIN_QUERY = 2;
 
-/** The hub's own pages, always available (they need no API). */
-const PAGE_RESULTS: SearchResult[] = [
-  ...NAV_ITEMS.map((item) => ({
-    kind: "page" as const,
-    id: `page-${item.key}`,
-    title: item.label,
-    href: item.href,
-  })),
-  { kind: "page", id: "page-profile", title: "Profile", href: "/profile" },
-];
+/** The hub's own pages for the shown sections, plus Profile: always available (they need no API). */
+function pageResults(nav: readonly NavKey[]): SearchResult[] {
+  return [
+    ...sidebarItems(nav).map((item) => ({
+      kind: "page" as const,
+      id: `page-${item.key}`,
+      title: item.label,
+      href: item.href,
+    })),
+    { kind: "page", id: "page-profile", title: "Profile", href: "/profile" },
+  ];
+}
 
-function matchingPages(query: string): SearchResult[] {
+function matchingPages(pages: SearchResult[], query: string): SearchResult[] {
   const q = query.trim().toLowerCase();
-  if (!q) return PAGE_RESULTS;
-  return PAGE_RESULTS.filter((p) => p.title.toLowerCase().includes(q));
+  if (!q) return pages;
+  return pages.filter((p) => p.title.toLowerCase().includes(q));
+}
+
+/** A result that leads into a hidden section ("/careers/law" with Careers off). The API respects the same flags. */
+function inHiddenSection(result: SearchResult, nav: readonly NavKey[]): boolean {
+  const section = navSectionOf(result.href.split(/[?#]/, 1)[0] ?? "");
+  return section !== null && !nav.includes(section);
+}
+
+/** What the palette searches besides pages, for the shown sections: ["courses", "careers", "events", "alumni"]. */
+function searchScope(nav: readonly NavKey[]): string[] {
+  return [
+    "courses",
+    ...(["careers", "events", "alumni"] as const).filter((key) => nav.includes(key)),
+  ];
+}
+
+/** "a", "a and b", "a, b and c". */
+function listOf(words: readonly string[], conjunction: "and" | "or"): string {
+  if (words.length <= 1) return words.join("");
+  return `${words.slice(0, -1).join(", ")} ${conjunction} ${words[words.length - 1]}`;
 }
 
 type Status = "idle" | "loading" | "ready" | "unavailable";
@@ -74,14 +96,20 @@ export interface CommandPaletteProps {
   initialQuery?: string;
   /** Debounce before searching, in ms (default 200). */
   debounceMs?: number;
+  /**
+   * The hub sections shown in the shell (default: all). Pages and results of hidden sections (Careers, Events,
+   * Alumni behind their flags) are left out, and the prompts only name what is searched.
+   */
+  nav?: readonly NavKey[];
 }
 
 /**
- * ⌘K / Ctrl+K command palette: one search over courses, careers, events, alumni and pages, grouped by kind, each
- * result with its source tag. Arrow keys move, Enter opens the highlighted result, or, with nothing highlighted,
- * searches the course catalog (/courses?q=…); Escape closes. Radix Dialog traps focus; since the palette has no
- * Dialog.Trigger, it returns focus itself to whatever opened it (the ⌘K button, the phone search link, the top-bar
- * field). While the search API is missing or failing it says so and keeps the catalog fallback.
+ * ⌘K / Ctrl+K command palette: one search over courses, careers, events, alumni and pages (of the shown sections
+ * only), grouped by kind, each result with its source tag. Arrow keys move, Enter opens the highlighted result,
+ * or, with nothing highlighted, searches the course catalog (/courses?q=…); Escape closes. Radix Dialog traps
+ * focus; since the palette has no Dialog.Trigger, it returns focus itself to whatever opened it (the ⌘K button,
+ * the phone search link, the top-bar field). While the search API is missing or failing it says so and keeps the
+ * catalog fallback.
  */
 export function CommandPalette({
   search = fetchSearch,
@@ -89,6 +117,7 @@ export function CommandPalette({
   onOpenChange,
   initialQuery = "",
   debounceMs = 200,
+  nav = ALL_NAV_KEYS,
 }: CommandPaletteProps) {
   const controlled = controlledOpen !== undefined;
   const store = useCommandPaletteState();
@@ -146,13 +175,14 @@ export function CommandPalette({
       >
         <DialogTitle className="sr-only">Search MakeItSo</DialogTitle>
         <DialogDescription className="sr-only">
-          Search courses, careers, events, alumni and pages. Use the arrow keys to move through
+          Search {listOf([...searchScope(nav), "pages"], "and")}. Use the arrow keys to move through
           results and Enter to open one; Enter with nothing selected searches the course catalog.
         </DialogDescription>
         <PaletteBody
           search={search}
           initialQuery={controlled ? initialQuery : store.query}
           debounceMs={debounceMs}
+          nav={nav}
           onClose={() => setOpen(false)}
         />
       </DialogContent>
@@ -164,11 +194,13 @@ function PaletteBody({
   search,
   initialQuery,
   debounceMs,
+  nav,
   onClose,
 }: {
   search: SearchFn;
   initialQuery: string;
   debounceMs: number;
+  nav: readonly NavKey[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -207,13 +239,21 @@ function PaletteBody({
     };
   }, [trimmed, search, debounceMs]);
 
-  // API results, plus the hub's pages when the API gave none of its own.
-  const results = status === "ready" && response ? response.results : NO_RESULTS;
+  // API results outside hidden sections, plus the hub's pages when the API gave none of its own.
+  const results = React.useMemo(
+    () =>
+      status === "ready" && response
+        ? response.results.filter((r) => !inHiddenSection(r, nav))
+        : NO_RESULTS,
+    [status, response, nav],
+  );
+  const pages = React.useMemo(() => pageResults(nav), [nav]);
   const options = React.useMemo(() => {
-    const pages = results.some((r) => r.kind === "page") ? [] : matchingPages(trimmed);
-    const all = [...results, ...pages];
+    const local = results.some((r) => r.kind === "page") ? [] : matchingPages(pages, trimmed);
+    const all = [...results, ...local];
     return SEARCH_RESULT_KINDS.flatMap((kind) => all.filter((r) => r.kind === kind));
-  }, [results, trimmed]);
+  }, [results, pages, trimmed]);
+  const scope = searchScope(nav);
 
   const keyOf = (r: SearchResult) => `${r.kind}:${r.id}`;
   const active = activeKey === null ? -1 : options.findIndex((o) => keyOf(o) === activeKey);
@@ -271,7 +311,7 @@ function PaletteBody({
   else if (status === "ready" && options.length === 0) message = `No matches for “${trimmed}”.`;
   // Only local page matches: say what the search itself found.
   else if (status === "ready" && results.length === 0)
-    message = `No courses, careers, events or alumni match “${trimmed}”.`;
+    message = `No ${listOf(scope, "or")} match “${trimmed}”.`;
 
   const announcement =
     status === "loading"
@@ -297,7 +337,7 @@ function PaletteBody({
           autoCorrect="off"
           spellCheck={false}
           enterKeyHint="search"
-          placeholder="Search courses, careers, events…"
+          placeholder={`Search ${scope.slice(0, 3).join(", ")}…`}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
