@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { generateMajorRoadmap } from "@/lib/gemini";
 import { connectToDatabase } from "@/lib/mongodb";
 import AiCache from "@/models/AiCache";
+import { getAiGrounding, groundRoadmap, termKey, type AiGrounding } from "@/lib/ai-grounding";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,8 +19,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "major is required" }, { status: 400 });
     }
 
+    let grounding: AiGrounding;
+    try {
+      grounding = await getAiGrounding();
+    } catch {
+      return NextResponse.json(
+        { error: "The Davidson course schedule is unavailable right now, so roadmap generation is paused." },
+        { status: 503 }
+      );
+    }
+
     const userId = (session.user as { id?: string })?.id || session.user?.email || "";
     const cacheKey = JSON.stringify({
+      v: 2,
+      terms: termKey(grounding.context),
       userId,
       major,
       classYear: classYear || "Freshman",
@@ -30,27 +43,35 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Check cache unless regenerating
+    // Check cache unless regenerating (per-user cache entry)
     if (!regenerate) {
       const cached = await AiCache.findOne({ type: "roadmap", cacheKey });
       if (cached) {
-        return NextResponse.json({ ...cached.data as Record<string, unknown>, cached: true, cachedAt: cached.updatedAt });
+        return NextResponse.json({
+          ...groundRoadmap(cached.data, grounding.index),
+          cached: true,
+          cachedAt: cached.updatedAt,
+        });
       }
     }
 
-    const result = await generateMajorRoadmap(
+    const raw = await generateMajorRoadmap(
       major,
       completedCourses || [],
       classYear || "Freshman",
       interests || [],
-      specificity ?? 3
+      specificity ?? 3,
+      grounding.context
     );
 
-    if (!result) {
+    if (!raw) {
       return NextResponse.json({ error: "Failed to generate roadmap" }, { status: 500 });
     }
 
-    // Save to cache
+    // Drop course codes that are not on the live schedule (generic
+    // "ELEC ---" style slots are kept as placeholders) before caching.
+    const result = groundRoadmap(raw, grounding.index);
+
     await AiCache.findOneAndUpdate(
       { type: "roadmap", cacheKey },
       { data: result },

@@ -21,7 +21,6 @@ export async function POST(req: NextRequest) {
       rmpNumRatings,
       rmpWouldTakeAgain,
       rmpTags,
-      regenerate,
     } = await req.json();
 
     if (!professorName || !courseCode) {
@@ -35,12 +34,11 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Check cache unless regenerating
-    if (!regenerate) {
-      const cached = await AiCache.findOne({ type: "professor-summary", cacheKey });
-      if (cached) {
-        return NextResponse.json({ summary: cached.data, cached: true, cachedAt: cached.updatedAt });
-      }
+    // Summaries are shared by every student, so a cached entry is always
+    // served; "regenerate" requests are ignored (no user can overwrite it).
+    const cached = await AiCache.findOne({ type: "professor-summary", cacheKey });
+    if (cached) {
+      return NextResponse.json({ summary: cached.data, cached: true, cachedAt: cached.updatedAt });
     }
 
     // Fetch real reviews from RateMyProfessors
@@ -102,11 +100,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Save to cache
-    await AiCache.findOneAndUpdate(
+    await AiCache.updateOne(
       { type: "professor-summary", cacheKey },
-      { data: summary },
-      { upsert: true, new: true }
-    );
+      { $setOnInsert: { data: summary } },
+      { upsert: true }
+    ).catch((err: { code?: number }) => {
+      if (err?.code !== 11000) throw err; // a concurrent request inserted it first
+    });
 
     return NextResponse.json({ summary });
   } catch (error) {

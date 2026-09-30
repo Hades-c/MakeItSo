@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { generateCareerPlan } from "@/lib/gemini";
 import { connectToDatabase } from "@/lib/mongodb";
 import AiCache from "@/models/AiCache";
+import { getAiGrounding, groundCareerPlan, termKey, type AiGrounding } from "@/lib/ai-grounding";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,8 +19,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "career field is required" }, { status: 400 });
     }
 
+    let grounding: AiGrounding;
+    try {
+      grounding = await getAiGrounding();
+    } catch {
+      return NextResponse.json(
+        { error: "The Davidson course schedule is unavailable right now, so the AI roadmap is paused." },
+        { status: 503 }
+      );
+    }
+
     const userId = (session.user as { id?: string })?.id || session.user?.email || "";
     const cacheKey = JSON.stringify({
+      v: 2,
+      terms: termKey(grounding.context),
       userId,
       career,
       major: major || "Undecided",
@@ -29,26 +42,33 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Check cache unless regenerating
+    // Check cache unless regenerating (per-user cache entry)
     if (!regenerate) {
       const cached = await AiCache.findOne({ type: "career-plan", cacheKey });
       if (cached) {
-        return NextResponse.json({ plan: cached.data, cached: true, cachedAt: cached.updatedAt });
+        return NextResponse.json({
+          plan: groundCareerPlan(cached.data, grounding.index),
+          cached: true,
+          cachedAt: cached.updatedAt,
+        });
       }
     }
 
-    const plan = await generateCareerPlan(
+    const raw = await generateCareerPlan(
       career,
       major || "Undecided",
       classYear || "Freshman",
-      completedCourses || []
+      completedCourses || [],
+      grounding.context
     );
 
-    if (!plan) {
+    if (!raw) {
       return NextResponse.json({ error: "Failed to generate career plan" }, { status: 500 });
     }
 
-    // Save to cache
+    // Drop recommended courses that are not on the live schedule before caching.
+    const plan = groundCareerPlan(raw, grounding.index);
+
     await AiCache.findOneAndUpdate(
       { type: "career-plan", cacheKey },
       { data: plan },

@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { AiTermContext } from "@/lib/ai-grounding";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -10,12 +11,19 @@ export const geminiModel = genAI.getGenerativeModel({
   },
 });
 
-export async function generateCareerPlan(career: string, major: string, classYear: string, completedCourses: string[] = []) {
+// Today's date and the live terms, so the model plans from the right term.
+function termContextBlock(ctx: AiTermContext): string {
+  return `Today's date is ${ctx.today}. The current Davidson term is ${ctx.active.label} (term code ${ctx.active.code}). The next term students register for is ${ctx.registration.label} (term code ${ctx.registration.code}). Only recommend courses that appear on Davidson's ${ctx.active.label} or ${ctx.registration.label} schedule; any other course code will be removed.`;
+}
+
+export async function generateCareerPlan(career: string, major: string, classYear: string, completedCourses: string[] = [], ctx: AiTermContext) {
   const completedBlock = completedCourses.length > 0
     ? `\n\nThe student has already completed these courses: ${completedCourses.join(", ")}. Do NOT include any of these in your recommendations. Build upon the knowledge from these courses and suggest more advanced or complementary courses instead.`
     : "";
 
   const prompt = `You are a career advisor for Davidson College students. A ${classYear} student majoring in ${major} wants to pursue a career in ${career}.${completedBlock}
+
+${termContextBlock(ctx)}
 
 Generate a JSON response with this exact structure:
 {
@@ -181,7 +189,8 @@ export async function generateMajorRoadmap(
   completedCourses: string[],
   classYear: string,
   interests: string[],
-  specificity: number = 3
+  specificity: number = 3,
+  ctx: AiTermContext
 ) {
   // specificity: 1 = very general ("Elective", "Science Elective"), 5 = very specific (exact course codes)
   let specificityInstruction = "";
@@ -205,21 +214,19 @@ Only name specific courses for absolute core requirements (e.g. the intro sequen
 
 Their interests include: ${interests.join(", ") || "undecided"}.${specificityInstruction}
 
+${termContextBlock(ctx)} Start the roadmap with ${ctx.registration.label}, the next term the student can register for, and continue term by term (Fall and Spring, with a summer entry between academic years) until graduation. Do not include terms before ${ctx.registration.label}.
+
 Generate a JSON response:
 {
   "roadmap": [
     {
-      "semester": "Fall 2025",
+      "semester": "${ctx.registration.label}",
       "courses": [
         {"code": "DEPT 101", "name": "Course Name", "type": "major-requirement|elective|distribution", "reason": "Why take this now"}
       ]
     },
     {
-      "semester": "Spring 2026",
-      "courses": [...]
-    },
-    {
-      "semester": "Summer 2026",
+      "semester": "Summer YYYY",
       "isSummer": true,
       "activities": [
         {"activity": "Activity name", "type": "internship|research|study-abroad|fellowship|personal-project|networking", "reason": "Why this is valuable", "examples": "1-2 specific examples relevant to the student"}
@@ -228,10 +235,10 @@ Generate a JSON response:
   ],
   "advice": "2-3 sentences of personalized advice",
   "totalCreditsRemaining": 0,
-  "estimatedGraduation": "Spring 2028"
+  "estimatedGraduation": "Spring YYYY"
 }
 
-Plan through graduation. Include 4-5 courses per semester. IMPORTANT: Between each academic year (after Spring, before Fall), include a "Summer YYYY" entry with isSummer: true and 3-4 suggested summer activities (internships, research, study abroad, personal projects, networking, etc.) tailored to the student's major and interests. These should be progressively more advanced — freshman summer more exploratory, senior summer more career-focused. Davidson requires 128 credits (32 courses) to graduate. Return ONLY the JSON.`;
+Plan through graduation. Include 4-5 courses per semester. IMPORTANT: Between each academic year (after Spring, before Fall), include a "Summer YYYY" entry with isSummer: true and 3-4 suggested summer activities (internships, research, study abroad, personal projects, networking, etc.) tailored to the student's major and interests. These should be progressively more advanced — freshman summer more exploratory, senior summer more career-focused. Davidson requires 32 credits to graduate (most courses are 1 credit each). Semester labels must use the form "Fall YYYY", "Spring YYYY" or "Summer YYYY". Return ONLY the JSON.`;
 
   const result = await geminiModel.generateContent(prompt);
   const text = result.response.text();
@@ -294,10 +301,13 @@ export async function generateCourseRecommendations(
   interests: string[],
   completedCourses: string[],
   major: string,
-  classYear: string
+  classYear: string,
+  ctx: AiTermContext
 ) {
   const prompt = `You are an academic advisor at Davidson College. A ${classYear} student majoring in ${major} is interested in: ${interests.join(", ")}.
 They have completed: ${completedCourses.join(", ") || "no courses yet"}.
+
+${termContextBlock(ctx)}
 
 Recommend courses they should take next. Generate a JSON response:
 {
@@ -306,7 +316,7 @@ Recommend courses they should take next. Generate a JSON response:
       "code": "DEPT 101",
       "name": "Course Name",
       "department": "Department Name",
-      "credits": 4,
+      "credits": 1,
       "reason": "Why this is recommended",
       "careerImpact": ["Career 1", "Career 2"],
       "difficulty": 1-5,
@@ -318,7 +328,7 @@ Recommend courses they should take next. Generate a JSON response:
 
 Davidson departments: Africana Studies, Anthropology, Biology, Chemistry, Computer Science, Economics, English, Environmental Studies, History, Mathematics, Music, Philosophy, Physics, Political Science, Psychology, Sociology, Theatre, Art, Communication Studies, Educational Studies, French & Francophone Studies, German Studies, Hispanic Studies, Religious Studies.
 
-Include 10-15 recommendations, sorted by priority. Use realistic Davidson course codes. Return ONLY the JSON.`;
+Include 10-15 recommendations, sorted by priority. Use exact Davidson course codes from the schedules named above. Return ONLY the JSON.`;
 
   const result = await geminiModel.generateContent(prompt);
   const text = result.response.text();
