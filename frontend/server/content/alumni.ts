@@ -1,16 +1,22 @@
 import "server-only";
 import type { z } from "zod";
-import { AlumnusSchema, type Alumnus } from "@/lib/types/content";
+import {
+  ALUMNUS_SOURCED_FIELDS,
+  AlumnusSchema,
+  isLinkedInUrl,
+  type Alumnus,
+} from "@/lib/types/content";
 import { defineContent, latestVerifiedAt } from "@/server/content/define";
 
 /**
  * Verified Davidson alumni (PLAN §1 "Alumni", binding), converted from content-prep/final_alumni.json (27 kept by
- * the verifier on 2026-09-30) with the LinkedIn rule applied field by field:
+ * the verifier on 2026-09-30; 26 listed here, see EXCLUDED below) with the LinkedIn rule applied field by field:
  * - Stored: name, classYear, majors, role, organization, roleAsOf, linkedinUrl, careerPathSlugs, contactable,
  *   sources, fieldSources, verifiedAt. No location, bio, notes, industry or minors.
  * - A displayed field (classYear, majors, role, organization) needs a non-LinkedIn source that states it
  *   (fieldSources lists only those). A field whose only evidence is LinkedIn is null here and shown as
- *   "see LinkedIn" (LinkedIn User Agreement §8.2).
+ *   "see LinkedIn" (LinkedIn User Agreement §8.2). An archived, cached or proxied copy of a LinkedIn page is
+ *   still LinkedIn (restsOnLinkedIn(); checked when the module loads).
  * - careerPathSlugs are kept only where a non-LinkedIn source supports the person's work or stated career
  *   direction in that area; a career grouping inferred from a LinkedIn headline alone would re-use LinkedIn data.
  * - Davidson attendance rests on at least one non-LinkedIn source for everyone listed (a catalog graduate list,
@@ -18,7 +24,8 @@ import { defineContent, latestVerifiedAt } from "@/server/content/define";
  * - contactable=false for public figures, trustees/Board members and college officers ("Notable alumni", no cold
  *   email).
  * - The LinkedIn URL is hand-entered, https://www.linkedin.com/in/<slug>/, and never fetched by code.
- * - Excluded pending the owner (never shown): the six medium-confidence LinkedIn matches below.
+ * - Excluded pending the owner (never shown): the six medium-confidence LinkedIn matches, and Sophie Eldridge,
+ *   whose two candidate LinkedIn profiles leave the canonical URL unconfirmed (the Sarah Duncan precedent).
  *
  * Every alumni view says "Compiled from public sources · checked <ALUMNI_CHECKED_AT> · Request removal/correction"
  * and is limited to verified @davidson.edu accounts with FEATURE_ALUMNI on (the pages and search enforce it).
@@ -26,8 +33,6 @@ import { defineContent, latestVerifiedAt } from "@/server/content/define";
 
 const CONVOCATION_2023 = "https://www.davidson.edu/media/9498/download";
 const CONVOCATION_2025 = "https://www.davidson.edu/media/13560/download";
-const CLASS_SECRETARIES =
-  "https://www.davidson.edu/alumni-and-families/alumni-communities/connect-class-year";
 const BOARD_OF_TRUSTEES = "https://www.davidson.edu/about/college-leadership/board-trustees";
 const SENIOR_LEADERSHIP = "https://www.davidson.edu/about/college-leadership/senior-leadership";
 const NEWS_2017_ANALYTICS =
@@ -38,25 +43,16 @@ const NEWS_2025_PHI_BETA_KAPPA =
   "https://www.davidson.edu/news/2025/02/20/phi-beta-kappa-elects-new-members-2025";
 const WBUR_2020_CATS_STATS =
   "https://www.wbur.org/onlyagame/2020/01/17/davidson-college-cats-stats-advanced-analytics";
+const MATH_CS_HONORS =
+  "https://www.davidson.edu/academic-departments/mathematics-and-computer-science/honors-and-awards";
+/**
+ * Sebastian Charmot's own Medium post (Dec 27, 2022). Medium answers 403 to scripted fetches; the same text is in
+ * his public feed, https://medium.com/feed/@sebastian.charmot (checked 2026-09-30).
+ */
+const CHARMOT_MEDIUM_LAC_POST =
+  "https://medium.com/@sebastian.charmot/making-the-most-of-studying-computer-science-at-a-small-liberal-arts-college-9b9077f7d6e7";
 
 const RECORDS = [
-  {
-    id: "sophie-eldridge",
-    name: "Sophie Eldridge",
-    classYear: 2023,
-    majors: null,
-    role: null,
-    organization: null,
-    roleAsOf: null,
-    linkedinUrl: "https://www.linkedin.com/in/sophie-eldridge/",
-    careerPathSlugs: [],
-    contactable: true,
-    sources: [CONVOCATION_2023, CLASS_SECRETARIES, "https://www.linkedin.com/in/sophie-eldridge/"],
-    fieldSources: {
-      classYear: [CONVOCATION_2023, CLASS_SECRETARIES],
-    },
-    verifiedAt: "2026-09-30",
-  },
   {
     id: "samuel-waithira",
     name: "Samuel Waithira",
@@ -202,17 +198,21 @@ const RECORDS = [
     careerPathSlugs: ["data-science"],
     contactable: true,
     sources: [
-      "https://www.davidson.edu/academic-departments/mathematics-and-computer-science/honors-and-awards",
+      MATH_CS_HONORS,
       "https://www.davidson.edu/news/2022/02/23/class-2022-members-elected-phi-beta-kappa",
+      CHARMOT_MEDIUM_LAC_POST,
       "https://github.com/SebastianCharmot",
       "https://www.linkedin.com/in/sebastian-charmot/",
     ],
     fieldSources: {
       classYear: [
-        "https://www.davidson.edu/academic-departments/mathematics-and-computer-science/honors-and-awards",
+        MATH_CS_HONORS,
         "https://www.davidson.edu/news/2022/02/23/class-2022-members-elected-phi-beta-kappa",
       ],
-      majors: ["https://github.com/SebastianCharmot"],
+      // His own post: "studying computer science at ... Davidson College '22" and "I also double majored in
+      // math"; the honors page gives him the 2022 McGavock Award, "to a particularly outstanding senior
+      // Mathematics major". (GitHub states neither major; it backs the data-science grouping only.)
+      majors: [CHARMOT_MEDIUM_LAC_POST, MATH_CS_HONORS],
     },
     verifiedAt: "2026-09-30",
   },
@@ -314,7 +314,9 @@ const RECORDS = [
     majors: ["Mathematics"],
     role: "Data Analyst",
     organization: "Signifyd",
-    roleAsOf: "2026-09-30",
+    // The only dated evidence: fordhiggins.com/now, "November 2024 Update: I recently started a new job as a
+    // data analyst at Signifyd" (the About page says the same but carries no date). The schema needs a full date.
+    roleAsOf: "2024-11-01",
     linkedinUrl: "https://www.linkedin.com/in/wfordh/",
     careerPathSlugs: ["data-science"],
     contactable: true,
@@ -797,11 +799,66 @@ const EXCLUDED = [
     name: "Roger H. Brown",
     reason: "Medium-confidence LinkedIn match: a common name matched by search snippet only.",
   },
+  {
+    // Kept by the verifier, held back here on the Sarah Duncan precedent: her Davidson attendance is confirmed
+    // (2023 Convocation program, class-secretary page), but which LinkedIn URL is hers is not.
+    name: "Sophie Eldridge",
+    reason:
+      "LinkedIn URL unconfirmed: two candidate profiles, and the canonical one is unconfirmed.",
+  },
 ];
+
+/**
+ * True when a URL is LinkedIn or a copy of it: linkedin.com itself, or any URL (an archive snapshot, a search
+ * cache, a proxy, the lnkd.in shortener) whose decoded text names LinkedIn. Such a page never counts as the
+ * non-LinkedIn source a displayed field or Davidson attendance needs (PLAN §1). Stricter than isLinkedInUrl() in
+ * lib/types/content.ts, which checks the host only.
+ */
+export function restsOnLinkedIn(url: string): boolean {
+  if (isLinkedInUrl(url)) return true;
+  let text = url;
+  try {
+    text = decodeURIComponent(url);
+  } catch {
+    // Malformed escapes: test the raw text.
+  }
+  return /linkedin\.com|lnkd\.in/i.test(text);
+}
+
+/** AlumnusSchema plus the stricter LinkedIn test for attendance and for every field source (used at load). */
+export const StrictAlumnusSchema = AlumnusSchema.superRefine((alumnus, ctx) => {
+  if (!alumnus.sources.some((url) => !restsOnLinkedIn(url))) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["sources"],
+      message: "Davidson attendance needs a source that is not LinkedIn or a copy of it",
+    });
+  }
+  for (const url of alumnus.sources) {
+    if (restsOnLinkedIn(url) && url !== alumnus.linkedinUrl) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sources"],
+        message: `only the hand-entered linkedinUrl may point at LinkedIn: ${url}`,
+      });
+    }
+  }
+  for (const field of ALUMNUS_SOURCED_FIELDS) {
+    for (const url of alumnus.fieldSources[field] ?? []) {
+      if (restsOnLinkedIn(url)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["fieldSources", field],
+          message: `a LinkedIn copy is not a field source (set the field to null): ${url}`,
+        });
+      }
+    }
+  }
+});
 
 export const ALUMNI: readonly Alumnus[] = defineContent(
   "alumni",
-  AlumnusSchema,
+  StrictAlumnusSchema,
   RECORDS,
   (alumnus) => alumnus.id,
 );
