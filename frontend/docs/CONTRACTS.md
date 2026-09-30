@@ -98,7 +98,8 @@ The frozen interfaces every workstream codes against. They change only through t
   `/login?callbackUrl=<path>`; with `verifiedDavidson`, an account without a verified @davidson.edu mailbox →
   `verifiedOnlyRedirect(path)` =
   `/verify?reason=davidson&next=<path>`. `<path>` is `returnTo`, else the `RETURN_PATH_HEADER` (`x-mis-return-path`)
-  that `frontend/proxy.ts` sets on every page request (lib/routes.ts); `/today` is left out. Route handlers use
+  that `frontend/proxy.ts` overwrites on every page request (every path but `/api`, `/_next` and the files in
+  `public/`, so dotted page paths such as `/careers/x.y` too; lib/routes.ts); `/today` is left out. Route handlers use
   `requireApiUser()` or defineRoute's auth modes (401/403, never a redirect). `getSessionUser()` is memoised per
   request; a JWT is revoked by `sessionVersion` (sign out everywhere, password change or reset, deletion).
   `isEmailVerified(account)` (any address) and `isVerifiedDavidsonUser(account)` (verified AND @davidson.edu: the

@@ -71,10 +71,10 @@ export function parseTermParam(value: string | string[] | null | undefined): Ter
 // ---- Callback URLs -----------------------------------------------------------------------------------------------
 
 /**
- * Request header the request proxy (frontend/proxy.ts) sets on every page request to the requested path + query,
- * so layouts, which cannot see the URL, can send a signed-out deep link to /login?callbackUrl=<path>
- * (server/auth/session.ts requireUser). Always overwritten (`set`, never `append`); still untrusted input:
- * re-checked with safeAppPath before use.
+ * Request header the request proxy (frontend/proxy.ts) sets on every page request (every path but /api, /_next and
+ * the files in public/, dotted paths included) to the requested path + query, so layouts, which cannot see the
+ * URL, can send a signed-out deep link to /login?callbackUrl=<path> (server/auth/session.ts requireUser). Always
+ * overwritten (`set`, never `append`); still untrusted input: re-checked with safeAppPath before use.
  */
 export const RETURN_PATH_HEADER = "x-mis-return-path";
 

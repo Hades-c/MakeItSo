@@ -81,6 +81,21 @@ test("a signed-out deep link goes through /login and comes back to the same page
   expect(response.headers()["location"]).toMatch(
     /^(http:\/\/[^/]+)?\/login\?callbackUrl=%2Fcourses%2F202602%2FCSC-221$/,
   );
+
+  // Page paths with a dot in them render the hub layout too, so the proxy overwrites the header there as well.
+  for (const [path, encoded] of [
+    ["/careers/x.y", "%2Fcareers%2Fx.y"],
+    ["/courses/202602/CSC-221.json", "%2Fcourses%2F202602%2FCSC-221.json"],
+  ] as const) {
+    const dotted = await request.get(path, {
+      headers: { "x-mis-return-path": "/profile?spoofed=1" },
+      maxRedirects: 0,
+    });
+    expect([path, dotted.status()]).toEqual([path, 307]);
+    const location = dotted.headers()["location"] ?? "";
+    expect(location).not.toContain("spoofed");
+    expect(location.replace(/^http:\/\/[^/]+/, "")).toBe(`/login?callbackUrl=${encoded}`);
+  }
 });
 
 test("register, verify with the e-mailed code, sign out, and sign back in", async ({ page }) => {

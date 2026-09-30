@@ -1,3 +1,5 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
 import { NextRequest } from "next/server";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { describe, expect, it } from "vitest";
@@ -34,21 +36,60 @@ describe("request proxy (frontend/proxy.ts)", () => {
     );
   });
 
-  it("runs on page routes only: never on /api, /_next or files", () => {
+  it("runs on every page path, dots included; never on /api, /_next or the public files", () => {
     const matches = (url: string) => unstable_doesMiddlewareMatch({ config, url });
-    for (const page of ["/", "/today", "/plan?tab=next", "/courses/202602/CSC-221", "/login"]) {
+    for (const page of [
+      "/",
+      "/today",
+      "/plan?tab=next",
+      "/courses/202602/CSC-221",
+      "/login",
+      // Dotted page paths still render the hub layout, so the proxy must overwrite the header there too.
+      "/careers/x.y",
+      "/courses/202602/CSC-221.json",
+      "/careers/software-engineering.html?tab=a.b",
+      "/apiary",
+      "/robots.txt",
+    ]) {
       expect([page, matches(page)]).toEqual([page, true]);
     }
     for (const other of [
+      "/api",
       "/api/search?q=x",
       "/api/auth/session",
       "/_next/static/chunks/app.js",
       "/_next/image?url=x",
       "/favicon.ico",
       "/icon.svg",
-      "/robots.txt",
     ]) {
       expect([other, matches(other)]).toEqual([other, false]);
+    }
+  });
+
+  it("covers every page route in app/, whatever its dynamic segments hold", () => {
+    const appDir = path.join(process.cwd(), "app");
+    const pages = readdirSync(appDir, { recursive: true, encoding: "utf8" })
+      .filter((file) => /(^|[/\\])page\.tsx$/.test(file))
+      .map((file) => {
+        const segments = path
+          .dirname(file)
+          .split(/[/\\]/)
+          .filter((segment) => segment !== "." && !/^\(.*\)$/.test(segment))
+          .map((segment) => (segment.startsWith("[") ? "x.y" : segment));
+        return `/${segments.join("/")}`;
+      });
+    expect(pages).toEqual(
+      expect.arrayContaining(["/", "/today", "/careers/x.y", "/courses/x.y/x.y"]),
+    );
+    for (const page of pages) {
+      expect([page, unstable_doesMiddlewareMatch({ config, url: page })]).toEqual([page, true]);
+    }
+  });
+
+  it("skips the files in public/ (a new one joins the matcher's list)", () => {
+    for (const file of readdirSync(path.join(process.cwd(), "public"))) {
+      const url = `/${file}`;
+      expect([url, unstable_doesMiddlewareMatch({ config, url })]).toEqual([url, false]);
     }
   });
 });
