@@ -22,7 +22,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { SUBJECT_AREAS } from "@/lib/utils";
+import { CATCH_ALL_AREA_ID, SUBJECT_AREAS } from "@/lib/utils";
 import { AddToPlan, type PlanCourseSummary } from "@/components/add-to-plan";
 import type { TermInfo } from "@/lib/terms";
 
@@ -92,6 +92,7 @@ const AREA_TAG_COLORS: Record<string, string> = {
   humanities: "bg-amber-50 text-amber-700 border-amber-200",
   arts: "bg-pink-50 text-pink-700 border-pink-200",
   languages: "bg-teal-50 text-teal-700 border-teal-200",
+  other: "bg-gray-100 text-gray-700 border-gray-300",
 };
 
 const AREA_DESCRIPTIONS: Record<string, string> = {
@@ -101,6 +102,7 @@ const AREA_DESCRIPTIONS: Record<string, string> = {
   humanities: "Engage with literature, history, philosophy, and the human experience across cultures and centuries.",
   arts: "Create, perform, and analyze art, music, theatre, film, and digital media in studio and stage settings.",
   languages: "Study world languages, cultural perspectives, and cross-cultural communication across global traditions.",
+  other: "Interdisciplinary courses, experiential learning, military science, and any department not listed above.",
 };
 
 // Render http(s) URLs in official text as links (e.g. the WRI 101 catalog link).
@@ -252,10 +254,30 @@ export default function ExplorePage() {
     );
   };
 
+  const departments = Array.from(
+    new Set(liveCourses.map((c) => c.department))
+  ).sort();
+
+  // Subject areas; the catch-all area also gets every live department that
+  // no other area lists, so each course is in some area.
+  const listedDepartments = new Set<string>(
+    SUBJECT_AREAS.filter((a) => a.id !== CATCH_ALL_AREA_ID).flatMap((a) => [...a.departments])
+  );
+  const liveDepartmentSet = new Set(departments);
+  const areas = SUBJECT_AREAS.map((a) => {
+    const depts: string[] =
+      a.id === CATCH_ALL_AREA_ID
+        ? Array.from(new Set([...a.departments, ...departments.filter((d) => !listedDepartments.has(d))]))
+        : [...a.departments];
+    // Chips only for departments with courses this term (once data is loaded)
+    const shown = liveCourses.length > 0 ? depts.filter((d) => liveDepartmentSet.has(d)) : depts;
+    return { id: a.id, label: a.label, departments: depts, shownDepartments: shown };
+  });
+
   // Departments available from selected areas
-  const areaDepartments: string[] = SUBJECT_AREAS.filter((a) =>
+  const areaDepartments: string[] = areas.filter((a) =>
     selectedAreas.includes(a.id)
-  ).flatMap((a) => [...a.departments]);
+  ).flatMap((a) => a.departments);
 
   const filteredCourses = liveCourses.filter((c) => {
     const matchesDept = selectedDepartments.length > 0
@@ -280,10 +302,6 @@ export default function ExplorePage() {
 
   const filteredSectionCount = filteredCourses.reduce((n, c) => n + c.sections, 0);
 
-  const departments = Array.from(
-    new Set(liveCourses.map((c) => c.department))
-  ).sort();
-
   // Live terms (labels) with a section of a course: the viewed term, plus the
   // other live term when its schedule loaded. Undefined when not known.
   function offeredInFor(code: string): string[] | undefined {
@@ -299,7 +317,7 @@ export default function ExplorePage() {
     setLoading(true);
     setRecError(null);
     try {
-      const areaLabels = SUBJECT_AREAS.filter((a) =>
+      const areaLabels = areas.filter((a) =>
         selectedAreas.includes(a.id)
       ).map((a) => a.label);
       const interests = areaLabels.length > 0 ? areaLabels : [...selectedDepartments];
@@ -462,9 +480,9 @@ export default function ExplorePage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {SUBJECT_AREAS.map((area) => {
+            {areas.map((area) => {
               const isSelected = selectedAreas.includes(area.id);
-              const depts: string[] = [...area.departments];
+              const depts: string[] = area.departments;
               const courseCount = liveCourses.filter((c) => depts.includes(c.department)).length;
               const tagColor = AREA_TAG_COLORS[area.id] || "bg-gray-50 text-gray-600 border-gray-200";
               return (
@@ -489,7 +507,7 @@ export default function ExplorePage() {
                     {AREA_DESCRIPTIONS[area.id]}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {area.departments.map((dept) => {
+                    {area.shownDepartments.map((dept) => {
                       const isDeptSelected = selectedDepartments.includes(dept);
                       return (
                         <button
@@ -665,7 +683,7 @@ export default function ExplorePage() {
               <p className="text-xs text-[#555555] mt-0.5">
                 Based on:{" "}
                 {(selectedAreas.length > 0
-                  ? SUBJECT_AREAS.filter((a) => selectedAreas.includes(a.id)).map((a) => a.label)
+                  ? areas.filter((a) => selectedAreas.includes(a.id)).map((a) => a.label)
                   : selectedDepartments
                 ).join(", ")}
                 . Only courses on the {terms ? `${terms.active.label} or ${terms.registration.label}` : "current"} schedule are shown.

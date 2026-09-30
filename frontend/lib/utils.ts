@@ -110,12 +110,19 @@ export const DEPARTMENTS = [
   "Theatre",
 ] as const;
 
-// Subject area groupings for interest selection
+// Subject area groupings for interest selection. Department names are the
+// Davidson API's subject descriptions (e.g. "French & Francophone Studies").
+// The "other" area also collects any live department not listed here, so no
+// course is left out of every area.
 export const SUBJECT_AREAS = [
   { id: "natural-sciences", label: "Natural Sciences", departments: ["Biology", "Chemistry", "Physics", "Environmental Studies"], color: "emerald" },
-  { id: "math-computing", label: "Math & Computing", departments: ["Computer Science", "Mathematics", "Digital Studies"], color: "cyan" },
-  { id: "social-sciences", label: "Social Sciences", departments: ["Anthropology", "Economics", "Educational Studies", "Political Science", "Psychology", "Sociology", "Public Health"], color: "blue" },
-  { id: "humanities", label: "Humanities", departments: ["Classics", "English", "History", "Philosophy", "Religious Studies"], color: "purple" },
-  { id: "arts", label: "Arts & Performance", departments: ["Art", "Dance", "Film & Media Studies", "Music", "Theatre", "Communication Studies"], color: "rose" },
-  { id: "languages", label: "Languages & Culture", departments: ["Chinese", "French", "German", "Hispanic Studies", "Africana Studies", "Gender & Sexuality Studies"], color: "amber" },
+  { id: "math-computing", label: "Math & Computing", departments: ["Computer Science", "Mathematics", "Data Science", "Digital Studies"], color: "cyan" },
+  { id: "social-sciences", label: "Social Sciences", departments: ["Anthropology", "Economics", "Educational Studies", "Political Science", "Psychology", "Sociology", "Public Health", "Philosophy, Politics, and Econ"], color: "blue" },
+  { id: "humanities", label: "Humanities", departments: ["Classics", "Greek", "Latin", "English", "History", "Philosophy", "Religious Studies", "Humanities", "Global Literary Theory", "Writing Program", "Linguistics"], color: "purple" },
+  { id: "arts", label: "Arts & Performance", departments: ["Art", "Dance", "Film and Media Studies", "Film, Media, Digital Studies", "Music", "Theatre", "Communication Studies"], color: "rose" },
+  { id: "languages", label: "Languages & Culture", departments: ["Arab Studies", "Chinese Studies", "French & Francophone Studies", "German Studies", "Hispanic Studies", "Russian Studies", "Structured Independent Lang Pg", "Africana Studies", "East Asian Studies", "South Asian Studies", "Latin American Studies", "Gender and Sexuality Studies"], color: "amber" },
+  { id: "other", label: "Interdisciplinary & Other", departments: ["Ctr/Interdisciplinary Studies", "Experiential Learning (XPL)", "Military Science"], color: "gray" },
 ] as const;
+
+/** Area id that collects live departments missing from every other area. */
+export const CATCH_ALL_AREA_ID = "other";
