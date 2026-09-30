@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
 import { RMP_DAVIDSON_SCHOOL_ID, RosterSyncResultSchema } from "@/lib/types/ratings";
 import RmpTeacher from "@/models/RmpTeacher";
@@ -15,7 +15,7 @@ import {
   rosterRequestBody,
   runRosterSync,
 } from "@/server/rmp/roster";
-import { rosterPage, teacherNode, useRosterFixtures } from "./fixture-dir";
+import { rosterPage, teacherNode, serveRosterFixtures } from "./fixture-dir";
 import { readFixtureJson } from "./helpers";
 
 describe("the roster request", () => {
@@ -111,6 +111,38 @@ describe("parseRosterPage", () => {
       expect(() => parseRosterPage(bad)).toThrow(RosterError);
     }
   });
+
+  it("treats any GraphQL error as a failure, even next to data (a partial answer)", () => {
+    const partial = rosterPage([teacherNode("Ok", "Person")], undefined, {
+      errors: [{ message: "partial failure" }],
+    });
+    expect(() => parseRosterPage(partial)).toThrow(/answered with an error: partial failure/);
+    expect(() =>
+      parseRosterPage(rosterPage([teacherNode("Ok", "Person")], undefined, { errors: [{}] })),
+    ).toThrow(RosterError);
+    // An empty errors list is no error.
+    expect(
+      parseRosterPage(rosterPage([teacherNode("Ok", "Person")], undefined, { errors: [] })).rows,
+    ).toHaveLength(1);
+  });
+
+  it("reports the node count, resultCount and fallback flag", () => {
+    const page = parseRosterPage(
+      rosterPage(
+        [teacherNode("A", "B"), teacherNode("Other", "School", { school: { id: "U2Nob29sLTE=" } })],
+        { hasNextPage: true, endCursor: "" },
+        { resultCount: 40, didFallback: true },
+      ),
+    );
+    expect(page).toMatchObject({
+      nodes: 2,
+      resultCount: 40,
+      didFallback: true,
+      hasNextPage: true,
+      endCursor: null,
+    });
+    expect(parseRosterPage(fixture)).toMatchObject({ nodes: 33, resultCount: 33 });
+  });
 });
 
 describe("runRosterSync (fixtures + in-memory MongoDB)", () => {
@@ -178,7 +210,7 @@ describe("runRosterSync (fixtures + in-memory MongoDB)", () => {
 
   it("follows the after cursor across pages and de-duplicates by legacyId", async () => {
     const shared = teacherNode("Shared", "Twice");
-    fixtures = useRosterFixtures([
+    fixtures = serveRosterFixtures([
       {
         file: "page-2.json",
         bodyIncludes: '"after":"cursor-1"',
@@ -202,7 +234,7 @@ describe("runRosterSync (fixtures + in-memory MongoDB)", () => {
 
   it("stops a pagination loop and a runaway roster without touching the stored roster", async () => {
     await seed(2);
-    fixtures = useRosterFixtures([
+    fixtures = serveRosterFixtures([
       {
         file: "loop.json",
         body: rosterPage([teacherNode("Loop", "Er")], { hasNextPage: true, endCursor: "same" }),
@@ -223,7 +255,7 @@ describe("runRosterSync (fixtures + in-memory MongoDB)", () => {
         endCursor: `c${i + 1}`,
       }),
     })).reverse();
-    fixtures = useRosterFixtures(routes);
+    fixtures = serveRosterFixtures(routes);
     expect(await runRosterSync()).toMatchObject({
       ok: false,
       error: expect.stringMatching(/more than 10 pages/),
@@ -233,7 +265,7 @@ describe("runRosterSync (fixtures + in-memory MongoDB)", () => {
 
   it("keeps the stored roster when RMP is down and records the failure", async () => {
     await seed(40);
-    fixtures = useRosterFixtures([{ file: "down.json", body: "{}", status: 503 }]);
+    fixtures = serveRosterFixtures([{ file: "down.json", body: "{}", status: 503 }]);
     const result = await runRosterSync();
     expect(result).toEqual({
       ok: false,
@@ -249,13 +281,13 @@ describe("runRosterSync (fixtures + in-memory MongoDB)", () => {
 
   it("keeps the stored roster when the answer is not JSON or not the expected shape", async () => {
     await seed(5);
-    fixtures = useRosterFixtures([{ file: "waf.json", body: "<html>challenge</html>" }]);
+    fixtures = serveRosterFixtures([{ file: "waf.json", body: "<html>challenge</html>" }]);
     expect(await runRosterSync()).toMatchObject({
       ok: false,
       error: expect.stringContaining("parse"),
     });
     fixtures.cleanup();
-    fixtures = useRosterFixtures([
+    fixtures = serveRosterFixtures([
       { file: "gql.json", body: { data: null, errors: [{ message: "Bad schoolID" }] } },
     ]);
     expect(await runRosterSync()).toMatchObject({
@@ -266,7 +298,7 @@ describe("runRosterSync (fixtures + in-memory MongoDB)", () => {
   });
 
   it("refuses an empty roster, one below half the stored size, and a mostly malformed one", async () => {
-    fixtures = useRosterFixtures([{ file: "empty.json", body: rosterPage([]) }]);
+    fixtures = serveRosterFixtures([{ file: "empty.json", body: rosterPage([]) }]);
     expect(await runRosterSync()).toMatchObject({
       ok: false,
       error: expect.stringMatching(/returned 0/),
@@ -284,7 +316,7 @@ describe("runRosterSync (fixtures + in-memory MongoDB)", () => {
     expect(await RmpTeacher.countDocuments()).toBe(100);
 
     await testDb.clear();
-    fixtures = useRosterFixtures([
+    fixtures = serveRosterFixtures([
       {
         file: "broken.json",
         body: rosterPage([
@@ -302,8 +334,98 @@ describe("runRosterSync (fixtures + in-memory MongoDB)", () => {
     expect(await RmpTeacher.countDocuments()).toBe(0);
   });
 
+  it("fails, keeping the stored roster, when a next page has no cursor", async () => {
+    await seed(3);
+    for (const endCursor of [null, ""]) {
+      fixtures = serveRosterFixtures([
+        {
+          file: "cut.json",
+          body: rosterPage([teacherNode("Cut", "One"), teacherNode("Cut", "Two")], {
+            hasNextPage: true,
+            endCursor,
+          }),
+        },
+      ]);
+      expect(await runRosterSync()).toMatchObject({
+        ok: false,
+        count: 0,
+        error: expect.stringMatching(/pagination is inconsistent/),
+      });
+      fixtures.cleanup();
+      fixtures = null;
+    }
+    expect(await RmpTeacher.countDocuments({ firstName: "Seed" })).toBe(3);
+    expect(await RmpTeacher.countDocuments({ firstName: "Cut" })).toBe(0);
+    expect(await SourceSync.findOne({ sourceId: "ratemyprofessors" }).lean()).toMatchObject({
+      ok: false,
+      lastSuccessAt: null,
+    });
+  });
+
+  it("fails when fewer nodes arrive than 95% of the announced resultCount", async () => {
+    const nodes = Array.from({ length: 20 }, (_, i) => teacherNode("Count", `N${i}`));
+    fixtures = serveRosterFixtures([
+      { file: "short.json", body: rosterPage(nodes, undefined, { resultCount: 22 }) },
+    ]);
+    expect(await runRosterSync()).toMatchObject({
+      ok: false,
+      error: "RateMyProfessors announced 22 teachers but sent 20; kept the stored roster.",
+    });
+    expect(await RmpTeacher.countDocuments()).toBe(0);
+    fixtures.cleanup();
+    // 20 of 21 is within 95%; a missing resultCount is not checked.
+    for (const resultCount of [21, null]) {
+      fixtures = serveRosterFixtures([
+        { file: "ok.json", body: rosterPage(nodes, undefined, { resultCount }) },
+      ]);
+      expect(await runRosterSync()).toMatchObject({ ok: true, count: 20 });
+      fixtures.cleanup();
+      fixtures = null;
+    }
+  });
+
+  it("fails on a GraphQL error next to data, and on a fallback search", async () => {
+    await seed(2);
+    fixtures = serveRosterFixtures([
+      {
+        file: "partial.json",
+        body: rosterPage([teacherNode("Part", "Ial")], undefined, {
+          errors: [{ message: "partial failure" }],
+        }),
+      },
+    ]);
+    expect(await runRosterSync()).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("partial failure"),
+    });
+    fixtures.cleanup();
+    fixtures = serveRosterFixtures([
+      {
+        file: "fallback.json",
+        body: rosterPage([teacherNode("Fall", "Back")], undefined, { didFallback: true }),
+      },
+    ]);
+    expect(await runRosterSync()).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/fallback search/),
+    });
+    expect(await RmpTeacher.countDocuments({ firstName: "Seed" })).toBe(2);
+  });
+
+  it("records a database failure while storing, rethrows it and deletes nothing", async () => {
+    await seed(3);
+    vi.spyOn(RmpTeacher, "bulkWrite").mockRejectedValueOnce(new Error("boom"));
+    await expect(runRosterSync()).rejects.toThrow("boom");
+    expect(await RmpTeacher.countDocuments({ firstName: "Seed" })).toBe(3);
+    expect(await SourceSync.findOne({ sourceId: "ratemyprofessors" }).lean()).toMatchObject({
+      ok: false,
+      lastError: "Could not store the RateMyProfessors roster.",
+      lastSuccessAt: null,
+    });
+  });
+
   it("never swallows a missing fixture", async () => {
-    fixtures = useRosterFixtures([
+    fixtures = serveRosterFixtures([
       { file: "other.json", body: rosterPage([]), bodyIncludes: "no-such-school" },
     ]);
     await expect(runRosterSync()).rejects.toBeInstanceOf(MissingFixtureError);

@@ -18,7 +18,7 @@ export interface RosterRoute {
   bodyIncludes?: string;
 }
 
-export function useRosterFixtures(routes: readonly RosterRoute[]): { cleanup(): void } {
+export function serveRosterFixtures(routes: readonly RosterRoute[]): { cleanup(): void } {
   const cwd = mkdtempSync(path.join(tmpdir(), "mis-rmp-"));
   const dir = path.join(cwd, "tests", "fixtures", "external", "ratemyprofessors");
   mkdirSync(dir, { recursive: true });
@@ -77,23 +77,29 @@ export function teacherNode(
   };
 }
 
+/**
+ * One GraphQL page. resultCount defaults to the page's node count (a one-page roster); pass the whole roster's
+ * count on the first page of a multi-page roster.
+ */
 export function rosterPage(
   nodes: readonly unknown[],
   pageInfo: { hasNextPage: boolean; endCursor: string | null } = {
     hasNextPage: false,
     endCursor: null,
   },
+  extra: { resultCount?: number | null; didFallback?: boolean; errors?: unknown } = {},
 ) {
   return {
     data: {
       newSearch: {
         teachers: {
-          didFallback: false,
-          resultCount: nodes.length,
+          didFallback: extra.didFallback ?? false,
+          resultCount: extra.resultCount === undefined ? nodes.length : extra.resultCount,
           pageInfo,
           edges: nodes.map((node, i) => ({ cursor: `edge-${i}`, node })),
         },
       },
     },
+    ...(extra.errors !== undefined ? { errors: extra.errors } : {}),
   };
 }

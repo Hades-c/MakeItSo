@@ -17,9 +17,11 @@ import { recordSync } from "@/server/sync";
  *   newSearch.teachers(query: { text: "", schoolID: "U2Nob29sLTM5NjU=" }, first: 1000, after: <cursor>)
  *
  * Every node is validated with zod; nodes whose school.id is not Davidson's are dropped and counted
- * (`rejectedOtherSchool`), malformed nodes are dropped and counted, and the run fails when too many are malformed
- * (the upstream shape changed). A failed run, an empty roster, or one smaller than half the stored roster keeps
- * the stored roster and is recorded with `recordSync("ratemyprofessors", { ok: false, ... })`.
+ * (`rejectedOtherSchool`), malformed nodes are dropped and counted. The run fails, keeps the stored roster and is
+ * recorded with `recordSync("ratemyprofessors", { ok: false, ... })` when the roster looks incomplete or wrong:
+ * any GraphQL error (even next to data), a fallback search, a next page without a cursor, a pagination loop or
+ * runaway, fewer nodes than 95% of the first page's resultCount, too many malformed nodes, an empty roster, or
+ * one smaller than half the stored roster. A database failure while storing is recorded too, then rethrown.
  */
 
 export const RMP_GRAPHQL_URL = "https://www.ratemyprofessors.com/graphql";
@@ -35,6 +37,8 @@ export const ROSTER_MAX_PAGES = 10;
 export const ROSTER_TIMEOUT_MS = 20_000;
 /** A new roster smaller than this share of the stored one is treated as an upstream failure. */
 export const ROSTER_MIN_KEEP_RATIO = 0.5;
+/** Nodes received must reach this share of the resultCount RMP announces on the first page. */
+export const ROSTER_MIN_COMPLETE_RATIO = 0.95;
 
 export const ROSTER_QUERY = `query DavidsonTeacherRoster($query: TeacherSearchQuery!, $first: Int!, $after: String) {
   newSearch {
@@ -109,8 +113,13 @@ export const RosterPageSchema = z.object({
   }),
 });
 
+/** A GraphQL `errors` array; any entry fails the run, even when `data` is present (a partial answer). */
 const GraphQlErrorsSchema = z.object({
-  errors: z.array(z.object({ message: z.string() })).min(1),
+  errors: z
+    .array(
+      z.object({ message: z.string().catch("(no message)") }).catch({ message: "(no message)" }),
+    )
+    .min(1),
 });
 
 /** A roster run that must not replace the stored roster (bad shape, pagination loop, too small). */
@@ -142,8 +151,13 @@ export interface RosterPage {
   rows: RosterRow[];
   rejectedOtherSchool: number;
   invalid: number;
+  /** Nodes on the page (rows + rejectedOtherSchool + invalid). */
+  nodes: number;
   hasNextPage: boolean;
   endCursor: string | null;
+  /** How many teachers RMP says the search found (all pages), when it says. */
+  resultCount: number | null;
+  didFallback: boolean;
 }
 
 function toRow(node: z.output<typeof RmpTeacherNodeSchema>): RosterRow | null {
@@ -172,16 +186,15 @@ function toRow(node: z.output<typeof RmpTeacherNodeSchema>): RosterRow | null {
 
 /** Validate one GraphQL response page and keep its Davidson teachers. Throws RosterError on a bad page. */
 export function parseRosterPage(data: unknown): RosterPage {
-  const page = RosterPageSchema.safeParse(data);
-  if (!page.success) {
-    const errors = GraphQlErrorsSchema.safeParse(data);
+  const errors = GraphQlErrorsSchema.safeParse(data);
+  if (errors.success) {
     throw new RosterError(
-      errors.success
-        ? `RateMyProfessors answered with an error: ${errors.data.errors[0]!.message.slice(0, 200)}`
-        : "RateMyProfessors answered in an unexpected shape.",
+      `RateMyProfessors answered with an error: ${errors.data.errors[0]!.message.slice(0, 200)}`,
     );
   }
-  const { edges, pageInfo } = page.data.data.newSearch.teachers;
+  const page = RosterPageSchema.safeParse(data);
+  if (!page.success) throw new RosterError("RateMyProfessors answered in an unexpected shape.");
+  const { edges, pageInfo, resultCount, didFallback } = page.data.data.newSearch.teachers;
   const rows: RosterRow[] = [];
   let rejectedOtherSchool = 0;
   let invalid = 0;
@@ -203,8 +216,11 @@ export function parseRosterPage(data: unknown): RosterPage {
     rows,
     rejectedOtherSchool,
     invalid,
+    nodes: edges.length,
     hasNextPage: pageInfo.hasNextPage,
-    endCursor: pageInfo.endCursor ?? null,
+    endCursor: pageInfo.endCursor || null,
+    resultCount: resultCount ?? null,
+    didFallback: didFallback === true,
   };
 }
 
@@ -221,6 +237,7 @@ export async function fetchRoster(): Promise<FetchedRoster> {
   let rejectedOtherSchool = 0;
   let invalid = 0;
   let seen = 0;
+  let expected: number | null = null;
   let after: string | null = null;
   const cursors = new Set<string>();
 
@@ -234,12 +251,29 @@ export async function fetchRoster(): Promise<FetchedRoster> {
       timeoutMs: ROSTER_TIMEOUT_MS,
     });
     const page = parseRosterPage(res.data);
+    if (page.didFallback) {
+      throw new RosterError(
+        "RateMyProfessors answered with a fallback search instead of the Davidson roster.",
+      );
+    }
+    if (pageNumber === 1) expected = page.resultCount;
     for (const row of page.rows) byLegacyId.set(row.legacyId, row);
     rejectedOtherSchool += page.rejectedOtherSchool;
     invalid += page.invalid;
-    seen += page.rows.length + page.rejectedOtherSchool + page.invalid;
+    seen += page.nodes;
 
+    // A "next page" without a cursor is only an end when the page is empty; otherwise the roster is cut short.
+    if (page.hasNextPage && !page.endCursor && page.nodes > 0) {
+      throw new RosterError(
+        "RateMyProfessors pagination is inconsistent (a next page without a cursor); stopped.",
+      );
+    }
     if (!page.hasNextPage || !page.endCursor) {
+      if (expected !== null && seen < expected * ROSTER_MIN_COMPLETE_RATIO) {
+        throw new RosterError(
+          `RateMyProfessors announced ${expected} teachers but sent ${seen}; kept the stored roster.`,
+        );
+      }
       if (invalid > Math.max(5, Math.floor(seen * 0.1))) {
         throw new RosterError(
           `${invalid} of ${seen} roster entries had an unexpected shape; kept the stored roster.`,
@@ -255,7 +289,11 @@ export async function fetchRoster(): Promise<FetchedRoster> {
   }
 }
 
-/** Replace the stored roster with `rows` (upsert by legacyId, then drop rows that left the roster). */
+/**
+ * Replace the stored roster with `rows`: upsert every row whole by legacyId, and only when every upsert succeeded,
+ * drop the rows that left RMP. A failure part-way leaves each row either fully old or fully new (each carries its
+ * own fetchedAt, which is its "as of") and deletes nothing; the next run repairs it.
+ */
 async function replaceRoster(rows: readonly RosterRow[], fetchedAt: Date): Promise<void> {
   await RmpTeacher.bulkWrite(
     rows.map((row) => ({
@@ -292,9 +330,12 @@ function failureMessage(error: ExternalFetchError | RosterError): string {
     : message;
 }
 
+const STORE_FAILURE = "Could not store the RateMyProfessors roster.";
+
 /**
  * Pull the roster and replace `rmpteachers` (callers check RMP_ENABLED; see server/rmp/index.ts syncRoster).
- * Upstream and shape failures are returned as `{ ok: false }` and recorded; database errors throw.
+ * Upstream and shape failures are returned as `{ ok: false }` and recorded. Database failures are recorded (when
+ * the database still takes the record) and rethrown, so the cron answers 500.
  */
 export async function runRosterSync(): Promise<RosterSyncResult> {
   const runAt = now();
@@ -309,10 +350,28 @@ export async function runRosterSync(): Promise<RosterSyncResult> {
     return { ok: false, count: 0, rejectedOtherSchool: 0, error: message };
   }
 
-  await getDb();
-  const stored = await RmpTeacher.countDocuments({});
   const count = fetched.rows.length;
-  if (count === 0 || count < stored * ROSTER_MIN_KEEP_RATIO) {
+  let stored: number;
+  let replaced = false;
+  try {
+    await getDb();
+    stored = await RmpTeacher.countDocuments({});
+    // Never replace a roster with an empty one or one under half its size (an upstream failure, not attrition).
+    if (count > 0 && count >= stored * ROSTER_MIN_KEEP_RATIO) {
+      await replaceRoster(fetched.rows, runAt);
+      replaced = true;
+    }
+  } catch (error) {
+    await recordSync("ratemyprofessors", {
+      ok: false,
+      count: 0,
+      error: STORE_FAILURE,
+      at: runAt,
+    }).catch(() => undefined);
+    throw error;
+  }
+
+  if (!replaced) {
     const message = `RateMyProfessors returned ${count} Davidson teachers (${stored} stored); kept the stored roster.`;
     await recordSync("ratemyprofessors", { ok: false, count: 0, error: message, at: runAt });
     return {
@@ -322,8 +381,6 @@ export async function runRosterSync(): Promise<RosterSyncResult> {
       error: message,
     };
   }
-
-  await replaceRoster(fetched.rows, runAt);
   await recordSync("ratemyprofessors", { ok: true, count, at: runAt });
   return { ok: true, count, rejectedOtherSchool: fetched.rejectedOtherSchool };
 }
