@@ -26,7 +26,12 @@ export function SourceTag({
   className,
 }: SourceTagProps) {
   const label = SOURCES[source].label;
-  const asOfText = asOf ? `as of ${formatAsOf(asOf, timeZone)}` : null;
+  // An unparseable date drops the "as of" note rather than throwing from Intl.
+  const asOfDate = asOf ? new Date(asOf) : null;
+  const asOfText =
+    asOfDate && !Number.isNaN(asOfDate.getTime())
+      ? `as of ${formatAsOf(asOfDate, timeZone)}`
+      : null;
 
   if (!asOfText) {
     return (

@@ -35,6 +35,13 @@ function isCurated(source: SourceSync): source is CuratedSource {
   return "verifiedAt" in source;
 }
 
+/** A usable date, or null. Intl throws on an invalid date, and this panel renders on every hub page. */
+function validDate(value: Date | string | null): Date | null {
+  if (value === null) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 const DOT: Record<SourceStatus | "never" | "curated", string> = {
   ok: "bg-success",
   stale: "bg-warning",
@@ -85,6 +92,7 @@ export function SourcesPanel({
           {sources.map((source) => {
             const label = source.label ?? SOURCES[source.id].label;
             if (isCurated(source)) {
+              const verified = validDate(source.verifiedAt);
               return (
                 <li key={`${source.id}-${label}`} className="flex items-center gap-2">
                   <span
@@ -92,18 +100,23 @@ export function SourcesPanel({
                     className={cn("size-1.75 shrink-0 rounded-full", DOT.curated)}
                   />
                   <span className="min-w-0 truncate">{label}</span>
-                  <span className="sr-only">, verified</span>{" "}
-                  <time
-                    className="ml-auto shrink-0 font-mono text-fg-3"
-                    dateTime={new Date(source.verifiedAt).toISOString()}
-                    title={`Verified ${formatShortDate(source.verifiedAt, timeZone)}`}
-                  >
-                    {formatShortDate(source.verifiedAt, timeZone)}
-                  </time>
+                  {verified ? (
+                    <>
+                      <span className="sr-only">, verified</span>{" "}
+                      <time
+                        className="ml-auto shrink-0 font-mono text-fg-3"
+                        dateTime={verified.toISOString()}
+                        title={`Verified ${formatShortDate(verified, timeZone)}`}
+                      >
+                        {formatShortDate(verified, timeZone)}
+                      </time>
+                    </>
+                  ) : null}
                 </li>
               );
             }
-            const state = source.lastSync === null ? "never" : (source.status ?? "ok");
+            const lastSync = validDate(source.lastSync);
+            const state = lastSync === null ? "never" : (source.status ?? "ok");
             return (
               <li key={`${source.id}-${label}`} className="flex items-center gap-2">
                 <span aria-hidden className={cn("size-1.75 shrink-0 rounded-full", DOT[state])} />
@@ -111,14 +124,10 @@ export function SourcesPanel({
                 <span className="sr-only">, {STATUS_TEXT[state]},</span>{" "}
                 <time
                   className="ml-auto shrink-0 font-mono text-fg-3"
-                  dateTime={
-                    source.lastSync === null ? undefined : new Date(source.lastSync).toISOString()
-                  }
-                  title={
-                    source.lastSync === null ? undefined : formatAsOf(source.lastSync, timeZone)
-                  }
+                  dateTime={lastSync?.toISOString()}
+                  title={lastSync ? formatAsOf(lastSync, timeZone) : undefined}
                 >
-                  {formatSyncTime(source.lastSync, now, timeZone)}
+                  {formatSyncTime(lastSync, now, timeZone)}
                 </time>
               </li>
             );

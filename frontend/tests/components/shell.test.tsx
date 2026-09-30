@@ -71,6 +71,23 @@ describe("SourcesPanel", () => {
     ]);
   });
 
+  it("survives invalid dates instead of crashing the shell", () => {
+    render(
+      <SourcesPanel
+        now={now}
+        sources={[
+          { id: "course-schedule", lastSync: "not a date" },
+          { id: "registrar", label: "Academic calendar", verifiedAt: "2026-13-45" },
+        ]}
+      />,
+    );
+    const items = within(screen.getByRole("region", { name: "Sources" })).getAllByRole("listitem");
+    expect(items.map((i) => i.textContent)).toEqual([
+      "Course schedule, not synced yet, never",
+      "Academic calendar",
+    ]);
+  });
+
   it("shows curated sources with their verified date and link-only platforms under Links", () => {
     render(
       <SourcesPanel

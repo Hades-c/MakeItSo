@@ -25,6 +25,13 @@ describe("SourceTag", () => {
     expect(tag).toHaveAttribute("tabindex", "0");
   });
 
+  it("drops an unparseable 'as of' date instead of throwing", () => {
+    render(<SourceTag source="library" asOf="yesterday-ish" />);
+    const tag = screen.getByText("Library", { exact: false });
+    expect(tag).toHaveTextContent("Source: Library");
+    expect(tag).not.toHaveAttribute("tabindex");
+  });
+
   it("renders a labelled list", () => {
     render(<SourceTagList label="Sources for events" sources={["wildcatsync", "library"]} />);
     const list = screen.getByRole("list", { name: "Sources for events" });
