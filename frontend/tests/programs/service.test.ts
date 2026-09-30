@@ -200,8 +200,9 @@ describe("getProgram (lazy program pages, cached 7 days)", () => {
       /^Major in Computer Science \(B\.S\. Degree\)\nMajor Prerequisites:/,
     );
 
-    await getProgramWith(172, deps(fetcher, new Date(t0.getTime() + 6 * DAY)));
+    const cached = await getProgramWith(172, deps(fetcher, new Date(t0.getTime() + 6 * DAY)));
     expect(urls).toHaveLength(1);
+    expect(cached).toEqual(first);
 
     const later = new Date(t0.getTime() + PROGRAM_DETAIL_TTL_MS + 1);
     const refreshed = await getProgramWith(172, deps(fetcher, later));

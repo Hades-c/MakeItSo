@@ -59,6 +59,12 @@ interface OfferingName {
   degree: string | null;
 }
 
+/**
+ * What the list paths read of a stored program: everything but the requirement text (a department page's sections
+ * run to tens of kilobytes; only getProgram needs them, and it loads its one document in full).
+ */
+const ROW_PROJECTION = { "offerings.sections": 0, descriptionText: 0 } as const;
+
 /** One program as the read paths see it. */
 export interface CatalogRow {
   acalogId: number;
@@ -66,7 +72,7 @@ export interface CatalogRow {
   name: string;
   code: string;
   offerings: OfferingName[];
-  /** The stored document, when there is one. */
+  /** The stored document without requirement text (ROW_PROJECTION), when there is one. */
   doc: ProgramLean | null;
   /** The snapshot's entry, when there is one. */
   snapshot: SnapshotProgram | null;
@@ -93,7 +99,10 @@ function offeringNames(doc: ProgramLean | null, snapshot: SnapshotProgram | null
 /** Every program of the catalog, sorted by name (see the module comment for where each part comes from). */
 export async function catalogRows(): Promise<CatalogRow[]> {
   await getDb();
-  const docs = (await Program.find({ catalogId: ACALOG_CATALOG.id }).lean()) as ProgramLean[];
+  const docs = (await Program.find(
+    { catalogId: ACALOG_CATALOG.id },
+    ROW_PROJECTION,
+  ).lean()) as ProgramLean[];
   const snapshot = programSnapshot();
   const snapshotById = new Map(snapshot.programs.map((program) => [program.acalogId, program]));
   const synced = docs.some((doc) => doc.listSyncedAt);
@@ -345,7 +354,12 @@ export async function getProgramWith(
   const rows = await catalogRows();
   const row = rows.find((candidate) => candidate.acalogId === acalogId);
   if (!row) return null;
-  const doc = row.doc;
+  const doc = row.doc
+    ? ((await Program.findOne({
+        catalogId: ACALOG_CATALOG.id,
+        acalogId,
+      }).lean()) as ProgramLean | null)
+    : null;
   if (doc?.detailFetchedAt) {
     const age = deps.now().getTime() - doc.detailFetchedAt.getTime();
     if (age >= 0 && age < PROGRAM_DETAIL_TTL_MS) return toAcademicProgram(doc);
