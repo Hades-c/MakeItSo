@@ -351,6 +351,9 @@
   ::before,
   ::after {
     border-color: var(--line);
+    /* The ring colour is set up front: transition-colors also animates outline-color, so starting from the
+     * default (currentColor) made every focus ring fade in from the text colour instead of Lake Blue. */
+    outline-color: var(--focus);
   }
 
   html {

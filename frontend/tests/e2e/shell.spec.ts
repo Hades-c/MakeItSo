@@ -208,3 +208,36 @@ test("unknown pages and malformed course codes show a not-found page", async ({
   await expect(page.getByRole("banner")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("We couldn't find that page");
 });
+
+test("keyboard focus shows a Lake Blue ring straight away, never red", async ({
+  page,
+  request,
+}) => {
+  test.skip(isMobile(page), "keyboard navigation is checked on desktop");
+  const email = uniqueEmail("e2e-focus");
+  await registerViaApi(request, { name: "Focus Tester", email, password: PASSWORD });
+  await page.emulateMedia({ colorScheme: "light" });
+  await signIn(page, email, PASSWORD);
+
+  const focusToken = await page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--focus)";
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  });
+
+  // Skip link first, then the wordmark, search, theme toggle, account menu and the sidebar links.
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press("Tab");
+    // Read the ring immediately: it must not fade in from the text colour.
+    const ring = await page.evaluate(() => {
+      const s = getComputedStyle(document.activeElement!);
+      return { style: s.outlineStyle, width: s.outlineWidth, color: s.outlineColor };
+    });
+    expect(ring).toEqual({ style: "solid", width: "2px", color: focusToken });
+  }
+});
