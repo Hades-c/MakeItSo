@@ -7,8 +7,9 @@ WildcatSync, Davidson One, RateMyProfessors and email: the course catalog, a fou
 alumni and campus events.
 
 > **Status: being rebuilt.** The hackathon version is being replaced on a tested foundation (Next.js 16, React 19,
-> Mongoose 9, Anthropic Claude for AI features). Right now the app has the landing page, sign-up/sign-in and a
-> placeholder Today page. The course catalog, plan, careers, alumni and events pages return in the next waves.
+> Mongoose 9, Anthropic Claude for AI features). Right now the app has the landing page, sign-up/sign-in and the
+> signed-in shell with every page in place (Today, Courses, My plan, Careers, Events, Alumni, Profile). Those
+> pages say what they will show; the course catalog, plan, careers, alumni and events data arrive in the next waves.
 > Degree requirement information in the app is a planning aid: always verify in DegreeWorks and with your advisor.
 
 ---
@@ -18,7 +19,7 @@ alumni and campus events.
 | Layer         | Technology                                                                              |
 | ------------- | --------------------------------------------------------------------------------------- |
 | App           | Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 5.9 (strict)                 |
-| UI            | Tailwind CSS · Radix UI primitives · lucide-react · sonner                              |
+| UI            | Tailwind CSS 4 (Lakeside tokens) · Radix UI primitives · lucide-react · sonner          |
 | Auth          | NextAuth.js v4 (email + password credentials, JWT sessions)                             |
 | Data          | MongoDB + Mongoose 9                                                                    |
 | AI            | Anthropic Claude via `@anthropic-ai/sdk` (being wired up; `AI_PROVIDER=mock` for tests) |
@@ -36,19 +37,49 @@ MakeItSo/
     ├── app/
     │   ├── page.tsx           landing page
     │   ├── (auth)/            /login, /register
-    │   ├── (hub)/             signed-in pages (layout requires a session): /today, ...
+    │   ├── (hub)/             signed-in pages in the AppShell (layout requires a session): /today,
+    │   │                      /courses, /courses/[term]/[code], /plan, /careers, /careers/[slug], /events,
+    │   │                      /alumni, /profile
+    │   ├── globals.css        Lakeside design tokens (the only place raw colours live)
     │   └── api/               route handlers (auth, register, profile)
     ├── server/                server-only modules
     │   ├── env.ts             zod-validated environment, read lazily
     │   ├── db.ts              lazy MongoDB connection (getDb)
     │   ├── http.ts            typed JSON errors for route handlers (withApi, ApiError)
     │   └── auth/              NextAuth options, requireUser() / requireApiUser()
-    ├── components/ui/         UI primitives
+    ├── components/ui/         Lakeside UI primitives (Button, Card, SourceTag, CourseCode, Dialog, ...)
+    ├── components/app/        AppShell: TopBar, Sidebar + Sources panel, BottomTabs, theme, user menu
     ├── lib/                   shared (client + server) helpers and data
     ├── models/                Mongoose models
     ├── types/                 type augmentation (next-auth)
     └── tests/                 Vitest unit/integration tests; tests/e2e = Playwright
 ```
+
+---
+
+## Design system (Lakeside)
+
+The look is the "Lakeside" direction: Davidson's Lake Blue, Sandstone and Deep Taupe lead, and Davidson Red is
+kept for "now" and urgent items. Errors use a separate danger colour, and focus rings are Lake Blue.
+
+- **Tokens** live in `frontend/app/globals.css` as CSS variables for light and dark. With no `data-theme` on
+  `<html>` the theme follows the system; the toggle stores an explicit choice in `localStorage` (`mis-theme`),
+  and a small inline script applies it before first paint. Tailwind 4 is configured in that CSS file (`@theme`);
+  there is no `tailwind.config.ts`.
+- **Use tokens only**: `bg-surface`, `text-fg-2`, `border-line`, `bg-primary-fill`, `text-urgent`,
+  `bg-course-pine-wash`... Tailwind's default palette, type scale, radii and shadows are switched off.
+  `tests/design/no-raw-colors.test.ts` fails on raw hex/rgb colours, palette classes (`bg-red-500`) or dynamically
+  built class names in `app/`, `components/` and `lib/`. `tests/design/tokens.test.ts` checks WCAG AA contrast for
+  every token pair in both themes.
+- **Type**: Instrument Sans for UI and body, IBM Plex Mono (`font-mono`) for course codes, times, rooms, CRNs and
+  labels (both via `next/font/google`, self-hosted at build time). Sizes `text-xs` (12px, the floor) to `text-2xl`
+  (32px), plus `text-3xl` (44px) for big numbers.
+- **Breakpoints**: `md` = 720px (bottom tabs below, sidebar above), `lg` = 900px (two content columns), `xl` =
+  1180px (full 240px sidebar; a 72px icon rail between 720 and 1180px).
+- **Course colours** come from the department (`lib/course-color.ts`); the code is always printed next to the colour.
+- **Provenance**: every aggregated item shows a `<SourceTag>` (HANDSHAKE, WILDCATSYNC, COURSE SITE...; ids in
+  `lib/sources.ts`), and every AI output shows `<AiChip>` ("AI · verify with your advisor"). The Today headline is
+  a one-sentence day summary built deterministically by `lib/day-summary.ts`, never free model text.
 
 ---
 
@@ -95,6 +126,9 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `npm run format`    | Prettier (with the Tailwind class sorter); `npm run format:check` to verify only |
 | `npm test`          | Vitest unit + integration tests (`tests/**/*.test.ts[x]`)                        |
 | `npm run test:e2e`  | Playwright end-to-end tests against `next build && next start -p 3210`           |
+
+`npm run build` downloads the two Google fonts once (next/font self-hosts them), so the build machine needs
+access to fonts.googleapis.com.
 
 ### Tests
 
