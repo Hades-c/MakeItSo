@@ -62,8 +62,8 @@ async function redirectOf(run: () => Promise<unknown>): Promise<string | null> {
 }
 
 /**
- * Open-redirect payloads (review blocker): lib/routes safeCallbackPath checks the raw value for "//" but returns
- * the normalised path, and these normalise to a protocol-relative URL ("//evil.example/…").
+ * Open-redirect payloads (review blocker): several normalise to a protocol-relative URL ("//evil.example/…"), so
+ * lib/routes safeCallbackPath checks the normalised path as well as the raw value, and safeAppPath re-checks.
  */
 const EVIL = [
   "/.//evil.example/phish",

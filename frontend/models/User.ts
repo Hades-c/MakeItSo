@@ -45,7 +45,7 @@ export interface IUser {
   legacyAccount?: boolean;
 
   // ---- Profile (lib/api/profile.ts) ----------------------------------------------------------------------------
-  /** Official program names (server/programs, interim lib/utils MAJORS). */
+  /** Official Acalog names (server/programs programNames(); the checked-in snapshot is the fallback). */
   majors?: string[];
   minors?: string[];
   graduationYear?: number;

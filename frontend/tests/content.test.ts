@@ -287,8 +287,9 @@ describe("(a) course codes exist in the fixture catalog", () => {
 const LINKEDIN = /^https:\/\/www\.linkedin\.com\/in\/[^/?#]+\/?$/;
 
 /**
- * LinkedIn, or a copy of it (an archive snapshot, a search cache, a proxy, the lnkd.in shortener): the gate's own
- * test, stricter than lib's host-only isLinkedInUrl(), so a module can never weaken it.
+ * LinkedIn, or a copy of it (an archive snapshot, a search cache, a proxy, the lnkd.in shortener). lib's
+ * isLinkedInUrl() applies the same rule; the gate re-checks it independently, so a change to lib (or a module's own
+ * helper) can never weaken the gate.
  */
 function fromLinkedIn(url: string): boolean {
   let text = url;

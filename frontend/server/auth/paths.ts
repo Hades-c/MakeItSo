@@ -5,10 +5,10 @@ import { appOriginForEmail } from "@/server/auth/emails";
 /**
  * Same-origin return paths (login `callbackUrl`, /verify `next`, requireUser's `returnTo`).
  *
- * lib/routes safeCallbackPath checks the RAW value for a leading "//" but returns the NORMALISED path, and dot
- * segments normalise into one: "/.//evil.example", "/..//evil.example", "/a/..//evil.example" and
- * "/%2e//evil.example" all come back as "//evil.example", a protocol-relative URL to another host. So every
- * result is checked again (isSafeAppPath) before a redirect, router.replace or link uses it.
+ * lib/routes safeCallbackPath checks both the raw value and the normalised path it returns, so inputs whose dot
+ * segments collapse into a protocol-relative path ("/.//evil.example", "/..//evil.example", "/a/..//evil.example",
+ * "/%2e//evil.example", "/./\evil.example") give the fallback. isSafeAppPath re-checks every result anyway, as a
+ * second line of defence, before a redirect, router.replace or link uses it.
  */
 
 /**
