@@ -37,6 +37,26 @@ import { ApiError } from "@/server/http/errors";
 
 withCatalogDb();
 
+describe("the frozen surface (PLAN §4.1.3)", () => {
+  it("server/catalog exports exactly its frozen functions", async () => {
+    const catalog = await import("@/server/catalog");
+    const functions = Object.entries(catalog)
+      .filter(([, value]) => typeof value === "function")
+      .map(([key]) => key)
+      .sort();
+    expect(functions).toEqual([
+      "countCourses",
+      "getCatalogFilters",
+      "getCourse",
+      "getCourseHistory",
+      "getSection",
+      "resolveTerms",
+      "searchCourses",
+      "validateCourseCodes",
+    ]);
+  });
+});
+
 const lastSuccess = async (term: string) =>
   (await CatalogMeta.findOne({ key: termKey(term) }).lean())?.lastSuccessAt?.toISOString();
 
