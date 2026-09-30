@@ -180,6 +180,50 @@ describe("getRatings", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("9000001"));
   });
 
+  it("ignores (and logs) malformed stored rows instead of failing every lookup", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const base = {
+      rmpId: "raw",
+      normalizedFirst: "x",
+      normalizedLast: "smith",
+      nameTokens: ["smith"],
+      department: "Economics",
+      schoolId: RMP_DAVIDSON_SCHOOL_ID,
+      avgRating: 3,
+      avgDifficulty: 3,
+      numRatings: 99,
+      wouldTakeAgainPct: null,
+    };
+    // Written around the model: no fetchedAt; no firstName; a string where a number belongs.
+    await RmpTeacher.collection.insertMany([
+      { ...base, rmpId: "raw-1", legacyId: 9900001, firstName: "Fred", lastName: "Smith" },
+      {
+        ...base,
+        rmpId: "raw-2",
+        legacyId: 9900002,
+        lastName: "Smith",
+        fetchedAt: new Date(),
+      },
+      {
+        ...base,
+        rmpId: "raw-3",
+        legacyId: 9900003,
+        firstName: "Kevin",
+        lastName: "Smith",
+        numRatings: "many",
+        fetchedAt: new Date(),
+      },
+    ]);
+    const ratings = await getRatings([instructor("Fred", "Smith"), instructor("Kevin", "Smith")], {
+      subject: "ECO",
+      relatedSubjects: ["BIO"],
+    });
+    expect(ratings.map((r) => r.rmp?.legacyId)).toEqual([9000001, 9000002]);
+    for (const id of ["9900001", "9900002", "9900003"]) {
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining(id));
+    }
+  });
+
   it("answers 'disabled' for everyone with RMP_ENABLED=false, without reading the roster", async () => {
     vi.stubEnv("RMP_ENABLED", "false");
     const find = vi.spyOn(RmpTeacher, "find");

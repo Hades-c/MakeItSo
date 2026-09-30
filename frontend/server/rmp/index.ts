@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 import { getFlags } from "@/lib/flags";
 import type { Instructor } from "@/lib/types/catalog";
 import { type InstructorRating, RmpRatingSchema, type RosterSyncResult } from "@/lib/types/ratings";
@@ -17,7 +18,8 @@ import { rmpProfileUrl, runRosterSync } from "@/server/rmp/roster";
  *   fetchExternal("ratemyprofessors", ...) → rmpteachers, recorded with recordSync("ratemyprofessors", ...).
  * - `getRatings(instructors, { subject, relatedSubjects, homeSubjects })`: reads the stored roster only (no per-view
  *   RMP calls) and runs the matching engine (server/rmp/match.ts) per instructor: never surname-only; departments
- *   mapped to subject codes before a conflict is flagged; conflicts and ambiguity → "review".
+ *   mapped to subject codes before a conflict is flagged; conflicts and ambiguity → "review". Stored rows are
+ *   validated before use; a bad row is logged and ignored.
  * - RMP_ENABLED=false: every rating is "disabled" and neither function touches the network or the roster.
  *
  * rmpteachers holds no per-user data, so this module registers nothing with server/account/erasers.ts.
@@ -40,17 +42,27 @@ export interface GetRatingsOptions {
   homeSubjects?: HomeSubjectsResolver;
 }
 
-interface StoredTeacher {
-  legacyId: number;
-  firstName: string;
-  lastName: string;
-  department: string;
-  numRatings: number;
-  avgRating: number;
-  avgDifficulty: number;
-  wouldTakeAgainPct: number | null;
-  fetchedAt: Date;
-}
+/** A stored roster row as the matcher and the rating need it. Anything else in rmpteachers is ignored. */
+const StoredTeacherSchema = z.object({
+  legacyId: z.number().int().positive(),
+  firstName: z.string(),
+  lastName: z.string(),
+  department: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? ""),
+  numRatings: z.number().int().min(0),
+  avgRating: z.number().min(0).max(5),
+  avgDifficulty: z.number().min(0).max(5),
+  wouldTakeAgainPct: z
+    .number()
+    .min(0)
+    .max(100)
+    .nullish()
+    .transform((value) => value ?? null),
+  fetchedAt: z.date(),
+});
+type StoredTeacher = z.output<typeof StoredTeacherSchema>;
 
 const TEACHER_FIELDS =
   "legacyId firstName lastName department numRatings avgRating avgDifficulty wouldTakeAgainPct fetchedAt";
@@ -81,20 +93,21 @@ async function loadCandidates(
   const clauses: Record<string, unknown>[] = [];
   if (tokens.size > 0) clauses.push({ nameTokens: trusted({ $in: [...tokens] }) });
   if (legacyIds.size > 0) clauses.push({ legacyId: trusted({ $in: [...legacyIds] }) });
-  const docs = await RmpTeacher.find(clauses.length === 1 ? clauses[0]! : { $or: clauses })
+  const docs: unknown[] = await RmpTeacher.find(
+    clauses.length === 1 ? clauses[0]! : { $or: clauses },
+  )
     .select(TEACHER_FIELDS)
     .lean();
-  return docs.map((doc) => ({
-    legacyId: doc.legacyId,
-    firstName: doc.firstName,
-    lastName: doc.lastName,
-    department: doc.department ?? "",
-    numRatings: doc.numRatings ?? 0,
-    avgRating: doc.avgRating ?? 0,
-    avgDifficulty: doc.avgDifficulty ?? 0,
-    wouldTakeAgainPct: doc.wouldTakeAgainPct ?? null,
-    fetchedAt: doc.fetchedAt,
-  }));
+  const teachers: StoredTeacher[] = [];
+  for (const doc of docs) {
+    const parsed = StoredTeacherSchema.safeParse(doc);
+    if (parsed.success) teachers.push(parsed.data);
+    else {
+      const { legacyId, _id } = doc as { legacyId?: unknown; _id?: unknown };
+      console.warn(`[rmp] stored teacher ${String(legacyId ?? _id)} is invalid; ignored`);
+    }
+  }
+  return teachers;
 }
 
 function toRating(instructor: Instructor, outcome: MatchOutcome<StoredTeacher>): InstructorRating {
