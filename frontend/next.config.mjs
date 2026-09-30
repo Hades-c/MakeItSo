@@ -4,16 +4,9 @@ const nextConfig = {
     serverComponentsExternalPackages: ["mongoose"],
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "avatars.githubusercontent.com",
-      },
-      {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com",
-      },
-    ],
+    // No component uses next/image. Keep the image optimizer off so
+    // /_next/image cannot be used as an open proxy.
+    unoptimized: true,
   },
 };
 
