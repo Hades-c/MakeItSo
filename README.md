@@ -10,7 +10,7 @@ alumni and campus events.
 > Mongoose 9, Anthropic Claude for AI features). Right now the app has the landing page, sign-up/sign-in and the
 > signed-in shell with every page in place (Today, Courses, My plan, Careers, Events, Alumni, Profile). Those
 > pages say what they will show; the course catalog, plan, careers, alumni and events data arrive in the next waves.
-> Degree requirement information in the app is a planning aid: always verify in DegreeWorks and with your advisor.
+> Degree requirement information in the app is a planning aid: always verify in Degree Works and with your advisor.
 
 ---
 
