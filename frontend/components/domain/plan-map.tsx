@@ -25,7 +25,8 @@ export interface PlanMapProps {
   slotsPerTerm?: number;
   /**
    * full: totals, progress bar, the map with course codes and a key.
-   * compact: a small, code-free preview (Add to plan); one row at every width.
+   * compact: a small, code-free preview (Add to plan): one row, without the summers that hold nothing; with more
+   *   than eight columns it scrolls sideways rather than squeezing its 12px term labels together.
    */
   variant?: "full" | "compact";
   /** Heading shown above the big number (full variant), e.g. <h2>Degree progress</h2>. */
@@ -52,7 +53,8 @@ const ONE_ROW_FROM: { max: number; row: string; years: string }[] = [
 ];
 
 function cellClasses(cell: PlanCell): string {
-  if (cell.status === "open") return "border-[1.5px] border-dashed border-line-2";
+  // An open slot is only its dashed outline: --line-strong keeps that graphic at 3:1 in both themes.
+  if (cell.status === "open") return "border-[1.5px] border-dashed border-line-strong";
   if (cell.status === "done") return "bg-line-2 text-fg-2";
   const colors = cell.code ? COURSE_COLOR_CLASSES[courseColor(cell.code)] : null;
   if (cell.status === "in-progress") {
@@ -64,6 +66,24 @@ function cellClasses(cell: PlanCell): string {
   return cn(
     "border-[1.5px] border-dashed",
     colors ? cn(colors.border, colors.text) : "border-primary text-primary",
+  );
+}
+
+/** Most columns the compact preview squeezes into its width (a 12px "Su26" needs about 2rem). */
+const COMPACT_FIT = 8;
+const COMPACT_MIN_COLUMN = "2.25rem";
+
+/** Compact columns: every term, less the summers with nothing in them (unless it is the one being added to). */
+export function compactColumns(
+  layouts: readonly TermLayout[],
+  highlightTermCode?: string,
+): TermLayout[] {
+  return layouts.filter(
+    (l) =>
+      l.season !== "summer" ||
+      l.term.termCode === highlightTermCode ||
+      l.term.slots.some((s) => s.status !== "open") ||
+      l.unslotted.length > 0,
   );
 }
 
@@ -97,26 +117,35 @@ export function PlanMap({
 
   if (variant === "compact") {
     const highlighted = layouts.find((l) => l.term.termCode === highlightTermCode);
+    const columns = compactColumns(layouts, highlightTermCode);
+    const scrolls = columns.length > COMPACT_FIT;
     const summary = [
       `${label}: ${totals.done} done`,
       `${totals.inProgress} in progress`,
       `${totals.planned} planned of ${requiredCredits} credits`,
     ].join(", ");
-    return (
+    const preview = (
       <div
         role="img"
         aria-label={highlighted ? `${summary}. ${highlighted.term.label} selected.` : `${summary}.`}
-        className={cn("grid gap-1", className)}
-        style={{ gridTemplateColumns: `repeat(${layouts.length}, minmax(0, 1fr))` }}
-        data-testid="plan-map"
+        className={cn("grid gap-1", scrolls ? "w-max min-w-full" : className)}
+        style={{
+          gridTemplateColumns: scrolls
+            ? `repeat(${columns.length}, minmax(${COMPACT_MIN_COLUMN}, 1fr))`
+            : `repeat(${columns.length}, minmax(0, 1fr))`,
+        }}
+        data-testid={scrolls ? undefined : "plan-map"}
       >
-        {layouts.map((l) => {
+        {columns.map((l) => {
           const target = l.term.termCode === highlightTermCode;
           return (
-            <div key={l.term.termCode} className="flex min-w-0 flex-col gap-0.75">
+            <div
+              key={l.term.termCode}
+              className={cn("flex min-w-0 flex-col gap-0.75", scrolls && "snap-start")}
+            >
               <span
                 className={cn(
-                  "mb-0.5 text-center font-mono text-xs leading-4",
+                  "mb-0.5 text-center font-mono text-xs leading-4 whitespace-nowrap",
                   target ? "font-semibold text-primary" : "text-fg-3",
                 )}
               >
@@ -136,6 +165,19 @@ export function PlanMap({
             </div>
           );
         })}
+      </div>
+    );
+    if (!scrolls) return preview;
+    // Too many terms for 12px labels side by side: scroll sideways (a focusable region, for keyboards).
+    return (
+      <div
+        role="region"
+        aria-label={label}
+        tabIndex={0}
+        className={cn("snap-x overflow-x-auto overscroll-x-contain pb-1", className)}
+        data-testid="plan-map"
+      >
+        {preview}
       </div>
     );
   }
@@ -257,7 +299,7 @@ export function PlanMap({
         <li className="flex items-center gap-1.5">
           <span
             aria-hidden
-            className="size-3 rounded-[3px] border-[1.5px] border-dashed border-line-2"
+            className="size-3 rounded-[3px] border-[1.5px] border-dashed border-line-strong"
           />
           Open
         </li>

@@ -41,7 +41,8 @@ const TILE: Record<RequirementStatus, string> = {
   done: "bg-surface-2 text-fg-3",
   "this-term": "bg-primary-wash text-primary",
   planned: "border-[1.5px] border-dashed border-primary text-primary",
-  open: "border-[1.5px] border-dashed border-line-2 text-fg-3",
+  // --line-strong: the dashed outline is the tile's shape, so it needs 3:1 like any graphic.
+  open: "border-[1.5px] border-dashed border-line-strong text-fg-3",
 };
 
 function subText(slot: RequirementSlot, isCandidate: boolean, candidate?: string): string {
@@ -156,7 +157,7 @@ export function RequirementSlots({
           <li className="flex items-center gap-1.5">
             <span
               aria-hidden
-              className="size-2.5 rounded-[3px] border-[1.5px] border-dashed border-line-2"
+              className="size-2.5 rounded-[3px] border-[1.5px] border-dashed border-line-strong"
             />
             Open
           </li>

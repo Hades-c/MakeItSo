@@ -7,7 +7,8 @@ import {
   type AddToPlanControlProps,
   type AddToPlanTerm,
 } from "@/components/domain/add-to-plan-control";
-import { PlanMap, type PlanMapTerm } from "@/components/domain/plan-map";
+import { PlanMap, compactColumns, type PlanMapTerm } from "@/components/domain/plan-map";
+import { layoutTerm } from "@/components/domain/plan-layout";
 import { RatingSummary, safeRmpUrl } from "@/components/domain/rating-summary";
 import { RequirementSlots, type RequirementSlot } from "@/components/domain/requirement-slots";
 import { SeatBar, seatSummary } from "@/components/domain/seat-bar";
@@ -164,6 +165,58 @@ describe("PlanMap", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("F27")).toHaveClass("text-primary");
     expect(screen.queryByText("CSC 221")).not.toBeInTheDocument();
+    // Eight columns fit: no scrolling region.
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
+  });
+
+  it("leaves empty summers out of the compact preview and scrolls rather than squeeze labels", () => {
+    const summer = (termCode: string, label: string, slots: PlanMapTerm["slots"] = []) => ({
+      termCode,
+      label,
+      slots,
+    });
+    // A plan with a summer after every year (Su26 has a course, Su27 and Su28 are empty).
+    const withSummers: PlanMapTerm[] = [
+      ...PLAN.slice(0, 2),
+      summer("202503", "Summer 2026", [done("ENV 201")]),
+      ...PLAN.slice(2, 4),
+      summer("202603", "Summer 2027"),
+      ...PLAN.slice(4, 6),
+      summer("202703", "Summer 2028"),
+      ...PLAN.slice(6),
+    ];
+    const layouts = withSummers.map((t) => layoutTerm(t));
+    expect(compactColumns(layouts).map((l) => l.short)).toEqual([
+      "F25",
+      "S26",
+      "Su26",
+      "F26",
+      "S27",
+      "F27",
+      "S28",
+      "F28",
+      "S29",
+    ]);
+    // Adding to an empty summer keeps that summer.
+    expect(compactColumns(layouts, "202603").map((l) => l.short)).toContain("Su27");
+
+    render(<PlanMap variant="compact" terms={withSummers} requiredCredits={32} label="Preview" />);
+    expect(screen.queryByText("Su27")).not.toBeInTheDocument();
+    // Nine columns: each keeps a 12px-label width inside a keyboard-scrollable region.
+    const region = screen.getByRole("region", { name: "Preview" });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toHaveClass("overflow-x-auto");
+    const img = within(region).getByRole("img");
+    expect(img.style.gridTemplateColumns).toBe("repeat(9, minmax(2.25rem, 1fr))");
+  });
+
+  it("outlines open slots with the strong line colour (3:1), in the map and its key", () => {
+    const { container } = render(<PlanMap terms={PLAN} requiredCredits={32} />);
+    const open = container.querySelectorAll('[data-layout="row"] [data-status="open"]');
+    expect(open.length).toBeGreaterThan(0);
+    for (const cell of open) expect(cell).toHaveClass("border-dashed", "border-line-strong");
+    const key = screen.getByRole("list", { name: "Key" });
+    expect(within(key).getByText("Open").querySelector("span")).toHaveClass("border-line-strong");
   });
 });
 
@@ -209,6 +262,8 @@ describe("RequirementSlots", () => {
     expect(items[0]).toHaveClass("bg-surface-2");
     expect(items[1]).toHaveClass("bg-primary-wash");
     expect(items[3]).toHaveClass("border-dashed", "border-primary");
+    // An open tile's dashed outline is its shape: the strong line colour keeps it at 3:1.
+    expect(items[4]).toHaveClass("border-dashed", "border-line-strong");
     expect(
       screen.getByText("Unofficial — verify in Degree Works.").parentElement,
     ).toHaveTextContent("Unofficial — verify in Degree Works. Each course fills one slot.");
