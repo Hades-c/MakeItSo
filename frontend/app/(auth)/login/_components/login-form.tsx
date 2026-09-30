@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { AuthCard } from "@/app/(auth)/_components/auth-card";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
-import { FORGOT_PASSWORD_PATH } from "@/app/(auth)/_lib/contracts";
 import { NETWORK_ERROR } from "@/app/(auth)/_lib/messages";
 import { signInErrorMessage } from "@/app/(auth)/_lib/sign-in-errors";
 import { STANDALONE_LINK } from "@/app/(auth)/_lib/styles";
@@ -85,7 +84,7 @@ export function LoginForm({ callbackPath, initialError = null }: LoginFormProps)
           />
         </Field>
         <div className="-mt-1 flex justify-end">
-          <Link href={FORGOT_PASSWORD_PATH} className={`${STANDALONE_LINK} text-sm`}>
+          <Link href={routes.forgotPassword()} className={`${STANDALONE_LINK} text-sm`}>
             Forgot password?
           </Link>
         </div>

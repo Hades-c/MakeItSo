@@ -73,7 +73,9 @@ export function parseTermParam(value: string | string[] | null | undefined): Ter
 /**
  * A same-origin path to return to after sign-in (PLAN §3: login honours a same-origin callbackUrl). Accepts an app
  * path ("/plan?tab=next") or an absolute URL on `origin`; anything else (other hosts, "//evil", "javascript:")
- * gives `fallback`.
+ * gives `fallback`. The check runs on the raw value AND on the normalised path it returns: dot segments collapse
+ * into a protocol-relative path ("/.//evil", "/..//evil", "/a/..//evil", "/%2e//evil" all normalise to "//evil"),
+ * so a result never starts with "//" or "/\".
  */
 export function safeCallbackPath(
   value: string | null | undefined,
@@ -88,6 +90,7 @@ export function safeCallbackPath(
     if (!value.startsWith("/") && !value.startsWith(base.origin)) return fallback;
     if (value.startsWith("//") || value.startsWith("/\\")) return fallback;
     const path = `${url.pathname}${url.search}${url.hash}`;
+    if (!/^\/(?![/\\])/.test(path)) return fallback;
     return path.startsWith("/login") || path.startsWith("/register") ? fallback : path;
   } catch {
     return fallback;
@@ -120,6 +123,7 @@ export const routes = {
   login: (callbackUrl?: string) => `/login${queryString({ callbackUrl })}`,
   register: () => "/register",
   verify: () => "/verify",
+  forgotPassword: () => "/forgot-password",
   privacy: () => "/privacy",
   onboarding: () => "/onboarding",
   today: () => "/today",

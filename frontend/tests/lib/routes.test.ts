@@ -35,6 +35,7 @@ describe("href builders (lib/routes.ts)", () => {
       "/profile",
       "/onboarding",
     ]);
+    expect(routes.forgotPassword()).toBe("/forgot-password");
   });
 
   it("serialises query strings", () => {
@@ -78,8 +79,19 @@ describe("parsers", () => {
       "/login?callbackUrl=/x",
       "",
       null,
+      // Dot segments that normalise into a protocol-relative path to another host.
+      "/.//evil.com",
+      "/..//evil.com",
+      "/a/..//evil.com",
+      "/%2e//evil.com/x",
+      "/./\\evil.com",
+      "/.\\/evil.com",
+      `${origin}/.//evil.com`,
     ]) {
-      expect(safeCallbackPath(bad, origin)).toBe("/today");
+      expect([bad, safeCallbackPath(bad, origin)]).toEqual([bad, "/today"]);
     }
+    // Dot segments that stay on this origin are fine (and normalised).
+    expect(safeCallbackPath("/a/../plan?tab=next", origin)).toBe("/plan?tab=next");
+    expect(safeCallbackPath("/./courses", origin)).toBe("/courses");
   });
 });

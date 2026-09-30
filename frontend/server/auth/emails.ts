@@ -1,5 +1,4 @@
 import "server-only";
-import { FORGOT_PASSWORD_PATH } from "@/app/(auth)/_lib/contracts";
 import { routes } from "@/lib/routes";
 import type { MailMessage } from "@/server/auth/mailer";
 import { readEnv } from "@/server/env";
@@ -59,7 +58,7 @@ export function alreadyRegisteredEmail(to: string): MailMessage {
       "Someone (probably you) tried to create a MakeItSo account with this address, but it already has one.",
       "",
       `Sign in at ${link(routes.login())}.`,
-      `Forgot your password? Reset it at ${link(FORGOT_PASSWORD_PATH)}.`,
+      `Forgot your password? Reset it at ${link(routes.forgotPassword())}.`,
       "",
       "If this was not you, you can ignore this e-mail. Nothing about your account has changed.",
       FOOTER,
@@ -79,7 +78,7 @@ export function signupPendingEmail(to: string): MailMessage {
       "If you started it: sign in with the password you chose then, and verify the address at",
       `${link(routes.verify())} (you can ask for a new code there).`,
       "",
-      `If you did not: reset the password at ${link(FORGOT_PASSWORD_PATH)}. Only someone who can read`,
+      `If you did not: reset the password at ${link(routes.forgotPassword())}. Only someone who can read`,
       "this inbox can do that. It verifies the address and starts the account fresh: whatever the other",
       "person set up in it (name, profile, plan, AI consent) is deleted, and the account becomes yours.",
       FOOTER,
@@ -100,7 +99,7 @@ export function passwordResetEmail(
     text: [
       `Your MakeItSo password reset code is ${code}.`,
       "",
-      `Enter it at ${link(FORGOT_PASSWORD_PATH)} within 15 minutes, together with your new password.`,
+      `Enter it at ${link(routes.forgotPassword())} within 15 minutes, together with your new password.`,
       ...(pendingSignup
         ? [
             "",
