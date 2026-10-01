@@ -99,6 +99,27 @@ describe("groupEvents", () => {
   });
 });
 
+describe("groupEvents: one ongoing entry per series", () => {
+  it("collapses ongoing items that share a title and an end", () => {
+    const end = "2026-10-23T01:30:00.000Z";
+    const swim = (startsAt: string) => item({ title: "Club Swim Practice", startsAt, endsAt: end });
+    const groups = groupEvents(
+      [
+        swim("2026-09-25T00:30:00Z"),
+        swim("2026-09-29T00:30:00Z"),
+        item({ title: "club swim practice", startsAt: "2026-09-27T00:30:00Z", endsAt: end }),
+        item({ title: "Other", startsAt: "2026-09-27T00:30:00Z", endsAt: end }),
+      ],
+      OPTIONS,
+    );
+    const ongoing = groups.find((g) => g.kind === "ongoing")!;
+    expect(ongoing.items.map((i) => [i.title, i.startsAt])).toEqual([
+      ["Club Swim Practice", "2026-09-25T00:30:00Z"],
+      ["Other", "2026-09-27T00:30:00Z"],
+    ]);
+  });
+});
+
 describe("eventTimeLabel", () => {
   const label = (fields: Partial<FeedItem>) => eventTimeLabel(item(fields), OPTIONS);
 

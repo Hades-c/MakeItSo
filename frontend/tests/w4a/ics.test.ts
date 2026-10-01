@@ -22,6 +22,56 @@ function byUid(text: string, now?: Date) {
 
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
+describe("parseIcs: series published with the series' end as DTEND (WildcatSync)", () => {
+  it("turns each session into one evening, drops past sessions, and leaves a lone multi-day item alone", () => {
+    const items = byUid(
+      ics(
+        // Club Swim Practice, as events.ics publishes it: every session ends Oct 22, 9:30 PM ET.
+        [
+          "UID:swim-1",
+          "SUMMARY:Club Swim Practice",
+          "DTSTART:20260925T003000Z",
+          "DTEND:20261023T013000Z",
+        ],
+        [
+          "UID:swim-2",
+          "SUMMARY:Club Swim Practice",
+          "DTSTART:20260929T003000Z",
+          "DTEND:20261023T013000Z",
+        ],
+        [
+          "UID:swim-3",
+          "SUMMARY:Club Swim Practice",
+          "DTSTART:20261001T003000Z",
+          "DTEND:20261023T013000Z",
+        ],
+        [
+          "UID:swim-4",
+          "SUMMARY:Club Swim Practice",
+          "DTSTART:20261006T003000Z",
+          "DTEND:20261023T013000Z",
+        ],
+        // A real five-week window, published once.
+        [
+          "UID:photo",
+          "SUMMARY:Returnee Photo Contest Launch",
+          "DTSTART:20260921T160000Z",
+          "DTEND:20261030T210000Z",
+        ],
+      ),
+    );
+    // Sep 24 and Sep 28 sessions ended before today (Sep 30): gone, not "ongoing since Sep 24".
+    expect(items.has("swim-1")).toBe(false);
+    expect(items.has("swim-2")).toBe(false);
+    // Sep 30, 8:30-9:30 PM ET and Oct 5, 8:30-9:30 PM ET.
+    expect(iso(items.get("swim-3")!.startsAt)).toBe("2026-10-01T00:30:00.000Z");
+    expect(iso(items.get("swim-3")!.endsAt)).toBe("2026-10-01T01:30:00.000Z");
+    expect(iso(items.get("swim-4")!.endsAt)).toBe("2026-10-06T01:30:00.000Z");
+    expect(items.get("swim-4")!.kind).toBe("event");
+    expect(iso(items.get("photo")!.endsAt)).toBe("2026-10-30T21:00:00.000Z");
+  });
+});
+
 describe("parseIcs: times", () => {
   it("Z, TZID (without VTIMEZONE), floating, Windows and other-zone times become instants", () => {
     const items = byUid(

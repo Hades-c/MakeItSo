@@ -77,7 +77,13 @@ export function groupEvents(items: readonly FeedItem[], { now, timeZone }: Prese
     const day = startDay(item, timeZone);
     if (!day) continue;
     if (day < today) {
-      ongoing.push(item);
+      // One entry per series: a feed that repeats a session with the series' end (WildcatSync) is not listed
+      // as the same ongoing event three times.
+      const repeat = ongoing.some(
+        (other) =>
+          other.title.toLowerCase() === item.title.toLowerCase() && other.endsAt === item.endsAt,
+      );
+      if (!repeat) ongoing.push(item);
       continue;
     }
     const list = byDay.get(day);

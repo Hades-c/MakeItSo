@@ -554,12 +554,82 @@ export function parseIcs(text: string, options: IcsOptions): IcsParseResult {
     }
   }
 
+  items = splitPublishedSeries(items, timeZone).filter(
+    (item) =>
+      !item.startsAt ||
+      !item.endsAt ||
+      !endedBefore(
+        { startsAt: item.startsAt, endsAt: item.endsAt, allDay: item.allDay },
+        windowStart,
+      ),
+  );
   items.sort((a, b) => (a.startsAt?.getTime() ?? 0) - (b.startsAt?.getTime() ?? 0));
   if (items.length > limits.items) {
     capped += items.length - limits.items;
     items = items.slice(0, limits.items);
   }
   return { items, skipped, capped };
+}
+
+const wallFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Hour and minute of `instant` on the wall clock of `timeZone`. */
+function wallClock(instant: Date, timeZone: string): { hour: number; minute: number } {
+  let formatter = wallFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    wallFormatters.set(timeZone, formatter);
+  }
+  const parts = formatter.formatToParts(instant);
+  const read = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return { hour: read("hour") % 24, minute: read("minute") };
+}
+
+/**
+ * Sessions of a series published one VEVENT each with the SERIES' end as DTEND (WildcatSync / CampusGroups: each
+ * "Club Swim Practice" has DTSTART Sep 24 8:30 PM and DTEND Oct 22 9:30 PM, the next one Sep 28 8:30 PM with the
+ * same DTEND), which would otherwise list every session as a weeks-long "ongoing" event. Recognised as timed items
+ * lasting over a day that share their title and end with another item starting at a different time; each becomes
+ * one session on its own start date, ending at the series' end time of day (the next day when that time is not
+ * after the start). A single multi-day item (a contest window) is left as published.
+ */
+export function splitPublishedSeries(
+  items: readonly NormalizedFeedItem[],
+  timeZone: string,
+): NormalizedFeedItem[] {
+  const isLong = (item: NormalizedFeedItem) =>
+    !item.allDay &&
+    item.startsAt !== null &&
+    item.endsAt !== null &&
+    item.endsAt.getTime() - item.startsAt.getTime() > DAY_MS;
+  const keyOf = (item: NormalizedFeedItem) =>
+    `${item.title.toLowerCase()}\u0000${item.endsAt?.toISOString() ?? ""}`;
+  const starts = new Map<string, Set<number>>();
+  for (const item of items) {
+    if (!isLong(item)) continue;
+    const key = keyOf(item);
+    const set = starts.get(key) ?? new Set<number>();
+    set.add(item.startsAt!.getTime());
+    starts.set(key, set);
+  }
+  return items.map((item) => {
+    if (!isLong(item) || (starts.get(keyOf(item))?.size ?? 0) < 2) return item;
+    const startsAt = item.startsAt!;
+    const { hour, minute } = wallClock(item.endsAt!, timeZone);
+    const dayOf = (key: string) => {
+      const [year, month, day] = key.split("-").map(Number) as [number, number, number];
+      return zonedTimeToUtc({ year, month, day, hour, minute }, timeZone);
+    };
+    const startKey = dateKeyInZone(startsAt, timeZone);
+    let endsAt = dayOf(startKey);
+    if (endsAt.getTime() <= startsAt.getTime()) endsAt = dayOf(addDaysToKey(startKey, 1));
+    return { ...item, endsAt };
+  });
 }
 
 /** Over before today (America/New_York) began; a zero-length deadline at midnight still counts as today. */
