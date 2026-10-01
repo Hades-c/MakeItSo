@@ -15,6 +15,7 @@ import { curatedSourceVerifiedAt, type CuratedSourceId } from "@/server/content"
 import { linkForSource } from "@/server/content/links";
 import { readEnv } from "@/server/env";
 import { hubNavKeys, loadFlags } from "@/server/features";
+import { isNewsOnlyFeedSource } from "@/server/feeds/config";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { getPlanCredits } from "@/server/plan";
 import { getSourceStatuses, type SourceStatus } from "@/server/sync";
@@ -27,7 +28,8 @@ import { getSourceStatuses, type SourceStatus } from "@/server/sync";
  * answer 404 through requireFeature() (server/features.ts). A malformed flag is logged and takes its default, so it
  * cannot take the shell down either.
  *
- * - Sources panel: the synced sources with their real last sync (server/sync.ts), then the curated sources with
+ * - Sources panel: the synced sources with their real last sync (server/sync.ts; not the news-only feeds, which no
+ *   page shows yet), then the curated sources with
  *   the date their content was last verified (server/content curatedSourceVerifiedAt), and under "Links" the
  *   platforms MakeItSo only links to (Handshake, Davidson One, Athletics: the curated links that carry the tag).
  * - Sidebar counts: courses in the term browsing defaults to (server/catalog browseTerm: the registration term once
@@ -102,7 +104,8 @@ function degrade(what: string, error: unknown): undefined {
 
 async function loadSourceStatuses(at: Date): Promise<SourceStatus[]> {
   try {
-    return await getSourceStatuses(at);
+    // News-only feeds are synced, but nothing on screen comes from them yet: not listed as sources.
+    return (await getSourceStatuses(at)).filter((source) => !isNewsOnlyFeedSource(source.id));
   } catch (error) {
     degrade("source statuses", error);
     return [];

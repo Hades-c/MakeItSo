@@ -273,8 +273,10 @@ export function CourseSections({
         ))}
       </ul>
       <p className="mt-3 text-xs text-fg-3">
-        Seats and notes as the Registrar publishes them; ratings only where a RateMyProfessors
-        profile matches the instructor’s full name.
+        Seats and notes as the Registrar publishes them
+        {ratings
+          ? "; ratings only where a RateMyProfessors profile matches the instructor’s full name."
+          : "."}
       </p>
     </section>
   );

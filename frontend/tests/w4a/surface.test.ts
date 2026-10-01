@@ -17,3 +17,14 @@ describe("server/feeds", () => {
     ]);
   });
 });
+
+describe("isNewsOnlyFeedSource (the hub's Sources panel leaves these out until news is shown)", () => {
+  it("is true for the news-only feeds and false for every feed with events or hours", async () => {
+    const { isNewsOnlyFeedSource } = await import("@/server/feeds/config");
+    expect(isNewsOnlyFeedSource("davidsonian")).toBe(true);
+    expect(isNewsOnlyFeedSource("davidson-news")).toBe(true);
+    for (const id of ["wildcatsync", "hurt-hub", "library", "events-digest", "course-schedule"]) {
+      expect(isNewsOnlyFeedSource(id), id).toBe(false);
+    }
+  });
+});

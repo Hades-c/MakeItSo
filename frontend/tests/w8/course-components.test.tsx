@@ -183,6 +183,24 @@ describe("SectionItem", () => {
     expect(
       within(card).getByRole("link", { name: /^Show in my week\s*\(section A\)$/ }),
     ).toHaveAttribute("href", "/c?crn=20135");
+    // No ratings (RMP_ENABLED off): the footnote does not promise them.
+    expect(card).toHaveTextContent("Seats and notes as the Registrar publishes them.");
+    expect(card).not.toHaveTextContent(/RateMyProfessors/);
+  });
+
+  it("mentions ratings only when ratings are shown", () => {
+    render(
+      <CourseSections
+        course={csc}
+        chosenCrn={null}
+        ratings={ratingsLookup([])}
+        sectionHref={(crn) => `/c?crn=${crn}`}
+        asOf={null}
+      />,
+    );
+    expect(screen.getByRole("region", { name: /Sections/ })).toHaveTextContent(
+      "ratings only where a RateMyProfessors profile matches the instructor’s full name.",
+    );
   });
 });
 

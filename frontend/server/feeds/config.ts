@@ -156,3 +156,13 @@ export const FEED_SOURCES: Readonly<Record<FeedSourceId, FeedSourceConfig>> = {
     ],
   },
 };
+
+/**
+ * Feed sources that publish only news (every channel is an RSS news feed: The Davidsonian, Davidson News). No page
+ * shows news items yet (listNews has no caller), so the hub's Sources panel leaves these out rather than list a
+ * source nothing on screen comes from. Drop this filter when a News block ships.
+ */
+export function isNewsOnlyFeedSource(id: string): boolean {
+  const config = (FEED_SOURCES as Readonly<Record<string, FeedSourceConfig>>)[id];
+  return config !== undefined && config.channels.every((channel) => channel.format === "rss-news");
+}

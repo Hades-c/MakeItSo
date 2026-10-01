@@ -13,6 +13,7 @@ const stubs = vi.hoisted(() => ({
   getPlanCredits: vi.fn(async () => ({ done: 12, planned: 16, required: 32 as const })),
   onboardedAt: undefined as string | null | undefined,
   returnPath: "/courses" as string | null,
+  statuses: [] as { id: string; lastSync: string; status: string }[],
 }));
 
 vi.mock("@/server/auth/session", () => ({
@@ -29,7 +30,7 @@ vi.mock("next/headers", () => ({
     new Headers(stubs.returnPath === null ? {} : { "x-mis-return-path": stubs.returnPath }),
 }));
 vi.mock("@/server/plan", () => ({ getPlanCredits: stubs.getPlanCredits }));
-vi.mock("@/server/sync", () => ({ getSourceStatuses: async () => [] }));
+vi.mock("@/server/sync", () => ({ getSourceStatuses: async () => stubs.statuses }));
 vi.mock("@/server/catalog", () => ({
   browseTerm: stubs.browseTerm,
   countCourses: stubs.countCourses,
@@ -198,6 +199,24 @@ describe("hub layout: verify banner", () => {
 });
 
 describe("hub layout: Sources panel", () => {
+  it("leaves out the news-only feeds, which no page shows yet", async () => {
+    const at = "2026-09-30T18:40:00.000Z";
+    stubs.statuses = ["course-schedule", "wildcatsync", "davidsonian", "davidson-news"].map(
+      (id) => ({
+        id,
+        lastSync: at,
+        status: "ok",
+      }),
+    );
+    try {
+      const { sources } = await shellProps();
+      const synced = (sources ?? []).filter((source) => !("verifiedAt" in source));
+      expect(synced.map((source) => source.id)).toEqual(["course-schedule", "wildcatsync"]);
+    } finally {
+      stubs.statuses = [];
+    }
+  });
+
   it("lists the curated sources with the date their content was verified", async () => {
     const { sources } = await shellProps();
     const curated = (sources ?? []).filter((source) => "verifiedAt" in source);
