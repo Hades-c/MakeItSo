@@ -1,72 +1,59 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BookOpen } from "lucide-react";
-import { AiChip } from "@/components/ui/ai-chip";
-import { CourseCode } from "@/components/ui/course-code";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
-import { SourceTagList } from "@/components/ui/source-tag";
-import { parseTermCode } from "@/lib/term";
+import { cache } from "react";
+import { termLabel } from "@/lib/term";
+import { requireUser } from "@/server/auth/session";
+import { now } from "@/server/clock";
+import { readEnv } from "@/server/env";
+import { loadCoursePage, parseCourseParams, resolveCoursePage } from "../../_lib/course";
+import { loadStudentPlan } from "../../_lib/student";
+import { CourseView } from "../../_components/course-view";
 
 type Params = Promise<{ term: string; code: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-/** URL form of a course code: "CSC-221" (department, hyphen, number, optional suffix letter). */
-const COURSE_SLUG = /^([A-Za-z]{2,5})-(\d{3}[A-Za-z]?)$/;
+/**
+ * /courses/[term]/[code] (PLAN §3): one course in one term. A malformed term or code, a code the schedule never
+ * had, or a term the catalog does not know answers a real 404 (notFound() before anything renders; there is no
+ * loading.tsx on this route on purpose, it would start streaming first). A course that runs in other terms but
+ * not this one is a page that says so, with its other terms. `?crn=` picks the section the header and the week
+ * grid show (URL state, PLAN §7).
+ */
 
-function parse(term: string, code: string) {
-  const parsedTerm = parseTermCode(term);
-  const match = COURSE_SLUG.exec(decodeURIComponent(code));
-  if (!parsedTerm || !match?.[1] || !match[2]) return null;
-  return { term: parsedTerm, code: `${match[1].toUpperCase()} ${match[2].toUpperCase()}` };
-}
+const resolvePage = cache(async (term: string, code: string) => {
+  const params = parseCourseParams(term, code);
+  if (!params) return null;
+  return resolveCoursePage(params);
+});
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { term, code } = await params;
-  const parsed = parse(term, code);
-  return { title: parsed ? `${parsed.code} · ${parsed.term.label}` : "Course" };
+  const page = await resolvePage(term, code);
+  if (!page) notFound();
+  return {
+    title: `${page.params.code} · ${termLabel(page.params.term)}`,
+    description: page.reference.title,
+  };
 }
 
-// Stub (wave 0). Wave 3 builds the course page: index-card header, sections with seats and meeting times,
-// instructors with ratings, official prerequisites, requirement slots, week-grid conflict check, Add to plan.
-export default async function CoursePage({ params }: { params: Params }) {
-  const { term, code } = await params;
-  const parsed = parse(term, code);
-  if (!parsed) notFound();
+function firstParam(value: string | string[] | undefined): string | null {
+  const first = Array.isArray(value) ? value[0] : value;
+  return first && /^\d{4,6}$/.test(first) ? first : null;
+}
 
-  return (
-    <>
-      <PageHeader
-        kicker={parsed.term.label}
-        title={
-          <span className="flex flex-wrap items-center gap-3">
-            <CourseCode code={parsed.code} variant="chip" size="md" />
-            <span>Course details</span>
-          </span>
-        }
-      />
-      <EmptyState
-        icon={BookOpen}
-        title="Course details are coming soon"
-        description={
-          <>
-            <p>
-              This page will show every section of {parsed.code} in {parsed.term.label}: seats,
-              meeting times and rooms, instructors with their ratings, the official prerequisites
-              and the requirements it fills.
-            </p>
-            <p>AI summaries will be marked like this:</p>
-          </>
-        }
-      >
-        <div className="flex flex-col items-center gap-4">
-          <AiChip />
-          <SourceTagList
-            label="Sources for course details"
-            className="justify-center"
-            sources={["course-schedule", "registrar", "ratemyprofessors", "ai"]}
-          />
-        </div>
-      </EmptyState>
-    </>
-  );
+export default async function CoursePage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
+  const user = await requireUser();
+  const { term, code } = await params;
+  const resolved = await resolvePage(term, code);
+  if (!resolved) notFound();
+  const crn = firstParam((await searchParams).crn);
+  const plan = await loadStudentPlan(user.id, now());
+  const data = await loadCoursePage(resolved, { userId: user.id, requestedCrn: crn, plan });
+  return <CourseView data={data} timeZone={readEnv("APP_TIMEZONE")} />;
 }
