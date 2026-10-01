@@ -96,29 +96,48 @@ export function groupByTerm(
   return { beforeDavidson: sortItems(beforeDavidson), terms, outside };
 }
 
-function mapSlot(item: PlanItem): PlanMapSlot | null {
+function mapSlot(item: PlanItem, repeats: ReadonlySet<string>): PlanMapSlot | null {
+  const base = {
+    code: item.courseCode,
+    credits: item.credits,
+    ...(repeats.has(item.id) ? { counts: false } : {}),
+  };
   switch (item.status) {
     case "completed":
-      return { status: "done", code: item.courseCode, credits: item.credits };
+      return { status: "done", ...base };
     case "registered":
     case "in-progress":
-      return { status: "in-progress", code: item.courseCode, credits: item.credits };
+      return { status: "in-progress", ...base };
     case "planned":
-      return { status: "planned", code: item.courseCode, credits: item.credits };
+      return { status: "planned", ...base };
     default:
       return null;
   }
 }
 
-/** PlanMap terms: one per group, active items only (failed, dropped and withdrawn never fill a slot). */
-export function planMapTerms(groups: PlanGroups): PlanMapTerm[] {
+/**
+ * PlanMap terms: one per group, active items only (failed, dropped and withdrawn never fill a slot). Items the plan
+ * service counts once (its "already-completed" warnings: a repeat of a course already completed or listed) are
+ * drawn but left out of the map's credit totals, so the legend agrees with the service's credit summary.
+ */
+export function planMapTerms(
+  groups: PlanGroups,
+  warnings: readonly PlanWarning[] = [],
+): PlanMapTerm[] {
+  const repeats = new Set(
+    warnings
+      .filter((w) => w.code === "already-completed" && w.itemId)
+      .map((w) => w.itemId as string),
+  );
   return [...groups.terms, ...groups.outside]
     .sort((a, b) => compareTerms(a.termCode, b.termCode))
     .map((group) => ({
       termCode: group.termCode,
       label: group.label,
       isCurrent: group.isCurrent,
-      slots: group.items.map(mapSlot).filter((slot): slot is PlanMapSlot => slot !== null),
+      slots: group.items
+        .map((item) => mapSlot(item, repeats))
+        .filter((slot): slot is PlanMapSlot => slot !== null),
     }));
 }
 

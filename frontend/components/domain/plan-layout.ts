@@ -11,6 +11,11 @@ export interface PlanMapSlot {
   code?: string;
   /** Course credits: 1 fills one slot, 2 (HUM 103, GRE 103) fills two, 0 (ensembles, MIL labs) fills none. */
   credits: number;
+  /**
+   * false: a repeat of a course the plan already counts (credit is received only once for a course, so the plan
+   * service counts it once). It is still drawn, but left out of the totals, so they match the service's.
+   */
+  counts?: boolean;
 }
 
 export interface PlanMapTerm {
@@ -109,6 +114,7 @@ export function planTotals(terms: readonly PlanMapTerm[], requiredCredits: numbe
   const totals = { done: 0, inProgress: 0, planned: 0 };
   for (const term of terms) {
     for (const slot of term.slots) {
+      if (slot.counts === false) continue;
       const credits = Number.isFinite(slot.credits) ? Math.max(0, slot.credits) : 0;
       if (slot.status === "done") totals.done += credits;
       else if (slot.status === "in-progress") totals.inProgress += credits;

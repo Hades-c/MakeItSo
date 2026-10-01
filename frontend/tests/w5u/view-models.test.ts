@@ -27,6 +27,8 @@ import {
 } from "@/app/(hub)/plan/_lib/suggestions";
 import { parsePlanParams, planHref } from "@/app/(hub)/plan/_lib/tabs";
 import { manualEntryBody } from "@/app/(hub)/plan/_components/manual-entry";
+import { planTotals } from "@/components/domain/plan-layout";
+import { evaluateRequirements } from "@/server/plan/requirements";
 import { summerBody } from "@/app/(hub)/plan/_components/summer-editor";
 
 let n = 0;
@@ -96,6 +98,39 @@ describe("4-year plan grouping", () => {
       groupByTerm([item({ courseCode: "A 101", status: "registered" })], TERMS, "202601", "202602"),
     );
     expect(inProgress.find((t) => t.termCode === "202601")!.slots[0]!.status).toBe("in-progress");
+  });
+});
+
+describe("degree map totals", () => {
+  it("agree with the plan service's credits: a repeat it counts once is drawn but not counted", () => {
+    const items = [
+      item({ courseCode: "CSC 221", termCode: "202501", status: "completed" }),
+      item({ courseCode: "ECO 232", termCode: "202601", status: "in-progress" }),
+      item({ courseCode: "CSC 221", termCode: "202602", status: "planned" }),
+      item({ courseCode: "ECO 232", termCode: "202602", status: "planned" }),
+      item({ courseCode: "HIS 357", termCode: "202602", status: "planned" }),
+    ];
+    const progress = evaluateRequirements({
+      items,
+      manual: { languageExempt: false, pe: { lifetimeActivities: 0, teamSport: false } },
+      firstTerm: "202501",
+      now: new Date("2026-09-30T16:00:00Z"),
+      currentTerm: "202601",
+    });
+    expect(progress.creditsDone).toBe(1);
+    expect(progress.creditsPlanned).toBe(3);
+    const groups = groupByTerm(items, TERMS, "202601", "202602");
+    const map = planMapTerms(groups, progress.warnings);
+    // Every item is still on the map...
+    expect(map.flatMap((t) => t.slots)).toHaveLength(5);
+    // ...but the totals count each course once, like the service.
+    const totals = planTotals(map, 32);
+    expect(totals.done).toBe(progress.creditsDone);
+    expect(totals.done + totals.inProgress + totals.planned).toBe(progress.creditsPlanned);
+    expect(totals).toMatchObject({ done: 1, inProgress: 1, planned: 1 });
+    // Without the warnings, the raw count disagrees (the bug).
+    const raw = planTotals(planMapTerms(groups), 32);
+    expect(raw.done + raw.inProgress + raw.planned).toBe(5);
   });
 });
 

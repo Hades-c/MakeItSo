@@ -121,7 +121,7 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <SectionCard id="degree-map" title="Degree progress" className="min-w-0">
           <PlanMap
-            terms={planMapTerms(groups)}
+            terms={planMapTerms(groups, progress.warnings)}
             requiredCredits={progress.required}
             label="Your four-year plan"
           />
