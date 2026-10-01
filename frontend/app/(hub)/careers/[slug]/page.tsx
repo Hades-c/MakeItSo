@@ -12,9 +12,9 @@ import { featureMetadata, requireFeature } from "@/server/features";
 import { careersHref } from "../_lib/filters";
 import { formatContentDate } from "../_lib/format";
 import { resolveResources } from "../_lib/resources";
-import { CareerAiPanelsSlot } from "../_components/ai-slot";
 import { CareerAlumni } from "../_components/career-alumni";
 import { CareerCourses } from "../_components/career-courses";
+import { CareerAiPanels } from "./_components/ai-panels";
 import { CareerPrograms } from "../_components/career-programs";
 import {
   DavidsonResourcesCard,
@@ -118,8 +118,10 @@ export default async function CareerPage({ params }: { params: Params }) {
           <CareerAlumni career={career} />
         </Suspense>
 
-        {/* AI career plan + cold e-mail: a later lane (after W6). Renders nothing now. */}
-        <CareerAiPanelsSlot career={career} />
+        {/* AI career plan + cold e-mail (W9a-ai): signed-in students only, gated per AI_ENABLED and the account. */}
+        <Suspense fallback={null}>
+          <CareerAiPanels career={career} />
+        </Suspense>
 
         <ExternalResourcesCard resources={career.externalResources} />
         <p className="text-xs text-fg-3">
