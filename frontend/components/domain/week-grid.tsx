@@ -295,10 +295,12 @@ function DayList({ day, placed }: { day: WeekDay; placed: PlacedBlock[] }) {
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="font-mono text-xs leading-5 font-semibold">{p.block.code}</span>
               {p.block.title ? (
-                <span className="text-sm font-semibold text-fg">{p.block.title}</span>
+                <span className="text-sm font-semibold [overflow-wrap:anywhere] break-words text-fg">
+                  {p.block.title}
+                </span>
               ) : null}
               {p.block.room ? (
-                <span className="flex items-center gap-1 text-xs text-fg-2">
+                <span className="flex min-w-0 items-center gap-1 text-xs text-fg-2">
                   <MapPin aria-hidden className="size-3.5 shrink-0" />
                   {p.block.room}
                 </span>

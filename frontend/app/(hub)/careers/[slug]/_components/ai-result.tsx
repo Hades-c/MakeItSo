@@ -151,10 +151,6 @@ export function aiErrorCopy(error: unknown, links: AiStepLinks): AiNoticeCopy {
   };
 }
 
-/** Compact layout for the shared ErrorState inside a panel (it is a full-card block by default). */
-const INLINE_ERROR =
-  "items-start rounded-lg border-danger bg-danger-wash px-3.5 py-3.5 text-left shadow-none md:px-3.5 md:py-3.5 [&>span]:mb-2 [&>span]:size-8 [&>h2]:text-base [&>div]:mt-3 [&>div]:justify-start";
-
 function NextStep({
   copy,
   onRetry,
@@ -214,12 +210,7 @@ export function AiNotice({
   if (live && copy.tone === "error") {
     return (
       <div data-testid={testId} className={className}>
-        <ErrorState
-          title={copy.title}
-          description={copy.message}
-          action={step}
-          className={INLINE_ERROR}
-        />
+        <ErrorState title={copy.title} description={copy.message} action={step} variant="inline" />
       </div>
     );
   }

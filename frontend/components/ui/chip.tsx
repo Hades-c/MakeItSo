@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 /**
- * Chip: a static pill for requirement codes, tags and facts ("VPRQ", "LTRQ · now").
+ * Chip: a static pill for requirement codes, tags and facts ("VPRQ", "LTRQ · now"); `wrap` lets long text wrap.
  * ToggleChip: a pressable filter pill (aria-pressed), 44px tall on touch layouts.
  */
 const chipVariants = cva(
@@ -20,10 +20,16 @@ const chipVariants = cva(
         true: "font-mono",
         false: "",
       },
+      /** Long text (a section title in a search row) wraps inside the chip instead of overflowing a phone. */
+      wrap: {
+        true: "max-w-full min-w-0 [overflow-wrap:anywhere] whitespace-normal",
+        false: "",
+      },
     },
     defaultVariants: {
       variant: "outline",
       mono: false,
+      wrap: false,
     },
   },
 );
@@ -31,8 +37,8 @@ const chipVariants = cva(
 export interface ChipProps
   extends React.HTMLAttributes<HTMLSpanElement>, VariantProps<typeof chipVariants> {}
 
-function Chip({ className, variant, mono, ...props }: ChipProps) {
-  return <span className={cn(chipVariants({ variant, mono }), className)} {...props} />;
+function Chip({ className, variant, mono, wrap, ...props }: ChipProps) {
+  return <span className={cn(chipVariants({ variant, mono, wrap }), className)} {...props} />;
 }
 
 export interface ToggleChipProps extends Omit<

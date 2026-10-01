@@ -75,6 +75,15 @@ describe("page building blocks", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Reference: abc123");
   });
 
+  it("ErrorState has a compact inline variant and a configurable heading level", () => {
+    render(<ErrorState variant="inline" headingLevel={3} title="Not generated" />);
+    expect(screen.getByRole("heading", { level: 3, name: "Not generated" })).toHaveClass(
+      "text-base",
+    );
+    expect(screen.getByRole("alert")).toHaveClass("bg-danger-wash", "items-start", "text-left");
+    expect(screen.getByRole("alert")).not.toHaveClass("shadow-card");
+  });
+
   it("Badge and Chip use semantic tokens", () => {
     render(
       <>
@@ -86,6 +95,19 @@ describe("page building blocks", () => {
     );
     expect(screen.getByText("Due today")).toHaveClass("bg-urgent-wash", "text-urgent");
     expect(screen.getByText("VPRQ")).toHaveClass("bg-success-wash", "font-mono");
+  });
+
+  it("Chip wraps long text only when asked to", () => {
+    render(
+      <>
+        <Chip>Fixed</Chip>
+        <Chip wrap>Introduction to Something With a Very Long Section Title</Chip>
+      </>,
+    );
+    expect(screen.getByText("Fixed")).toHaveClass("whitespace-nowrap");
+    const long = screen.getByText(/Very Long Section Title/);
+    expect(long).toHaveClass("whitespace-normal", "min-w-0", "max-w-full");
+    expect(long).not.toHaveClass("whitespace-nowrap");
   });
 });
 
