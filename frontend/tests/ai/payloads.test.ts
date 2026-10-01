@@ -110,6 +110,7 @@ describe("course about", () => {
     crossListings: [],
     crossPostings: [],
     regFor: null,
+    registrationSections: [],
   });
 
   it("sends the official text only: title, distinct descriptions, prerequisites and requirement names", () => {
@@ -117,6 +118,7 @@ describe("course about", () => {
       termCode: "202602",
       code: "HIS 357",
       title: "Topics in History",
+      topics: false,
       sections: [
         section("B", "Second topic.", null),
         section("A", "First topic.", "HIS 101"),

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { insertStudent, planDoc, withPlanDb } from "./helpers";
 import { AddPlanItemBodySchema, type AddPlanItemBody } from "@/lib/api/plan";
 import {
@@ -33,6 +33,10 @@ import {
   updateSummerActivity,
 } from "@/server/plan";
 import type { RequirementsReport } from "@/server/plan";
+
+// The registry export runs every registered module; keep W6's AI data (its own tests: tests/ai/account-data.test.ts)
+// out of this plans-only assertion.
+vi.mock("@/server/ai", () => ({}));
 
 /** Summer activities, student deadlines, manual inputs, AI drafts, progress/credits and account data. */
 
