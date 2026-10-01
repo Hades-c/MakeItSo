@@ -21,13 +21,15 @@ export function CardPay({ pay }: { pay: NonNullable<Career["pay"]> }) {
       </p>
       <p className="text-fg-2" data-testid="career-card-occupation">
         BLS occupation: {occupation} ·{" "}
+        {/* aria-label, not visually hidden text: the link is a flex box, where browsers add a space between its
+            children ("Source : …"). It starts with the visible word (WCAG 2.5.3). */}
         <a
           href={pay.url}
           rel="noopener noreferrer"
+          aria-label={`Source: BLS Occupational Outlook Handbook, ${occupation}`}
           className="relative z-10 inline-flex min-h-11 min-w-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0 md:min-w-0"
         >
           Source
-          <span className="sr-only">: BLS Occupational Outlook Handbook, {occupation}</span>
         </a>
       </p>
     </div>

@@ -46,13 +46,14 @@ export function ProgramsList({
           <ul className="mt-1.5 flex flex-wrap gap-2">
             {departments.map((department) => (
               <li key={department.code}>
+                {/* aria-label: in a flex link, browsers put a space before hidden text (": browse"). */}
                 <Link
                   href={routes.courses({ dept: [department.code] })}
+                  aria-label={`${department.code} ${department.name}: browse courses`}
                   className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line-strong px-3 text-sm text-fg hover:bg-surface-2 md:min-h-8"
                 >
                   <span className="font-mono text-xs font-semibold">{department.code}</span>{" "}
                   {department.name}
-                  <span className="sr-only">: browse courses</span>
                 </Link>
               </li>
             ))}

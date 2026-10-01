@@ -61,6 +61,7 @@ export function AlumnusCard({
   const nameId = `alumnus-${alumnus.id}-name`;
   const publicSources = alumnus.sources.filter((url) => !isLinkedInUrl(url));
   const notable = !alumnus.contactable;
+  const linkedinLabel = alumnus.contactable ? "Connect on LinkedIn" : "LinkedIn profile";
 
   return (
     <article
@@ -121,15 +122,16 @@ export function AlumnusCard({
       ) : null}
 
       <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-3">
+        {/* aria-label: in a flex link, browsers put a space before hidden text ("LinkedIn : name"). */}
         <a
           href={alumnus.linkedinUrl}
           rel="noopener noreferrer"
+          aria-label={`${linkedinLabel}: ${alumnus.name}`}
           data-contact={alumnus.contactable ? "linkedin" : undefined}
           className="inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm font-semibold text-primary hover:underline md:min-h-8"
         >
           <LinkedInIcon />
-          {alumnus.contactable ? "Connect on LinkedIn" : "LinkedIn profile"}
-          <span className="sr-only">: {alumnus.name}</span>
+          {linkedinLabel}
         </a>
         {/* Cold e-mail (AI, a later lane after W6): contactable alumni only. Nothing AI renders here yet. */}
       </div>
