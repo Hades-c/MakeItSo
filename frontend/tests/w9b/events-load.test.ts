@@ -23,6 +23,15 @@ import { syncFeeds } from "@/server/feeds";
  * network), read through the page's loaders and rendered to HTML by its server components.
  */
 
+// The flagged pages check the session themselves (requireUser); a signed-in student here.
+vi.mock("@/server/auth/session", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  requireUser: async () => ({
+    id: "0123456789abcdef01234567",
+    email: "sam@davidson.edu",
+    name: "Sam Student",
+  }),
+}));
 vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   connection: async () => undefined,

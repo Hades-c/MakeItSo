@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { formatLongDate } from "@/lib/format";
 import { now } from "@/server/clock";
 import { readEnv } from "@/server/env";
+import { requireUser } from "@/server/auth/session";
 import { featureMetadata, requireFeature } from "@/server/features";
 import { EventSourcesCard } from "./_components/event-sources";
 import { EventsFilters } from "./_components/events-filters";
@@ -33,6 +34,9 @@ export default async function EventsPage({
   searchParams,
 }: { searchParams?: Promise<SearchParamsRecord> } = {}) {
   await requireFeature("events");
+  // Its own sign-in check: the hub layout renders in parallel with the page, so a page relying on the layout
+  // alone streams its content into the signed-out visitor's redirect.
+  await requireUser();
   const view = parseEventsParams((await searchParams) ?? {});
   const at = now();
   const timeZone = readEnv("APP_TIMEZONE");

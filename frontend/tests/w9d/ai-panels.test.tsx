@@ -20,6 +20,8 @@ const state = vi.hoisted(() => ({
 vi.mock("@/server/auth/session", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getSessionUser: async () => state.user,
+  // The page checks the session itself; only the panels' own reads follow state.user.
+  requireUser: async () => VERIFIED,
 }));
 vi.mock("@/server/auth/mailer", async (importOriginal) => ({
   ...(await importOriginal<object>()),

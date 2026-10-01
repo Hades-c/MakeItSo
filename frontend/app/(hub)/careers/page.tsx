@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { CAREERS, careersByCluster } from "@/server/content/careers";
+import { requireUser } from "@/server/auth/session";
 import { featureMetadata, requireFeature } from "@/server/features";
 import {
   careersHref,
@@ -34,6 +35,9 @@ export default async function CareersPage({
   searchParams,
 }: { searchParams?: Promise<SearchParamsRecord> } = {}) {
   await requireFeature("careers");
+  // Its own sign-in check: the hub layout renders in parallel with the page, so a page relying on the layout
+  // alone streams its content into the signed-out visitor's redirect.
+  await requireUser();
   const filters = parseCareerFilters((await searchParams) ?? {});
   const groups = careersByCluster();
   const shown = new Set(filterCareers(CAREERS, filters));

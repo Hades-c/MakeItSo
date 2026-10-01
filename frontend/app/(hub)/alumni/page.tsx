@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { requireUser } from "@/server/auth/session";
 import { featureMetadata, requireFeature } from "@/server/features";
 import type { SearchParamsRecord } from "@/app/(hub)/careers/_lib/filters";
 import { AlumniDirectory } from "./_components/alumni-directory";
@@ -21,6 +22,9 @@ export default async function AlumniPage({
   searchParams,
 }: { searchParams?: Promise<SearchParamsRecord> } = {}) {
   await requireFeature("alumni");
+  // Its own sign-in check: the hub layout renders in parallel with the page, so a page relying on the layout
+  // alone streams its content into the signed-out visitor's redirect.
+  await requireUser();
   const params = (await searchParams) ?? {};
   return (
     <>

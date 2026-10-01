@@ -18,6 +18,15 @@ import {
 
 // connection() needs a Next.js request scope; here it only has to be awaited.
 const next = vi.hoisted(() => ({ connection: vi.fn(async () => undefined) }));
+// The flagged pages check the session themselves (requireUser); a signed-in student here.
+vi.mock("@/server/auth/session", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  requireUser: async () => ({
+    id: "0123456789abcdef01234567",
+    email: "sam@davidson.edu",
+    name: "Sam Student",
+  }),
+}));
 vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   connection: next.connection,

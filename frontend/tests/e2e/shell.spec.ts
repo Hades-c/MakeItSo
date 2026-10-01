@@ -411,3 +411,21 @@ test("auth pages and the privacy header have 44px tap targets on phones", async 
   const home = page.getByRole("banner").getByRole("link", { name: "MakeItSo home" });
   expect((await home.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
+
+test("a signed-out request for a hub page gets the redirect without the page's content", async ({
+  request,
+}) => {
+  const leaks: Record<string, RegExp> = {
+    "/careers": /href="\/careers\/[a-z-]+"/,
+    "/careers/software-engineering": /bls\.gov/,
+    "/events": /hurthub\.davidson\.edu|libcal\.com|wildcatsync\.davidson\.edu\/event/,
+    "/alumni": /linkedin\.com\/in\//,
+    "/plan": /Degree progress/,
+  };
+  for (const [route, content] of Object.entries(leaks)) {
+    const res = await request.get(route, { maxRedirects: 0 });
+    expect([307, 308], route).toContain(res.status());
+    expect(res.headers()["location"], route).toMatch(/\/login/);
+    expect(await res.text(), `${route} leaks its content`).not.toMatch(content);
+  }
+});

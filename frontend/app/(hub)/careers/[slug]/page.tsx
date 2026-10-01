@@ -8,6 +8,7 @@ import { routes } from "@/lib/routes";
 import { HANDSHAKE } from "@/server/content/links";
 import { OFFICES, PROGRAMS } from "@/server/content/offices";
 import { getCareer } from "@/server/content/careers";
+import { requireUser } from "@/server/auth/session";
 import { featureMetadata, requireFeature } from "@/server/features";
 import { careersHref } from "../_lib/filters";
 import { formatContentDate } from "../_lib/format";
@@ -66,6 +67,9 @@ const STACK = "flex min-w-0 flex-col gap-5";
 
 export default async function CareerPage({ params }: { params: Params }) {
   await requireFeature("careers");
+  // Its own sign-in check: the hub layout renders in parallel with the page, so a page relying on the layout
+  // alone streams its content into the signed-out visitor's redirect.
+  await requireUser();
   const { slug } = await params;
   const career = getCareer(slug);
   if (!career) notFound();
