@@ -16,19 +16,48 @@ import {
   firstTermAfterYearChange,
   firstTermOptions,
   graduationYearOptions,
+  isRetiredProgram,
   MAX_PROGRAMS,
   UNDECIDED,
+  type AboutProblem,
 } from "../_lib/academics";
 import { describeFailure, issueFor } from "../_lib/errors";
 import { nextStep, stepHref } from "../_lib/steps";
-import { NativeSelect, StepActions } from "./parts";
+import { NativeSelect, StepActions, useFocusRequest } from "./parts";
 
 /**
  * Step 1: graduation year, first term at Davidson (default Fall of graduationYear − 4, following the year until
  * the student picks a term themselves), and majors/minors from the official Acalog names. The first major row
  * offers "Undecided" (UI only: it saves `majors: []`). "Save and continue" sends PATCH /api/profile, then moves
  * to step 2; "Skip this step" moves on without saving.
+ *
+ * A stored major or minor the catalog no longer lists stays visible as "(no longer offered)" and must be replaced
+ * or removed before saving. Any error (before or after saving) is announced in one alert and focuses the first
+ * invalid field.
  */
+
+type AboutField = AboutProblem["field"] | "graduationYear";
+
+/** The control a field's error belongs to (a major/minor row by index). */
+function fieldControlId(field: AboutField, index = 0): string {
+  switch (field) {
+    case "graduationYear":
+      return "onboarding-graduation-year";
+    case "firstTerm":
+      return "onboarding-first-term";
+    case "majors":
+      return `onboarding-major-${index}`;
+    case "minors":
+      return `onboarding-minor-${index}`;
+  }
+}
+
+const FIELD_ORDER: readonly AboutField[] = ["graduationYear", "firstTerm", "majors", "minors"];
+
+function rowIndex(path: string | undefined): number {
+  const index = Number(path?.split(".")[1]);
+  return Number.isInteger(index) && index >= 0 ? index : 0;
+}
 
 export interface AboutStepProps {
   initial: {
@@ -66,6 +95,7 @@ export function AboutStep({ initial, majorNames, minorNames, now }: AboutStepPro
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const focus = useFocusRequest();
 
   const years = graduationYearOptions(now, initial.graduationYear);
   const terms = firstTermOptions(graduationYear, firstTerm);
@@ -82,9 +112,11 @@ export function AboutStep({ initial, majorNames, minorNames, now }: AboutStepPro
       majors: majors.map((row) => row.value),
       minors: minors.map((row) => row.value),
     };
-    const problem = aboutProblem(values);
+    const problem = aboutProblem(values, { majors: majorNames, minors: minorNames });
     if (problem) {
       setFieldErrors({ [problem.field]: problem.message });
+      setError(checkFields([problem.message]));
+      focus(fieldControlId(problem.field, problem.index));
       return;
     }
     setFieldErrors({});
@@ -102,8 +134,18 @@ export function AboutStep({ initial, majorNames, minorNames, now }: AboutStepPro
         minors: issueFor(failure.issues, "minors"),
       };
       setFieldErrors(errors);
-      setError(Object.values(errors).some(Boolean) ? null : failure.message);
+      const messages = FIELD_ORDER.map((field) => errors[field]).filter(
+        (message): message is string => Boolean(message),
+      );
+      setError(messages.length > 0 ? checkFields(messages) : failure.message);
       setSaving(false);
+      const first = FIELD_ORDER.find((field) => errors[field]);
+      if (first) {
+        const issue = failure.issues.find(
+          (item) => item.path === first || item.path.startsWith(`${first}.`),
+        );
+        focus(fieldControlId(first, rowIndex(issue?.path)));
+      }
     }
   }
 
@@ -187,6 +229,10 @@ export function AboutStep({ initial, majorNames, minorNames, now }: AboutStepPro
   );
 }
 
+function checkFields(messages: readonly string[]): string {
+  return `Check the highlighted ${messages.length === 1 ? "field" : "fields"}: ${messages.join(" ")}`;
+}
+
 interface ProgramRowsProps {
   legend: string;
   noun: string;
@@ -248,6 +294,9 @@ function ProgramRows({
                 <option value="">Choose a {noun}…</option>
                 {allowUndecided && index === 0 ? (
                   <option value={UNDECIDED}>{UNDECIDED}</option>
+                ) : null}
+                {isRetiredProgram(row.value, options) ? (
+                  <option value={row.value}>{row.value} (no longer offered)</option>
                 ) : null}
                 {options.map((name) => (
                   <option

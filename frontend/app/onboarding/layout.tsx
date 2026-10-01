@@ -24,7 +24,10 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
       <footer className="mx-auto w-full max-w-3xl px-4 pb-8 text-xs text-fg-3">
         <p>
           An independent student project, not a Davidson College service.{" "}
-          <Link href={routes.privacy()} className="font-semibold text-fg-2 underline">
+          <Link
+            href={routes.privacy()}
+            className="inline-flex min-h-11 items-center font-semibold text-fg-2 underline md:min-h-0"
+          >
             Privacy
           </Link>
         </p>

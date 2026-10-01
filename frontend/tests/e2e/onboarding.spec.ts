@@ -46,6 +46,12 @@ async function checkStep(page: Page, heading: string) {
   await page.emulateMedia({ colorScheme: "light" });
 }
 
+/** After a step change focus is on the new step's h1 and the title names the step (the route announcer reads it). */
+async function expectStepFocus(page: Page, title: RegExp) {
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+  await expect(page).toHaveTitle(title);
+}
+
 async function newStudent(page: Page, request: APIRequestContext, prefix: string) {
   const email = uniqueEmail(prefix);
   await registerViaApi(request, { name: "Casey Wildcat", email, password: PASSWORD });
@@ -79,12 +85,15 @@ async function pickClasses(page: Page) {
   await searchFor(page, /Search Fall 2026 courses/, "HIS 357");
   await page.getByRole("button", { name: "Add for HIS 357" }).click();
   await expect(page.getByTestId("classes-status")).toContainText("Added HIS 357 A");
+  // The Add button is gone: focus is on the result line, not <body>.
+  await expect(page.locator("#classes-result-HIS-357")).toBeFocused();
   // Several sections: pick one.
   await searchFor(page, /Search Fall 2026 courses/, "CSC 121");
   await page.getByRole("button", { name: "Choose section for CSC 121" }).click();
   await page.getByLabel(/CSC 121 B/).check();
   await page.getByRole("button", { name: "Save section" }).click();
   await expect(page.getByTestId("classes-status")).toContainText("Added CSC 121 B (CRN 10142)");
+  await expect(page.locator("#classes-result-CSC-121")).toBeFocused();
 }
 
 test("a new student completes every step, accessibly, and lands on Today", async ({
@@ -103,15 +112,17 @@ test("a new student completes every step, accessibly, and lands on Today", async
   await page.getByLabel("Major", { exact: true }).selectOption("Major in History (A.B. Degree)");
   await page.getByRole("button", { name: "Add a minor" }).click();
   await page.getByLabel("Minor", { exact: true }).selectOption({ index: 1 });
-  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Save and continue" }).press("Enter");
 
   await expect(page).toHaveURL(/\/onboarding\?step=classes$/);
+  await expectStepFocus(page, /^Step 2 of 4: Your Fall 2026 classes · Get started/);
   await checkStep(page, "Your Fall 2026 classes");
   await pickClasses(page);
   await checkStep(page, "Your Fall 2026 classes");
   await page.getByRole("link", { name: "Continue" }).click();
 
   await expect(page).toHaveURL(/\/onboarding\?step=completed$/);
+  await expectStepFocus(page, /^Step 3 of 4: Courses you have taken/);
   await checkStep(page, "Courses you have taken");
   await expect(page.getByLabel("Term you took it")).toHaveValue("202502");
   await searchFor(page, /Search Spring 2026 courses/, "WRI 101");
@@ -123,6 +134,7 @@ test("a new student completes every step, accessibly, and lands on Today", async
   await page.getByRole("link", { name: "Continue" }).click();
 
   await expect(page).toHaveURL(/\/onboarding\?step=interests$/);
+  await expectStepFocus(page, /^Step 4 of 4: Interests/);
   await checkStep(page, "Interests");
   await page.getByRole("button", { name: "Software Engineering" }).click();
   await expect(page.getByRole("button", { name: "Software Engineering" })).toHaveAttribute(
@@ -172,6 +184,10 @@ test("a new student completes every step, accessibly, and lands on Today", async
   await page.getByLabel("Davidson course code").fill("MAT 113");
   await page.getByRole("button", { name: "Add credit" }).click();
   await expect(page.getByText("MAT 113 is already listed for that term.")).toBeVisible();
+  await expect(
+    page.getByRole("form", { name: "Add AP, IB or transfer credit" }).getByRole("alert"),
+  ).toContainText("Check the highlighted field");
+  await expect(page.getByLabel("Davidson course code")).toBeFocused();
   expect(keys(await planItems(page))).toEqual(before);
   expect(errors).toEqual([]);
 });
@@ -188,13 +204,20 @@ test("onboarding resumes where the student stopped, and every step can be skippe
   await page.goto("/today");
   await page.goto("/onboarding");
   await expect(page).toHaveURL(/\/onboarding\?step=classes$/);
+  // The footer link is a full-size tap target on phones.
+  const privacy = await page.getByRole("link", { name: "Privacy" }).boundingBox();
+  if ((page.viewportSize()?.width ?? 1440) < 768)
+    expect(privacy?.height).toBeGreaterThanOrEqual(44);
   await page.getByRole("link", { name: "Skip this step" }).click();
   await expect(page).toHaveURL(/\/onboarding\?step=completed$/);
+  await expectStepFocus(page, /^Step 3 of 4/);
   await page.getByRole("link", { name: "Skip this step" }).click();
   await expect(page).toHaveURL(/\/onboarding\?step=interests$/);
+  await expectStepFocus(page, /^Step 4 of 4/);
   await expect(page.getByRole("link", { name: "Skip this step" })).toHaveCount(0);
   await page.getByRole("link", { name: "Back" }).click();
   await expect(page).toHaveURL(/\/onboarding\?step=completed$/);
+  await expectStepFocus(page, /^Step 3 of 4/);
 });
 
 test("Skip setup finishes onboarding without saving anything else", async ({ page, request }) => {
@@ -216,7 +239,7 @@ test("signed-out visitors sign in and come back to the same step", async ({ page
   await expect(page).toHaveURL(/\/login\?callbackUrl=%2Fonboarding%3Fstep%3Dcompleted$/);
 });
 
-test("a legacy account sees its v1 plan in the steps and gets a CRN without duplicates", async ({
+test("a legacy account sees its v1 plan in the steps and updates it without duplicates", async ({
   page,
 }) => {
   const uri = process.env.E2E_MONGODB_URI;
@@ -258,7 +281,7 @@ test("a legacy account sees its v1 plan in the steps and gets a CRN without dupl
           credits: 4,
           semester: "Spring",
           year: 2026,
-          status: "completed",
+          status: "planned",
         },
       ],
       summerActivities: [],
@@ -271,9 +294,9 @@ test("a legacy account sees its v1 plan in the steps and gets a CRN without dupl
   }
 
   await signIn(page, email, PASSWORD);
-  // Classes and completed courses are already there (from v1): resume at the interests step.
+  // Classes are already there (from v1), nothing completed yet: resume at the completed-courses step.
   await page.goto("/onboarding");
-  await expect(page).toHaveURL(/\/onboarding\?step=interests$/);
+  await expect(page).toHaveURL(/\/onboarding\?step=completed$/);
   await page.goto("/onboarding?step=about");
   await expect(page.getByLabel("Major", { exact: true })).toHaveValue(
     "Major in Computer Science (B.S. Degree)",
@@ -292,10 +315,24 @@ test("a legacy account sees its v1 plan in the steps and gets a CRN without dupl
   await page.getByLabel(/CSC 121 A/).check();
   await page.getByRole("button", { name: "Save section" }).click();
   await expect(page.getByTestId("classes-status")).toContainText("CSC 121 is now section A");
+  // The v1 "planned" class becomes this term's class, still one item.
+  expect(keys(await planItems(page))).toEqual([
+    "202502 WRI 101 - planned",
+    "202601 CSC 121 10141 in-progress",
+  ]);
 
+  // Step 3: the v1 Spring 2026 course still marked planned is marked completed in place.
+  await page.goto("/onboarding?step=completed");
+  await searchFor(page, /Search Spring 2026 courses/, "WRI 101");
+  await expect(page.getByTestId("search-result").first()).toContainText(
+    "In your Spring 2026 plan as planned",
+  );
+  await page.getByRole("button", { name: "Mark WRI 101 completed" }).click();
+  await expect(page.getByTestId("completed-status")).toContainText("Marked WRI 101 (Spring 2026)");
+  await expect(page.getByTestId("search-result").first()).toContainText("Completed in Spring 2026");
   expect(keys(await planItems(page))).toEqual([
     "202502 WRI 101 - completed",
-    "202601 CSC 121 10141 planned",
+    "202601 CSC 121 10141 in-progress",
   ]);
   const check = await mongoose.createConnection(uri!).asPromise();
   try {

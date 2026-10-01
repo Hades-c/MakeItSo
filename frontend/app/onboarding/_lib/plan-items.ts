@@ -58,12 +58,29 @@ export function findActiveItem(
   );
 }
 
-export type ClassAction =
-  { kind: "add" } | { kind: "set-crn"; itemId: string } | { kind: "none"; itemId: string };
+export type CurrentClassStatus = Extract<PlanStatus, "in-progress" | "registered">;
 
 /**
- * What choosing `crn` for a current-term class does: add a new item, set the CRN of the item already holding the
- * course (added without a section on /courses, or by a legacy plan), or nothing (that section is already chosen).
+ * Whether an item of the current term should move to `status` when the student says it is one of their classes:
+ * a planned item (from a v1 plan, or "Add to Fall 2026" on /courses) becomes this term's class, and a registered
+ * item becomes in progress once the term has started. In-progress and completed items are left alone.
+ */
+export function staleClassStatus(
+  item: Pick<PlanItem, "status">,
+  status: CurrentClassStatus,
+): boolean {
+  return item.status === "planned" || (item.status === "registered" && status === "in-progress");
+}
+
+export type ClassAction =
+  | { kind: "add" }
+  | { kind: "update"; itemId: string; patch: { crn?: string; status?: CurrentClassStatus } }
+  | { kind: "none"; itemId: string };
+
+/**
+ * What choosing `crn` for a current-term class does: add a new item; update the item already holding the course
+ * (set its CRN when it has none or another one, and its status when staleClassStatus says so); or nothing (that
+ * section is already chosen and the status is current).
  */
 export function classAction(
   items: readonly PlanItem[],
@@ -71,18 +88,22 @@ export function classAction(
   code: string,
   siblings: SiblingCodes,
   crn: string,
+  status: CurrentClassStatus,
 ): ClassAction {
   const existing = findActiveItem(items, termCode, code, siblings);
   if (!existing) return { kind: "add" };
-  if (existing.crn === crn) return { kind: "none", itemId: existing.id };
-  return { kind: "set-crn", itemId: existing.id };
+  const patch: { crn?: string; status?: CurrentClassStatus } = {};
+  if (existing.crn !== crn) patch.crn = crn;
+  if (staleClassStatus(existing, status)) patch.status = status;
+  if (Object.keys(patch).length === 0) return { kind: "none", itemId: existing.id };
+  return { kind: "update", itemId: existing.id, patch };
 }
 
 /** Classes of the current term: in progress once the term has started (ET), registered before. */
 export function currentClassStatus(
   term: Pick<TermInfo, "startDate"> | undefined,
   now: Date | string,
-): Extract<PlanStatus, "in-progress" | "registered"> {
+): CurrentClassStatus {
   if (!term?.startDate) return "in-progress";
   return dayKey(now, TERM_TIME_ZONE) >= term.startDate ? "in-progress" : "registered";
 }
@@ -190,9 +211,29 @@ export function classAddBody(
   termCode: TermCode,
   courseCode: string,
   crn: string,
-  status: Extract<PlanStatus, "in-progress" | "registered">,
+  status: CurrentClassStatus,
 ): AddPlanItemBody {
   return { termCode, courseCode, crn, status, source: "catalog" };
+}
+
+/**
+ * What adding `code` as completed in `termCode` does on step 3: add it; mark the item already holding it completed
+ * (a legacy or earlier plan listed it as planned/registered/in progress); or nothing (already completed).
+ */
+export type CompletedAction =
+  { kind: "add" } | { kind: "complete"; item: PlanItem } | { kind: "none"; item: PlanItem };
+
+export function completedAction(
+  items: readonly PlanItem[],
+  termCode: TermCode | null,
+  code: string,
+  siblings: SiblingCodes = [],
+): CompletedAction {
+  const existing = findActiveItem(items, termCode, code, siblings);
+  if (!existing) return { kind: "add" };
+  return existing.status === "completed"
+    ? { kind: "none", item: existing }
+    : { kind: "complete", item: existing };
 }
 
 /** Items to list on step 3: completed ones, AP/transfer first, then newest term first. */

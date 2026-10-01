@@ -6,8 +6,9 @@ import { ClassesStep } from "./_components/classes-step";
 import { CompletedStep } from "./_components/completed-step";
 import { InterestsStep } from "./_components/interests-step";
 import { SkipSetup } from "./_components/skip-setup";
+import { StepHeading } from "./_components/step-heading";
 import { StepList } from "./_components/step-list";
-import { loadOnboarding, type OnboardingData } from "./_lib/load";
+import { currentTermLabel, loadOnboarding, type OnboardingData } from "./_lib/load";
 import {
   ONBOARDING_STEPS,
   parseStep,
@@ -15,10 +16,9 @@ import {
   stepHref,
   stepIndex,
   stepLabel,
+  stepTitle,
   type OnboardingStep,
 } from "./_lib/steps";
-
-export const metadata: Metadata = { title: "Get started" };
 
 /**
  * /onboarding (PLAN §3; R1): the first run, in four skippable steps with the step in the URL. Without a step it
@@ -29,6 +29,20 @@ export const metadata: Metadata = { title: "Get started" };
  */
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+/**
+ * A step-specific title ("Step 2 of 4: Your Fall 2026 classes · Get started"): Next's route announcer reads the
+ * document title after a client navigation, so every step change is announced.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  const step = parseStep((await searchParams).step);
+  if (!step) return { title: "Get started" };
+  return { title: stepTitle(step, await currentTermLabel()) };
+}
 
 const INTROS: Readonly<Record<OnboardingStep, (data: OnboardingData) => string>> = {
   about: () =>
@@ -60,9 +74,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
             Step {stepIndex(step) + 1} of {ONBOARDING_STEPS.length}
             {step === "about" && firstName ? ` · Welcome, ${firstName}` : ""}
           </p>
-          <h1 className="text-xl font-strong text-fg md:text-2xl">
-            {stepLabel(step, data.terms.currentLabel)}
-          </h1>
+          <StepHeading step={step}>{stepLabel(step, data.terms.currentLabel)}</StepHeading>
           <p className="mt-1.5 text-sm text-fg-2 md:text-base">{INTROS[step](data)}</p>
         </div>
         {data.profile.onboardedAt === null ? <SkipSetup /> : null}

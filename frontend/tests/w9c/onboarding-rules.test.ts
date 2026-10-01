@@ -10,6 +10,7 @@ import {
   firstTermOptions,
   firstYearClass,
   graduationYearOptions,
+  isRetiredProgram,
   UNDECIDED,
 } from "@/app/onboarding/_lib/academics";
 import { ApiClientError } from "@/lib/api/client";
@@ -18,6 +19,7 @@ import {
   autoSection,
   classAction,
   classAddBody,
+  completedAction,
   completedAddBody,
   completedItems,
   completedTermOptions,
@@ -27,6 +29,7 @@ import {
   manualAddBody,
   ManualEntrySchema,
   meetingLabel,
+  staleClassStatus,
   startsAfter,
   termItems,
 } from "@/app/onboarding/_lib/plan-items";
@@ -39,6 +42,7 @@ import {
   stepHref,
   stepLabel,
   stepProgress,
+  stepTitle,
 } from "@/app/onboarding/_lib/steps";
 import type { Meeting, Section } from "@/lib/types/catalog";
 import type { PlanItem } from "@/lib/types/plan";
@@ -78,6 +82,13 @@ function meeting(patch: Partial<Meeting> = {}): Meeting {
 }
 
 describe("steps", () => {
+  it("titles each step with its place in the flow (read by the route announcer)", () => {
+    expect(stepTitle("classes", "Fall 2026")).toBe(
+      "Step 2 of 4: Your Fall 2026 classes · Get started",
+    );
+    expect(stepTitle("about", "Fall 2026")).toBe("Step 1 of 4: About you · Get started");
+  });
+
   it("has the four steps of PLAN §3 in order", () => {
     expect(ONBOARDING_STEPS).toEqual(["about", "classes", "completed", "interests"]);
     expect(ONBOARDING_STEPS.map((step) => stepLabel(step, "Fall 2026"))).toEqual([
@@ -223,6 +234,32 @@ describe("step 1: about you", () => {
       message: "The first term and the graduation year do not fit together.",
     });
   });
+
+  it("names a stored major or minor that is no longer an official name", () => {
+    const official = { majors: ["Major in History (A.B. Degree)"], minors: ["Minor in Music"] };
+    expect(isRetiredProgram("History", official.majors)).toBe(true);
+    expect(isRetiredProgram("Major in History (A.B. Degree)", official.majors)).toBe(false);
+    expect(isRetiredProgram("", official.majors)).toBe(false);
+    expect(isRetiredProgram(UNDECIDED, official.majors)).toBe(false);
+    const values = { graduationYear: 2029, firstTerm: "202501", majors: [], minors: [] };
+    expect(
+      aboutProblem(
+        { ...values, majors: ["Major in History (A.B. Degree)", "Old Major"] },
+        official,
+      ),
+    ).toEqual({
+      field: "majors",
+      index: 1,
+      message: "“Old Major” is no longer offered. Pick a current major or remove it.",
+    });
+    expect(aboutProblem({ ...values, minors: ["Minor in Jazz"] }, official)).toMatchObject({
+      field: "minors",
+      index: 0,
+    });
+    expect(aboutProblem({ ...values, majors: [UNDECIDED] }, official)).toBeNull();
+    // Without the official lists only the term rule applies.
+    expect(aboutProblem({ ...values, majors: ["Old Major"] })).toBeNull();
+  });
 });
 
 describe("steps 2 and 3: plan items without duplicates", () => {
@@ -243,19 +280,72 @@ describe("steps 2 and 3: plan items without duplicates", () => {
     const withoutCrn = item({ courseCode: "CSC 121" });
     const withCrn = item({ courseCode: "HIS 357", crn: "10274" });
     const items = [withoutCrn, withCrn];
-    expect(classAction(items, "202601", "ENG 260", [], "10300")).toEqual({ kind: "add" });
-    expect(classAction(items, "202601", "CSC 121", [], "10142")).toEqual({
-      kind: "set-crn",
-      itemId: withoutCrn.id,
+    expect(classAction(items, "202601", "ENG 260", [], "10300", "in-progress")).toEqual({
+      kind: "add",
     });
-    expect(classAction(items, "202601", "HIS 357", [], "10274")).toEqual({
+    expect(classAction(items, "202601", "CSC 121", [], "10142", "in-progress")).toEqual({
+      kind: "update",
+      itemId: withoutCrn.id,
+      patch: { crn: "10142" },
+    });
+    expect(classAction(items, "202601", "HIS 357", [], "10274", "in-progress")).toEqual({
       kind: "none",
       itemId: withCrn.id,
     });
-    expect(classAction(items, "202601", "HIS 357", [], "10275")).toEqual({
-      kind: "set-crn",
+    expect(classAction(items, "202601", "HIS 357", [], "10275", "in-progress")).toEqual({
+      kind: "update",
       itemId: withCrn.id,
+      patch: { crn: "10275" },
     });
+  });
+
+  it("makes a planned item this term's class, and a registered one in progress once the term starts", () => {
+    expect(staleClassStatus({ status: "planned" }, "registered")).toBe(true);
+    expect(staleClassStatus({ status: "planned" }, "in-progress")).toBe(true);
+    expect(staleClassStatus({ status: "registered" }, "in-progress")).toBe(true);
+    expect(staleClassStatus({ status: "registered" }, "registered")).toBe(false);
+    expect(staleClassStatus({ status: "in-progress" }, "registered")).toBe(false);
+    expect(staleClassStatus({ status: "completed" }, "in-progress")).toBe(false);
+
+    const planned = item({ courseCode: "CSC 121", status: "planned" });
+    const plannedWithCrn = item({ courseCode: "HIS 357", status: "planned", crn: "10274" });
+    const registered = item({ courseCode: "ENG 260", status: "registered", crn: "10300" });
+    const items = [planned, plannedWithCrn, registered];
+    expect(classAction(items, "202601", "CSC 121", [], "10142", "in-progress")).toEqual({
+      kind: "update",
+      itemId: planned.id,
+      patch: { crn: "10142", status: "in-progress" },
+    });
+    // Same section already chosen, but the status is out of date: only the status changes.
+    expect(classAction(items, "202601", "HIS 357", [], "10274", "registered")).toEqual({
+      kind: "update",
+      itemId: plannedWithCrn.id,
+      patch: { status: "registered" },
+    });
+    expect(classAction(items, "202601", "ENG 260", [], "10300", "in-progress")).toEqual({
+      kind: "update",
+      itemId: registered.id,
+      patch: { status: "in-progress" },
+    });
+    expect(classAction(items, "202601", "ENG 260", [], "10300", "registered")).toEqual({
+      kind: "none",
+      itemId: registered.id,
+    });
+  });
+
+  it("adds a completed course, marks a listed one completed in place, or does nothing", () => {
+    const planned = item({ termCode: "202502", courseCode: "WRI 101", status: "planned" });
+    const done = item({ termCode: "202502", courseCode: "HIS 101", status: "completed" });
+    const ap = item({ termCode: null, courseCode: "MAT 113", status: "completed", source: "ap" });
+    const items = [planned, done, ap];
+    expect(completedAction(items, "202502", "ENG 101")).toEqual({ kind: "add" });
+    expect(completedAction(items, "202501", "WRI 101")).toEqual({ kind: "add" });
+    expect(completedAction(items, "202502", "WRI 101")).toEqual({
+      kind: "complete",
+      item: planned,
+    });
+    expect(completedAction(items, "202502", "HIS 101")).toEqual({ kind: "none", item: done });
+    expect(completedAction(items, null, "MAT 113")).toEqual({ kind: "none", item: ap });
   });
 
   it("gives current classes in-progress once the term has started (ET), registered before", () => {

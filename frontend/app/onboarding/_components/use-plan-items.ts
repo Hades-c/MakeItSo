@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { ApiClientError, callApi } from "@/lib/api/client";
-import { planApi, type AddPlanItemBody } from "@/lib/api/plan";
+import { planApi, type AddPlanItemBody, type UpdatePlanItemBody } from "@/lib/api/plan";
 import type { PlanItem, PlanWarning } from "@/lib/types/plan";
 import { describeFailure, type Failure } from "../_lib/errors";
 
@@ -71,13 +71,14 @@ export function usePlanItems(initial: readonly PlanItem[]) {
     [failed, run],
   );
 
-  const setCrn = useCallback(
-    (key: string, itemId: string, crn: string) =>
+  /** PATCH one item (a CRN, a status, or both): never a second item for the same course. */
+  const update = useCallback(
+    (key: string, itemId: string, body: UpdatePlanItemBody) =>
       run(key, async () => {
         try {
           const { item, warnings } = await callApi(planApi.updateItem, {
             params: { id: itemId },
-            body: { crn },
+            body,
           });
           setItems((current) => current.map((other) => (other.id === item.id ? item : other)));
           return { ok: true, item, warnings };
@@ -102,5 +103,5 @@ export function usePlanItems(initial: readonly PlanItem[]) {
     [failed, run],
   );
 
-  return { items, busy, add, setCrn, remove, reload };
+  return { items, busy, add, update, remove, reload };
 }

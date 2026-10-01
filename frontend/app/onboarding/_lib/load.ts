@@ -83,6 +83,16 @@ async function loadCurrentTerm(at: Date): Promise<{ code: TermCode; info?: TermI
   }
 }
 
+/** The current term's label for the document title (no user data; the date rules when the catalog fails). */
+export async function currentTermLabel(): Promise<string> {
+  const at = now();
+  try {
+    return termLabel((await loadCurrentTerm(at)).code);
+  } catch {
+    return termLabel(currentTermFrom([], { now: at }));
+  }
+}
+
 export async function loadOnboarding(userId: string): Promise<OnboardingData> {
   const at = now();
   const [view, majors, minors, plan, current] = await Promise.all([

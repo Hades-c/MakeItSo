@@ -5,14 +5,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { insertLegacyPlan, legacyDocs, planDoc, withPlanDb } from "../plan/helpers";
 import { insertUser, sessionFor, stubAuthEnv } from "../w3/helpers";
-import OnboardingPage, { metadata } from "@/app/onboarding/page";
+import OnboardingPage, { generateMetadata } from "@/app/onboarding/page";
 import { loadOnboarding } from "@/app/onboarding/_lib/load";
-import { classAction, classAddBody, findActiveItem } from "@/app/onboarding/_lib/plan-items";
+import {
+  classAction,
+  classAddBody,
+  completedAction,
+  findActiveItem,
+} from "@/app/onboarding/_lib/plan-items";
 import { resumeStep } from "@/app/onboarding/_lib/steps";
 import { AddPlanItemBodySchema } from "@/lib/api/plan";
 import { CAREERS } from "@/server/content/careers";
 import { officialProgramNames } from "@/server/programs";
-import { addItem, getPlan, updateItem } from "@/server/plan";
+import { addItem, getPlan, getProgress, updateItem } from "@/server/plan";
 import { getProfile, updateProfile } from "@/server/auth";
 
 /**
@@ -167,22 +172,35 @@ describe("a legacy account with a v1 plan", () => {
     expect(resumeStep(data.progress, false)).toBe("interests");
     expect(await planDoc(user.id)).toBeNull();
 
-    // Step 2 picks CSC 121 B: the course is already in the term, so only its CRN is set.
-    const action = classAction(data.items, "202601", "CSC 121", [], "10142");
-    expect(action.kind).toBe("set-crn");
-    if (action.kind !== "set-crn") return;
-    await updateItem(user.id, action.itemId, { crn: "10142" });
+    // The v1 class counts as a future plan until step 2 says it is this term's class.
+    expect((await getProgress(user.id)).reqs).toMatchObject({ MQRQ: "planned" });
+
+    // Step 2 picks CSC 121 B: the course is already in the term, so that item gets the CRN and this term's
+    // status (the term has started: in progress), never a second item.
+    expect(data.terms.currentStatus).toBe("in-progress");
+    const action = classAction(data.items, "202601", "CSC 121", [], "10142", "in-progress");
+    expect(action).toMatchObject({
+      kind: "update",
+      patch: { crn: "10142", status: "in-progress" },
+    });
+    if (action.kind !== "update") return;
+    await updateItem(user.id, action.itemId, action.patch);
 
     const plan = await getPlan(user.id);
     expect(plan.legacy).toBe(false);
-    expect(plan.items.map((item) => [item.termCode, item.courseCode, item.crn ?? null])).toEqual([
-      ["202601", "CSC 121", "10142"],
-      ["202502", "WRI 101", null],
+    expect(
+      plan.items.map((item) => [item.termCode, item.courseCode, item.status, item.crn ?? null]),
+    ).toEqual([
+      ["202601", "CSC 121", "in-progress", "10142"],
+      ["202502", "WRI 101", "completed", null],
     ]);
+    expect((await getProgress(user.id)).reqs).toMatchObject({ MQRQ: "this-term" });
     expect(await legacyDocs()).toEqual(before);
 
     // A re-run sees the section as chosen; a stray add of the same course is refused (409).
-    expect(classAction(plan.items, "202601", "CSC 121", [], "10142").kind).toBe("none");
+    expect(classAction(plan.items, "202601", "CSC 121", [], "10142", "in-progress").kind).toBe(
+      "none",
+    );
     await expect(
       addItem(
         user.id,
@@ -192,6 +210,54 @@ describe("a legacy account with a v1 plan", () => {
     expect((await getPlan(user.id)).items).toHaveLength(2);
     // The legacy single major maps to the official name.
     expect((await getProfile(user.id)).majors).toEqual(["Major in Computer Science (B.S. Degree)"]);
+  });
+});
+
+describe("a legacy account with a past course still marked planned", () => {
+  it("marks it completed in place on step 3: same item count, credits go up, v1 untouched", async () => {
+    const user = await signIn({ graduationYear: 2029 }, "older@gmail.com");
+    await insertLegacyPlan(user.id, {
+      plannedCourses: [
+        v1Entry({
+          courseCode: "WRI 101",
+          courseName: "Writing",
+          semester: "Spring",
+          year: 2026,
+          status: "planned",
+        }),
+      ],
+    });
+    const before = await legacyDocs();
+    const data = await loadOnboarding(user.id);
+    expect(data.items.map((item) => [item.termCode, item.courseCode, item.status])).toEqual([
+      ["202502", "WRI 101", "planned"],
+    ]);
+    const creditsBefore = (await getProgress(user.id)).creditsDone;
+    expect(creditsBefore).toBe(0);
+
+    // A second add is what the step must not do: the server refuses it.
+    await expect(
+      addItem(user.id, {
+        termCode: "202502",
+        courseCode: "WRI 101",
+        status: "completed",
+        source: "catalog",
+        passFail: false,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+
+    const action = completedAction(data.items, "202502", "WRI 101");
+    expect(action.kind).toBe("complete");
+    if (action.kind !== "complete") return;
+    await updateItem(user.id, action.item.id, { status: "completed" });
+
+    const plan = await getPlan(user.id);
+    expect(plan.items.map((item) => [item.termCode, item.courseCode, item.status])).toEqual([
+      ["202502", "WRI 101", "completed"],
+    ]);
+    expect((await getProgress(user.id)).creditsDone).toBe(creditsBefore + 1);
+    expect(completedAction(plan.items, "202502", "WRI 101").kind).toBe("none");
+    expect(await legacyDocs()).toEqual(before);
   });
 });
 
@@ -217,8 +283,14 @@ describe("re-running onboarding", () => {
 });
 
 describe("OnboardingPage", () => {
-  it("is titled and sends signed-out visitors to /login, back to the same step", async () => {
-    expect(metadata).toEqual({ title: "Get started" });
+  it("is titled per step and sends signed-out visitors to /login, back to the same step", async () => {
+    const meta = (step?: string) =>
+      generateMetadata({ searchParams: Promise.resolve(step ? { step } : {}) });
+    expect(await meta()).toEqual({ title: "Get started" });
+    expect(await meta("classes")).toEqual({
+      title: "Step 2 of 4: Your Fall 2026 classes · Get started",
+    });
+    expect(await meta("interests")).toEqual({ title: "Step 4 of 4: Interests · Get started" });
     await expect(render("classes")).rejects.toMatchObject({
       digest: expect.stringMatching(
         /^NEXT_REDIRECT;replace;\/login\?callbackUrl=%2Fonboarding%3Fstep%3Dclasses;/,
@@ -250,6 +322,7 @@ describe("OnboardingPage", () => {
     await signIn({ graduationYear: 2029 });
     const html = await render("about");
     expect(html).toMatch(/<h1[^>]*>About you<\/h1>/);
+    expect(html).toMatch(/<h1 id="onboarding-step-heading" tabindex="-1"/);
     expect(html).toContain("Step 1 of 4");
     expect(html).toContain("Welcome, Casey");
     expect(html).toMatch(/<nav aria-label="Setup steps"/);

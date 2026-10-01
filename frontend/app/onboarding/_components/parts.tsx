@@ -70,6 +70,40 @@ export function StepActions({ step, primary, hideSkip }: StepActionsProps) {
   );
 }
 
+/**
+ * Move keyboard focus to an element by id once React has rendered the change that produced it (a result line that
+ * just appeared, the next row after a removal, the first invalid field). Each call focuses again, even for the
+ * same id. Used wherever an action unmounts the control that had focus, so focus never falls back to <body>.
+ */
+export function useFocusRequest(): (id: string) => void {
+  const [request, setRequest] = React.useState<{ id: string; count: number } | null>(null);
+  React.useEffect(() => {
+    if (request) document.getElementById(request.id)?.focus();
+  }, [request]);
+  return React.useCallback(
+    (id: string) => setRequest((last) => ({ id, count: (last?.count ?? 0) + 1 })),
+    [],
+  );
+}
+
+/** The id of a plan item row's Remove button. */
+export function removeButtonId(item: Pick<PlanItem, "id">): string {
+  return `remove-${item.id}`;
+}
+
+/**
+ * Where focus goes after removing `list[index]`: the next row's Remove button, else the previous row's, else the
+ * list's heading (when the list is now empty).
+ */
+export function focusAfterRemove(
+  list: readonly Pick<PlanItem, "id">[],
+  index: number,
+  headingId: string,
+): string {
+  const neighbour = list[index + 1] ?? list[index - 1];
+  return neighbour ? removeButtonId(neighbour) : headingId;
+}
+
 /** Next-step link styled as the primary button. */
 export function ContinueLink({ step, children }: { step: OnboardingStep; children?: string }) {
   const next = nextStep(step);
@@ -153,6 +187,7 @@ export function PlanItemRow({
         </p>
       </div>
       <Button
+        id={removeButtonId(item)}
         variant="ghost"
         size="sm"
         onClick={onRemove}

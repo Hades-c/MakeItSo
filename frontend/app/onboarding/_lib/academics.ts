@@ -121,13 +121,48 @@ export function aboutPatch(values: AboutValues): ProfilePatchBody {
   };
 }
 
-/** A problem the form can name before saving, or null. */
-export function aboutProblem(values: AboutValues): { field: "firstTerm"; message: string } | null {
+/**
+ * A stored major or minor that is no longer an official name (W3 keeps such a name when the catalog drops it). The
+ * step shows it as "(no longer offered)" so the student can see it, and asks for a current one before saving
+ * (the server would reject it).
+ */
+export function isRetiredProgram(value: string, officialList: readonly string[]): boolean {
+  const trimmed = value.trim();
+  return trimmed !== "" && trimmed !== UNDECIDED && !officialList.includes(trimmed);
+}
+
+export interface AboutProblem {
+  field: "firstTerm" | "majors" | "minors";
+  /** The row of a major or minor. */
+  index?: number;
+  message: string;
+}
+
+/** A problem the form can name before saving, or null. `official` = the official names (to catch retired ones). */
+export function aboutProblem(
+  values: AboutValues,
+  official?: { majors: readonly string[]; minors: readonly string[] },
+): AboutProblem | null {
   if (!firstTermFits(values.firstTerm, values.graduationYear)) {
     return {
       field: "firstTerm",
       message: "The first term and the graduation year do not fit together.",
     };
+  }
+  if (official) {
+    for (const [field, noun] of [
+      ["majors", "major"],
+      ["minors", "minor"],
+    ] as const) {
+      const index = values[field].findIndex((value) => isRetiredProgram(value, official[field]));
+      if (index >= 0) {
+        return {
+          field,
+          index,
+          message: `“${values[field][index]?.trim()}” is no longer offered. Pick a current ${noun} or remove it.`,
+        };
+      }
+    }
   }
   return null;
 }

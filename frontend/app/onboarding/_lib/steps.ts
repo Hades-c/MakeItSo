@@ -23,6 +23,11 @@ export function stepLabel(step: OnboardingStep, currentTermLabel: string): strin
   }
 }
 
+/** The document title of a step: "Step 2 of 4: Your Fall 2026 classes · Get started". */
+export function stepTitle(step: OnboardingStep, currentTermLabel: string): string {
+  return `Step ${stepIndex(step) + 1} of ${ONBOARDING_STEPS.length}: ${stepLabel(step, currentTermLabel)} · Get started`;
+}
+
 /** The step a `?step=` search param names, or null (missing, repeated or unknown). */
 export function parseStep(value: string | string[] | null | undefined): OnboardingStep | null {
   const first = Array.isArray(value) ? value[0] : value;

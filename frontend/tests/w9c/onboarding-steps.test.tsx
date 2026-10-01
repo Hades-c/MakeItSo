@@ -6,6 +6,7 @@ import { ClassesStep } from "@/app/onboarding/_components/classes-step";
 import { CompletedStep } from "@/app/onboarding/_components/completed-step";
 import { InterestsStep } from "@/app/onboarding/_components/interests-step";
 import { SkipSetup } from "@/app/onboarding/_components/skip-setup";
+import { resetStepHeadingForTests, StepHeading } from "@/app/onboarding/_components/step-heading";
 import { StepList } from "@/app/onboarding/_components/step-list";
 import type { CareerOption } from "@/app/onboarding/_lib/load";
 import type { Profile } from "@/lib/api/profile";
@@ -274,7 +275,32 @@ describe("AboutStep (step 1)", () => {
     renderAbout({ majors: [MAJORS[0]!] });
     await userEvent.click(screen.getByRole("button", { name: "Save and continue" }));
     expect(await screen.findByText("Pick a name from the list of programs.")).toBeVisible();
+    // Announced in one alert, and focus goes to the field the issue names.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Check the highlighted field: Pick a name from the list of programs.",
+    );
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Major")));
     expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("shows a stored major that is no longer offered and asks for a current one", async () => {
+    stubFetch([200, { profile: PROFILE }]);
+    renderAbout({ majors: ["Old Major"] });
+    const select = screen.getByLabelText("Major");
+    expect(select).toHaveValue("Old Major");
+    expect(within(select).getByRole("option", { selected: true })).toHaveTextContent(
+      "Old Major (no longer offered)",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save and continue" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Check the highlighted field: “Old Major” is no longer offered. Pick a current major or remove it.",
+    );
+    await waitFor(() => expect(document.activeElement).toBe(select));
+    expect(calls).toHaveLength(0);
+    await userEvent.selectOptions(select, MAJORS[1]!);
+    await userEvent.click(screen.getByRole("button", { name: "Save and continue" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]?.body).toMatchObject({ majors: [MAJORS[1]] });
   });
 
   it("skips without saving", () => {
@@ -365,7 +391,7 @@ describe("ClassesStep (step 2)", () => {
     expect(calls[2]?.body).toMatchObject({ crn: "10142", status: "registered" });
   });
 
-  it("only sets the CRN of a course already in the term (a re-run or a legacy plan)", async () => {
+  it("updates the item already in the term: its CRN and a planned status (a re-run or a legacy plan)", async () => {
     const existing = planItem({ courseCode: "CSC 121", status: "planned" });
     stubFetch(
       searchAnswer([summary("CSC 121", 2)]),
@@ -394,9 +420,91 @@ describe("ClassesStep (step 2)", () => {
     expect(calls[2]).toEqual({
       url: `/api/plan/items/${existing.id}`,
       method: "PATCH",
-      body: { crn: "10141" },
+      body: { crn: "10141", status: "in-progress" },
     });
     expect(await screen.findByText("CSC 121 is now section A (CRN 10141).")).toBeVisible();
+    // Focus moves to the result's "In your classes" line, not back to <body>.
+    await waitFor(() =>
+      expect(document.activeElement).toHaveTextContent("In your classes (CRN 10141)"),
+    );
+  });
+
+  it("only changes the status of a planned one-section class already chosen", async () => {
+    const his = section({ crn: "10274", courseCode: "HIS 357", subject: "HIS", number: "357" });
+    const existing = planItem({ courseCode: "HIS 357", crn: "10274", status: "planned" });
+    stubFetch(
+      searchAnswer([summary("HIS 357", 1)]),
+      [200, { course: course("HIS 357", [his]), asOf: null }],
+      itemAnswer({ ...existing, status: "registered" }, 200),
+    );
+    render(<ClassesStep {...base} status="registered" items={[existing]} />);
+    await search("HIS 357");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Use its only section for HIS 357" }),
+    );
+    expect(
+      await screen.findByText("HIS 357 A (CRN 10274) is now one of your Fall 2026 classes."),
+    ).toBeVisible();
+    expect(calls[2]).toEqual({
+      url: `/api/plan/items/${existing.id}`,
+      method: "PATCH",
+      body: { status: "registered" },
+    });
+    // Nothing left to do for it: the button is gone and focus is on the result line.
+    expect(screen.queryByRole("button", { name: /for HIS 357/ })).toBeNull();
+    expect(document.activeElement).toHaveTextContent("In your classes (CRN 10274)");
+  });
+
+  it("keeps keyboard focus after Add, Cancel and Remove", async () => {
+    const his = section({ crn: "10274", courseCode: "HIS 357", subject: "HIS", number: "357" });
+    const added = planItem({ courseCode: "HIS 357", crn: "10274" });
+    const other = planItem({ courseCode: "ENG 260", crn: "10300" });
+    stubFetch(
+      searchAnswer([summary("HIS 357", 1), summary("CSC 121", 2)]),
+      [200, { course: course("HIS 357", [his]), asOf: null }],
+      itemAnswer(added),
+      [
+        200,
+        {
+          course: course("CSC 121", [
+            section({ crn: "10141", section: "A" }),
+            section({ crn: "10142", section: "B" }),
+          ]),
+          asOf: null,
+        },
+      ],
+      [204, null],
+      [204, null],
+    );
+    render(<ClassesStep {...base} items={[other]} />);
+    await search("history");
+    // Add (the button unmounts): focus goes to the result line.
+    await userEvent.click(await screen.findByRole("button", { name: "Add for HIS 357" }));
+    await waitFor(() =>
+      expect(document.activeElement).toHaveAttribute("id", "classes-result-HIS-357"),
+    );
+    // Cancel: back to the toggle.
+    await userEvent.click(screen.getByRole("button", { name: "Choose section for CSC 121" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Choose section for CSC 121" }),
+      ),
+    );
+    // Remove the first row (ENG 260): focus moves to the next row's Remove.
+    await userEvent.click(screen.getByRole("button", { name: "Remove ENG 260 Fall 2026" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Remove HIS 357 Fall 2026" }),
+      ),
+    );
+    // Remove the last row: focus moves to the list's heading.
+    await userEvent.click(screen.getByRole("button", { name: "Remove HIS 357 Fall 2026" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { name: "In your plan for Fall 2026" }),
+      ),
+    );
   });
 
   it("sends nothing when the chosen section is already in the plan", async () => {
@@ -547,6 +655,73 @@ describe("CompletedStep (step 3)", () => {
     expect(within(result).queryByRole("button")).toBeNull();
   });
 
+  it("marks a past course the plan lists as planned completed in place (a legacy plan)", async () => {
+    const planned = planItem({
+      termCode: "202502",
+      courseCode: "WRI 101",
+      status: "planned",
+      title: "Writing",
+    });
+    stubFetch(
+      searchAnswer([summary("WRI 101", 4, "202502")], "202502"),
+      itemAnswer({ ...planned, status: "completed" }, 200),
+    );
+    render(<CompletedStep terms={["202502"]} items={[planned]} />);
+    await search("WRI", /Search Spring 2026 courses/);
+    const result = await screen.findByTestId("search-result");
+    expect(within(result).getByText("In your Spring 2026 plan as planned")).toBeVisible();
+    await userEvent.click(within(result).getByRole("button", { name: "Mark WRI 101 completed" }));
+    expect(await screen.findByText("Marked WRI 101 (Spring 2026) completed.")).toBeVisible();
+    expect(calls[1]).toEqual({
+      url: `/api/plan/items/${planned.id}`,
+      method: "PATCH",
+      body: { status: "completed" },
+    });
+    expect(within(screen.getByTestId("completed-items")).getAllByTestId("plan-item")).toHaveLength(
+      1,
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toHaveTextContent("Completed in Spring 2026"),
+    );
+  });
+
+  it("routes a quick-add entry for a listed, not completed course to marking it completed", async () => {
+    const planned = planItem({ termCode: "202502", courseCode: "CSC 999", status: "in-progress" });
+    stubFetch(itemAnswer({ ...planned, status: "completed" }, 200));
+    render(<CompletedStep terms={["202502"]} items={[planned]} />);
+    const form = screen.getByRole("form", { name: "Add AP, IB or transfer credit" });
+    await userEvent.selectOptions(within(form).getByLabelText("Kind of credit"), "manual");
+    await userEvent.selectOptions(within(form).getByLabelText("Term"), "202502");
+    await userEvent.type(within(form).getByLabelText("Davidson course code"), "CSC 999");
+    await userEvent.click(within(form).getByRole("button", { name: "Add credit" }));
+    expect(await screen.findByText("Marked CSC 999 (Spring 2026) completed.")).toBeVisible();
+    expect(calls).toEqual([
+      { url: `/api/plan/items/${planned.id}`, method: "PATCH", body: { status: "completed" } },
+    ]);
+  });
+
+  it("announces quick-add errors and focuses the first invalid field", async () => {
+    render(<CompletedStep terms={["202502"]} items={[]} />);
+    const form = screen.getByRole("form", { name: "Add AP, IB or transfer credit" });
+    await userEvent.clear(within(form).getByLabelText("Credits"));
+    await userEvent.type(within(form).getByLabelText("Credits"), "9");
+    await userEvent.click(within(form).getByRole("button", { name: "Add credit" }));
+    expect(await within(form).findByRole("alert")).toHaveTextContent(
+      "Check the highlighted fields: Enter a course code such as MAT 113. Credits run from 0 to 4.",
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(form).getByLabelText("Davidson course code")),
+    );
+    await userEvent.type(within(form).getByLabelText("Davidson course code"), "MAT 113");
+    await userEvent.click(within(form).getByRole("button", { name: "Add credit" }));
+    expect(await within(form).findByRole("alert")).toHaveTextContent(
+      "Check the highlighted field: Credits run from 0 to 4.",
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(form).getByLabelText("Credits")),
+    );
+  });
+
   it("adds AP credit without a term and validates the entry first", async () => {
     const added = planItem({
       termCode: null,
@@ -662,6 +837,20 @@ describe("InterestsStep (step 4)", () => {
     );
     expect(screen.queryByText("secret detail")).toBeNull();
     expect(router.push).not.toHaveBeenCalled();
+  });
+});
+
+describe("StepHeading", () => {
+  it("moves focus to the heading after a step change, not on the first load", () => {
+    resetStepHeadingForTests();
+    const { rerender } = render(<StepHeading step="about">About you</StepHeading>);
+    const heading = screen.getByRole("heading", { level: 1, name: "About you" });
+    expect(heading).toHaveAttribute("tabindex", "-1");
+    expect(document.activeElement).not.toBe(heading);
+    rerender(<StepHeading step="classes">Your Fall 2026 classes</StepHeading>);
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { level: 1, name: "Your Fall 2026 classes" }),
+    );
   });
 });
 
