@@ -84,9 +84,10 @@ export function CompletedStep({ terms, items }: CompletedStepProps) {
         <Button
           size="sm"
           aria-disabled={plan.busy === course.code || undefined}
+          aria-label={`Mark ${course.code} completed`}
           onClick={() => void markCompleted(term, course)}
         >
-          Mark completed<span className="sr-only">: {course.code}</span>
+          Mark completed
         </Button>
       </div>
     );

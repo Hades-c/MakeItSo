@@ -145,6 +145,13 @@ export function ClassesStep(props: ClassesStepProps) {
     const isOpen = picker?.code === summary.code;
     const single = summary.sectionCount === 1;
     const busy = plan.busy === summary.code || (isOpen && picker?.loading);
+    const action = single
+      ? existing
+        ? "Use its only section"
+        : "Add"
+      : existing?.crn
+        ? "Change section"
+        : "Choose section";
     return (
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -160,16 +167,10 @@ export function ClassesStep(props: ClassesStepProps) {
               variant={existing ? "secondary" : "primary"}
               aria-expanded={single ? undefined : isOpen}
               aria-disabled={busy || undefined}
+              aria-label={`${action} for ${summary.code}`}
               onClick={() => (isOpen && !single ? setPicker(null) : void open(summary))}
             >
-              {single
-                ? existing
-                  ? "Use its only section"
-                  : `Add ${summary.code}`
-                : existing?.crn
-                  ? "Change section"
-                  : "Choose section"}
-              <span className="sr-only"> for {summary.code}</span>
+              {action}
             </Button>
           )}
         </div>
