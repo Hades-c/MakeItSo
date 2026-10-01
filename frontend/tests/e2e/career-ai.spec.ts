@@ -21,6 +21,9 @@ const PASSWORD = "career ai e2e password 7";
 
 /** axe in light and dark, overflow and tap targets at the project viewport and at 360x800. */
 async function checkLayout(page: Page, label: string) {
+  // From the top of the page: axe's target-size counts a control half under the sticky top bar (where the last
+  // action scrolled it) as too small, which says nothing about the control itself.
+  await page.evaluate(() => window.scrollTo(0, 0));
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
     expect(await seriousViolations(page), `${label}: axe ${colorScheme}`).toEqual([]);
