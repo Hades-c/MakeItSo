@@ -63,7 +63,12 @@ export function WebTreePrintView({
       {data.report.list.choices.length === 0 ? (
         <p className="text-sm text-fg-2">No choices yet.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div
+          className="overflow-x-auto"
+          role="region"
+          aria-label="WebTree choices table"
+          tabIndex={0}
+        >
           <table className="w-full min-w-xl border-collapse text-left text-sm">
             <caption className="sr-only">{data.termLabel} WebTree choices in rank order</caption>
             <thead>

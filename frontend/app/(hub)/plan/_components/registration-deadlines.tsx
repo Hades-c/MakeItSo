@@ -53,7 +53,7 @@ export function RegistrationDeadlines({
                   href={row.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-semibold text-fg underline-offset-2 hover:underline"
+                  className="inline-flex min-h-11 items-center text-sm font-semibold text-fg underline-offset-2 hover:underline md:min-h-0"
                 >
                   {row.title}
                 </a>

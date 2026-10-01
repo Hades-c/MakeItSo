@@ -145,7 +145,7 @@ function DraftCard({
                     <div className="min-w-0 flex-1">
                       <Link
                         href={routes.course(row.termCode, row.courseCode)}
-                        className="rounded-xs underline-offset-2 hover:underline"
+                        className="inline-flex min-h-11 items-center rounded-xs underline-offset-2 hover:underline md:min-h-0"
                       >
                         <CourseCode code={row.courseCode} size="md" />
                       </Link>
