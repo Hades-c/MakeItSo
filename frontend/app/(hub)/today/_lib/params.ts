@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { routes } from "@/lib/routes";
 import { IsoDateSchema } from "@/lib/types/common";
 
 /**
@@ -26,7 +27,7 @@ export function parseDayParam(
 
 /** The strip's link for a day: /today for today (a clean URL), /today?day=… for the others. */
 export function todayHref(day: string, today: string): string {
-  return day === today ? "/today" : `/today?day=${day}`;
+  return routes.today(day === today ? {} : { day });
 }
 
 /** The Davidson days the feeds are read for once per request: the strip's days and today. */

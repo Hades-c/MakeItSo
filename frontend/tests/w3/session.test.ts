@@ -7,6 +7,7 @@ import User from "@/models/User";
 import {
   getSessionUser,
   isEmailVerified,
+  isOnboarded,
   isVerifiedDavidsonUser,
   requireApiUser,
   requireUser,
@@ -66,7 +67,22 @@ describe("sessions with sessionVersion (PLAN §6.1 W3)", () => {
       email: user.email,
       name: "Casey",
       emailVerifiedAt: null,
+      onboardedAt: null,
     });
+  });
+
+  it("carries onboardedAt, so the hub can send first-run accounts to /onboarding without a profile read", async () => {
+    const user = await insertUser({
+      name: "Casey",
+      raw: { onboardedAt: new Date("2026-09-30T16:00:00.000Z") },
+    });
+    expect((await resolveSessionUser(await sessionFor(user)))?.onboardedAt).toBe(
+      "2026-09-30T16:00:00.000Z",
+    );
+    expect(isOnboarded({ onboardedAt: "2026-09-30T16:00:00.000Z" })).toBe(true);
+    expect(isOnboarded({ onboardedAt: null })).toBe(false);
+    // A SessionUser built without the field (tests, older callers) is never sent to /onboarding.
+    expect(isOnboarded({})).toBe(true);
   });
 
   it("uses the stored name and email, not the token's", async () => {

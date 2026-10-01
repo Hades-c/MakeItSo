@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   courseSlug,
   parseCourseSlug,
+  parseOnboardingStep,
   parsePlanTab,
   parseTermParam,
   queryString,
@@ -38,6 +39,17 @@ describe("href builders (lib/routes.ts)", () => {
     expect(routes.forgotPassword()).toBe("/forgot-password");
     expect(routes.alumnus("stephen-curry")).toBe("/alumni#stephen-curry");
     expect(routes.alumni({ career: "law" })).toBe("/alumni?career=law");
+    expect(routes.today({ day: "2026-10-01" })).toBe("/today?day=2026-10-01");
+    expect(routes.today({ day: "" })).toBe("/today");
+    expect(routes.onboarding("classes")).toBe("/onboarding?step=classes");
+    expect(routes.onboarding(undefined, { next: "/plan?tab=next" })).toBe(
+      "/onboarding?next=%2Fplan%3Ftab%3Dnext",
+    );
+    expect(routes.onboarding("about", { next: "/plan" })).toBe(
+      "/onboarding?step=about&next=%2Fplan",
+    );
+    expect(parseOnboardingStep(["interests", "about"])).toBe("interests");
+    expect(parseOnboardingStep("finish")).toBeNull();
   });
 
   it("serialises query strings", () => {

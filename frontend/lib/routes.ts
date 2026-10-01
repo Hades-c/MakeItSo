@@ -62,6 +62,20 @@ export function parsePlanTab(value: string | string[] | null | undefined): PlanT
     : DEFAULT_PLAN_TAB;
 }
 
+/** /onboarding steps (PLAN §3: the first run, in four skippable steps; the step lives in `?step=`). */
+export const ONBOARDING_STEPS = ["about", "classes", "completed", "interests"] as const;
+export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+
+/** The step a `?step=` search param names, or null (missing, repeated or unknown). */
+export function parseOnboardingStep(
+  value: string | string[] | null | undefined,
+): OnboardingStep | null {
+  const first = Array.isArray(value) ? value[0] : value;
+  return (ONBOARDING_STEPS as readonly string[]).includes(first ?? "")
+    ? (first as OnboardingStep)
+    : null;
+}
+
 /** A term code from a search param, or null (callers then use the registration term). */
 export function parseTermParam(value: string | string[] | null | undefined): TermCode | null {
   const first = Array.isArray(value) ? value[0] : value;
@@ -141,8 +155,15 @@ export const routes = {
   verify: () => "/verify",
   forgotPassword: () => "/forgot-password",
   privacy: () => "/privacy",
-  onboarding: () => "/onboarding",
-  today: () => "/today",
+  /**
+   * /onboarding, at `step` (none: resume where the student stopped). `next` is the page to continue to once setup
+   * is finished or skipped (the hub sends first-run deep links here with it); the page re-checks it with
+   * safeAppPath, so pass any same-origin path.
+   */
+  onboarding: (step?: OnboardingStep, params: { next?: string } = {}) =>
+    `/onboarding${queryString({ step, next: params.next })}`,
+  /** /today, or another day of the five-day strip (`day` = YYYY-MM-DD; the page ignores days off the strip). */
+  today: (params: { day?: string } = {}) => `/today${queryString({ day: params.day })}`,
   courses: (params: CoursesParams = {}) =>
     `/courses${queryString({
       term: params.term,

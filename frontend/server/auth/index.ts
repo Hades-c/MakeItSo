@@ -5,7 +5,7 @@ import "./account-data";
 /**
  * Auth, security, profile and account (owner W3; PLAN §1 "Sign-up", §6.1 W3, §9). Import from "@/server/auth".
  *
- *   sessions       getSessionUser, requireUser({ verifiedDavidson }), requireApiUser, isEmailVerified,
+ *   sessions       getSessionUser, requireUser({ verifiedDavidson }), requireApiUser, isEmailVerified, isOnboarded,
  *                  isVerifiedDavidsonUser (server/auth/session.ts)
  *   NextAuth       getAuthOptions, authorizeCredentials (server/auth/options.ts)
  *   registration   registerAccount (always 202 "check your inbox")
@@ -27,6 +27,7 @@ export {
 export {
   getSessionUser,
   isEmailVerified,
+  isOnboarded,
   isVerifiedDavidsonUser,
   requireApiUser,
   requireUser,

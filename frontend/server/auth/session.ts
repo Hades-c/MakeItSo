@@ -32,6 +32,20 @@ export interface SessionUser {
   name: string;
   /** ISO time the mailbox was verified; null when it is not (optional: tests and older callers omit it). */
   emailVerifiedAt?: string | null;
+  /**
+   * ISO time first-run setup was finished or skipped (User.onboardedAt); null while it is not. Optional like
+   * emailVerifiedAt: tests and older callers omit it, and readers treat a missing value as "not known", never as
+   * "not onboarded" (see isOnboarded).
+   */
+  onboardedAt?: string | null;
+}
+
+/**
+ * The account has finished (or skipped) first-run setup. A SessionUser built without the field (tests, older
+ * callers) counts as onboarded, so nothing is sent to /onboarding on missing data; only an explicit null is "not yet".
+ */
+export function isOnboarded(user: Pick<SessionUser, "onboardedAt">): boolean {
+  return user.onboardedAt !== null;
 }
 
 /** Anything that may carry an `emailVerifiedAt` (a SessionUser, a lean User document, a Profile). */
@@ -65,7 +79,7 @@ export async function resolveSessionUser(session: Session | null): Promise<Sessi
   if (!claim?.id || !mongoose.isValidObjectId(claim.id)) return null;
   await getDb();
   const doc = await User.findById(claim.id)
-    .select("name email sessionVersion emailVerifiedAt")
+    .select("name email sessionVersion emailVerifiedAt onboardedAt")
     .lean();
   if (!doc) return null;
   if ((doc.sessionVersion ?? 0) !== (claim.sessionVersion ?? 0)) return null;
@@ -74,6 +88,7 @@ export async function resolveSessionUser(session: Session | null): Promise<Sessi
     email: doc.email,
     name: doc.name ?? "",
     emailVerifiedAt: toIso(doc.emailVerifiedAt),
+    onboardedAt: toIso(doc.onboardedAt),
   };
 }
 
