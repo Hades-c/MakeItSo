@@ -59,6 +59,11 @@ test("search: the registration term by default, filters in the URL, back and rel
     .getByRole("button", { name: "Search" })
     .click();
   await expect(page).toHaveURL(/\/courses\?q=data\+structures&term=202602$/);
+  // Focus lands on the new results (a polite live region announces the count).
+  await expect(page.getByTestId("results-count")).toBeFocused();
+  await expect(
+    page.getByRole("status").filter({ has: page.getByTestId("results-count") }),
+  ).toHaveAttribute("aria-live", "polite");
   const csc = page.getByRole("article", { name: /Data Structures/ });
   await expect(csc).toBeVisible();
   await expect(csc.getByText("Mathematical and Quantitative Thought")).toBeVisible();
@@ -153,6 +158,9 @@ test("a course page: sections, requirements, other terms, conflicts and Add to p
     .click();
   await expect(page).toHaveURL(/\/courses\/202602\/CSC-221\?crn=20136#week$/);
   await expect(week.getByText("No conflicts")).toBeVisible();
+  // The week card comes into view and its heading takes focus (the link was replaced).
+  await expect(page.locator("#week-title")).toBeFocused();
+  await expect(page.locator("#week-title")).toBeInViewport();
   await expect(warnings).not.toContainText("overlaps");
   await expect(add.getByTestId("add-section")).toContainText("CSC 221 B");
 
@@ -202,6 +210,11 @@ test("a course not on this term's schedule, and real 404s", async ({ page, reque
   await expect(page.getByRole("radio", { name: "Spring 2027" })).toBeDisabled();
   await checkPage(page);
 
+  // Other spellings of a code redirect to the one canonical URL.
+  const variant = await page.goto("/courses/202602/csc221");
+  expect(variant?.status()).toBe(200);
+  await expect(page).toHaveURL(/\/courses\/202602\/CSC-221$/);
+
   for (const path of [
     "/courses/202602/XYZ-999",
     "/courses/000001/CSC-221",
@@ -222,4 +235,40 @@ test("the AI panel asks a verified student to turn AI on first", async ({ page, 
     panel.getByRole("link", { name: "Turn on AI features in your profile" }),
   ).toHaveAttribute("href", "/profile");
   expect(await expectAllTagged(page)).toBeGreaterThan(0);
+});
+
+test("no sideways scroll at 360px on the pages with the longest upstream text", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  await newSignedInAccount(page, request, "e2e-courses-360");
+  await page.setViewportSize({ width: 360, height: 800 });
+  for (const path of [
+    "/courses",
+    "/courses?q=topics",
+    "/courses/202602/SPA-377",
+    "/courses/202602/ECO-204",
+    "/courses/202602/HIS-184",
+    "/courses/202602/WRI-101",
+    "/courses/202602/AFR-308",
+    "/courses/202602/AFR-270",
+    "/courses/202602/BIO-201",
+  ]) {
+    const res = await page.goto(path);
+    expect(res?.status(), path).toBe(200);
+    expect(await horizontalOverflow(page), `${path} scrolls sideways`).toBeLessThanOrEqual(0);
+  }
+});
+
+test("a past term MakeItSo keeps no schedule for says so", async ({ page, request }) => {
+  await newSignedInAccount(page, request, "e2e-courses-past");
+  await page.goto("/courses?term=202102");
+  await expect(
+    page.getByRole("heading", { name: "No Spring 2022 schedule in MakeItSo" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Search the latest schedule" })).toHaveAttribute(
+    "href",
+    "/courses",
+  );
 });

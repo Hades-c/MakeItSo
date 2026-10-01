@@ -487,12 +487,15 @@ export function CourseWeekCard({
             : `, including ${sectionLabel(chosen)}.`
           : "."}
       </p>
-      <WeekGrid
-        startHour={week.view.startHour}
-        endHour={week.view.endHour}
-        blocks={week.view.blocks}
-        label={`Your week with ${code}`}
-      />
+      {/* overflow-wrap is inherited: long unbroken titles in the grid's day list wrap at 360px. */}
+      <div className={cn("min-w-0", BREAK_TEXT)}>
+        <WeekGrid
+          startHour={week.view.startHour}
+          endHour={week.view.endHour}
+          blocks={week.view.blocks}
+          label={`Your week with ${code}`}
+        />
+      </div>
       {week.plannedOtherSection ? (
         <p className="mt-3 text-sm text-fg-2">
           Your plan has {week.plannedOtherSection}; the grid shows the section you picked instead.
