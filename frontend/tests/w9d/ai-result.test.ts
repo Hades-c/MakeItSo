@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aiErrorCopy,
   aiFailureCopy,
+  REGENERATION_HINT,
   type AiStepLinks,
 } from "@/app/(hub)/careers/[slug]/_components/ai-result";
 import { ApiClientError } from "@/lib/api/client";
@@ -93,6 +94,15 @@ describe("aiErrorCopy (errors outside the AiResult wire format)", () => {
     });
   });
 
+  it.each([
+    [400, "validation_failed"],
+    [403, "forbidden"],
+  ] as const)("%s (%s): no retry that would fail the same way, reload the page", (status, code) => {
+    const copy = aiErrorCopy(new ApiClientError(status, code, "Bad request"), LINKS);
+    expect(copy).toMatchObject({ tone: "error", next: { kind: "none" } });
+    expect(copy.message).toMatch(/Reload the page/);
+  });
+
   it("anything else: a generic failure with retry", () => {
     expect(aiErrorCopy(new Error("boom"), LINKS)).toMatchObject({
       tone: "error",
@@ -100,5 +110,13 @@ describe("aiErrorCopy (errors outside the AiResult wire format)", () => {
       next: { kind: "retry" },
     });
     expect(aiErrorCopy(new ApiClientError(500, "internal", "x"), LINKS).next.kind).toBe("retry");
+  });
+});
+
+describe("REGENERATION_HINT", () => {
+  it("says the 3 daily regenerations are shared by plans and emails (server/ai/usage.ts)", () => {
+    expect(REGENERATION_HINT).toMatch(/3/);
+    expect(REGENERATION_HINT).toMatch(/plan/);
+    expect(REGENERATION_HINT).toMatch(/email/);
   });
 });

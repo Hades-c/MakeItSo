@@ -2,13 +2,15 @@
 
 import * as React from "react";
 import { Check, Copy, Sparkles } from "lucide-react";
+import { ProvenanceLine } from "@/app/(hub)/alumni/_components/provenance-line";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
 import { aiApi } from "@/lib/api/ai";
 import { callApi } from "@/lib/api/client";
-import type { AiFailure, ColdEmail } from "@/lib/types/ai";
-import { useAiRequest } from "./ai-request";
-import { aiFailureCopy, AiNotice, type AiStepLinks } from "./ai-result";
+import type { AiFailure, AiOk, ColdEmail } from "@/lib/types/ai";
+import { cn } from "@/lib/utils";
+import { FOCUS_TARGET, useAiRequest, useSettleFocus } from "./ai-request";
+import { aiFailureCopy, AiNotice, REGENERATION_HINT, type AiStepLinks } from "./ai-result";
 
 /**
  * Cold e-mail to an alumnus on this path (PLAN §1 "Alumni", §6.1 W6 feature 4): the student picks one of the
@@ -35,7 +37,12 @@ export interface AiColdEmailPanelProps {
   studentName: string;
   gate: AiFailure | null;
   links: AiStepLinks;
+  /** ALUMNI_CHECKED_AT, for the provenance line every alumni view carries (PLAN §1 "Alumni"). */
+  checkedAt: string;
 }
+
+/** The answer, with the alumnus it was drafted for (so switching the picker never relabels an old draft). */
+type EmailData = { email: ColdEmail; alumnusId: string };
 
 const PLACEHOLDER_PATTERN = /\{\{\s*studentName\s*\}\}/g;
 /** What the draft says where the name goes when the account has no usable name. */
@@ -59,18 +66,37 @@ export function contactableOnly<T extends { contactable: boolean }>(alumni: read
   return alumni.filter((alumnus) => alumnus.contactable === true);
 }
 
-function describe(alumnus: ColdEmailAlumnus): string {
-  const work = [alumnus.role, alumnus.organization].filter(Boolean).join(", ");
-  const year = alumnus.classYear ? `Class of ${alumnus.classYear}` : null;
-  return [work, year].filter(Boolean).join(" · ");
+function SeeLinkedIn() {
+  return <span className="text-fg-3 italic">see LinkedIn</span>;
+}
+
+/**
+ * The picker's line under a name: role, organization and class year. A field whose only source is LinkedIn is
+ * null in the data and says "see LinkedIn" (lib/types/content.ts AlumnusSchema, as AlumnusCard does).
+ */
+function AlumnusFacts({ alumnus }: { alumnus: ColdEmailAlumnus }) {
+  return (
+    <span className="text-xs text-fg-2" data-testid="ai-email-alumnus-facts">
+      {alumnus.role ?? <SeeLinkedIn />}, {alumnus.organization ?? <SeeLinkedIn />} · Class of{" "}
+      {alumnus.classYear ?? <SeeLinkedIn />}
+    </span>
+  );
 }
 
 function CopyEmailButton({ text }: { text: string }) {
   const [state, setState] = React.useState<"idle" | "copied" | "failed">("idle");
+  const fallback = React.useRef<HTMLTextAreaElement>(null);
+  const fallbackId = React.useId();
   React.useEffect(() => {
     if (state !== "copied") return;
     const timer = window.setTimeout(() => setState("idle"), 2500);
     return () => window.clearTimeout(timer);
+  }, [state]);
+  // The clipboard was refused: hand the student the whole email in one field, already selected.
+  React.useEffect(() => {
+    if (state !== "failed") return;
+    fallback.current?.focus();
+    fallback.current?.select();
   }, [state]);
 
   async function copy() {
@@ -84,7 +110,7 @@ function CopyEmailButton({ text }: { text: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex w-full flex-col gap-1">
       <div>
         <Button variant="secondary" size="sm" onClick={() => void copy()}>
           {state === "copied" ? <Check aria-hidden /> : <Copy aria-hidden />}
@@ -95,9 +121,26 @@ function CopyEmailButton({ text }: { text: string }) {
         {state === "copied"
           ? "The email is on your clipboard."
           : state === "failed"
-            ? "Your browser didn’t allow copying. Select the text and copy it yourself."
+            ? "Your browser didn’t allow copying. The email is selected below: copy it from there."
             : ""}
       </p>
+      {state === "failed" ? (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={fallbackId} className="text-xs font-semibold text-fg">
+            Email text
+          </label>
+          <textarea
+            id={fallbackId}
+            ref={fallback}
+            readOnly
+            value={text}
+            rows={8}
+            onFocus={(event) => event.currentTarget.select()}
+            className="w-full rounded-md border border-line-strong bg-bg p-2.5 text-sm text-fg"
+            data-testid="ai-copy-fallback"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -108,11 +151,13 @@ export function AiColdEmailPanel({
   studentName,
   gate,
   links,
+  checkedAt,
 }: AiColdEmailPanelProps) {
   const options = React.useMemo(() => contactableOnly(alumni), [alumni]);
   const [selected, setSelected] = React.useState<string | null>(options[0]?.id ?? null);
-  const [requestedFor, setRequestedFor] = React.useState<string | null>(null);
-  const { state, run, busy, reset } = useAiRequest<{ email: ColdEmail }>(links);
+  const { state, run, busy } = useAiRequest<EmailData>(links);
+  const { rootRef, resultRef, failureRef } = useSettleFocus(state.phase);
+  const lastRequest = React.useRef<{ alumnusId: string; regenerate: boolean } | null>(null);
   const groupId = React.useId();
 
   if (gate) {
@@ -127,27 +172,29 @@ export function AiColdEmailPanel({
     );
   }
 
-  const generate = (regenerate: boolean) => {
-    if (!selected) return;
-    setRequestedFor(selected);
-    void run(() =>
-      callApi(aiApi.coldEmail, { body: { alumnusId: selected, careerSlug, regenerate } }),
-    );
+  const generate = (alumnusId: string | null, regenerate: boolean) => {
+    if (busy || !alumnusId) return;
+    lastRequest.current = { alumnusId, regenerate };
+    void run(async () => {
+      const result = await callApi(aiApi.coldEmail, {
+        body: { alumnusId, careerSlug, regenerate },
+      });
+      if (result.kind !== "ok") return result;
+      const tagged: AiOk<EmailData> = { ...result, data: { ...result.data, alumnusId } };
+      return tagged;
+    });
   };
 
-  const choose = (id: string) => {
-    if (id === selected) return;
-    setSelected(id);
-    reset();
-  };
-
-  const recipient = options.find((a) => a.id === requestedFor) ?? null;
   const shown =
     state.phase === "ok" ? state.result : state.phase === "idle" ? null : state.previous;
   const email = shown ? filledEmail(shown.data.email, studentName) : null;
+  const recipient = shown ? (options.find((a) => a.id === shown.data.alumnusId) ?? null) : null;
+  const selectedAlumnus = options.find((a) => a.id === selected) ?? null;
+  // The picker moved to someone else: offer a draft for them; the current draft stays until that one arrives.
+  const switched = shown !== null && selected !== null && selected !== shown.data.alumnusId;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={rootRef} tabIndex={-1} className={cn("flex flex-col gap-4", FOCUS_TARGET)}>
       <fieldset className="flex min-w-0 flex-col gap-2">
         <legend className="mb-1 text-sm font-semibold text-fg">
           Who would you like to write to?
@@ -167,28 +214,42 @@ export function AiColdEmailPanel({
                     name={`${groupId}-alumnus`}
                     value={alumnus.id}
                     checked={selected === alumnus.id}
-                    onChange={() => choose(alumnus.id)}
+                    onChange={() => setSelected(alumnus.id)}
                     className="mt-0.5 size-4 accent-primary"
                   />
                   <span className="flex min-w-0 flex-col">
                     <span className="font-semibold text-fg">{alumnus.name}</span>
-                    {describe(alumnus) ? (
-                      <span className="text-xs text-fg-2">{describe(alumnus)}</span>
-                    ) : null}
+                    <AlumnusFacts alumnus={alumnus} />
                   </span>
                 </label>
               </li>
             );
           })}
         </ul>
+        <ProvenanceLine checkedAt={checkedAt} />
       </fieldset>
 
-      {shown === null ? (
-        <div>
-          <Button onClick={() => generate(false)} disabled={busy || !selected}>
-            <Sparkles aria-hidden />
-            {busy ? "Drafting…" : "Draft an email"}
-          </Button>
+      {shown === null || switched ? (
+        <div className="flex flex-col gap-2">
+          <div>
+            {/* aria-disabled, not disabled: a disabled button drops keyboard focus to <body>. */}
+            <Button
+              onClick={() => generate(selected, false)}
+              aria-disabled={busy || !selected || undefined}
+            >
+              <Sparkles aria-hidden />
+              {busy
+                ? "Drafting…"
+                : switched && selectedAlumnus
+                  ? `Draft an email to ${selectedAlumnus.name}`
+                  : "Draft an email"}
+            </Button>
+          </div>
+          {switched && recipient ? (
+            <p className="text-xs text-fg-3" data-testid="ai-email-kept">
+              Your draft to {recipient.name} stays below until the new one is ready.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -198,7 +259,20 @@ export function AiColdEmailPanel({
       </p>
 
       {email ? (
-        <div className="flex flex-col gap-3" data-testid="ai-email-result">
+        <div
+          ref={resultRef}
+          tabIndex={-1}
+          role="group"
+          aria-label={recipient ? `Email draft to ${recipient.name}` : "Email draft"}
+          aria-busy={busy || undefined}
+          className={cn("flex flex-col gap-3", FOCUS_TARGET)}
+          data-testid="ai-email-result"
+        >
+          {busy ? (
+            <p className="text-sm font-semibold text-fg-2" data-testid="ai-email-stale">
+              Drafting a new version… this one stays until it’s ready.
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
             <AiChip label="review before sending" />
             {recipient ? <span className="text-xs text-fg-3">To {recipient.name}</span> : null}
@@ -217,20 +291,33 @@ export function AiColdEmailPanel({
           </p>
           <div className="flex flex-wrap items-start gap-2">
             <CopyEmailButton text={email.clipboard} />
-            <Button variant="ghost" size="sm" onClick={() => generate(true)} disabled={busy}>
-              {busy ? "Drafting…" : "Draft another version"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => generate(shown?.data.alumnusId ?? null, true)}
+                aria-disabled={busy || undefined}
+              >
+                {busy ? "Drafting…" : "Draft another version"}
+              </Button>
+              <span className="text-xs text-fg-3">{REGENERATION_HINT}</span>
+            </div>
           </div>
         </div>
       ) : null}
 
       {state.phase === "failed" ? (
-        <AiNotice
-          copy={state.copy}
-          busy={busy}
-          onRetry={() => generate(state.previous !== null)}
-          testId="ai-email-failure"
-        />
+        <div ref={failureRef} tabIndex={-1} className={FOCUS_TARGET}>
+          <AiNotice
+            copy={state.copy}
+            busy={busy}
+            onRetry={() => {
+              const last = lastRequest.current;
+              if (last) generate(last.alumnusId, last.regenerate);
+            }}
+            testId="ai-email-failure"
+          />
+        </div>
       ) : null}
     </div>
   );

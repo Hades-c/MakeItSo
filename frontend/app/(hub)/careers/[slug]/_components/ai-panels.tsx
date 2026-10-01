@@ -15,9 +15,10 @@ import {
   verifiedOnlyRedirect,
   type SessionUser,
 } from "@/server/auth/session";
-import { alumniForCareer } from "@/server/content/alumni";
+import { ALUMNI_CHECKED_AT, alumniForCareer } from "@/server/content/alumni";
 import { featureEnabled, loadFlags } from "@/server/features";
 import { MissingFixtureError } from "@/server/http/fixtures";
+import { cn } from "@/lib/utils";
 import { careerTermCodes } from "../../_lib/availability";
 import { loadCareerTerms } from "../../_lib/catalog";
 import { AiCareerPlanPanel } from "./ai-career-plan";
@@ -120,7 +121,13 @@ async function loadTermCodes(): Promise<TermCode[]> {
   return terms ? careerTermCodes(terms) : [];
 }
 
-const GRID = "grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]";
+/** Two columns only when both panels render; a lone panel takes the full width (no empty track beside it). */
+export function panelsGridClass(view: Pick<CareerAiView, "plan" | "email">): string {
+  return cn(
+    "grid items-start gap-5",
+    view.plan && view.email && "lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]",
+  );
+}
 
 export async function CareerAiPanels({ career }: { career: Career }) {
   const user = await getSessionUser();
@@ -165,7 +172,7 @@ export async function CareerAiPanels({ career }: { career: Career }) {
   }
 
   return (
-    <div className={GRID} data-testid="career-ai">
+    <div className={panelsGridClass(view)} data-testid="career-ai">
       {view.plan ? (
         <SectionCard id="ai-career-plan" title="Your AI career plan">
           <AiCareerPlanPanel
@@ -186,6 +193,7 @@ export async function CareerAiPanels({ career }: { career: Career }) {
             studentName={view.studentName}
             gate={view.email.gate}
             links={view.links}
+            checkedAt={ALUMNI_CHECKED_AT}
           />
         </SectionCard>
       ) : null}

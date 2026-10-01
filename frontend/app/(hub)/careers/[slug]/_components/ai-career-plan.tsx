@@ -13,9 +13,10 @@ import { planApi } from "@/lib/api/plan";
 import type { TermCode } from "@/lib/term";
 import type { AiFailure, AiOk, CareerPlan } from "@/lib/types/ai";
 import type { PlanDraft } from "@/lib/types/plan";
+import { cn } from "@/lib/utils";
 import { AiCoursePicks } from "./ai-course-picks";
-import { useAiRequest } from "./ai-request";
-import { aiFailureCopy, AiNotice, type AiStepLinks } from "./ai-result";
+import { FOCUS_TARGET, useAiRequest, useSettleFocus } from "./ai-request";
+import { aiFailureCopy, AiNotice, REGENERATION_HINT, type AiStepLinks } from "./ai-result";
 
 /**
  * "Your AI career plan" (PLAN §3 /careers/[slug], §6.1 W6 feature 3): POST /api/ai/career-plan { careerSlug,
@@ -66,6 +67,15 @@ export function sendErrorText(error: unknown): string {
   return "My plan couldn’t be reached. Please try again.";
 }
 
+/**
+ * What a program chip says. Official program names already start with "Major in"/"Minor in" (Acalog), so they
+ * are shown as they are; a bare name gets the kind in front.
+ */
+export function programLabel(kind: "major" | "minor", name: string): string {
+  if (/^(major|minor)\b/i.test(name.trim())) return name.trim();
+  return `${kind === "major" ? "Major" : "Minor"} · ${name.trim()}`;
+}
+
 function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
@@ -109,7 +119,10 @@ function SendToPlan({ draft, suggestionsHref }: { draft: PlanDraft; suggestionsH
         . Nothing is added to your plan until you accept it there.
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => void onSend()} disabled={send.phase === "checking"}>
+        <Button
+          onClick={() => void onSend()}
+          aria-disabled={send.phase === "checking" || undefined}
+        >
           Send to my plan
         </Button>
       </div>
@@ -130,14 +143,32 @@ function PlanView({
   result,
   careerTerms,
   suggestionsHref,
+  stale,
+  focusRef,
 }: {
   result: AiOk<CareerPlanData>;
   careerTerms: readonly TermCode[];
   suggestionsHref: string;
+  /** A new plan is being drafted: this one stays readable but is marked as about to be replaced. */
+  stale: boolean;
+  focusRef: React.Ref<HTMLDivElement>;
 }) {
   const { plan, draft } = result.data;
   return (
-    <div className="flex flex-col gap-5" data-testid="ai-career-plan-result">
+    <div
+      ref={focusRef}
+      tabIndex={-1}
+      role="group"
+      aria-label="Your AI career plan"
+      aria-busy={stale || undefined}
+      className={cn("flex flex-col gap-5", FOCUS_TARGET)}
+      data-testid="ai-career-plan-result"
+    >
+      {stale ? (
+        <p className="text-sm font-semibold text-fg-2" data-testid="ai-plan-stale">
+          Drafting a new plan… this one stays until it’s ready.
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2 text-xs text-fg-3">
         <AiChip />
         {result.cached ? <span>Saved from your last request</span> : null}
@@ -155,12 +186,12 @@ function PlanView({
           <ul className="flex flex-wrap gap-2" aria-label="Majors and minors to consider">
             {plan.majors.map((name) => (
               <li key={`major:${name}`}>
-                <Chip variant="neutral">Major · {name}</Chip>
+                <Chip variant="neutral">{programLabel("major", name)}</Chip>
               </li>
             ))}
             {plan.minors.map((name) => (
               <li key={`minor:${name}`}>
-                <Chip variant="neutral">Minor · {name}</Chip>
+                <Chip variant="neutral">{programLabel("minor", name)}</Chip>
               </li>
             ))}
           </ul>
@@ -195,7 +226,8 @@ function PlanView({
       ) : null}
 
       {draft && draft.items.length > 0 ? (
-        <SendToPlan draft={draft} suggestionsHref={suggestionsHref} />
+        // Keyed on the draft: a new plan's draft starts with an empty status line, not the last one's.
+        <SendToPlan key={draft.id} draft={draft} suggestionsHref={suggestionsHref} />
       ) : null}
     </div>
   );
@@ -210,9 +242,12 @@ export function AiCareerPlanPanel({
   suggestionsHref,
 }: AiCareerPlanPanelProps) {
   const { state, run, busy } = useAiRequest<CareerPlanData>(links);
+  const { rootRef, resultRef, failureRef } = useSettleFocus(state.phase);
 
-  const generate = (regenerate: boolean) =>
+  const generate = (regenerate: boolean) => {
+    if (busy) return;
     void run(() => callApi(aiApi.careerPlan, { body: { careerSlug, regenerate } }));
+  };
 
   if (gate) {
     return <AiNotice copy={aiFailureCopy(gate, links)} live={false} testId="ai-plan-gate" />;
@@ -226,7 +261,7 @@ export function AiCareerPlanPanel({
         : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={rootRef} tabIndex={-1} className={cn("flex flex-col gap-4", FOCUS_TARGET)}>
       {shown === null ? (
         <div className="flex flex-col gap-3">
           <p className="max-w-prose text-sm text-fg-2">
@@ -235,7 +270,8 @@ export function AiCareerPlanPanel({
             never sent to the AI.
           </p>
           <div>
-            <Button onClick={() => generate(false)} disabled={busy}>
+            {/* aria-disabled, not disabled: a disabled button drops keyboard focus to <body>. */}
+            <Button onClick={() => generate(false)} aria-disabled={busy || undefined}>
               <Sparkles aria-hidden />
               {busy ? "Drafting your plan…" : "Draft my career plan"}
             </Button>
@@ -243,12 +279,23 @@ export function AiCareerPlanPanel({
         </div>
       ) : (
         <>
-          <PlanView result={shown} careerTerms={careerTerms} suggestionsHref={suggestionsHref} />
+          <PlanView
+            result={shown}
+            careerTerms={careerTerms}
+            suggestionsHref={suggestionsHref}
+            stale={busy}
+            focusRef={resultRef}
+          />
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => generate(true)} disabled={busy}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => generate(true)}
+              aria-disabled={busy || undefined}
+            >
               {busy ? "Drafting…" : "Draft a new plan"}
             </Button>
-            <span className="text-xs text-fg-3">Up to 3 new plans a day.</span>
+            <span className="text-xs text-fg-3">{REGENERATION_HINT}</span>
           </div>
         </>
       )}
@@ -257,12 +304,14 @@ export function AiCareerPlanPanel({
         {state.phase === "ok" ? "Your career plan is ready." : ""}
       </p>
       {state.phase === "failed" ? (
-        <AiNotice
-          copy={state.copy}
-          busy={busy}
-          onRetry={() => generate(state.previous !== null)}
-          testId="ai-plan-failure"
-        />
+        <div ref={failureRef} tabIndex={-1} className={FOCUS_TARGET}>
+          <AiNotice
+            copy={state.copy}
+            busy={busy}
+            onRetry={() => generate(state.previous !== null)}
+            testId="ai-plan-failure"
+          />
+        </div>
       ) : null}
     </div>
   );

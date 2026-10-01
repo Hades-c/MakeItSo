@@ -50,3 +50,38 @@ export function useAiRequest<T>(links: AiStepLinks) {
 
   return { state, run, busy, reset };
 }
+
+/**
+ * Keep keyboard and screen-reader focus inside the panel across a request (WCAG 2.4.3). The panel's buttons stay
+ * mounted and use aria-disabled while loading (a disabled button drops focus to <body>), and when the request
+ * settles focus moves to what arrived: the answer (`result`) or the failure notice (`failure`). If the control the
+ * student used went away while loading (the retry button inside a failure notice), the panel itself (`root`)
+ * takes focus. Focus moves only when it was inside the panel (or lost to <body>), never away from elsewhere.
+ */
+export function useSettleFocus(phase: AiRequestState<unknown>["phase"]) {
+  const root = React.useRef<HTMLDivElement>(null);
+  const result = React.useRef<HTMLDivElement>(null);
+  const failure = React.useRef<HTMLDivElement>(null);
+  const previous = React.useRef(phase);
+
+  React.useEffect(() => {
+    const before = previous.current;
+    previous.current = phase;
+    if (before === phase) return;
+    const active = typeof document === "undefined" ? null : document.activeElement;
+    const ours = !active || active === document.body || Boolean(root.current?.contains(active));
+    if (!ours) return;
+    if (phase === "loading") {
+      if (!active || active === document.body) root.current?.focus();
+      return;
+    }
+    if (before !== "loading") return;
+    const target = phase === "ok" ? result.current : phase === "failed" ? failure.current : null;
+    (target ?? root.current)?.focus();
+  }, [phase]);
+
+  return { rootRef: root, resultRef: result, failureRef: failure };
+}
+
+/** Classes for a container that takes focus programmatically (tabIndex -1): the global focus ring, no tab stop. */
+export const FOCUS_TARGET = "rounded-lg outline-offset-4";

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AiCareerPlanPanel,
   draftSendOutcome,
+  programLabel,
   sendErrorText,
 } from "@/app/(hub)/careers/[slug]/_components/ai-career-plan";
 import { ApiClientError } from "@/lib/api/client";
@@ -14,8 +15,10 @@ import {
   aiFailure,
   type CareerPlan,
 } from "@/lib/types/ai";
+import { REGENERATION_HINT } from "@/app/(hub)/careers/[slug]/_components/ai-result";
 import {
   course,
+  deferred,
   draft,
   DRAFT_ID,
   LINKS,
@@ -94,6 +97,17 @@ describe("draftSendOutcome / sendErrorText", () => {
   });
 });
 
+describe("programLabel", () => {
+  it("shows an official name as it is, and puts the kind before a bare one", () => {
+    expect(programLabel("major", "Major in Biology (B.S. Degree)")).toBe(
+      "Major in Biology (B.S. Degree)",
+    );
+    expect(programLabel("minor", "Minor in Data Science")).toBe("Minor in Data Science");
+    expect(programLabel("major", "Biology")).toBe("Major · Biology");
+    expect(programLabel("minor", "Majorca Studies")).toBe("Minor · Majorca Studies");
+  });
+});
+
 describe("AiCareerPlanPanel", () => {
   it("drafts the plan on request and renders it as text with the AI chip and official course titles", async () => {
     const calls = stubFetch((url, init) => {
@@ -111,10 +125,10 @@ describe("AiCareerPlanPanel", () => {
       within(result).getByText("AI-generated content: verify with your advisor"),
     ).toBeInTheDocument();
     expect(within(result).getByTestId("ai-plan-overview")).toHaveTextContent(PLAN.overview);
-    expect(
-      within(result).getByText("Major · Major in Computer Science (B.S. Degree)"),
-    ).toBeVisible();
-    expect(within(result).getByText("Minor · Minor in Data Science")).toBeVisible();
+    // Official names already say Major/Minor: shown as they are, never "Major · Major in …".
+    expect(within(result).getByText("Major in Computer Science (B.S. Degree)")).toBeVisible();
+    expect(within(result).getByText("Minor in Data Science")).toBeVisible();
+    expect(within(result).queryByText(/Major · Major/)).toBeNull();
     expect(await within(result).findByRole("link", { name: "Data Structures" })).toBeVisible();
     expect(within(result).getByText("Core data structures.")).toBeVisible();
     expect(within(result).getByTestId("ai-experiences")).toHaveTextContent(
@@ -298,5 +312,126 @@ describe("AiCareerPlanPanel", () => {
     panel();
     await userEvent.click(screen.getByRole("button", { name: "Draft my career plan" }));
     expect(await screen.findByText("Answered by a backup model (claude-sonnet-5)")).toBeVisible();
+  });
+
+  it("a new plan's draft starts with an empty Send status (no stale 'dismissed' line)", async () => {
+    const NEW_ID = "65f0c0ffee0000000000beef";
+    let answer = 0;
+    stubFetch((url, init) => {
+      if (url.pathname === "/api/ai/career-plan") {
+        answer++;
+        return [
+          200,
+          okResult({ plan: PLAN, draft: answer === 1 ? DRAFT : { ...DRAFT, id: NEW_ID } }),
+        ];
+      }
+      if (url.pathname === "/api/plan/drafts") {
+        return [200, { drafts: [{ ...DRAFT, status: "dismissed" }] }];
+      }
+      return catalog(url, init);
+    });
+    panel();
+    await userEvent.click(screen.getByRole("button", { name: "Draft my career plan" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Send to my plan" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("ai-send-status")).toHaveTextContent(/You dismissed this draft/),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Draft a new plan" }));
+    await waitFor(() => expect(answer).toBe(2));
+    await waitFor(() => expect(screen.getByTestId("ai-send-status")).toHaveTextContent(""));
+    expect(screen.getByTestId("ai-send-status").textContent).toBe("");
+  });
+
+  it("says the daily allowance is shared with emails", async () => {
+    stubFetch((url, init) =>
+      url.pathname === "/api/ai/career-plan"
+        ? [200, okResult({ plan: PLAN, draft: DRAFT })]
+        : catalog(url, init),
+    );
+    panel();
+    await userEvent.click(screen.getByRole("button", { name: "Draft my career plan" }));
+    expect(await screen.findByText(REGENERATION_HINT)).toBeVisible();
+    expect(screen.queryByText("Up to 3 new plans a day.")).toBeNull();
+  });
+
+  it("keyboard: the button keeps focus while loading, then focus moves to the plan", async () => {
+    const pending = deferred();
+    stubFetch((url, init) =>
+      url.pathname === "/api/ai/career-plan" ? pending.promise : catalog(url, init),
+    );
+    panel();
+    const button = screen.getByRole("button", { name: "Draft my career plan" });
+    button.focus();
+    await userEvent.keyboard("{Enter}");
+    const busy = await screen.findByRole("button", { name: "Drafting your plan…" });
+    // aria-disabled, not disabled: a disabled button would drop focus to <body>.
+    expect(busy).not.toBeDisabled();
+    expect(busy).toHaveAttribute("aria-disabled", "true");
+    expect(document.activeElement).toBe(busy);
+    pending.release([200, okResult({ plan: PLAN, draft: DRAFT })]);
+    const result = await screen.findByTestId("ai-career-plan-result");
+    await waitFor(() => expect(document.activeElement).toBe(result));
+    expect(result).toHaveAttribute("tabindex", "-1");
+    expect(result).toHaveAccessibleName("Your AI career plan");
+  });
+
+  it("regenerating: the old plan is marked busy and stale; focus returns to the new plan", async () => {
+    let answer = 0;
+    const second = deferred();
+    stubFetch((url, init) => {
+      if (url.pathname === "/api/ai/career-plan") {
+        answer++;
+        return answer === 1 ? [200, okResult({ plan: PLAN, draft: DRAFT })] : second.promise;
+      }
+      return catalog(url, init);
+    });
+    panel();
+    await userEvent.click(screen.getByRole("button", { name: "Draft my career plan" }));
+    const again = await screen.findByRole("button", { name: "Draft a new plan" });
+    again.focus();
+    await userEvent.keyboard("{Enter}");
+    const result = screen.getByTestId("ai-career-plan-result");
+    await waitFor(() => expect(result).toHaveAttribute("aria-busy", "true"));
+    expect(screen.getByTestId("ai-plan-stale")).toHaveTextContent(/Drafting a new plan/);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Drafting…" }));
+    // A second press while loading is ignored.
+    await userEvent.keyboard("{Enter}");
+    expect(answer).toBe(2);
+    second.release([200, okResult({ plan: { ...PLAN, overview: "A fresh plan." }, draft: DRAFT })]);
+    await waitFor(() =>
+      expect(screen.getByTestId("ai-plan-overview")).toHaveTextContent("A fresh plan."),
+    );
+    const fresh = screen.getByTestId("ai-career-plan-result");
+    expect(fresh).not.toHaveAttribute("aria-busy");
+    expect(screen.queryByTestId("ai-plan-stale")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(fresh));
+  });
+
+  it("keyboard: a failure takes focus; Try again keeps focus in the panel while loading", async () => {
+    let answer = 0;
+    const retry = deferred();
+    stubFetch((url, init) => {
+      if (url.pathname === "/api/ai/career-plan") {
+        answer++;
+        return answer === 1 ? [AI_RESULT_STATUS.timeout, aiFailure("timeout")] : retry.promise;
+      }
+      return catalog(url, init);
+    });
+    const { container } = panel();
+    screen.getByRole("button", { name: "Draft my career plan" }).focus();
+    await userEvent.keyboard("{Enter}");
+    const notice = await screen.findByTestId("ai-plan-failure");
+    // An error-tone failure is the shared ErrorState (role alert).
+    expect(within(notice).getByRole("alert")).toHaveTextContent(AI_FAILURE_MESSAGES.timeout);
+    await waitFor(() => expect(notice.parentElement!.contains(document.activeElement)).toBe(true));
+    within(notice).getByRole("button", { name: "Try again" }).focus();
+    await userEvent.keyboard("{Enter}");
+    // The notice (and its button) went away while loading: the panel holds focus, not <body>.
+    await waitFor(() => expect(screen.queryByTestId("ai-plan-failure")).toBeNull());
+    expect(document.activeElement).not.toBe(document.body);
+    expect(container.contains(document.activeElement)).toBe(true);
+    retry.release([200, okResult({ plan: PLAN, draft: DRAFT })]);
+    const result = await screen.findByTestId("ai-career-plan-result");
+    await waitFor(() => expect(document.activeElement).toBe(result));
   });
 });

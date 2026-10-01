@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   careerAiView,
   coldEmailAlumni,
+  panelsGridClass,
   type CareerAiViewInput,
 } from "@/app/(hub)/careers/[slug]/_components/ai-panels";
 import { getFlags, type Flags } from "@/lib/flags";
@@ -70,6 +71,11 @@ describe("careerAiView", () => {
     const view = careerAiView(input({ flags: { ...FLAGS, alumni: false } }))!;
     expect(view.plan).toEqual({ gate: null });
     expect(view.email).toBeNull();
+    // A lone panel takes the full width: no two-column track with an empty column beside it.
+    expect(panelsGridClass(view)).not.toContain("lg:grid-cols");
+    expect(panelsGridClass(careerAiView(input())!)).toContain(
+      "lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]",
+    );
   });
 
   it("gate order: not_configured before unverified before consent_required, said once for both panels", () => {

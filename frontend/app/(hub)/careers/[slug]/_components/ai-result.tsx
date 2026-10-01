@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Info, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import { ApiClientError } from "@/lib/api/client";
 import { AI_FAILURE_MESSAGES, type AiFailure, type AiFailureKind } from "@/lib/types/ai";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,12 @@ export interface AiStepLinks {
   /** /login?callbackUrl=<this page>. */
   signIn: string;
 }
+
+/**
+ * The regeneration allowance is one daily count shared by every personal AI item (server/ai/usage.ts
+ * ai-regenerations-<day>: 3 a day across the career plan and cold emails), so both panels say it the same way.
+ */
+export const REGENERATION_HINT = "Up to 3 new drafts a day, shared by your plan and your emails.";
 
 const TITLES: Readonly<Record<AiFailureKind, string>> = {
   refused: "The AI declined this request",
@@ -109,6 +116,16 @@ export function aiErrorCopy(error: unknown, links: AiStepLinks): AiNoticeCopy {
         next: { kind: "retry", label: "Try again" },
       };
     }
+    if (error.status === 400 || error.status === 403) {
+      // A request the route rejects as malformed (400) or from the wrong origin (403) fails the same way again,
+      // and each retry would spend the AI route's rate limit: the way out is a fresh page.
+      return {
+        tone: "error",
+        title: "This page is out of date",
+        message: "MakeItSo couldn’t accept this request. Reload the page and try again.",
+        next: { kind: "none" },
+      };
+    }
     if (error.status === 404) {
       return {
         tone: "error",
@@ -134,9 +151,48 @@ export function aiErrorCopy(error: unknown, links: AiStepLinks): AiNoticeCopy {
   };
 }
 
+/** Compact layout for the shared ErrorState inside a panel (it is a full-card block by default). */
+const INLINE_ERROR =
+  "items-start rounded-lg border-danger bg-danger-wash px-3.5 py-3.5 text-left shadow-none md:px-3.5 md:py-3.5 [&>span]:mb-2 [&>span]:size-8 [&>h2]:text-base [&>div]:mt-3 [&>div]:justify-start";
+
+function NextStep({
+  copy,
+  onRetry,
+  busy,
+}: {
+  copy: AiNoticeCopy;
+  onRetry?: () => void;
+  busy: boolean;
+}) {
+  if (copy.next.kind === "retry" && onRetry) {
+    return (
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-disabled={busy || undefined}
+        onClick={() => {
+          if (!busy) onRetry();
+        }}
+      >
+        {copy.next.label}
+      </Button>
+    );
+  }
+  if (copy.next.kind === "link") {
+    return (
+      <Button asChild variant="secondary" size="sm">
+        <Link href={copy.next.href}>{copy.next.label}</Link>
+      </Button>
+    );
+  }
+  return null;
+}
+
 /**
- * The notice: an icon, the title, the message and the next step. `live` announces it (a result of the student's
- * click); a state known when the page rendered (gate) is plain content.
+ * The notice: the title, the message and the next step. A failed attempt the student just made (`live`, error
+ * tone) renders in the shared ErrorState (role alert, PLAN §6.1 "typed errors render in ErrorState with Retry"),
+ * laid out compactly for a panel; a state of the account or the server (info tone: quota, consent, a gate known
+ * when the page rendered) is a quieter status line with an info icon.
  */
 export function AiNotice({
   copy,
@@ -153,10 +209,24 @@ export function AiNotice({
   className?: string;
   testId?: string;
 }) {
+  const hasStep = (copy.next.kind === "retry" && Boolean(onRetry)) || copy.next.kind === "link";
+  const step = hasStep ? <NextStep copy={copy} onRetry={onRetry} busy={busy} /> : undefined;
+  if (live && copy.tone === "error") {
+    return (
+      <div data-testid={testId} className={className}>
+        <ErrorState
+          title={copy.title}
+          description={copy.message}
+          action={step}
+          className={INLINE_ERROR}
+        />
+      </div>
+    );
+  }
   const Icon = copy.tone === "error" ? TriangleAlert : Info;
   return (
     <div
-      role={live ? (copy.tone === "error" ? "alert" : "status") : undefined}
+      role={live ? "status" : undefined}
       data-testid={testId}
       className={cn(
         "flex gap-3 rounded-lg border p-3.5 text-sm",
@@ -174,20 +244,7 @@ export function AiNotice({
       <div className="flex min-w-0 flex-col gap-2">
         <p className="font-semibold text-fg">{copy.title}</p>
         <p className="text-fg-2">{copy.message}</p>
-        {copy.next.kind === "retry" && onRetry ? (
-          <div>
-            <Button variant="secondary" size="sm" onClick={onRetry} disabled={busy}>
-              {copy.next.label}
-            </Button>
-          </div>
-        ) : null}
-        {copy.next.kind === "link" ? (
-          <div>
-            <Button asChild variant="secondary" size="sm">
-              <Link href={copy.next.href}>{copy.next.label}</Link>
-            </Button>
-          </div>
-        ) : null}
+        {step ? <div>{step}</div> : null}
       </div>
     </div>
   );

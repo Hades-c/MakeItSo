@@ -16,7 +16,8 @@ import {
   aiFailure,
   STUDENT_NAME_PLACEHOLDER,
 } from "@/lib/types/ai";
-import { LINKS, okResult, renderFresh, stubFetch } from "./helpers";
+import { REGENERATION_HINT } from "@/app/(hub)/careers/[slug]/_components/ai-result";
+import { deferred, LINKS, okResult, renderFresh, stubFetch } from "./helpers";
 
 /** "Email an alumnus" on /careers/[slug] (W9a-ai): contactable alumni only, {{studentName}} filled in the browser. */
 
@@ -52,6 +53,7 @@ function panel(props: Partial<React.ComponentProps<typeof AiColdEmailPanel>> = {
       studentName="Sam Studentname"
       gate={null}
       links={LINKS}
+      checkedAt="2026-09-30"
       {...props}
     />,
   );
@@ -98,6 +100,20 @@ describe("AiColdEmailPanel", () => {
     expect(within(group).queryByText("Stephen Curry")).toBeNull();
     expect(within(group).getByRole("radio", { name: /Rahael Borchers/ })).toBeChecked();
     expect(within(group).getByText("Physician, Atrium Health · Class of 2019")).toBeVisible();
+  });
+
+  it("LinkedIn-only fields say 'see LinkedIn', and the picker carries the alumni provenance line", () => {
+    stubFetch(() => undefined);
+    panel();
+    const bruno = screen.getByRole("radio", { name: /Bruno Mourao/ }).closest("label")!;
+    const facts = within(bruno).getByTestId("ai-email-alumnus-facts");
+    expect(facts).toHaveTextContent("see LinkedIn, see LinkedIn · Class of see LinkedIn");
+    expect(within(facts).getAllByText("see LinkedIn")).toHaveLength(3);
+    const provenance = screen.getByTestId("alumni-provenance");
+    expect(provenance).toHaveTextContent(/Compiled from public sources · checked .*2026/);
+    expect(
+      within(provenance).getByRole("link", { name: "Request removal/correction" }),
+    ).toBeVisible();
   });
 
   it("drafts for the chosen alumnus, fills the student's name in the browser and copies subject + body", async () => {
@@ -150,21 +166,106 @@ describe("AiColdEmailPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Draft an email" }));
     await userEvent.click(await screen.findByRole("button", { name: "Copy email" }));
     expect(await screen.findByText(/didn’t allow copying/)).toBeVisible();
+    // One read-only field with the whole email, focused and selected, to copy by hand.
+    const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Email text" });
+    expect(field).toHaveAttribute("readonly");
+    expect(field.value).toBe(filledEmail(EMAIL, "Sam Studentname").clipboard);
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(field.selectionStart).toBe(0);
+    expect(field.selectionEnd).toBe(field.value.length);
   });
 
-  it("Draft another version sends regenerate: true; choosing another alumnus starts over", async () => {
-    const calls = stubFetch((url) =>
-      url.pathname === "/api/ai/cold-email" ? [200, okResult({ email: EMAIL })] : undefined,
-    );
+  it("Draft another version sends regenerate: true; choosing another alumnus keeps the draft until asked", async () => {
+    const calls = stubFetch((url, init) => {
+      if (url.pathname !== "/api/ai/cold-email") return undefined;
+      const body = JSON.parse(String(init.body)) as { alumnusId: string };
+      return [200, okResult({ email: { ...EMAIL, subject: `Hello ${body.alumnusId}` } })];
+    });
     panel();
     await userEvent.click(screen.getByRole("button", { name: "Draft an email" }));
+    expect(await screen.findByText(REGENERATION_HINT)).toBeVisible();
     await userEvent.click(await screen.findByRole("button", { name: "Draft another version" }));
     await waitFor(() => expect(calls.filter((c) => c.method === "POST")).toHaveLength(2));
     expect(calls[1]!.body).toMatchObject({ alumnusId: "rahael-borchers", regenerate: true });
     await screen.findByTestId("ai-email-result");
+
+    // Picking someone else does not discard the draft the student may not have copied yet.
     await userEvent.click(screen.getByRole("radio", { name: /Bruno Mourao/ }));
-    expect(screen.queryByTestId("ai-email-result")).toBeNull();
-    expect(screen.getByRole("button", { name: "Draft an email" })).toBeVisible();
+    const kept = screen.getByTestId("ai-email-result");
+    expect(within(kept).getByText("To Rahael Borchers")).toBeVisible();
+    expect(within(kept).getByTestId("ai-email-subject")).toHaveTextContent("Hello rahael-borchers");
+    expect(screen.getByTestId("ai-email-kept")).toHaveTextContent(
+      "Your draft to Rahael Borchers stays below until the new one is ready.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Draft an email to Bruno Mourao" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("ai-email-subject")).toHaveTextContent("Hello bruno-mourao"),
+    );
+    expect(calls.filter((c) => c.method === "POST")[2]!.body).toEqual({
+      alumnusId: "bruno-mourao",
+      careerSlug: "medicine",
+      regenerate: false,
+    });
+    expect(
+      within(screen.getByTestId("ai-email-result")).getByText("To Bruno Mourao"),
+    ).toBeVisible();
+    expect(screen.queryByTestId("ai-email-kept")).toBeNull();
+  });
+
+  it("keyboard: focus stays on the button while drafting, then moves to the email; a regeneration is marked busy", async () => {
+    let answer = 0;
+    const first = deferred();
+    const second = deferred();
+    stubFetch((url) => {
+      if (url.pathname !== "/api/ai/cold-email") return undefined;
+      answer++;
+      return answer === 1 ? first.promise : second.promise;
+    });
+    panel();
+    screen.getByRole("button", { name: "Draft an email" }).focus();
+    await userEvent.keyboard("{Enter}");
+    const busy = await screen.findByRole("button", { name: "Drafting…" });
+    expect(busy).not.toBeDisabled();
+    expect(busy).toHaveAttribute("aria-disabled", "true");
+    expect(document.activeElement).toBe(busy);
+    first.release([200, okResult({ email: EMAIL })]);
+    const result = await screen.findByTestId("ai-email-result");
+    await waitFor(() => expect(document.activeElement).toBe(result));
+    expect(result).toHaveAccessibleName("Email draft to Rahael Borchers");
+
+    within(result).getByRole("button", { name: "Draft another version" }).focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(result).toHaveAttribute("aria-busy", "true"));
+    expect(screen.getByTestId("ai-email-stale")).toHaveTextContent(/Drafting a new version/);
+    second.release([200, okResult({ email: { ...EMAIL, subject: "Version two" } })]);
+    await waitFor(() =>
+      expect(screen.getByTestId("ai-email-subject")).toHaveTextContent("Version two"),
+    );
+    expect(screen.getByTestId("ai-email-result")).not.toHaveAttribute("aria-busy");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("ai-email-result")));
+  });
+
+  it("Try again after a failure repeats the same request", async () => {
+    let answer = 0;
+    const calls = stubFetch((url) => {
+      if (url.pathname !== "/api/ai/cold-email") return undefined;
+      answer++;
+      return answer === 1
+        ? [AI_RESULT_STATUS.unavailable, aiFailure("unavailable")]
+        : [200, okResult({ email: EMAIL })];
+    });
+    panel();
+    await userEvent.click(screen.getByRole("radio", { name: /Bruno Mourao/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Draft an email" }));
+    const notice = await screen.findByTestId("ai-email-failure");
+    expect(within(notice).getByRole("alert")).toHaveTextContent(AI_FAILURE_MESSAGES.unavailable);
+    await userEvent.click(within(notice).getByRole("button", { name: "Try again" }));
+    await screen.findByTestId("ai-email-result");
+    const posts = calls.filter((c) => c.method === "POST").map((c) => c.body);
+    expect(posts).toEqual([
+      { alumnusId: "bruno-mourao", careerSlug: "medicine", regenerate: false },
+      { alumnusId: "bruno-mourao", careerSlug: "medicine", regenerate: false },
+    ]);
   });
 
   it.each(AI_FAILURE_KINDS)("renders the %s result kind with its message", async (kind) => {

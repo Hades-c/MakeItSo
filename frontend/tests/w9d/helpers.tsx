@@ -14,7 +14,16 @@ export const LINKS: AiStepLinks = {
 };
 
 export type Answer = [status: number, body: unknown] | "network";
-export type Route = (url: URL, init: RequestInit) => Answer | undefined;
+export type Route = (url: URL, init: RequestInit) => Answer | Promise<Answer> | undefined;
+
+/** A fetch answer the test releases by hand (to look at the panel while a request is in flight). */
+export function deferred() {
+  let release!: (answer: Answer) => void;
+  const promise = new Promise<Answer>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+}
 
 export interface FetchCall {
   method: string;
@@ -37,7 +46,7 @@ export function stubFetch(route: Route): FetchCall[] {
         path: `${url.pathname}${url.search}`,
         body: typeof init.body === "string" ? JSON.parse(init.body) : undefined,
       });
-      const answer = route(url, init);
+      const answer = await route(url, init);
       if (!answer)
         throw new Error(`unrouted fetch ${init.method ?? "GET"} ${url.pathname}${url.search}`);
       if (answer === "network") throw new TypeError("Failed to fetch");
