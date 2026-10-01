@@ -126,7 +126,7 @@ function PickRow({
   const { data, error, isLoading } = useSWR(
     ["career-ai-pick", pick.courseCode, pick.termCode],
     () => loadPickFacts(pick.courseCode, pick.termCode),
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: false, errorRetryCount: 2 },
   );
   const href = data?.titleTerm ? routes.course(data.titleTerm, pick.courseCode) : null;
   const termLines = data ? careerTermLines(data.history, careerTerms) : [];
