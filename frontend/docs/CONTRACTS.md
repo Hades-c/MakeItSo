@@ -9,7 +9,7 @@ The frozen interfaces every workstream codes against. They change only through t
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `lib/term.ts`          | Term codes (`YYYY01` Fall, `YYYY02` Spring, `YYYY03` Summer; academic years 1988–2099 only, so Banner pseudo-terms like `000001` are rejected), arithmetic, resolvers, class standing     | `registrationTermFrom(terms, { now })`, `termsBetween(a, b)`, `classStanding(gradYear, now)`                                                                                                                                                                                                                                                  |
 | `lib/sources.ts`       | Every `SourceId` with `{ tag, label, kind, url }`; synced ids for `fetchExternal`/`recordSync`; curated `davidson-offices` for office programs outside Matthews/Hurt Hub/Registrar        | `<SourceTag source="wildcatsync" />`, `sourceTag("my-plan") === "YOUR PLAN"`                                                                                                                                                                                                                                                                  |
-| `lib/routes.ts`        | Href builders and URL parsers for every page; `safeCallbackPath` (checks the raw and the normalised path); `RETURN_PATH_HEADER` + `returnPathOf` (frontend/proxy.ts)                      | `routes.course("202602", "CSC 221")` → `/courses/202602/CSC-221`, `routes.alumnus(id)` → `/alumni#<id>`, `routes.forgotPassword()`, `parsePlanTab(searchParams.tab)`                                                                                                                                                                          |
+| `lib/routes.ts`        | Href builders and URL parsers for every page; `safeCallbackPath` (checks the raw and the normalised path); `RETURN_PATH_HEADER` + `returnPathOf` (frontend/proxy.ts)                      | `routes.course("202602", "CSC 221")` → `/courses/202602/CSC-221`, `routes.alumnus(id)` → `/alumni#<id>`, `routes.today({ day })`, `routes.onboarding(step, { next })`, `routes.plan("next", { term, view: "print" })`, `parsePlanTab(searchParams.tab)`, `parseOnboardingStep`                                                                |
 | `lib/types/common.ts`  | zod primitives: `TermCodeSchema`, `CourseCodeSchema` (normalises "csc121"), `CrnSchema`, dates, https URLs, query helpers                                                                 | `queryList(ReqCodeSchema)` for `?req=LTRQ&req=SSRQ`                                                                                                                                                                                                                                                                                           |
 | `lib/types/catalog.ts` | `Section`, `Course`, `CourseSummary`, `CatalogQuery`, `TermInfo`, `Availability`, `AcademicProgram`, `ReqCode`, `CrossListing`; the cron results `CatalogCronResult`, `ProgramSyncResult` | `SectionSchema.parse(x)`; `reqCodes: null` = no data (never `[]`); `crossListings: {crn, courseCode, section}[]` (match siblings by CRN); `canonicalCourseCode()`; see "Catalog" below                                                                                                                                                        |
 | `lib/types/plan.ts`    | `PlanItem`, `PlanProgress`, `WebTreeList`, `PlanDraft`, `SummerActivity`, `StudentDeadline`, `DaySchedule`                                                                                | no grades anywhere; `ACTIVE_PLAN_STATUSES` for the duplicate key                                                                                                                                                                                                                                                                              |
@@ -92,6 +92,7 @@ The frozen interfaces every workstream codes against. They change only through t
   (`HANDSHAKE_DOCUMENTED_PATHS`: `/appointments`, from the Matthews Center's career-planning roadmap); no
   constructed search URLs. No `moodle.davidson.edu` URLs anywhere in content (PLAN §1). Both are enforced by
   `tests/content.test.ts` (e).
+- `ContentDeadline.category`: the calendar row's category (`deadline` | `registration`), null for a program deadline.
 - Every course code content quotes exists in the fixture terms (gate (a), no exemptions).
 - The alumni search result links `routes.alumnus(id)`: the directory renders each card with `id={alumnus.id}`.
 
@@ -102,11 +103,19 @@ The frozen interfaces every workstream codes against. They change only through t
   `verifiedOnlyRedirect(path)` =
   `/verify?reason=davidson&next=<path>`. `<path>` is `returnTo`, else the `RETURN_PATH_HEADER` (`x-mis-return-path`)
   that `frontend/proxy.ts` overwrites on every page request (every path but `/api`, `/_next` and the files in
-  `public/`, so dotted page paths such as `/careers/x.y` too; lib/routes.ts); `/today` is left out. Route handlers
+  `public/`, so dotted page paths such as `/careers/x.y` too; lib/routes.ts); `/today` is left out (a signed-out
+  visit to `/today` goes to plain `/login`, which lands on `/today` anyway). Route handlers
   use `requireApiUser()` or defineRoute's auth modes (401/403, never a redirect). `getSessionUser()` is memoised per
   request; a JWT is revoked by `sessionVersion` (sign out everywhere, password change or reset, deletion).
   `isEmailVerified(account)` (any address) and `isVerifiedDavidsonUser(account)` (verified AND @davidson.edu: the
   alumni/AI gate) take a SessionUser, a lean User or a Profile.
+- **First run**: `SessionUser.onboardedAt` (ISO or null; `isOnboarded(user)`: a SessionUser without the field
+  counts as onboarded). The hub layout sends an account with `onboardedAt` null to
+  `routes.onboarding(undefined, { next: <requested path> })`, except on `/today` (its setup nudge and "not
+  onboarded" summary are for these accounts) and `/profile`; `/onboarding` is outside the hub. Onboarding keeps
+  `?next=` (`onboardingNext`, same-origin app paths only) on its step links, and Skip setup / Finish go there
+  instead of Today. Like `requireUser`, it runs when the hub layout renders (full loads, entering the hub), not on
+  soft navigations between hub pages.
 - **Return paths**: every untrusted path goes through `safeAppPath(value, fallback?)` / `isSafeAppPath(path)`
   (one leading "/", never "//" or "/\\" after normalising); `lib/routes.ts safeCallbackPath` applies the same rule.
 - **Verify banner**: `verifyBannerFor(user, now())` → `{ email, replaceable, hoursLeft }` or null (only unverified
@@ -173,6 +182,12 @@ attributable, so no eraser touches them (the privacy notice says to ask).
 - `EXTERNAL_MODE=fixtures` and `FIXTURES_NOW=2026-09-30T12:00:00-04:00` in vitest, Playwright and CI; a unit test
   that reaches the network fails, and so does an outbound fetch from the e2e server. Playwright also sets
   `RATE_LIMITS=off`.
+- Playwright: one in-memory MongoDB for the server and the workers. `playwright.config.ts` sets `E2E_MONGODB_URI`
+  (127.0.0.1:`E2E_MONGO_PORT`, default `E2E_PORT`+1) unless one is given, and `tests/e2e/serve.mjs` starts it, so
+  specs that seed the database (legacy accounts and plans) run in CI. Shared helpers live in `tests/e2e/helpers.ts`:
+  accounts (`registerViaApi`, `signIn`, `newSignedInAccount`, `newVerifiedAccount`, `verifyMailbox`, `aiStudent`;
+  accounts are marked onboarded unless `{ onboarded: false }`) and page checks (`seriousViolations`,
+  `expectAllTagged`, `smallTapTargets`, `horizontalOverflow`, `isMobile`).
 - Fixtures: `tests/fixtures/external/` (see its README). Use the real Fall 2026 / Spring 2027 data for catalog
   rules (reg_fors and the Staff instructor exist only in 202602) and the synthetic RMP roster (`cases.json`) for
   matching. `tests/fixtures/content/office-programs.json` indexes the 122 verified office programs.
