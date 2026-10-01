@@ -124,11 +124,21 @@ export async function plannedSections(
   );
 }
 
-function conflictWhen(conflict: ScheduleConflict): string {
-  const start = parseClock(conflict.start);
-  const end = parseClock(conflict.end);
-  const time = start !== null && end !== null ? ` ${clockLabel(start)}–${clockLabel(end)}` : "";
-  return `${DAY_NAMES[conflict.day].short}${time}`;
+/** "Mon, Wed, Fri 10:30a–11:20a" (days that share an overlap window are joined; windows by "; "). */
+export function conflictWhen(conflicts: readonly ScheduleConflict[]): string {
+  const windows = new Map<string, string[]>();
+  for (const conflict of conflicts) {
+    const start = parseClock(conflict.start);
+    const end = parseClock(conflict.end);
+    const time = start !== null && end !== null ? `${clockLabel(start)}–${clockLabel(end)}` : "";
+    const days = windows.get(time) ?? [];
+    const day = DAY_NAMES[conflict.day].short;
+    if (!days.includes(day)) days.push(day);
+    windows.set(time, days);
+  }
+  return [...windows]
+    .map(([time, days]) => `${days.join(", ")}${time ? ` ${time}` : ""}`)
+    .join("; ");
 }
 
 /** Conflicts of `section` with the planned sections of other courses (pairs that involve it). */
@@ -136,24 +146,24 @@ export function sectionConflicts(
   section: Section,
   planned: readonly PlannedSection[],
   ownCodes: ReadonlySet<string>,
-): { other: Section; conflict: ScheduleConflict }[] {
+): { other: Section; conflicts: ScheduleConflict[] }[] {
   const others = planned
     .map((entry) => entry.section)
     .filter((other): other is Section => other !== null)
     .filter((other) => !itemCodesOfSection(other).some((code) => ownCodes.has(code)));
   if (others.length === 0) return [];
   const conflicts = detectConflicts([section, ...others]);
-  const out: { other: Section; conflict: ScheduleConflict }[] = [];
-  const seen = new Set<string>();
+  const byOther = new Map<string, { other: Section; conflicts: ScheduleConflict[] }>();
   for (const conflict of conflicts) {
     if (conflict.a.crn !== section.crn && conflict.b.crn !== section.crn) continue;
     const otherCrn = conflict.a.crn === section.crn ? conflict.b.crn : conflict.a.crn;
     const other = others.find((candidate) => candidate.crn === otherCrn);
-    if (!other || seen.has(otherCrn)) continue;
-    seen.add(otherCrn);
-    out.push({ other, conflict });
+    if (!other) continue;
+    const entry = byOther.get(otherCrn) ?? { other, conflicts: [] };
+    entry.conflicts.push(conflict);
+    byOther.set(otherCrn, entry);
   }
-  return out;
+  return [...byOther.values()];
 }
 
 function itemCodesOfSection(section: Pick<Section, "courseCode" | "crossListings">): string[] {
@@ -232,7 +242,7 @@ export function previewWarnings(
         code: "time-conflict",
         message:
           candidates.length === 1
-            ? `${sectionLabel(clashing[0]!.section)} overlaps ${sectionLabel(first.other)} in your ${termLabel(term)} plan (${conflictWhen(first.conflict)}).`
+            ? `${sectionLabel(clashing[0]!.section)} overlaps ${sectionLabel(first.other)} in your ${termLabel(term)} plan (${conflictWhen(first.conflicts)}).`
             : `Every section of ${course.code} overlaps a class in your ${termLabel(term)} plan (${others.join(", ")}).`,
         termCode: term,
       });
@@ -241,7 +251,7 @@ export function previewWarnings(
         const first = entry.conflicts[0]!;
         out.push({
           code: "time-conflict",
-          message: `${sectionLabel(entry.section)} overlaps ${sectionLabel(first.other)} in your ${termLabel(term)} plan (${conflictWhen(first.conflict)}); another section fits.`,
+          message: `${sectionLabel(entry.section)} overlaps ${sectionLabel(first.other)} in your ${termLabel(term)} plan (${conflictWhen(first.conflicts)}); another section fits.`,
           termCode: term,
         });
       }

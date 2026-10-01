@@ -112,7 +112,8 @@ export default async function CoursesPage({
               className="text-base font-semibold text-fg"
               data-testid="results-count"
             >
-              {first}–{last} of {total} {total === 1 ? "course" : "courses"} in {termLabel(term)}
+              {pages > 1 ? `${first}–${last} of ` : null}
+              {total} {total === 1 ? "course" : "courses"} in {termLabel(term)}
             </h2>
             <p className="flex items-center gap-2 text-xs text-fg-2">
               Schedule data

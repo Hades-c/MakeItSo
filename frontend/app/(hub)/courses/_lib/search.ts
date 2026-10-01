@@ -24,7 +24,7 @@ import {
 import { requirementName } from "@/server/content/requirements";
 import { ApiError } from "@/server/http/errors";
 import { MissingFixtureError } from "@/server/http/fixtures";
-import { instructorName, primarySections, sectionTimes } from "./format";
+import { instructorName, primarySections, restrictionFlags, sectionTimes } from "./format";
 import {
   courseCodes,
   inPlanTerms,
@@ -55,6 +55,8 @@ export interface RowSection {
   instructors: string[];
   /** "Register as PHY 214 A" for a max-0 cross-listed listing. */
   registerAs: string | null;
+  /** Restriction flags ("First-years and sophomores only"). */
+  flags: string[];
 }
 
 export interface CourseRow {
@@ -133,6 +135,7 @@ export function courseRow(input: {
       times: sectionTimes(section),
       instructors: section.instructors.map(instructorName),
       registerAs: sibling ? `Register as ${sibling.courseCode} ${sibling.section}` : null,
+      flags: restrictionFlags(section),
     };
   });
   const codes = course ? courseCodes(course) : new Set([summary.code, ...summary.crossListings]);

@@ -96,6 +96,9 @@ export function CourseRow({
                   {section.times.join(" · ")}
                 </span>
                 <span className="text-fg-2">{section.instructors.join(", ")}</span>
+                {section.flags.length > 0 ? (
+                  <span className="text-xs text-fg-2">{section.flags.join(" · ")}</span>
+                ) : null}
                 {section.registerAs ? (
                   <span className="text-xs font-semibold text-fg-2">{section.registerAs}</span>
                 ) : null}

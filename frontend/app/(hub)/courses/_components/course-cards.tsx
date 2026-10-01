@@ -401,7 +401,11 @@ export function CourseWeekCard({
   week: CourseWeek;
   chosen: Section | null;
 }) {
-  const conflicts = week.view.chosenConflicts.length;
+  // Classes the chosen section overlaps (one per other section, however many days).
+  const conflicts = chosen
+    ? new Set(week.view.chosenConflicts.map((c) => (c.a.crn === chosen.crn ? c.b.crn : c.a.crn)))
+        .size
+    : 0;
   return (
     <section
       id="week"
