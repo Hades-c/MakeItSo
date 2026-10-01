@@ -158,8 +158,9 @@ test("today: a new student is asked to finish setting up", async ({ page, reques
 
   const response = await page.goto("/today");
   expect(response?.status()).toBe(200);
+  // Campus events stored by earlier specs may lead the sentence; the setup request always ends it.
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Finish setting up MakeItSo to see your classes, deadlines and campus events here.",
+    /(?:^Finish setting up MakeItSo to see your classes, deadlines and campus events here|; finish setting up MakeItSo to see your classes here)\.$/,
   );
   const nudge = page.getByTestId("onboarding-nudge");
   await expect(nudge.getByRole("link", { name: "Set up my plan" })).toHaveAttribute(
@@ -177,7 +178,7 @@ test("today: a new student is asked to finish setting up", async ({ page, reques
   expect(errors).toEqual([]);
 });
 
-test("today: signed out goes to sign in and back", async ({ page }) => {
+test("today: signed out goes to sign in (Today is the default landing page)", async ({ page }) => {
   await page.goto("/today");
-  await expect(page).toHaveURL(/\/login\?callbackUrl=%2Ftoday$/);
+  await expect(page).toHaveURL(/\/login$/);
 });

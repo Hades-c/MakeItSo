@@ -31,6 +31,8 @@ export interface TodayHeaderProps {
   selected: string;
   /** FEATURE_EVENTS: campus events count in the summary only while the events section is on. */
   eventsOn: boolean;
+  /** The student's first name for the greeting. */
+  firstName?: string;
 }
 
 const NO_FEEDS: Loaded<FeedItem[]> = { ok: true, value: [] };
@@ -51,6 +53,7 @@ export async function TodayHeader({
   stripDays,
   selected,
   eventsOn,
+  firstName,
 }: TodayHeaderProps) {
   const today = etDay(now);
   const range = feedRange(today, stripDays);
@@ -104,6 +107,7 @@ export async function TodayHeader({
       title={<span data-testid="day-summary">{summary.sentence}</span>}
       subtitle={
         <span data-testid="day-counts">
+          {firstName ? <span className="mr-1">Welcome, {firstName}.</span> : null}
           <b>{plural(summary.classesToday, "class", "classes")}</b> today ·{" "}
           <b>{plural(dueForYou, "deadline", "deadlines")}</b> in the next two weeks
         </span>

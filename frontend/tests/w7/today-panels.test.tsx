@@ -379,6 +379,20 @@ describe("the timeline", () => {
     );
   });
 
+  it("still asks for sections when campus events fill the view", async () => {
+    state.plan = ok(plan({ deadlines: [] }));
+    state.schedule = (day: string) => ok(schedule(day, { entries: [], empty: "no-sections" }));
+    await show(panel("2026-09-30", true));
+    expect(screen.getByTestId("day-timeline")).toBeInTheDocument();
+    expect(screen.getByTestId("timeline-empty")).toHaveTextContent(
+      "No Fall 2026 class sections in your plan yet.",
+    );
+    expect(screen.getByRole("link", { name: "Open my plan" })).toHaveAttribute(
+      "href",
+      "/plan?tab=four-year",
+    );
+  });
+
   it("lists sections without a meeting time", async () => {
     state.schedule = (day: string) =>
       ok(schedule(day, { tba: [{ crn: "10753", courseCode: "ANT 498", title: "Honors Thesis" }] }));

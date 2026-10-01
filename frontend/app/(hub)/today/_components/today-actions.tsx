@@ -58,7 +58,10 @@ export async function TodayActions({
             </div>
           </div>
           <Button asChild>
-            <Link href={routes.onboarding()}>Set up my plan</Link>
+            {/* No prefetch: the first-run flow is its own app section, loaded only when asked for. */}
+            <Link href={routes.onboarding()} prefetch={false}>
+              Set up my plan
+            </Link>
           </Button>
         </section>
       ) : null}

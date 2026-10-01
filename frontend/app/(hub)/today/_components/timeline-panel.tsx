@@ -124,6 +124,15 @@ export async function TimelinePanel({
       count={agenda.items.length > 0 ? windowLabel(agenda.startHour, agenda.endHour) : undefined}
       link={isToday ? undefined : { href: "/today", label: "Back to today" }}
     >
+      {agenda.items.length > 0 && schedule.value.empty === "no-sections" ? (
+        // Campus events or deadlines fill the view, but the student still needs to add their sections.
+        <p data-testid="timeline-empty" className="mb-2 text-sm text-fg-2">
+          {emptyMessage(schedule.value, isToday, termLabel)}{" "}
+          <Link href={routes.plan("four-year")} className={TEXT_LINK}>
+            Open my plan
+          </Link>
+        </p>
+      ) : null}
       {agenda.items.length > 0 ? (
         <DayTimeline
           {...(isToday ? { now } : {})}

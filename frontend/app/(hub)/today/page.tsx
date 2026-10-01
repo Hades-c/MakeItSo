@@ -47,6 +47,7 @@ export default async function TodayPage({
   const flags = loadFlags();
   const eventsOn = featureEnabled(flags, "events");
   const careersOn = featureEnabled(flags, "careers");
+  const firstName = user.name.trim().split(/\s+/)[0];
 
   return (
     <>
@@ -58,6 +59,7 @@ export default async function TodayPage({
           stripDays={days}
           selected={day}
           eventsOn={eventsOn}
+          {...(firstName ? { firstName } : {})}
         />
       </Suspense>
       <Suspense fallback={null}>
