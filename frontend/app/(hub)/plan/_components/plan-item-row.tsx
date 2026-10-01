@@ -22,14 +22,16 @@ import {
   STATUS_LABELS,
   STATUS_OPTIONS,
 } from "../_lib/labels";
+import { ConfirmButton } from "./confirm-button";
 import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
 /**
  * One course in the 4-year plan: code, title, credits, status and P/F in words, its warnings, and an "Edit"
  * panel (a button with aria-expanded, never hover-only) to change the status, elect or drop P/F, move it to
- * another term, plan a retake or remove it. A legacy-converted course the catalog could not confirm says
- * "Not found in the Davidson catalog — edit or remove".
+ * another term, plan a retake or remove it (after an in-page confirm). Any course the catalog could not confirm
+ * (converted from the legacy plan or entered by hand) says "Not found in the Davidson catalog — edit or remove":
+ * the plan view does not say where an unverified item came from once it is saved as v2.
  */
 
 export interface PlanItemRowProps {
@@ -41,8 +43,8 @@ export interface PlanItemRowProps {
   warnings: readonly PlanWarning[];
   /** "Already completed in Fall 2025 — plan a retake?" for a later planned copy. */
   retakeNote?: string | null;
-  /** The plan was converted from a legacy (v1) document. */
-  legacy?: boolean;
+  /** The element (a term heading, tabIndex -1) that gets focus once this course is removed. */
+  focusAfterRemove: string;
 }
 
 function termName(code: string): string {
@@ -55,7 +57,7 @@ export function PlanItemRow({
   retakeTerms,
   warnings,
   retakeNote,
-  legacy,
+  focusAfterRemove,
 }: PlanItemRowProps) {
   const id = React.useId();
   const [open, setOpen] = React.useState(false);
@@ -102,6 +104,11 @@ export function PlanItemRow({
     if (result.ok) {
       const extra = result.value.warnings.map((warning) => warning.message);
       setNotice([`Saved ${item.courseCode}.`, ...extra].join(" "));
+    } else {
+      // Not saved: show what is stored again, so the form agrees with the row and the server.
+      setStatus(item.status);
+      setPassFail(item.passFail);
+      setTerm(item.termCode ?? "");
     }
   };
 
@@ -110,8 +117,12 @@ export function PlanItemRow({
       () => callApi(planApi.removeItem, { params: { id: item.id } }),
       { fallback: `Could not remove ${item.courseCode}. Please try again.` },
     );
-    // The row leaves the page with the refresh: say it in a toast (announced, outside the row).
-    if (result.ok) toast.success(`Removed ${label} from your plan.`);
+    // The row leaves the page with the refresh: say it in a toast (announced, outside the row), and move focus
+    // to the term's heading so the keyboard user keeps their place.
+    if (result.ok) {
+      toast.success(`Removed ${label} from your plan.`);
+      document.getElementById(focusAfterRemove)?.focus();
+    }
   };
 
   const retake = async (event: React.FormEvent) => {
@@ -124,8 +135,9 @@ export function PlanItemRow({
             termCode: retakeTerm,
             courseCode: item.courseCode,
             status: "planned",
-            source: item.source === "ai-draft" ? "catalog" : item.source,
-            ...(item.unverified || item.source !== "catalog"
+            // A retake is a Davidson course: an AP, transfer or suggested course is retaken from the catalog.
+            source: item.source === "manual" ? "manual" : "catalog",
+            ...(item.unverified || item.source === "manual"
               ? { manualTitle: item.title || item.courseCode, manualCredits: item.credits }
               : {}),
           },
@@ -168,9 +180,7 @@ export function PlanItemRow({
           {item.unverified ? (
             <p className="mt-1 flex items-start gap-1.5 text-xs font-semibold text-fg">
               <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0 text-warning" />
-              {legacy || item.source === "catalog"
-                ? NOT_IN_CATALOG
-                : "Not in the Davidson catalog: entered by you"}
+              {NOT_IN_CATALOG}
             </p>
           ) : null}
           {retakeNote ? <p className="mt-1 text-xs text-fg">{retakeNote}</p> : null}
@@ -256,16 +266,15 @@ export function PlanItemRow({
             <Button type="submit" size="sm" disabled={action.busy}>
               Save changes <span className="sr-only">to {label}</span>
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
+            <ConfirmButton
+              question={`Remove ${label} from your plan?`}
+              confirmLabel="Yes, remove"
               disabled={action.busy}
-              onClick={() => void remove()}
+              onConfirm={() => void remove()}
             >
               <Trash2 aria-hidden />
               Remove <span className="sr-only">{label}</span>
-            </Button>
+            </ConfirmButton>
           </div>
         </form>
 

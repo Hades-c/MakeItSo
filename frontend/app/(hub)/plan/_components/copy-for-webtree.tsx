@@ -25,30 +25,45 @@ export function CopyForWebTree({
 }) {
   const id = React.useId();
   const [state, setState] = React.useState<"idle" | "copied" | "failed">("idle");
+  // Counts refusals, so a second refusal in a row selects the text again and is announced again.
+  const [failures, setFailures] = React.useState(0);
+  const [message, setMessage] = React.useState("");
   const [shown, setShown] = React.useState(false);
   const box = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => {
     if (state !== "copied") return;
-    const timer = window.setTimeout(() => setState("idle"), 2500);
+    const timer = window.setTimeout(() => {
+      setState("idle");
+      setMessage("");
+    }, 2500);
     return () => window.clearTimeout(timer);
   }, [state]);
 
   React.useEffect(() => {
-    if (state === "failed" && box.current) {
-      box.current.focus();
-      box.current.select();
-    }
-  }, [state]);
+    if (failures === 0 || !box.current) return;
+    box.current.focus();
+    box.current.select();
+    // Cleared in copy(), set here: the live region announces the sentence again on every refusal.
+    const frame = window.requestAnimationFrame(() =>
+      setMessage(
+        "Your browser didn’t allow copying. The text is selected below: copy it yourself (Ctrl+C or ⌘C).",
+      ),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [failures]);
 
   const copy = async () => {
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
       await navigator.clipboard.writeText(text);
       setState("copied");
+      setMessage("Copied. Paste it next to WebTree and enter each CRN there yourself.");
     } catch {
+      setMessage("");
       setState("failed");
       setShown(true);
+      setFailures((count) => count + 1);
     }
   };
 
@@ -64,7 +79,8 @@ export function CopyForWebTree({
         <Button
           type="button"
           variant="ghost"
-          aria-expanded={shown}
+          disabled={disabled}
+          aria-expanded={shown && !disabled}
           aria-controls={`${id}-text`}
           onClick={() => setShown((value) => !value)}
         >
@@ -75,13 +91,10 @@ export function CopyForWebTree({
         ) : null}
       </div>
       <p aria-live="polite" className="text-xs text-fg-2">
-        {state === "copied"
-          ? "Copied. Paste it next to WebTree and enter each CRN there yourself."
-          : state === "failed"
-            ? "Your browser didn’t allow copying. The text is selected below: copy it yourself (Ctrl+C or ⌘C)."
-            : null}
+        {message || null}
       </p>
-      <div id={`${id}-text`} hidden={!shown}>
+      {/* While a change is saving, the text is the old list: keep it out of reach until the new one arrives. */}
+      <div id={`${id}-text`} hidden={!shown || disabled}>
         <Label htmlFor={`${id}-box`} className="sr-only">
           WebTree preferences as text
         </Label>
@@ -89,7 +102,7 @@ export function CopyForWebTree({
           ref={box}
           id={`${id}-box`}
           readOnly
-          value={text}
+          value={disabled ? "" : text}
           rows={Math.min(14, Math.max(3, lines))}
           onFocus={(event) => event.currentTarget.select()}
           className={cn(controlClass, "px-3 py-2 font-mono leading-6 md:text-xs md:leading-5")}

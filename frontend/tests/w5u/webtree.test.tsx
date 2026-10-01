@@ -193,6 +193,8 @@ describe("WebTreeEditor", () => {
     render(<WebTreeEditor {...props()} />);
     await user.click(screen.getByRole("button", { name: "Make choice 1 (CSC 221 B)" }));
     await waitFor(() => expect(calls).toHaveLength(1));
+    // The pressed button left the page: focus is on the promoted choice's heading, not <body>.
+    expect(document.activeElement).toHaveAttribute("id", "choice-20136");
     expect(calls[0]!.body).toEqual({
       termCode: "202602",
       choices: [
@@ -200,12 +202,56 @@ describe("WebTreeEditor", () => {
         { rank: 2, crn: "20478", courseCode: "SPA 201", alternates: [] },
       ],
     });
+    // Removing asks first in the page; "Keep" changes nothing and returns focus.
     await user.click(screen.getByRole("button", { name: "Remove alternate CSC 221 A" }));
+    const ask = screen.getByRole("group", { name: "Remove alternate CSC 221 A?" });
+    expect(within(ask).getByRole("button", { name: "Keep" })).toHaveFocus();
+    await user.click(within(ask).getByRole("button", { name: "Keep" }));
+    expect(screen.getByRole("button", { name: "Remove alternate CSC 221 A" })).toHaveFocus();
+    expect(calls).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Remove alternate CSC 221 A" }));
+    await user.click(screen.getByRole("button", { name: "Yes, remove" }));
     await waitFor(() => expect(calls).toHaveLength(2));
     expect((calls[1]!.body as WebTreeList).choices[0]!.alternates).toEqual([]);
+    expect(document.activeElement).toHaveAttribute("id", "choice-20136");
+    // The last choice removed: focus goes to the one before it.
     await user.click(screen.getByRole("button", { name: "Remove SPA 201 B" }));
+    await user.click(screen.getByRole("button", { name: "Yes, remove" }));
     await waitFor(() => expect(calls).toHaveLength(3));
     expect((calls[2]!.body as WebTreeList).choices.map((c) => c.crn)).toEqual(["20136"]);
+    expect(document.activeElement).toHaveAttribute("id", "choice-20136");
+  });
+
+  it("removing the first choice focuses the next one; removing the only one focuses 'Add a course'", async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(saved(LIST), saved(LIST));
+    render(<WebTreeEditor {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Remove CSC 221 A" }));
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: "Remove CSC 221 A" })).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "Remove CSC 221 A" }));
+    await user.click(screen.getByRole("button", { name: "Yes, remove" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(document.activeElement).toHaveAttribute("id", "choice-20478");
+    await user.click(screen.getByRole("button", { name: "Remove SPA 201 B" }));
+    await user.click(screen.getByRole("button", { name: "Yes, remove" }));
+    await waitFor(() => expect(calls).toHaveLength(2));
+    expect(screen.getByRole("heading", { name: "Add a course" })).toHaveFocus();
+  });
+
+  it("an 'Add alternate' target follows its choice when the list is reordered", async () => {
+    const user = userEvent.setup();
+    stubFetch(saved(LIST), saved(LIST));
+    render(<WebTreeEditor {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Add alternate for SPA 201 B" }));
+    expect(screen.getByLabelText("Add as")).toHaveValue("2");
+    await user.click(screen.getByRole("button", { name: "Move up SPA 201 B" }));
+    // SPA 201 B is choice 1 now, and the alternate still goes to it.
+    expect(screen.getByLabelText("Add as")).toHaveValue("1");
+    await user.click(screen.getByRole("button", { name: "Remove SPA 201 B" }));
+    await user.click(screen.getByRole("button", { name: "Yes, remove" }));
+    // Its choice is gone: back to adding a new choice.
+    expect(screen.getByLabelText("Add as")).toHaveValue("new");
   });
 
   it("adds a section from a catalog search, as a choice or as an alternate", async () => {
@@ -423,9 +469,38 @@ describe("CopyForWebTree", () => {
     );
   });
 
-  it("waits while the list is saving", () => {
-    render(<CopyForWebTree text={TEXT} disabled disabledReason="Saving your changes…" />);
+  it("selects the text and says so again on a second refusal in a row", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<CopyForWebTree text={TEXT} />);
+    const box = screen.getByLabelText("WebTree preferences as text", { selector: "textarea" });
+    const copyButton = screen.getByRole("button", { name: "Copy for WebTree" });
+    await user.click(copyButton);
+    expect(await screen.findByText(/didn’t allow copying/)).toBeInTheDocument();
+    await user.click(copyButton);
+    expect(copyButton).not.toHaveFocus();
+    await waitFor(() => expect(box).toHaveFocus());
+    expect((box as HTMLTextAreaElement).selectionEnd).toBe(TEXT.length);
+    expect((box as HTMLTextAreaElement).selectionStart).toBe(0);
+    expect(await screen.findByText(/didn’t allow copying/)).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits while the list is saving, and never shows the old text meanwhile", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<CopyForWebTree text={TEXT} />);
+    await user.click(screen.getByRole("button", { name: "Show the text" }));
+    const box = screen.getByLabelText("WebTree preferences as text", { selector: "textarea" });
+    expect(box).toBeVisible();
+    rerender(<CopyForWebTree text={TEXT} disabled disabledReason="Saving your changes…" />);
     expect(screen.getByRole("button", { name: "Copy for WebTree" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /the text/ })).toBeDisabled();
     expect(screen.getByText("Saving your changes…")).toBeInTheDocument();
+    expect(box).not.toBeVisible();
+    expect(box).toHaveValue("");
+    rerender(<CopyForWebTree text={`${TEXT}\n2. CRN 20478`} />);
+    expect(box).toBeVisible();
+    expect(box).toHaveValue(`${TEXT}\n2. CRN 20478`);
   });
 });

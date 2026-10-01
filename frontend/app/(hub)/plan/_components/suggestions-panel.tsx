@@ -28,6 +28,7 @@ import {
   orderDrafts,
   type SuggestionRow,
 } from "../_lib/suggestions";
+import { ConfirmButton } from "./confirm-button";
 import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
@@ -51,15 +52,31 @@ function DraftCard({
   draft,
   items,
   timeZone,
+  onClosed,
 }: {
   draft: PlanDraft;
   items: readonly PlanItem[];
   timeZone: string;
+  /** The draft leaves the page: the panel moves focus somewhere that stays. */
+  onClosed: () => void;
 }) {
   const [rejected, setRejected] = React.useState<ReadonlySet<string>>(new Set());
   const [busyKey, setBusyKey] = React.useState<string | null>(null);
   const [added, setAdded] = React.useState<ReadonlySet<string>>(new Set());
   const action = usePlanAction();
+  const card = React.useRef<HTMLElement>(null);
+  // The row whose control was just used: its next control ("In your plan", "Undo", "Add to plan") gets focus,
+  // since the pressed button leaves the page.
+  const focusRow = React.useRef<string | null>(null);
+  React.useLayoutEffect(() => {
+    const key = focusRow.current;
+    if (!key || !card.current) return;
+    focusRow.current = null;
+    const target = [...card.current.querySelectorAll<HTMLElement>("[data-row-focus]")].find(
+      (element) => element.dataset.rowFocus === key,
+    );
+    target?.focus();
+  }, [added, rejected]);
   const terms = draftTerms(draft, items, rejected).map((term) => ({
     ...term,
     rows: term.rows.map((row) =>
@@ -83,6 +100,7 @@ function DraftCard({
         // Already in the plan for that term: it counts as accepted.
         onError: (error) => {
           if (!isConflict(error)) return false;
+          focusRow.current = row.key;
           setAdded((previous) => new Set(previous).add(row.key));
           return true;
         },
@@ -90,6 +108,7 @@ function DraftCard({
     );
     setBusyKey(null);
     if (result.ok) {
+      focusRow.current = row.key;
       setAdded((previous) => new Set(previous).add(row.key));
       toast.success(`Added ${row.courseCode} to ${termLabel(row.termCode)}.`);
       for (const warning of result.value.warnings) toast.warning(warning.message);
@@ -101,12 +120,15 @@ function DraftCard({
       () => callApi(planApi.updateDraft, { params: { id: draft.id }, body: { status } }),
       { fallback: "Could not close these suggestions. Please try again." },
     );
-    if (result.ok)
+    if (result.ok) {
       toast.success(status === "accepted" ? "Suggestions closed." : "Suggestions dismissed.");
+      onClosed();
+    }
   };
 
   return (
     <article
+      ref={card}
       aria-labelledby={`draft-${draft.id}`}
       className="rounded-xl border border-line bg-surface p-4 shadow-card md:px-5"
       data-testid="suggestion-draft"
@@ -156,7 +178,11 @@ function DraftCard({
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       {row.state === "in-plan" ? (
-                        <span className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-success md:min-h-0">
+                        <span
+                          tabIndex={-1}
+                          data-row-focus={row.key}
+                          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-success md:min-h-0"
+                        >
                           <Check aria-hidden className="size-4" /> In your plan
                         </span>
                       ) : row.state === "rejected" ? (
@@ -166,13 +192,15 @@ function DraftCard({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() =>
+                            data-row-focus={row.key}
+                            onClick={() => {
+                              focusRow.current = row.key;
                               setRejected((previous) => {
                                 const next = new Set(previous);
                                 next.delete(row.key);
                                 return next;
-                              })
-                            }
+                              });
+                            }}
                           >
                             <Undo2 aria-hidden />
                             Undo <span className="sr-only">for {row.courseCode}</span>
@@ -183,6 +211,7 @@ function DraftCard({
                           <Button
                             type="button"
                             size="sm"
+                            data-row-focus={row.key}
                             disabled={busyKey !== null}
                             onClick={() => void accept(row)}
                           >
@@ -204,9 +233,10 @@ function DraftCard({
                             variant="ghost"
                             size="sm"
                             disabled={busyKey !== null}
-                            onClick={() =>
-                              setRejected((previous) => new Set(previous).add(row.key))
-                            }
+                            onClick={() => {
+                              focusRow.current = row.key;
+                              setRejected((previous) => new Set(previous).add(row.key));
+                            }}
                           >
                             <X aria-hidden />
                             Not for me <span className="sr-only">: {row.courseCode}</span>
@@ -240,15 +270,14 @@ function DraftCard({
             {pendingCount} {pendingCount === 1 ? "course" : "courses"} to decide on.
           </p>
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
+        <ConfirmButton
+          question="Dismiss all of these suggestions? They cannot be brought back."
+          confirmLabel="Yes, dismiss all"
           disabled={action.busy}
-          onClick={() => void close("dismissed")}
+          onConfirm={() => void close("dismissed")}
         >
           Dismiss all
-        </Button>
+        </ConfirmButton>
       </div>
     </article>
   );
@@ -264,6 +293,7 @@ export function SuggestionsPanel({
   const router = useRouter();
   const [, startTransition] = React.useTransition();
   const id = React.useId();
+  const termSelect = React.useRef<HTMLSelectElement>(null);
   const [term, setTerm] = React.useState(
     targetTerms.includes(registration) ? registration : (targetTerms[0] ?? registration),
   );
@@ -303,6 +333,7 @@ export function SuggestionsPanel({
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <Label htmlFor={`${id}-term`}>Suggest courses for</Label>
           <select
+            ref={termSelect}
             id={`${id}-term`}
             className={cn(controlClass, "h-11 px-3 md:h-10")}
             value={term}
@@ -346,7 +377,13 @@ export function SuggestionsPanel({
         />
       ) : (
         pending.map((draft) => (
-          <DraftCard key={draft.id} draft={draft} items={items} timeZone={timeZone} />
+          <DraftCard
+            key={draft.id}
+            draft={draft}
+            items={items}
+            timeZone={timeZone}
+            onClosed={() => termSelect.current?.focus()}
+          />
         ))
       )}
     </div>

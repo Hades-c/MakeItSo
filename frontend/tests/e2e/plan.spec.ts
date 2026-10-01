@@ -63,11 +63,21 @@ test("the WebTree list: search, alternates, conflicts, keyboard reorder, copy an
   );
   await expect(page.getByRole("heading", { name: "Spring 2027 WebTree list" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "No Spring 2027 choices yet" })).toBeVisible();
+  // Every tab is on screen, phones included (a 2×2 grid below 640px): none hides past the edge.
+  const viewport = page.viewportSize()!;
+  for (const name of ["Next semester", "4-year plan", "Suggestions", "Summer"]) {
+    const box = (await page
+      .getByRole("navigation", { name: "Plan views" })
+      .getByRole("link", { name })
+      .boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  }
 
   // Registration dates come from the academic calendar, each tagged REGISTRAR.
   const dates = page.getByTestId("registration-deadlines");
   await expect(dates.getByRole("link", { name: /WebTree Open: Submit Spring 2027/ })).toBeVisible();
-  await expect(dates).toContainText("Mon, Oct 12, 7:00a – Tue, Nov 3");
+  await expect(dates).toContainText("Mon, Oct 12, 7:00a – Tue, Nov 3, 5:00p");
   await expect(dates).toContainText("In 12 days");
   await expect(dates).toContainText("Tue, Nov 3, 5:00p");
   await expect(dates).toContainText("Fri, Nov 6, 5:00p");
@@ -115,7 +125,11 @@ test("the WebTree list: search, alternates, conflicts, keyboard reorder, copy an
   await expect(choices.first()).toContainText("SPA 201");
 
   // Promote the alternate: CSC 221 B becomes choice 2, CSC 221 A its alternate. The conflict is gone.
-  await page.getByRole("button", { name: "Make choice 2 (CSC 221 B)" }).click();
+  const promote = page.getByRole("button", { name: "Make choice 2 (CSC 221 B)" });
+  await promote.focus();
+  await page.keyboard.press("Enter");
+  // Focus moves to the promoted choice's heading (the pressed button is gone), not to <body>.
+  await expect(page.locator("#choice-20136")).toBeFocused();
   await expect(page.getByTestId("webtree-status")).toHaveText(/Saved\./);
   await expect(choices.nth(1).getByRole("heading", { level: 3 })).toContainText("CSC 221 B");
   await expect(conflicts).toContainText("alternate for choice 2, CSC 221 A");
@@ -152,12 +166,34 @@ test("the WebTree list: search, alternates, conflicts, keyboard reorder, copy an
   await checkPage(page, "print view");
   await page.emulateMedia({ media: "print" });
   await expect(page.getByRole("button", { name: "Print" })).toBeHidden();
+  await expect(table).toBeVisible();
+  // On paper only the print view: nothing else in the page (header, tabs, the verify-email banner) shows.
+  const strays = await page.evaluate(() =>
+    [...document.querySelectorAll("main *")]
+      .filter(
+        (el) =>
+          !el.closest("[data-plan-print]") &&
+          !el.querySelector("[data-plan-print]") &&
+          (el as HTMLElement).offsetParent !== null &&
+          el.getBoundingClientRect().height > 0,
+      )
+      .map((el) => `${el.tagName}: ${(el.textContent ?? "").slice(0, 40)}`),
+  );
+  expect(strays).toEqual([]);
   await page.emulateMedia({ media: "screen" });
 
   // Remove a choice.
   await page.getByRole("link", { name: "Back to the list" }).click();
   await page.getByRole("button", { name: "Remove SPA 201 B" }).click();
+  // Asks first, in the page; Escape keeps it.
+  await expect(page.getByRole("button", { name: "Keep" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Remove SPA 201 B" })).toBeFocused();
+  await expect(choices).toHaveCount(2);
+  await page.getByRole("button", { name: "Remove SPA 201 B" }).click();
+  await page.getByRole("button", { name: "Yes, remove" }).click();
   await expect(choices).toHaveCount(1);
+  await expect(page.locator("#choice-20136")).toBeFocused();
   await expect(page.getByTestId("webtree-status")).toHaveText(/Saved\./);
 
   expect(errors).toEqual([]);
@@ -246,7 +282,9 @@ test("the 4-year plan: map, statuses, P/F, move, manual entries, requirements", 
   // Remove the AP entry.
   await before.getByRole("button", { name: "Edit MAT 113" }).click();
   await before.getByRole("button", { name: "Remove MAT 113" }).click();
+  await before.getByRole("button", { name: "Yes, remove" }).click();
   await expect(page.locator('[data-testid="plan-term"][data-term="none"]')).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Term by term" })).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -280,6 +318,7 @@ test("suggestions: explained while AI is unavailable, then accepted per course",
     .getByRole("button", { name: /^Add to plan/ })
     .click();
   await expect(rows.first()).toHaveAttribute("data-state", "in-plan");
+  await expect(rows.first().locator("[data-row-focus]")).toBeFocused();
   await expect(rows.first()).toContainText("In your plan");
   if (count > 1) {
     await rows
@@ -298,6 +337,7 @@ test("suggestions: explained while AI is unavailable, then accepted per course",
   expect(plan.plan.items.some((item) => item.source === "ai-draft")).toBe(true);
 
   await page.getByRole("button", { name: "Dismiss all" }).click();
+  await page.getByRole("button", { name: "Yes, dismiss all" }).click();
   await expect(page.getByRole("heading", { name: "No suggestions yet" })).toBeVisible();
 });
 
@@ -317,12 +357,16 @@ test("summer plans: add, edit, remove", async ({ page, request }) => {
   await checkPage(page, "summer");
 
   await rows.getByRole("button", { name: "Edit Research with Dr. Lee" }).click();
+  await expect(rows.getByLabel("Summer")).toBeFocused();
   await rows.getByLabel("Organization (optional)").fill("Davidson Biology");
   await rows.getByRole("button", { name: "Save Research with Dr. Lee" }).click();
   await expect(rows).toContainText("Davidson Biology");
+  await expect(rows.getByRole("button", { name: "Edit Research with Dr. Lee" })).toBeFocused();
 
   await rows.getByRole("button", { name: "Remove Research with Dr. Lee" }).click();
+  await rows.getByRole("button", { name: "Yes, remove" }).click();
   await expect(page.getByRole("heading", { name: "No summer plans yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add a summer plan" })).toBeFocused();
 });
 
 test("signed out, /plan goes to sign-in and comes back", async ({ page }) => {
@@ -387,6 +431,7 @@ test("a legacy (hackathon) plan is shown converted, with unverified courses flag
   // The first change writes v2: remove the invented course.
   await fake.getByRole("button", { name: /^Edit FAKE 999/ }).click();
   await fake.getByRole("button", { name: /^Remove FAKE 999/ }).click();
+  await fake.getByRole("button", { name: "Yes, remove" }).click();
   await expect(page.locator('[data-testid="plan-item"][data-unverified="true"]')).toHaveCount(0);
   const plan = (await (await page.request.get("/api/plan", { headers: SAME_ORIGIN })).json()) as {
     plan: { legacy: boolean };

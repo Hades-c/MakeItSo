@@ -64,14 +64,16 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState("");
-  const [target, setTarget] = React.useState<AddTarget>("new");
+  // The choice an alternate goes to, by CRN (a rank would point at another course after a reorder).
+  const [targetCrn, setTargetCrn] = React.useState<string | null>(null);
   const [added, setAdded] = React.useState<
     Record<string, SectionTimes & { instructors?: string[] }>
   >({});
   const queued = React.useRef<WebTreeList | null>(null);
   const inFlight = React.useRef(false);
   const serverList = React.useRef(props.list);
-  const focusAfter = React.useRef<string | null>(null);
+  /** After the next list change, focus: the moved choice's Move control, or an element by id (a heading). */
+  const focusAfter = React.useRef<{ move: string } | { id: string } | null>(null);
   const root = React.useRef<HTMLDivElement>(null);
   const searchBox = React.useRef<HTMLInputElement>(null);
 
@@ -82,9 +84,14 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
   }, [props.list]);
 
   React.useLayoutEffect(() => {
-    const key = focusAfter.current;
-    if (!key || !root.current) return;
+    const request = focusAfter.current;
+    if (!request || !root.current) return;
     focusAfter.current = null;
+    if ("id" in request) {
+      root.current.querySelector<HTMLElement>(`[id="${request.id}"]`)?.focus();
+      return;
+    }
+    const key = request.move;
     const [crn, direction] = key.split("-");
     const wanted = root.current.querySelector<HTMLButtonElement>(`[data-focus="${key}"]`);
     const other = root.current.querySelector<HTMLButtonElement>(
@@ -118,13 +125,17 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
     startTransition(() => router.refresh());
   }, [router]);
 
-  const commit = (result: EditResult, message: string, focusKey?: string): boolean => {
+  const commit = (
+    result: EditResult,
+    message: string,
+    focus?: { move: string } | { id: string } | ((list: WebTreeList) => { id: string }),
+  ): boolean => {
     if (!result.ok) {
       setError(result.reason);
       return false;
     }
     setError(null);
-    focusAfter.current = focusKey ?? null;
+    focusAfter.current = typeof focus === "function" ? focus(result.list) : (focus ?? null);
     setList(result.list);
     queued.current = result.list;
     setStatus(`${message} Saving…`);
@@ -134,6 +145,10 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
 
   const sections = { ...added, ...props.sections };
   const choices = normalizeRanks(list.choices);
+  const target: AddTarget =
+    (targetCrn && choices.find((choice) => choice.crn === targetCrn)?.rank) || "new";
+  const setTarget = (next: AddTarget) =>
+    setTargetCrn(next === "new" ? null : (choices.find((c) => c.rank === next)?.crn ?? null));
   const labelOf = (crn: string, fallback: string) => {
     const section = sections[crn];
     return section ? `${section.courseCode} ${section.section}` : fallback;
@@ -215,14 +230,23 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
                   commit(
                     moveChoice(list, choice.rank, direction),
                     `Moved ${label} to choice ${direction === "up" ? choice.rank - 1 : choice.rank + 1}.`,
-                    `${choice.crn}-${direction}`,
+                    { move: `${choice.crn}-${direction}` },
                   )
                 }
                 onRemove={() =>
-                  commit(removeChoice(list, choice.rank), `Removed ${label} from the list.`)
+                  commit(
+                    removeChoice(list, choice.rank),
+                    `Removed ${label} from the list.`,
+                    (next) => {
+                      // The choice that took its place, else the one before, else "Add a course".
+                      const after =
+                        next.choices[choice.rank - 1] ?? next.choices[choice.rank - 2] ?? null;
+                      return { id: after ? `choice-${after.crn}` : "webtree-add-title" };
+                    },
+                  )
                 }
                 onAddAlternate={() => {
-                  setTarget(choice.rank);
+                  setTargetCrn(choice.crn);
                   searchBox.current?.focus();
                   setStatus(`Adding an alternate for choice ${choice.rank}, ${label}.`);
                 }}
@@ -230,15 +254,19 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
                   const section = sections[crn];
                   const code =
                     section?.courseCode ?? props.details[crn]?.courseCode ?? choice.courseCode;
-                  commit(
+                  const promoted = commit(
                     promoteAlternate(list, choice.rank, crn, code),
                     `${labelOf(crn, code)} is now choice ${choice.rank}; ${label} became its alternate.`,
+                    { id: `choice-${crn}` },
                   );
+                  // An alternate being added to this choice follows it to its new CRN.
+                  if (promoted && targetCrn === choice.crn) setTargetCrn(crn);
                 }}
                 onRemoveAlternate={(crn) =>
                   commit(
                     removeAlternate(list, choice.rank, crn),
                     `Removed alternate ${labelOf(crn, crn)}.`,
+                    { id: `choice-${choice.crn}` },
                   )
                 }
               />
@@ -251,7 +279,11 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
         aria-labelledby="webtree-add-title"
         className="rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 print:hidden"
       >
-        <h3 id="webtree-add-title" className="text-lg font-strong tracking-title text-fg">
+        <h3
+          id="webtree-add-title"
+          tabIndex={-1}
+          className="text-lg font-strong tracking-title text-fg"
+        >
           Add a course
         </h3>
         <div className="mt-3">

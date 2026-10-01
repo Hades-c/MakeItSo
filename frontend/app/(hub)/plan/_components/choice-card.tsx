@@ -9,6 +9,7 @@ import type { PlanWarning, RequirementSlot } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
 import { SEAT_PRESSURE_TEXT, seatPressure, slotNote, type SlotFiller } from "../_lib/choice";
 import { meetingsText, type SectionTimes } from "../_lib/week";
+import { ConfirmButton } from "./confirm-button";
 
 /**
  * One ranked WebTree choice with its alternates: the section, its meetings and seats (seat pressure), the
@@ -236,6 +237,7 @@ export function ChoiceCard({
         <div className="min-w-0 flex-1">
           <h3
             id={headingId}
+            tabIndex={-1}
             className="flex flex-wrap items-baseline gap-x-2 text-base font-strong text-fg"
           >
             <span className="sr-only">Choice {choice.rank}: </span>
@@ -293,10 +295,15 @@ export function ChoiceCard({
           <Plus aria-hidden />
           Add alternate <span className="sr-only">for {label}</span>
         </Button>
-        <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={onRemove}>
+        <ConfirmButton
+          question={`Remove ${label} from the list?`}
+          confirmLabel="Yes, remove"
+          disabled={disabled}
+          onConfirm={onRemove}
+        >
           <Trash2 aria-hidden />
           Remove <span className="sr-only">{label}</span>
-        </Button>
+        </ConfirmButton>
       </div>
 
       {choice.alternates.length > 0 ? (
@@ -349,16 +356,15 @@ export function ChoiceCard({
                     >
                       Make choice {choice.rank} <span className="sr-only">({alt.label})</span>
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
+                    <ConfirmButton
+                      question={`Remove alternate ${alt.label}?`}
+                      confirmLabel="Yes, remove"
                       disabled={disabled}
-                      onClick={() => onRemoveAlternate(crn)}
+                      onConfirm={() => onRemoveAlternate(crn)}
                     >
                       <Trash2 aria-hidden />
                       Remove alternate <span className="sr-only">{alt.label}</span>
-                    </Button>
+                    </ConfirmButton>
                   </div>
                 </li>
               );

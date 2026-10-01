@@ -10,7 +10,7 @@ const loaders = vi.hoisted(() => ({
   loadSummer: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock("@/server/auth/session", () => ({
   requireUser: vi.fn(async () => ({
     id: "650000000000000000000001",

@@ -15,6 +15,7 @@ import { CreateSummerActivityBodySchema, planApi } from "@/lib/api/plan";
 import { termLabel } from "@/lib/term";
 import type { SummerActivity } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
+import { ConfirmButton } from "./confirm-button";
 import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
@@ -74,6 +75,7 @@ function ActivityForm({
   onSubmit,
   onCancel,
   busy,
+  focusOnMount,
 }: {
   summerTerms: readonly string[];
   initial: Draft;
@@ -81,8 +83,13 @@ function ActivityForm({
   onSubmit: (body: Omit<SummerActivity, "id">) => Promise<boolean>;
   onCancel?: () => void;
   busy: boolean;
+  /** Focus the first field when the form opens (the edit form replaces the row's Edit button). */
+  focusOnMount?: boolean;
 }) {
   const id = React.useId();
+  React.useEffect(() => {
+    if (focusOnMount) document.getElementById(`${id}-termCode`)?.focus();
+  }, [focusOnMount, id]);
   const [draft, setDraft] = React.useState<Draft>(initial);
   const [problem, setProblem] = React.useState<{ field: keyof Draft; message: string } | null>(
     null,
@@ -188,6 +195,19 @@ function ActivityRow({
 }) {
   const [editing, setEditing] = React.useState(false);
   const action = usePlanAction();
+  const editButton = React.useRef<HTMLButtonElement>(null);
+  const backToEdit = React.useRef(false);
+  // Leaving the edit form (Cancel or a save) puts focus back on this row's Edit button.
+  React.useEffect(() => {
+    if (!editing && backToEdit.current) {
+      backToEdit.current = false;
+      editButton.current?.focus();
+    }
+  }, [editing]);
+  const stopEditing = () => {
+    backToEdit.current = true;
+    setEditing(false);
+  };
   const terms = summerTerms.includes(activity.termCode)
     ? summerTerms
     : [activity.termCode, ...summerTerms];
@@ -206,13 +226,14 @@ function ActivityRow({
           }}
           submitLabel={`Save ${activity.title}`}
           busy={action.busy}
-          onCancel={() => setEditing(false)}
+          focusOnMount
+          onCancel={stopEditing}
           onSubmit={async (body) => {
             const result = await action.run(
               () => callApi(planApi.updateSummer, { params: { id: activity.id }, body }),
               { fallback: "Could not save that. Please try again." },
             );
-            if (result.ok) setEditing(false);
+            if (result.ok) stopEditing();
             return result.ok;
           }}
         />
@@ -245,26 +266,35 @@ function ActivityRow({
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(true)}>
+          <Button
+            ref={editButton}
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setEditing(true)}
+          >
             <Pencil aria-hidden />
             Edit <span className="sr-only">{activity.title}</span>
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
+          <ConfirmButton
+            question={`Remove ${activity.title}?`}
+            confirmLabel="Yes, remove"
             disabled={action.busy}
-            onClick={async () => {
+            onConfirm={async () => {
               const result = await action.run(
                 () => callApi(planApi.removeSummer, { params: { id: activity.id } }),
                 { fallback: "Could not remove that. Please try again." },
               );
-              if (result.ok) toast.success(`Removed ${activity.title}.`);
+              if (result.ok) {
+                toast.success(`Removed ${activity.title}.`);
+                // The row leaves with the refresh: focus the "Add a summer plan" heading, which stays.
+                document.getElementById("summer-add-title")?.focus();
+              }
             }}
           >
             <Trash2 aria-hidden />
             Remove <span className="sr-only">{activity.title}</span>
-          </Button>
+          </ConfirmButton>
         </div>
       </div>
       <Notice tone="error" className="mt-2" role="alert">
@@ -303,7 +333,11 @@ export function SummerEditor({
         aria-labelledby="summer-add-title"
         className="rounded-xl border border-line bg-surface p-4 shadow-card md:px-5"
       >
-        <h2 id="summer-add-title" className="text-lg font-strong tracking-title text-fg">
+        <h2
+          id="summer-add-title"
+          tabIndex={-1}
+          className="text-lg font-strong tracking-title text-fg"
+        >
           Add a summer plan
         </h2>
         {summerTerms.length === 0 ? (

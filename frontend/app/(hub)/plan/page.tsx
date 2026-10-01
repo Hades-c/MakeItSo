@@ -73,10 +73,11 @@ export default async function PlanPage({
           subtitle="Next semester, your four-year plan, suggestions and summers, in one place."
         />
       </div>
-      <PlanTabs active={params.tab} />
-      <section aria-label={TAB_LABELS[params.tab]} data-testid={`plan-tab-${params.tab}`}>
-        {body}
-      </section>
+      <PlanTabs active={params.tab}>
+        <section aria-label={TAB_LABELS[params.tab]} data-testid={`plan-tab-${params.tab}`}>
+          {body}
+        </section>
+      </PlanTabs>
     </>
   );
 }

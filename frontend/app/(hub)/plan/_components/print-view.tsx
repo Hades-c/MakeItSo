@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { SOURCES } from "@/lib/sources";
-import { describeDeadline } from "../_lib/deadlines";
+import { describeDeadlines } from "../_lib/deadlines";
 import type { Loaded, NextSemesterData } from "../_lib/load";
 import { planHref } from "../_lib/tabs";
 import { meetingsText } from "../_lib/week";
@@ -119,11 +119,20 @@ export function WebTreePrintView({
                     <td className="py-2 text-fg-2">
                       {choice.alternates.length === 0
                         ? "—"
-                        : choice.alternates.map((crn) => (
-                            <span key={crn} className="block">
-                              <span className="font-mono">{crn}</span> {sectionText(crn, "")}
-                            </span>
-                          ))}
+                        : choice.alternates.map((crn) => {
+                            const alt = details.get(crn)?.registerAs;
+                            return (
+                              <span key={crn} className="block">
+                                <span className="font-mono">{alt ? alt.crn : crn}</span>{" "}
+                                {sectionText(crn, "")}
+                                {alt ? (
+                                  <span className="block text-xs">
+                                    Register as {alt.courseCode} {alt.section}
+                                  </span>
+                                ) : null}
+                              </span>
+                            );
+                          })}
                     </td>
                   </tr>
                 );
@@ -139,14 +148,11 @@ export function WebTreePrintView({
             Registration dates ({SOURCES.registrar.tag})
           </h3>
           <ul className="mt-2 flex flex-col gap-1 text-sm">
-            {data.deadlines.map((deadline) => {
-              const row = describeDeadline(deadline, now, timeZone);
-              return (
-                <li key={row.id}>
-                  <span className="font-semibold">{row.when}</span> · {row.title}
-                </li>
-              );
-            })}
+            {describeDeadlines(data.deadlines, now, timeZone).map((row) => (
+              <li key={row.id}>
+                <span className="font-semibold">{row.when}</span> · {row.title}
+              </li>
+            ))}
           </ul>
         </div>
       ) : null}

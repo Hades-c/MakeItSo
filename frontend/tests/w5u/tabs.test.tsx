@@ -12,7 +12,8 @@ import type { FourYearData, NextSemesterData } from "@/app/(hub)/plan/_lib/load"
 import { planItem, SLOT_LABELS, stubFetch } from "./dom-helpers";
 
 const refresh = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), warning: vi.fn() } }));
 
 // Radix Switch and Checkbox measure themselves (jsdom has no ResizeObserver).
@@ -44,6 +45,22 @@ describe("PlanTabs", () => {
       "page",
     );
     expect(within(nav).getByRole("link", { name: "Summer" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("opens another tab in a client transition (the busy state lasts until the view arrives)", async () => {
+    const user = userEvent.setup();
+    render(
+      <PlanTabs active="next">
+        <p>Next semester view</p>
+      </PlanTabs>,
+    );
+    expect(screen.getByTestId("plan-tab-body")).not.toHaveAttribute("aria-busy");
+    await user.click(screen.getByRole("link", { name: "Summer" }));
+    expect(push).toHaveBeenCalledWith("/plan?tab=summer");
+    // The current tab is not reopened.
+    await user.click(screen.getByRole("link", { name: "Next semester" }));
+    expect(push).toHaveBeenCalledTimes(1);
+    push.mockClear();
   });
 });
 
@@ -172,7 +189,11 @@ describe("Next semester tab", () => {
     expect(row).toHaveTextContent("20135");
     expect(row).toHaveTextContent("CSC 221 AData Structures");
     expect(row).toHaveTextContent("MW 10:30a–11:20a");
-    expect(row).toHaveTextContent("20136 CSC 221 B");
+    // A cross-listed alternate with no seats of its own prints its "Register as" CRN, like the copy text.
+    const alternates = within(row!).getAllByRole("cell")[4]!;
+    expect(alternates).toHaveTextContent("20999 CSC 221 B");
+    expect(alternates).toHaveTextContent("Register as ENV 221 B");
+    expect(alternates).not.toHaveTextContent("20136");
     expect(screen.getByText(/YOUR PLAN/)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Registration dates (REGISTRAR)" }),
@@ -241,8 +262,10 @@ describe("4-year plan tab", () => {
     );
     expect(screen.getByTestId("plan-map")).toBeInTheDocument();
     expect(screen.getByTestId("credit-summary")).toHaveTextContent(
-      "2 of 32 credits done, 4 with courses in progress and planned. Includes 1 credit of AP/transfer credit",
+      "2 of 32 credits done, 4 with courses in progress and planned. These totals include the AP/transfer credit that counts, which is not shown on the map.",
     );
+    // The page never computes its own AP/transfer figure (the plan service caps and de-duplicates it).
+    expect(screen.getByTestId("credit-summary")).not.toHaveTextContent(/\d+ credits? of AP/);
     expect(screen.getByText("Unofficial — verify in Degree Works.")).toBeInTheDocument();
     const tracker = screen.getByRole("list", { name: "Requirements tracker" });
     expect(within(tracker).getAllByRole("listitem")[0]).toHaveAttribute("data-status", "done");
@@ -326,8 +349,104 @@ describe("4-year plan tab", () => {
       body: { termCode: "202602", courseCode: "WRI 101", status: "planned", source: "catalog" },
     });
     await user.click(within(row).getByRole("button", { name: "Remove WRI 101, Fall 2025" }));
+    // Asks first, in the page.
+    const ask = within(row).getByRole("group", {
+      name: "Remove WRI 101, Fall 2025 from your plan?",
+    });
+    expect(within(ask).getByRole("button", { name: "Keep" })).toHaveFocus();
+    expect(calls).toHaveLength(1);
+    await user.click(within(ask).getByRole("button", { name: "Yes, remove" }));
     await waitFor(() => expect(calls).toHaveLength(2));
     expect(calls[1]).toMatchObject({ method: "DELETE", url: `/api/plan/items/${wri.id}` });
+    // The row leaves with the refresh: focus is on its term's heading.
+    await waitFor(() => expect(document.activeElement).toHaveAttribute("id", "term-202501"));
+  });
+
+  it("removing the only AP course focuses 'Term by term' (its group goes away)", async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch([204, null]);
+    render(<FourYearTab loaded={{ ok: true, data: fourYear() }} />);
+    const row = screen
+      .getAllByTestId("plan-item")
+      .find((el) => el.textContent?.includes("MAT 113"))!;
+    await user.click(within(row).getByRole("button", { name: "Edit MAT 113" }));
+    await user.click(within(row).getByRole("button", { name: "Remove MAT 113" }));
+    await user.click(within(row).getByRole("button", { name: "Yes, remove" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Term by term" })).toHaveFocus(),
+    );
+  });
+
+  it("a retake of AP credit is a planned Davidson catalog course", async () => {
+    const user = userEvent.setup();
+    const data = fourYear();
+    const ap = data.plan.items.find((i) => i.courseCode === "MAT 113")!;
+    const calls = stubFetch([
+      201,
+      { item: { ...ap, id: "e".repeat(24), termCode: "202602", source: "catalog" }, warnings: [] },
+    ]);
+    render(<FourYearTab loaded={{ ok: true, data }} />);
+    const row = screen
+      .getAllByTestId("plan-item")
+      .find((el) => el.textContent?.includes("MAT 113"))!;
+    await user.click(within(row).getByRole("button", { name: "Edit MAT 113" }));
+    await user.click(within(row).getByRole("button", { name: "Plan retake of MAT 113" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]!.body).toEqual({
+      termCode: "202602",
+      courseCode: "MAT 113",
+      status: "planned",
+      source: "catalog",
+    });
+  });
+
+  it("a rejected edit puts the form back to what is stored", async () => {
+    const user = userEvent.setup();
+    const data = fourYear({ plan: { ...fourYear().plan, legacy: false } });
+    const calls = stubFetch([
+      400,
+      { error: { code: "validation", message: "That term is not allowed." } },
+    ]);
+    render(<FourYearTab loaded={{ ok: true, data }} />);
+    const row = screen
+      .getAllByTestId("plan-item")
+      .find((el) => el.textContent?.includes("ART 101"))!;
+    await user.click(within(row).getByRole("button", { name: "Edit ART 101, Spring 2027" }));
+    await user.selectOptions(within(row).getByLabelText("Status"), "completed");
+    await user.click(within(row).getByRole("switch", { name: "Pass/Fail" }));
+    await user.selectOptions(within(row).getByLabelText("Term", { exact: true }), "202701");
+    await user.click(
+      within(row).getByRole("button", { name: "Save changes to ART 101, Spring 2027" }),
+    );
+    await waitFor(() => expect(calls).toHaveLength(1));
+    await waitFor(() => expect(within(row).getByLabelText("Status")).toHaveValue("planned"));
+    expect(within(row).getByRole("switch", { name: "Pass/Fail" })).toBeChecked();
+    expect(within(row).getByLabelText("Term", { exact: true })).toHaveValue("202602");
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("an unverified course asks to be edited or removed even after the plan is saved as v2", () => {
+    const data = fourYear({ plan: { ...fourYear().plan, legacy: false } });
+    render(<FourYearTab loaded={{ ok: true, data }} />);
+    const fake = screen
+      .getAllByTestId("plan-item")
+      .find((el) => el.textContent?.includes("FAKE 999"))!;
+    expect(fake).toHaveTextContent("Not found in the Davidson catalog — edit or remove");
+    expect(fake).not.toHaveTextContent("entered by you");
+    const manual = planItem({ courseCode: "XYZ 100", source: "manual", unverified: true });
+    render(
+      <FourYearTab
+        loaded={{
+          ok: true,
+          data: fourYear({ plan: { ...data.plan, items: [...data.plan.items, manual] } }),
+        }}
+      />,
+    );
+    const row = screen
+      .getAllByTestId("plan-item")
+      .find((el) => el.textContent?.includes("XYZ 100"))!;
+    expect(row).toHaveTextContent("Not found in the Davidson catalog — edit or remove");
   });
 
   it("saves the language toggle and the PE checklist", async () => {
@@ -483,6 +602,8 @@ describe("Suggestions tab", () => {
     const rows = () => screen.getAllByTestId("suggestion");
     await user.click(within(rows()[0]!).getByRole("button", { name: /^Add to plan/ }));
     await waitFor(() => expect(rows()[0]).toHaveAttribute("data-state", "in-plan"));
+    // The pressed button left the page: focus is on the row's new "In your plan" status.
+    expect(within(rows()[0]!).getByText("In your plan").closest("[data-row-focus]")).toHaveFocus();
     expect(calls[0]).toEqual({
       url: "/api/plan/items",
       method: "POST",
@@ -490,8 +611,10 @@ describe("Suggestions tab", () => {
     });
     await user.click(within(rows()[2]!).getByRole("button", { name: /^Not for me/ }));
     expect(rows()[2]).toHaveAttribute("data-state", "rejected");
+    expect(within(rows()[2]!).getByRole("button", { name: /^Undo/ })).toHaveFocus();
     await user.click(within(rows()[2]!).getByRole("button", { name: /^Undo/ }));
     expect(rows()[2]).toHaveAttribute("data-state", "pending");
+    expect(within(rows()[2]!).getByRole("button", { name: /^Add to plan/ })).toHaveFocus();
     // A 409 means it is already there: accepted, no error.
     await user.click(within(rows()[2]!).getByRole("button", { name: /^Add to plan/ }));
     await waitFor(() => expect(rows()[2]).toHaveAttribute("data-state", "in-plan"));
@@ -503,6 +626,25 @@ describe("Suggestions tab", () => {
       method: "PATCH",
       body: { status: "accepted" },
     });
+    await waitFor(() => expect(screen.getByLabelText("Suggest courses for")).toHaveFocus());
+  });
+
+  it("'Dismiss all' asks first", async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch([200, { draft: { ...DRAFT, status: "dismissed" }, added: [] }]);
+    render(<SuggestionsTab loaded={suggestions(null)} timeZone={TZ} />);
+    await user.click(screen.getByRole("button", { name: "Dismiss all" }));
+    const ask = screen.getByRole("group", {
+      name: "Dismiss all of these suggestions? They cannot be brought back.",
+    });
+    expect(within(ask).getByRole("button", { name: "Keep" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: "Dismiss all" })).toHaveFocus();
+    expect(calls).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "Dismiss all" }));
+    await user.click(screen.getByRole("button", { name: "Yes, dismiss all" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]).toMatchObject({ method: "PATCH", body: { status: "dismissed" } });
   });
 
   it("asks for new suggestions and shows an AI failure in words", async () => {
@@ -578,6 +720,11 @@ describe("Summer", () => {
 
     await user.click(within(row).getByRole("button", { name: "Edit Lab job" }));
     const editing = screen.getAllByTestId("summer-activity")[0]!;
+    // Opening the editor focuses its first field; Cancel goes back to the row's Edit button.
+    expect(within(editing).getByLabelText("Summer")).toHaveFocus();
+    await user.click(within(editing).getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Edit Lab job" })).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "Edit Lab job" }));
     await user.type(within(editing).getByLabelText("Organization (optional)"), "Biology");
     await user.click(within(editing).getByRole("button", { name: "Save Lab job" }));
     await waitFor(() => expect(calls).toHaveLength(2));
@@ -586,9 +733,22 @@ describe("Summer", () => {
       method: "PATCH",
       body: { termCode: "202603", title: "Lab job", kind: "job", organization: "Biology" },
     });
+    // Saved: back on the Edit button.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Lab job" })).toHaveFocus());
 
+    // Remove asks first: Escape keeps it, "Yes, remove" removes it.
     await user.click(await screen.findByRole("button", { name: "Remove Lab job" }));
+    const confirm = screen.getByRole("group", { name: "Remove Lab job?" });
+    expect(within(confirm).getByRole("button", { name: "Keep" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: "Remove Lab job" })).toHaveFocus();
+    expect(calls).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "Remove Lab job" }));
+    await user.click(screen.getByRole("button", { name: "Yes, remove" }));
     await waitFor(() => expect(calls).toHaveLength(3));
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Add a summer plan" })).toHaveFocus(),
+    );
     expect(calls[2]).toMatchObject({ method: "DELETE", url: `/api/plan/summer/${ACTIVITY.id}` });
   });
 

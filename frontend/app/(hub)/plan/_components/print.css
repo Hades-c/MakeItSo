@@ -11,6 +11,13 @@
   body:has([data-plan-print]) [data-print-hide] {
     display: none !important;
   }
+  /* Anything else in the page (the "Verify your Davidson email" banner, the page header, the tabs): only the
+     print view and the elements that contain it are printed. */
+  body:has([data-plan-print])
+    main
+    *:not([data-plan-print]):not(:has([data-plan-print])):not([data-plan-print] *) {
+    display: none !important;
+  }
   body:has([data-plan-print]) div:has(> main) {
     display: block !important;
   }

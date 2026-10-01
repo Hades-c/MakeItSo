@@ -4,7 +4,7 @@ import { RequirementSlots } from "@/components/domain/requirement-slots";
 import { ErrorState } from "@/components/ui/error-state";
 import { SectionCard } from "@/components/ui/section-card";
 import { SourceTagList } from "@/components/ui/source-tag";
-import { termLabel } from "@/lib/term";
+import { isSummer, termLabel } from "@/lib/term";
 import type { PlanItem } from "@/lib/types/plan";
 import {
   canRetake,
@@ -39,10 +39,24 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
   const groups = groupByTerm(plan.items, planTerms, current, registration);
   const tiles = requirementTiles(progress, plan.items, slotLabels);
   const general = generalWarnings(progress.warnings);
-  const preCredits = groups.beforeDavidson
-    .filter((item) => item.status === "completed")
-    .reduce((sum, item) => sum + item.credits, 0);
+  // Whether any AP/transfer credit is listed: the counted amount (capped, de-duplicated) is the plan service's
+  // business and is already inside creditsDone, so no number is computed here.
+  const hasPreCredit = plan.items.some(
+    (item) => item.source === "ap" || item.source === "transfer",
+  );
   const unverified = plan.items.filter((item) => item.unverified).length;
+
+  // Where focus goes when a course is removed: its term's heading, or "Term by term" when the group goes away
+  // with it ("Before Davidson", summers and terms outside the plan only show while they have courses).
+  const headingFor = (item: PlanItem): string => {
+    if (item.termCode === null) {
+      return groups.beforeDavidson.length > 1 ? "term-before" : "plan-terms-title";
+    }
+    const code = item.termCode;
+    const kept = planTerms.includes(code) && !isSummer(code);
+    const count = plan.items.filter((other) => other.termCode === code).length;
+    return kept || count > 1 ? `term-${code}` : "plan-terms-title";
+  };
 
   const rowFor = (item: PlanItem) => {
     const earlier = earlierCompletion(item, plan.items);
@@ -54,7 +68,7 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
         retakeTerms={canRetake(item) ? retakeTerms(item, plan.items, planTerms, registration) : []}
         warnings={warningsFor(progress.warnings, item.id)}
         retakeNote={earlier ? retakeNote(earlier) : null}
-        legacy={plan.legacy}
+        focusAfterRemove={headingFor(item)}
       />
     );
   };
@@ -64,6 +78,7 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
       <section aria-labelledby={`term-${group.termCode}`}>
         <h3
           id={`term-${group.termCode}`}
+          tabIndex={-1}
           className="flex flex-wrap items-baseline gap-x-2 text-base font-strong text-fg"
         >
           {group.label}
@@ -113,8 +128,8 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
           <p className="mt-3 text-sm text-fg-2" data-testid="credit-summary">
             Unofficial count: {formatNumber(progress.creditsDone)} of {progress.required} credits
             done, {formatNumber(progress.creditsPlanned)} with courses in progress and planned.
-            {preCredits > 0
-              ? ` Includes ${creditsText(preCredits)} of AP/transfer credit, not shown on the map.`
+            {hasPreCredit
+              ? " These totals include the AP/transfer credit that counts, which is not shown on the map."
               : ""}
           </p>
           <SourceTagList
@@ -160,14 +175,18 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
       ) : null}
 
       <section aria-labelledby="plan-terms-title">
-        <h2 id="plan-terms-title" className="text-lg font-strong tracking-title text-fg">
+        <h2
+          id="plan-terms-title"
+          tabIndex={-1}
+          className="text-lg font-strong tracking-title text-fg"
+        >
           Term by term
         </h2>
         <ol className="mt-3 flex flex-col gap-5">
           {groups.beforeDavidson.length > 0 ? (
             <li data-testid="plan-term" data-term="none">
               <section aria-labelledby="term-before">
-                <h3 id="term-before" className="text-base font-strong text-fg">
+                <h3 id="term-before" tabIndex={-1} className="text-base font-strong text-fg">
                   Before Davidson (AP and transfer credit)
                 </h3>
                 <ul className="mt-2 flex flex-col gap-2">{groups.beforeDavidson.map(rowFor)}</ul>
