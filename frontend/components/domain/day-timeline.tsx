@@ -61,6 +61,8 @@ export interface DayTimelineProps {
 
 /** Blocks of at least this many minutes show their detail line (instructor, organiser). */
 const DETAIL_MIN_MINUTES = 60;
+/** On phones, class blocks at least this long (on screen) also show the room on a line of its own. */
+const ROOM_LINE_MIN_MINUTES = 70;
 /** Blocks shorter than this (on screen) get a one-line layout. */
 const TWO_LINE_MIN_MINUTES = 40;
 
@@ -418,25 +420,48 @@ function TimelineBlock({
       </span>
     );
   } else if (isClass) {
-    // Code and room on the first line, the title below it with the "in 1 h 18 m" note (Lakeside block): the
-    // room never gives way, a long title does.
+    // Wide containers: code and room on the first line, the title below it with the "in 1 h 18 m" note (Lakeside
+    // block): the room never gives way, a long title does.
+    // Phones (container < 28rem): the code and title come first and the title may wrap onto a second line; the
+    // room gets its own line only when the block is tall enough for it (Lakeside home-390 drops it).
     const where = [item.location, edge].filter(Boolean).join(" · ");
+    const roomFits = visibleMinutes >= ROOM_LINE_MIN_MINUTES;
     body = (
-      <span aria-hidden className="flex min-w-0 flex-col">
-        <span className="flex min-w-0 items-baseline justify-between gap-3">
-          <span className="shrink-0">{code}</span>
-          {where ? (
-            <span className="min-w-0 truncate font-mono text-xs leading-4 text-fg-2">{where}</span>
+      <>
+        <span aria-hidden className="hidden min-w-0 flex-col @min-[28rem]:flex">
+          <span className="flex min-w-0 items-baseline justify-between gap-3">
+            <span className="shrink-0">{code}</span>
+            {where ? (
+              <span className="min-w-0 truncate font-mono text-xs leading-4 text-fg-2">
+                {where}
+              </span>
+            ) : null}
+          </span>
+          <span className="flex min-w-0 items-baseline justify-between gap-3">
+            {title}
+            {rel}
+          </span>
+          {item.detail && visibleMinutes >= DETAIL_MIN_MINUTES ? (
+            <span className="mt-0.5 truncate text-xs text-fg-2 md:text-sm">{item.detail}</span>
           ) : null}
         </span>
-        <span className="flex min-w-0 items-baseline justify-between gap-3">
-          {title}
-          {rel}
+        <span aria-hidden className="flex min-w-0 flex-col @min-[28rem]:hidden" data-layout="phone">
+          <span className="flex min-w-0 items-start justify-between gap-2">
+            <span className="line-clamp-2 min-w-0 text-sm leading-tight font-strong break-words text-fg">
+              {item.code ? (
+                <span className={cn("mr-1.5 font-mono text-xs font-semibold", colors?.text)}>
+                  {item.code}
+                </span>
+              ) : null}
+              {item.title}
+            </span>
+            {rel}
+          </span>
+          {where && roomFits ? (
+            <span className="mt-0.5 truncate font-mono text-xs leading-4 text-fg-2">{where}</span>
+          ) : null}
         </span>
-        {item.detail && visibleMinutes >= DETAIL_MIN_MINUTES ? (
-          <span className="mt-0.5 truncate text-xs text-fg-2 md:text-sm">{item.detail}</span>
-        ) : null}
-      </span>
+      </>
     );
   } else {
     body = (
@@ -447,14 +472,19 @@ function TimelineBlock({
         </span>
         <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
           {tag}
+          {/* A long location (WildcatSync's rain plans) ends in an ellipsis, not cut mid-line by the block. */}
           {meta ? (
-            <span aria-hidden className="font-mono text-xs leading-4 text-fg-2">
+            <span
+              aria-hidden
+              className="line-clamp-2 min-w-0 font-mono text-xs leading-4 break-words text-fg-2"
+              data-testid="timeline-event-meta"
+            >
               {meta}
             </span>
           ) : null}
         </span>
         {item.detail && visibleMinutes >= DETAIL_MIN_MINUTES ? (
-          <span aria-hidden className="mt-0.5 truncate text-xs text-fg-2 md:text-sm">
+          <span aria-hidden className="mt-0.5 line-clamp-2 text-xs text-fg-2 md:text-sm">
             {item.detail}
           </span>
         ) : null}

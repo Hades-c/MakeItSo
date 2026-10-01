@@ -296,6 +296,59 @@ describe("DayTimeline", () => {
     expect(items[0]).toHaveAttribute("data-source", "course-schedule");
   });
 
+  it("on phones, a class block leads with the code and a title that may wrap; the room shows only when it fits", () => {
+    render(
+      <DayTimeline
+        now={NOW}
+        timeZone="America/New_York"
+        startHour={9}
+        endHour={16}
+        items={WEDNESDAY}
+        label="Schedule for Wednesday, September 30"
+      />,
+    );
+    const phone = screen
+      .getAllByRole("listitem")
+      .map((li) => li.querySelector("[data-layout=phone]"))
+      .filter((el): el is HTMLElement => el !== null);
+    expect(phone).toHaveLength(3);
+    // 50 minutes: code + title (two lines allowed, with an ellipsis), no room line.
+    const eco = phone[1]!;
+    expect(eco).toHaveClass("@min-[28rem]:hidden");
+    const title = within(eco).getByText("Economics of Migration", { exact: false });
+    expect(title).toHaveClass("line-clamp-2");
+    expect(title).not.toHaveClass("truncate");
+    expect(title).toHaveTextContent("ECO 232 AEconomics of Migration");
+    expect(eco).not.toHaveTextContent("Watson 243");
+    // 75 minutes: the room gets its own line.
+    expect(phone[2]).toHaveTextContent("Watson 247");
+  });
+
+  it("clamps a long event location to two lines with an ellipsis instead of cutting it mid-line", () => {
+    render(
+      <DayTimeline
+        now={NOW}
+        timeZone="America/New_York"
+        startHour={9}
+        endHour={16}
+        items={[
+          {
+            id: "neuro",
+            kind: "event",
+            title: "Fall 2026 Neuro Night",
+            start: "13:30",
+            end: "15:30",
+            location:
+              "Mauzé Family Terrace behind the Wall Academic Center (Cold Weather or Rain Location: Third floor in the Atrium Lounge of the Wall Academic Center)",
+            source: "wildcatsync",
+          },
+        ]}
+        label="Schedule"
+      />,
+    );
+    expect(screen.getByTestId("timeline-event-meta")).toHaveClass("line-clamp-2");
+  });
+
   it("uses the Davidson zone for now, whatever the server's zone", () => {
     render(
       <DayTimeline
