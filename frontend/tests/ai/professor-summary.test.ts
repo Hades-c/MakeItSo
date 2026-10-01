@@ -243,6 +243,53 @@ describe("with RMP_SUMMARIES_ENABLED on", () => {
     ).rejects.toThrow("a bug");
   });
 
+  it("stops on a request the API rejects and remembers no API error", async () => {
+    await teacher("Katy", "Williams", 111, 12);
+    const other = (await getCourse("202602", "CSC 121"))!.sections[0]!.instructors[0]!;
+    await teacher(other.first, other.last, 222, 9);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    setMockAiScenario("bad_request");
+    const fetchReviews = vi.fn(async () => reviews(6));
+    const result = await runProfessorSummaryJob({ fetchReviews });
+    expect(result).toMatchObject({ profiles: 2, stoppedEarly: "error", generated: 0, failed: 1 });
+    // The second profile was not tried: every call would fail the same way.
+    expect(mockAiRequests()).toHaveLength(1);
+    expect(await AiCache.countDocuments()).toBe(0);
+
+    // A transient error is not remembered either, and the run goes on to the next profile.
+    setMockAiScenario("timeout", { times: 1 });
+    const flaky = await runProfessorSummaryJob({ fetchReviews });
+    expect(flaky).toMatchObject({ stoppedEarly: null, generated: 1, failed: 1 });
+    expect(await AiCache.countDocuments({ status: "invalid" })).toBe(0);
+    expect(await AiCache.countDocuments({ status: "ok" })).toBe(1);
+  });
+
+  it("a hidden summary stays hidden past its 7 days: the weekly job never regenerates it", async () => {
+    await teacher("Katy", "Williams", 111, 12);
+    await signIn();
+    const fetchReviews = vi.fn(async () => reviews(6));
+    await runProfessorSummaryJob({ fetchReviews });
+    const res = await ask();
+    const body = ProfessorSummaryResultSchema.parse(await bodyOf(res));
+    if (body.kind !== "ok") throw new Error("expected ok");
+    for (let i = 0; i < 3; i++) {
+      const reporter = await insertStudent({ email: `hider-${i}@davidson.edu` });
+      await reportIt(await sessionFor(reporter), body.data.provenance.inputHash);
+    }
+    const before = await AiCache.findOne({ key: "rmp:111" }).lean();
+    expect(before!.hidden).toBe(true);
+
+    vi.stubEnv("FIXTURES_NOW", "2026-10-20T12:00:00-04:00");
+    const job = await runProfessorSummaryJob({ fetchReviews });
+    expect(job).toMatchObject({ generated: 0, fresh: 1 });
+    expect(fetchReviews).toHaveBeenCalledTimes(1);
+    const hidden = await ask();
+    expect(hidden.status).toBe(503);
+    expect((await bodyOf(hidden)).message).toMatch(/hidden pending review/);
+    const after = await AiCache.findOne({ key: "rmp:111" }).lean();
+    expect(after?.provenance?.generatedAt).toEqual(before?.provenance?.generatedAt);
+  });
+
   it("stops at the time budget", async () => {
     await teacher("Katy", "Williams", 111, 12);
     expect(
@@ -269,7 +316,81 @@ describe("cleanProfessorSummary", () => {
       ),
     ).toEqual({
       summary: "Reviewers say the professor explains clearly; the professor is patient. See",
-      themes: ["the professor's drawings", "Patience"],
+      themes: ["The professor's drawings", "Patience"],
+    });
+  });
+
+  it("matches the instructor's name case-sensitively: short name parts only with a title or the full name", () => {
+    const short = { names: ["Mei", "An"], reviews: [] as string[] };
+    expect(
+      cleanProfessorSummary(
+        {
+          summary:
+            "Reviewers often mention an engaging class. Dr. An explains ideas slowly, and Mei An answers email quickly.",
+          themes: ["An engaging style", "Mei's office hours"],
+        },
+        short,
+      ),
+    ).toEqual({
+      summary:
+        "Reviewers often mention an engaging class. The professor explains ideas slowly, and the professor answers email quickly.",
+      themes: ["An engaging style", "The professor's office hours"],
+    });
+  });
+
+  it("is invalid when it names someone else with a title", () => {
+    expect(
+      cleanProfessorSummary(
+        {
+          summary:
+            "Reviewers say the class is well organized. Several suggest taking Professor Smith instead.",
+          themes: [],
+        },
+        context,
+      ),
+    ).toBeNull();
+    expect(
+      cleanProfessorSummary(
+        { summary: "Reviewers say lectures are clear and organized.", themes: ["Ask Dr. Jones"] },
+        context,
+      ),
+    ).toBeNull();
+    // "…the professor. Students…" is not a title.
+    expect(
+      cleanProfessorSummary(
+        {
+          summary: "Reviewers praise Williams. Students say lectures are clear and well organized.",
+          themes: [],
+        },
+        context,
+      )?.summary,
+    ).toBe("Reviewers praise the professor. Students say lectures are clear and well organized.");
+  });
+
+  it("drops sentences and themes that name people the reviews name (a TA, a student)", () => {
+    const withPeople = {
+      names: ["Ada", "Lovelace"],
+      reviews: [
+        "Dr. Lovelace is great and her TA Jordan Whitfield runs helpful review sessions.",
+        "My roommate Priya took it with me and we both loved the proofs.",
+      ],
+    };
+    expect(
+      cleanProfessorSummary(
+        {
+          summary:
+            "Students say Dr. Lovelace and her TA Jordan Whitfield explain proofs patiently in office hours. Reviewers often mention clear, patient explanations of proofs.",
+          themes: [
+            "Jordan Whitfield runs the review sessions",
+            "Studying with Priya",
+            "Patient explanations",
+          ],
+        },
+        withPeople,
+      ),
+    ).toEqual({
+      summary: "Reviewers often mention clear, patient explanations of proofs.",
+      themes: ["Patient explanations"],
     });
   });
 

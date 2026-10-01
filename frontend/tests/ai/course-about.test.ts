@@ -16,10 +16,21 @@ import AiCache from "@/models/AiCache";
 import AiUsage from "@/models/AiUsage";
 import RateLimit from "@/models/RateLimit";
 import { AI_ROUTE_RATE_LIMIT, DAILY_GENERATION_QUOTA } from "@/server/ai/config";
-import { NO_DESCRIPTION_MESSAGE } from "@/server/ai/features/course-about";
+import {
+  cleanCourseAbout,
+  NO_DESCRIPTION_MESSAGE,
+  REMEMBERED_INVALID_MESSAGE,
+  REMEMBERED_REFUSAL_MESSAGE,
+} from "@/server/ai/features/course-about";
 import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
 import { SYSTEM } from "@/server/ai/prompts/course-about";
-import { consumeGenerationQuota, quotaKey, usageSubject } from "@/server/ai/usage";
+import {
+  consumeGenerationQuota,
+  quotaKey,
+  quotaSubject,
+  tokensUsedToday,
+  usageSubject,
+} from "@/server/ai/usage";
 import { isDefinedRoute } from "@/server/http";
 
 /** POST /api/ai/course-about through the mock provider and the real fixture catalog (PLAN §6.1 W6 feature 1). */
@@ -222,6 +233,41 @@ describe("generation and the shared cache", () => {
     expect(JSON.stringify(linked.data)).not.toMatch(/https?:|www\.|@|example\.(?:org|com)/);
   });
 
+  it("drops model-written prerequisites, other courses, difficulty and workload (official wording excepted)", () => {
+    const cleaned = cleanCourseAbout(
+      {
+        summary:
+          "Students must complete CSC 121 or get permission of the instructor before enrolling. This is a challenging, demanding course with a heavy reading load. It studies how light behaves in optical systems.",
+        goodFor: [
+          "students who have already taken MAT 150",
+          "students ready for an intensive, hard class",
+          "want a background in calculus",
+          "enjoy building optical instruments",
+        ],
+        topics: ["Light and optics", "Fast-paced labs", "CSC 221 review", "Lenses"],
+      },
+      {
+        text: "Optics. An introduction to how light behaves in lenses and optical instruments.",
+        codes: ["PHY 230"],
+      },
+    );
+    expect(cleaned).toEqual({
+      summary: "It studies how light behaves in optical systems.",
+      goodFor: ["enjoy building optical instruments"],
+      topics: ["Light and optics", "Lenses"],
+    });
+    // Its own code (and cross-listings) may be named; nothing is left → null.
+    expect(
+      cleanCourseAbout(
+        { summary: "PHY 230 surveys optics.", goodFor: [], topics: [] },
+        { codes: ["PHY 230"] },
+      )?.summary,
+    ).toBe("PHY 230 surveys optics.");
+    expect(
+      cleanCourseAbout({ summary: "It requires MAT 150.", goodFor: [], topics: [] }),
+    ).toBeNull();
+  });
+
   it("reports a fallback-served answer and keeps its model in the provenance", async () => {
     await signIn();
     setMockAiScenario("fallback", { times: 1 });
@@ -236,7 +282,7 @@ describe("generation and the shared cache", () => {
 });
 
 describe("failures", () => {
-  it("refused (422) and invalid (502) are remembered for 24 h: no model call until then", async () => {
+  it("refused (422) and invalid (502) answers are remembered for 24 h: no model call until then", async () => {
     await signIn();
     setMockAiScenario("refusal", { times: 1 });
     const refused = await post(CSC_221);
@@ -244,6 +290,8 @@ describe("failures", () => {
     expect((await bodyOf(refused)).kind).toBe("refused");
     const again = await post(CSC_221);
     expect(again.status).toBe(422);
+    // A remembered failure does not ask the student to retry now.
+    expect(await bodyOf(again)).toEqual({ kind: "refused", message: REMEMBERED_REFUSAL_MESSAGE });
     expect(mockAiRequests()).toHaveLength(1);
     vi.stubEnv("FIXTURES_NOW", "2026-10-01T13:00:00-04:00");
     expect((await post(CSC_221)).status).toBe(200);
@@ -254,8 +302,43 @@ describe("failures", () => {
     const invalid = await post({ termCode: "202602", courseCode: "CSC 121" });
     expect(invalid.status).toBe(502);
     expect((await bodyOf(invalid)).kind).toBe("invalid");
-    expect((await post({ termCode: "202602", courseCode: "CSC 121" })).status).toBe(502);
+    const remembered = await post({ termCode: "202602", courseCode: "CSC 121" });
+    expect(remembered.status).toBe(502);
+    expect(await bodyOf(remembered)).toEqual({
+      kind: "invalid",
+      message: REMEMBERED_INVALID_MESSAGE,
+    });
     expect(mockAiRequests()).toHaveLength(3);
+  });
+
+  it("API errors are never remembered: a rejected request (400/422), a bad key or a busy API leave no entry", async () => {
+    const user = await signIn();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (const scenario of ["bad_request", "auth", "server_error", "rate_limit"] as const) {
+      setMockAiScenario(scenario, { times: 1 });
+      const res = await post(CSC_221);
+      expect(res.status, scenario).not.toBe(200);
+      expect(await AiCache.countDocuments(), scenario).toBe(0);
+    }
+    // The API works again: the very next view generates.
+    const ok = await post(CSC_221);
+    expect(ok.status).toBe(200);
+    expect((await bodyOf(ok)).kind).toBe("ok");
+    expect(mockAiRequests()).toHaveLength(5);
+    // Only the call that answered used one of the student's generations; the failed ones were given back.
+    const [counter] = await RateLimit.find({
+      key: quotaKey("ai-generations", await quotaSubject(user.id), "2026-09-30"),
+    }).lean();
+    expect(counter?.count).toBe(1);
+  });
+
+  it("a timeout is not remembered and is charged to the budget as an estimate", async () => {
+    await signIn();
+    setMockAiScenario("timeout", { times: 1 });
+    expect((await post(CSC_221)).status).toBe(504);
+    expect(await AiCache.countDocuments()).toBe(0);
+    // Request size + max_tokens (3,000) for each of the two attempts the SDK may have made.
+    expect(await tokensUsedToday()).toBeGreaterThan(6_000);
   });
 
   it("timeout (504), truncated (502) and busy (503) are not cached", async () => {
@@ -283,7 +366,7 @@ describe("quota and budget", () => {
     await post(CSC_221);
     await post(CSC_221);
     const [counter] = await RateLimit.find({
-      key: quotaKey("ai-generations", user.id, "2026-09-30"),
+      key: quotaKey("ai-generations", await quotaSubject(user.id), "2026-09-30"),
     }).lean();
     expect(counter?.count).toBe(1);
   });

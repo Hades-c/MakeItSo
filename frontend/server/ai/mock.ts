@@ -225,9 +225,13 @@ function str(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+/** Sentences a well-behaved model leaves out of an About panel: other courses and prerequisite talk. */
+const OFF_LIMITS = /\b[A-Z]{2,4}\s?\d{3}[A-Z]?\b|pre-?req|permission|taken\b/i;
+
 function firstSentences(text: string, count: number): string {
   return text
     .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => !OFF_LIMITS.test(sentence))
     .slice(0, count)
     .join(" ")
     .trim();

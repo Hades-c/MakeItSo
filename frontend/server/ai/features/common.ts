@@ -11,46 +11,64 @@ import { aiFailure, type AiFailure, type AiOk } from "@/lib/types/ai";
 import type { ReqCode } from "@/lib/types/catalog";
 import { normalizeCourseCode } from "@/lib/types/common";
 import { generate, type GenerateOutcome, type GenerateRequest } from "@/server/ai/client";
-import { RETRY_DEADLINE_MS } from "@/server/ai/config";
+import { AI_MIN_RETRY_MS } from "@/server/ai/config";
 import type { GroundingResult } from "@/server/ai/grounding";
 import {
   budgetFailure,
-  consumeGenerationQuota,
-  consumeRegenerationQuota,
+  consumeQuotas,
   recordUsage,
+  refundQuotas,
+  type QuotaReceipt,
 } from "@/server/ai/usage";
 import { listDrafts } from "@/server/plan";
 
 /**
- * Shared steps of the generating features: spending (budget → regeneration quota → generation quota), one model
+ * Shared steps of the generating features: spending (budget → generation quota → regeneration quota), one model
  * call with its usage recorded, the grounding retry, and plan helpers.
+ *
+ * Time: each feature takes a deadline when the request starts (client.ts requestDeadline) and passes it to every
+ * call, so the calls of one request (the grounding retry included) are over before the route's maxDuration.
  */
 
 /**
- * Before a cache-miss generation for a student: the budget (checked first, so a paused day burns no quota),
- * then, for an explicit regeneration of an existing personal item, the regeneration quota, then the
- * generation quota. Returns the failure to answer with, or null.
+ * Before a cache-miss generation for a student: the budget (checked first, so a paused day burns no quota), then
+ * the quotas (usage.ts consumeQuotas: the generation, and for an explicit regeneration of the current personal
+ * answer one of the 3 regenerations). Returns the failure to answer with, or the receipt to refund when the call
+ * produces nothing.
  */
 export async function spendOnGeneration(
   userId: string,
   { regeneration }: { regeneration: boolean },
-): Promise<AiFailure | null> {
+): Promise<{ failure: AiFailure } | { receipt: QuotaReceipt }> {
   const budget = await budgetFailure();
-  if (budget) return budget;
-  if (regeneration) {
-    const regen = await consumeRegenerationQuota(userId);
-    if (regen) return regen;
+  if (budget) return { failure: budget };
+  return consumeQuotas(userId, { regeneration });
+}
+
+/** Give the quotas back when no model answer came of the generation (the API failed before answering). */
+export async function refundIfNothingAnswered(
+  receipt: QuotaReceipt | null,
+  outcome: { kind: string; origin?: string },
+): Promise<void> {
+  if (receipt && outcome.kind !== "ok" && outcome.origin !== "response") {
+    await refundQuotas(receipt);
   }
-  return consumeGenerationQuota(userId);
+}
+
+export interface CallOptions {
+  userId: string | null;
+  regeneration?: boolean;
+  /** Epoch ms by which the call must be over (client.ts requestDeadline). */
+  deadlineAt: number;
 }
 
 /** generate() + the usage record (tokens count toward the budget whatever the outcome). */
 export async function callModel<S extends z.ZodType>(
   schema: S,
   request: GenerateRequest,
-  { userId, regeneration = false }: { userId: string | null; regeneration?: boolean },
+  { userId, regeneration = false, deadlineAt }: CallOptions,
 ): Promise<GenerateOutcome<z.output<S>>> {
-  const outcome = await generate(schema, request);
+  const outcome = await generate(schema, request, { deadlineAt });
   await recordUsage({
     userId,
     feature: request.feature,
@@ -65,6 +83,7 @@ export async function callModel<S extends z.ZodType>(
 }
 
 export function failureOf(outcome: { kind: string; message: string }): AiFailure {
+  // Only the student-facing fields (never the origin or usage).
   return aiFailure(outcome.kind as AiFailure["kind"], outcome.message);
 }
 
@@ -77,19 +96,30 @@ export const GROUNDING_FAILED_MESSAGE =
 
 export type GroundedOutcome<T, G> =
   | { kind: "ok"; outcome: Extract<GenerateOutcome<T>, { kind: "ok" }>; grounded: G }
-  | { kind: "failed"; failure: AiFailure };
+  | {
+      kind: "failed";
+      failure: AiFailure;
+      /** No attempt produced a model answer (API errors only): the quotas are given back. */
+      nothingAnswered: boolean;
+    };
 
 /**
  * Call the model and ground its answer; when grounding fails (> 30% dropped, or nothing usable), log it with the
- * promptVersion and retry once while the request is young enough. Never cached when it fails.
+ * promptVersion and retry once when at least AI_MIN_RETRY_MS is left before the deadline. Never cached when it
+ * fails.
  */
 export async function generateGrounded<S extends z.ZodType, G extends GroundingResult>(
   schema: S,
   request: GenerateRequest,
   ground: (data: z.output<S>) => G,
-  options: { userId: string | null; regeneration: boolean; promptVersion: string },
+  options: {
+    userId: string | null;
+    regeneration: boolean;
+    promptVersion: string;
+    deadlineAt: number;
+  },
 ): Promise<GroundedOutcome<z.output<S>, G>> {
-  const startedAt = Date.now();
+  let answered = false;
   for (let attempt = 1; attempt <= 2; attempt++) {
     // The retry repeats the request with one more user-turn note (the system prompt stays byte-identical).
     const attemptRequest =
@@ -99,18 +129,30 @@ export async function generateGrounded<S extends z.ZodType, G extends GroundingR
     const outcome = await callModel(schema, attemptRequest, {
       userId: options.userId,
       regeneration: options.regeneration && attempt === 1,
+      deadlineAt: options.deadlineAt,
     });
-    if (outcome.kind !== "ok") return { kind: "failed", failure: failureOf(outcome) };
+    if (outcome.kind !== "ok") {
+      return {
+        kind: "failed",
+        failure: failureOf(outcome),
+        nothingAnswered: !answered && outcome.origin !== "response",
+      };
+    }
+    answered = true;
     const grounded = ground(outcome.data);
     if (!grounded.invalid) return { kind: "ok", outcome, grounded };
     console.warn(
       `[ai] ${request.feature} ${options.promptVersion}: grounding failed on attempt ${attempt} (${grounded.dropped.length} dropped, ${grounded.items.length} kept, problems: ${[...new Set(grounded.dropped.map((d) => d.problem))].join(", ") || "none"})`,
     );
-    if (attempt === 2 || Date.now() - startedAt > RETRY_DEADLINE_MS) break;
+    if (attempt === 2 || options.deadlineAt - Date.now() < AI_MIN_RETRY_MS) break;
     const budget = await budgetFailure();
-    if (budget) return { kind: "failed", failure: budget };
+    if (budget) return { kind: "failed", failure: budget, nothingAnswered: false };
   }
-  return { kind: "failed", failure: aiFailure("invalid", GROUNDING_FAILED_MESSAGE) };
+  return {
+    kind: "failed",
+    failure: aiFailure("invalid", GROUNDING_FAILED_MESSAGE),
+    nothingAnswered: false,
+  };
 }
 
 export function okResult<T>(

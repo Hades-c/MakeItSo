@@ -21,14 +21,26 @@ import {
   anthropicClient,
   answerText,
   buildParams,
+  callBudget,
   defaultTransport,
+  estimateInputTokens,
   generate,
+  requestDeadline,
   sdkTransport,
   setAiTransportForTests,
   tokenUsage,
+  ZERO_USAGE,
   type GenerateRequest,
 } from "@/server/ai/client";
-import { AI_MAX_RETRIES, AI_MODEL, AI_TIMEOUT_MS } from "@/server/ai/config";
+import {
+  AI_MAX_RETRIES,
+  AI_MIN_CALL_MS,
+  AI_MIN_RETRY_MS,
+  AI_MODEL,
+  AI_REQUEST_BUDGET_MS,
+  AI_ROUTE_MAX_DURATION,
+  AI_TIMEOUT_MS,
+} from "@/server/ai/config";
 import { mockMessage, mockTransport } from "@/server/ai/mock";
 
 /**
@@ -49,7 +61,9 @@ const REQUEST: GenerateRequest = {
 function fakeClient(
   respond: (params: MessageCreateParamsNonStreaming) => BetaMessage | Promise<BetaMessage>,
 ) {
-  const create = vi.fn(async (params: MessageCreateParamsNonStreaming) => respond(params));
+  const create = vi.fn(async (params: MessageCreateParamsNonStreaming, _options?: unknown) =>
+    respond(params),
+  );
   return { client: { beta: { messages: { create } } }, create };
 }
 
@@ -139,7 +153,76 @@ describe("the request (PLAN §6.1 W6 call shape)", () => {
     expect(outcome.kind).toBe("ok");
     expect(override).toHaveBeenCalledWith(expect.objectContaining({ model: AI_MODEL }), {
       feature: "course-about",
+      timeoutMs: AI_TIMEOUT_MS,
+      maxRetries: AI_MAX_RETRIES,
+      signal: expect.any(AbortSignal),
     });
+  });
+});
+
+describe("time: every call is capped by the request's deadline", () => {
+  const NOW = 1_000_000;
+
+  it("gives a young request the client defaults: 45 s and one SDK retry", () => {
+    expect(callBudget(requestDeadline(NOW), NOW)).toEqual({
+      timeoutMs: 45_000,
+      maxRetries: 1,
+      remainingMs: AI_REQUEST_BUDGET_MS,
+    });
+    expect(AI_REQUEST_BUDGET_MS).toBeLessThan(AI_ROUTE_MAX_DURATION * 1000);
+  });
+
+  it("drops the SDK retry when two full attempts no longer fit, and caps the timeout by what is left", () => {
+    expect(callBudget(NOW + 60_000, NOW)).toEqual({
+      timeoutMs: 45_000,
+      maxRetries: 0,
+      remainingMs: 60_000,
+    });
+    expect(callBudget(NOW + 20_000, NOW)).toEqual({
+      timeoutMs: 20_000,
+      maxRetries: 0,
+      remainingMs: 20_000,
+    });
+  });
+
+  it("starts no call with less than the minimum left: a timeout, no request", async () => {
+    expect(callBudget(NOW + AI_MIN_CALL_MS - 1, NOW)).toBeNull();
+    const { client, create } = fakeClient(() => mockMessage({ text: okText }));
+    const outcome = await generate(Schema, REQUEST, {
+      transport: sdkTransport(client),
+      deadlineAt: Date.now() + 1_000,
+    });
+    expect(outcome).toMatchObject({ kind: "timeout", origin: "transient" });
+    expect(outcome.usage).toEqual(ZERO_USAGE);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("passes timeout, maxRetries and an abort signal to the SDK per request", async () => {
+    const { client, create } = fakeClient(() => mockMessage({ text: okText }));
+    await generate(Schema, REQUEST, {
+      transport: sdkTransport(client),
+      deadlineAt: Date.now() + 70_000,
+    });
+    const options = create.mock.calls[0]![1] as {
+      timeout: number;
+      maxRetries: number;
+      signal: AbortSignal;
+    };
+    expect(options.timeout).toBe(45_000);
+    expect(options.maxRetries).toBe(0);
+    expect(options.signal).toBeInstanceOf(AbortSignal);
+    expect(options.signal.aborted).toBe(false);
+  });
+
+  it("worst case of one request stays inside maxDuration: first call, grounding retry and back-off", () => {
+    // First call at t=0 with the SDK retry: 45 + 2 + 45 s at most; the retry is then refused (< 30 s left)…
+    const first = callBudget(requestDeadline(NOW), NOW)!;
+    const afterFirst = NOW + first.timeoutMs * (1 + first.maxRetries) + 2_000;
+    expect(requestDeadline(NOW) - afterFirst).toBeLessThan(AI_MIN_RETRY_MS);
+    // …and a first answer after 49 s leaves one capped attempt without an SDK retry.
+    const retry = callBudget(requestDeadline(NOW), NOW + 49_000)!;
+    expect(retry.maxRetries).toBe(0);
+    expect(49_000 + retry.timeoutMs).toBeLessThanOrEqual(AI_REQUEST_BUDGET_MS);
   });
 });
 
@@ -157,17 +240,21 @@ describe("result handling, in order", () => {
     });
   });
 
-  it("refusal → refused, before looking at any text", async () => {
+  it("refusal → refused, before looking at any text (an answer: origin response)", async () => {
     const { client } = fakeClient(() => mockMessage({ text: okText, stopReason: "refusal" }));
     const outcome = await run(client);
-    expect(outcome).toMatchObject({ kind: "refused", message: AI_FAILURE_MESSAGES.refused });
+    expect(outcome).toMatchObject({
+      kind: "refused",
+      origin: "response",
+      message: AI_FAILURE_MESSAGES.refused,
+    });
     expect(outcome.usage.inputTokens).toBe(100);
   });
 
   it("max_tokens and the context window → truncated", async () => {
     for (const stopReason of ["max_tokens", "model_context_window_exceeded"] as const) {
       const { client } = fakeClient(() => mockMessage({ text: okText, stopReason }));
-      expect((await run(client)).kind).toBe("truncated");
+      expect(await run(client)).toMatchObject({ kind: "truncated", origin: "response" });
     }
   });
 
@@ -175,7 +262,7 @@ describe("result handling, in order", () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     for (const text of [null, "Sure! {not json", JSON.stringify({ summary: 3 })]) {
       const { client } = fakeClient(() => mockMessage({ text }));
-      expect((await run(client)).kind).toBe("invalid");
+      expect(await run(client)).toMatchObject({ kind: "invalid", origin: "response" });
     }
     expect(errors).toHaveBeenCalledTimes(3);
     // The answer itself is never logged.
@@ -248,25 +335,77 @@ describe("result handling, in order", () => {
 });
 
 describe("thrown errors, most specific first", () => {
-  const cases: [string, unknown, string][] = [
-    ["connection timeout", new APIConnectionTimeoutError(), "timeout"],
-    ["rate limit", new RateLimitError(429, errorBody, "429", headers), "unavailable"],
-    ["connection", new APIConnectionError({ message: "Connection error." }), "unavailable"],
-    ["overloaded", new InternalServerError(529, errorBody, "529", headers), "unavailable"],
-    ["bad request", new BadRequestError(400, errorBody, "400", headers), "invalid"],
-    ["unprocessable", new UnprocessableEntityError(422, errorBody, "422", headers), "invalid"],
-    ["bad key", new AuthenticationError(401, errorBody, "401", headers), "not_configured"],
-    ["no permission", new PermissionDeniedError(403, errorBody, "403", headers), "not_configured"],
-    ["model not found", new NotFoundError(404, errorBody, "404", headers), "unavailable"],
-    ["aborted", new APIUserAbortError(), "unavailable"],
+  const cases: [string, unknown, string, string][] = [
+    ["connection timeout", new APIConnectionTimeoutError(), "timeout", "transient"],
+    ["our deadline (abort)", new APIUserAbortError(), "timeout", "transient"],
+    ["rate limit", new RateLimitError(429, errorBody, "429", headers), "unavailable", "transient"],
+    [
+      "connection",
+      new APIConnectionError({ message: "Connection error." }),
+      "unavailable",
+      "transient",
+    ],
+    [
+      "overloaded",
+      new InternalServerError(529, errorBody, "529", headers),
+      "unavailable",
+      "transient",
+    ],
+    ["bad request", new BadRequestError(400, errorBody, "400", headers), "invalid", "rejected"],
+    [
+      "unprocessable",
+      new UnprocessableEntityError(422, errorBody, "422", headers),
+      "invalid",
+      "rejected",
+    ],
+    [
+      "bad key",
+      new AuthenticationError(401, errorBody, "401", headers),
+      "not_configured",
+      "rejected",
+    ],
+    [
+      "no permission",
+      new PermissionDeniedError(403, errorBody, "403", headers),
+      "not_configured",
+      "rejected",
+    ],
+    [
+      "model not found",
+      new NotFoundError(404, errorBody, "404", headers),
+      "unavailable",
+      "rejected",
+    ],
   ];
 
-  it.each(cases)("%s → %s", async (_name, error, kind) => {
+  it.each(cases)("%s → %s (%s)", async (_name, error, kind, origin) => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const outcome = await run(failingClient(error).client);
-    expect(outcome.kind).toBe(kind);
-    expect(outcome.usage.inputTokens).toBe(0);
+    expect(outcome).toMatchObject({ kind, origin });
     expect(outcome.servedModel).toBe(AI_MODEL);
+  });
+
+  it("charges a timeout as billed (request size + max_tokens per attempt), a connection error its input", async () => {
+    const params = buildParams(Schema, REQUEST);
+    const input = estimateInputTokens(params);
+    expect(input).toBeGreaterThan(0);
+    const timeout = await run(failingClient(new APIConnectionTimeoutError()).client);
+    // A young request allows the SDK retry: two attempts may have been billed.
+    expect(timeout.usage).toEqual({ ...ZERO_USAGE, inputTokens: 2 * input, outputTokens: 6_000 });
+    const aborted = await run(failingClient(new APIUserAbortError()).client);
+    expect(aborted.usage.outputTokens).toBe(6_000);
+    const connection = await run(
+      failingClient(new APIConnectionError({ message: "Connection error." })).client,
+    );
+    expect(connection.usage).toEqual({ ...ZERO_USAGE, inputTokens: 2 * input });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (const error of [
+      new BadRequestError(400, errorBody, "400", headers),
+      new RateLimitError(429, errorBody, "429", headers),
+      new InternalServerError(529, errorBody, "529", headers),
+    ]) {
+      expect((await run(failingClient(error).client)).usage).toEqual(ZERO_USAGE);
+    }
   });
 
   it("says the AI is busy on a rate limit", async () => {

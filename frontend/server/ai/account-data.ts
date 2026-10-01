@@ -2,8 +2,9 @@ import "server-only";
 import mongoose from "mongoose";
 import AiCache from "@/models/AiCache";
 import AiUsage from "@/models/AiUsage";
+import RateLimit from "@/models/RateLimit";
 import { registerAccountData } from "@/server/account/erasers";
-import { usageSubject } from "@/server/ai/usage";
+import { eraseUsage, quotaSubject, usageSubject } from "@/server/ai/usage";
 import { getDb } from "@/server/db";
 
 /**
@@ -12,8 +13,13 @@ import { getDb } from "@/server/db";
  *               they filed on shared entries (their id and reason are removed from those entries on erase; the
  *               shared entries themselves hold no personal data and stay);
  *   aiusages    the usage counters under the student's pseudonymous subject (server/ai/usage.ts usageSubject).
- * The daily quota counters live in `ratelimits` ("ai-generations-<day>:user:<id>") and are exported and erased
- * by W3's ratelimits registration.
+ *               On erase their counts are first folded into the non-personal "erased" row of the same day and
+ *               feature (eraseUsage), so deleting an account never lowers the budget breaker's daily total.
+ *   quotas      the daily quota counters in `ratelimits`, keyed by the keyed hash of the mailbox
+ *               ("ai-generations-<day>:mailbox:<hmac>"): exported here, but NOT erased. They name no account,
+ *               expire with their window (at most ~2 days) and exist so that deleting an account and registering
+ *               the same mailbox again cannot reset the day's AI quota (see the W6 contract requests for the
+ *               privacy notice line).
  */
 
 function isObjectId(userId: string): boolean {
@@ -28,10 +34,14 @@ interface ReportEntry {
 
 registerAccountData("ai", {
   async export(userId) {
-    if (!isObjectId(userId)) return { aicache_v2: [], reports: [], aiusages: [] };
+    if (!isObjectId(userId)) return { aicache_v2: [], reports: [], aiusages: [], quotas: [] };
     await getDb();
     const id = new mongoose.Types.ObjectId(userId);
-    const [personal, reported, usage] = await Promise.all([
+    const subject = await quotaSubject(userId);
+    const quotaPattern = new RegExp(
+      `^ai-(?:re)?generations-\\d{8}:${subject.replace(/[^a-z0-9:]/g, "")}$`,
+    );
+    const [personal, reported, usage, quotas] = await Promise.all([
       AiCache.find({ scope: "user", userId: id })
         .select("feature key status data provenance fallbackUsed validUntil createdAt -_id")
         .lean(),
@@ -43,6 +53,7 @@ registerAccountData("ai", {
           "day feature generations regenerations cacheHits failures fallbacks inputTokens outputTokens cacheReadTokens cacheCreationTokens models -_id",
         )
         .lean(),
+      RateLimit.find({ key: quotaPattern }).select("key count windowStart expiresAt -_id").lean(),
     ]);
     return {
       aicache_v2: personal,
@@ -58,6 +69,7 @@ registerAccountData("ai", {
         };
       }),
       aiusages: usage,
+      quotas,
     };
   },
   async erase(userId) {
@@ -82,7 +94,7 @@ registerAccountData("ai", {
         { $set: { "reports.count": { $size: "$reports.userIds" } } },
       ],
     );
-    const usage = await AiUsage.deleteMany({ userId: usageSubject(userId) });
-    return personal.deletedCount + reports.modifiedCount + usage.deletedCount;
+    const usage = await eraseUsage(userId);
+    return personal.deletedCount + reports.modifiedCount + usage;
   },
 });

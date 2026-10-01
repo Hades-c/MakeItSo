@@ -2,16 +2,21 @@ import "server-only";
 import { z } from "zod";
 import { getFlags } from "@/lib/flags";
 import { TermCodeSchema } from "@/lib/types/common";
-import { courseAboutFor, NO_DESCRIPTION_MESSAGE } from "@/server/ai/features/course-about";
+import { AI_MIN_CALL_MS, AI_REQUEST_BUDGET_MS } from "@/server/ai/config";
+import { courseAboutOutcome, NO_DESCRIPTION_MESSAGE } from "@/server/ai/features/course-about";
 import { aiConfigured } from "@/server/ai/provider";
 import { getCourse, resolveTerms, searchCourses } from "@/server/catalog";
 
 /**
  * The course-about pre-generation job (GET /api/cron/ai, Vercel Cron with CRON_SECRET): fills the shared
  * course-about entries of the registration term before students open the course pages, so their views are cache
- * hits. It counts under the "system" usage subject (no student quota) but respects AI_DAILY_TOKEN_BUDGET, and it
- * stops starting new generations after a time budget: each run continues where the last one stopped (entries that
- * exist are cheap cache reads). With AI_ENABLED off or no provider configured it does nothing.
+ * hits. It counts under the "system" usage subject (no student quota) but respects AI_DAILY_TOKEN_BUDGET. Every
+ * call is capped by the run's deadline (start + AI_REQUEST_BUDGET_MS, inside the route's maxDuration), and no new
+ * call starts with less than AI_MIN_CALL_MS left: each run continues where the last one stopped (entries that
+ * exist are cheap cache reads). The run stops on the first request the API rejects (400/401/403/404/422: a
+ * deployment problem, e.g. a beta the organisation does not have), so one bad deployment makes one failing call
+ * per worker, not one per course, and remembers nothing. With AI_ENABLED off or no provider configured it does
+ * nothing.
  */
 
 export const PregenerateResultSchema = z.object({
@@ -23,12 +28,13 @@ export const PregenerateResultSchema = z.object({
   /** Courses with no official description (nothing to summarize). */
   noDescription: z.number().int().min(0),
   failed: z.number().int().min(0),
-  stoppedEarly: z.enum(["deadline", "budget"]).nullable(),
+  /** "error": the API rejected a request (a deployment problem), so the run stopped. */
+  stoppedEarly: z.enum(["deadline", "budget", "error"]).nullable(),
 });
 export type PregenerateResult = z.infer<typeof PregenerateResultSchema>;
 
 export interface PregenerateOptions {
-  /** Stop starting new generations after this many ms (default 100 s of the route's 120). */
+  /** All model work is over this many ms after the start (default AI_REQUEST_BUDGET_MS of the route's 120 s). */
   timeBudgetMs?: number;
   /** Parallel generations (default 4). */
   concurrency?: number;
@@ -60,7 +66,7 @@ export async function pregenerateCourseAbout(
   if (!getFlags().ai) return { ...result, skipped: "disabled" };
   if (!aiConfigured()) return { ...result, skipped: "not_configured" };
 
-  const deadline = Date.now() + (options.timeBudgetMs ?? 100_000);
+  const deadlineAt = Date.now() + (options.timeBudgetMs ?? AI_REQUEST_BUDGET_MS);
   const { registration } = await resolveTerms();
   const codes = await registrationCodes(registration);
   result.term = registration;
@@ -69,15 +75,22 @@ export async function pregenerateCourseAbout(
   let next = 0;
   const worker = async () => {
     while (next < codes.length && !result.stoppedEarly) {
-      if (Date.now() > deadline) {
-        result.stoppedEarly = "deadline";
+      if (deadlineAt - Date.now() < AI_MIN_CALL_MS) {
+        result.stoppedEarly ??= "deadline";
         return;
       }
       const code = codes[next++]!;
       const course = await getCourse(registration, code);
       if (!course) continue;
-      const answer = await courseAboutFor(course, { userId: null });
-      if (answer.kind === "ok") {
+      const { result: answer, origin } = await courseAboutOutcome(
+        course,
+        { userId: null },
+        { deadlineAt },
+      );
+      if (origin === "rejected") {
+        result.failed++;
+        result.stoppedEarly = "error";
+      } else if (answer.kind === "ok") {
         if (answer.cached) result.cached++;
         else result.generated++;
       } else if (answer.kind === "budget") {

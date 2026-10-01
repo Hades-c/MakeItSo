@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
+import { insertUser, stubAuthEnv } from "../w3/helpers";
 import AiUsage from "@/models/AiUsage";
 import RateLimit from "@/models/RateLimit";
 import { DAILY_GENERATION_QUOTA, DAILY_REGENERATION_QUOTA } from "@/server/ai/config";
@@ -8,9 +9,16 @@ import {
   aiDay,
   budgetFailure,
   consumeGenerationQuota,
+  consumeQuotas,
   consumeRegenerationQuota,
+  ERASED_SUBJECT,
+  eraseUsage,
+  mailboxKey,
   quotaKey,
+  quotaSubject,
   recordUsage,
+  refundQuotas,
+  REGENERATION_QUOTA_MESSAGE,
   tokensUsedToday,
   usageSubject,
 } from "@/server/ai/usage";
@@ -194,26 +202,43 @@ describe("quotas (server/http consumeRateLimit)", () => {
     vi.stubEnv("FIXTURES_NOW", "2026-09-30T20:30:00-04:00"); // after 00:00 UTC
     await consumeGenerationQuota(USER);
     const counters = await RateLimit.find({
-      key: quotaKey("ai-generations", USER, "2026-09-30"),
+      key: quotaKey("ai-generations", `user:${USER}`, "2026-09-30"),
     }).lean();
     expect(counters).toHaveLength(1);
     expect(counters[0]?.count).toBe(2);
   });
 
-  it("uses keys W3's ratelimits eraser recognises as the student's", () => {
-    expect(quotaKey("ai-generations", USER, "2026-09-30")).toBe(
-      `ai-generations-20260930:user:${USER}`,
-    );
-    expect(quotaKey("ai-regenerations", USER, "2026-09-30")).toMatch(
-      new RegExp(`^[a-z0-9-]+:user:${USER}$`),
-    );
+  it("keys a student's quotas by the keyed hash of the mailbox, which W3's eraser does not match", async () => {
+    stubAuthEnv();
+    const student = await insertUser({ email: "Quota.Student@davidson.edu" });
+    const subject = await quotaSubject(student.id);
+    expect(subject).toBe(`mailbox:${mailboxKey("quota.student@davidson.edu")}`);
+    expect(subject).toMatch(/^mailbox:[a-f0-9]{32}$/);
+    expect(subject).not.toContain("quota.student");
+    const key = quotaKey("ai-generations", subject, "2026-09-30");
+    expect(key).toBe(`ai-generations-20260930:${subject}`);
+    expect(key).not.toMatch(new RegExp(`^[a-z0-9-]+:user:${student.id}$`));
+    expect(key).not.toMatch(/^[a-z0-9-]+:email:/);
+    // Without a stored address (never the case for a verified student) the account id is the subject.
+    expect(await quotaSubject(USER)).toBe(`user:${USER}`);
+  });
+
+  it("a new account with the same mailbox continues the day's quota", async () => {
+    stubAuthEnv();
+    const first = await insertUser({ email: "again@davidson.edu" });
+    for (let i = 0; i < DAILY_GENERATION_QUOTA; i++) await consumeGenerationQuota(first.id);
+    await mongoose.connection
+      .collection("users")
+      .deleteOne({ _id: new mongoose.Types.ObjectId(first.id) });
+    const second = await insertUser({ email: "again@davidson.edu" });
+    expect((await consumeGenerationQuota(second.id))?.kind).toBe("quota");
   });
 
   it("never lets the TTL monitor delete a live counter while now is pinned in the past", async () => {
     vi.stubEnv("FIXTURES_NOW", "2026-01-15T12:00:00-05:00");
     await consumeGenerationQuota(USER);
     const [counter] = await RateLimit.find({
-      key: quotaKey("ai-generations", USER, "2026-01-15"),
+      key: quotaKey("ai-generations", `user:${USER}`, "2026-01-15"),
     }).lean();
     expect(counter!.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
@@ -228,5 +253,90 @@ describe("quotas (server/http consumeRateLimit)", () => {
 
   it("ids are account ids (24 hex), as the session carries them", () => {
     expect(mongoose.isValidObjectId(USER)).toBe(true);
+  });
+
+  it("takes the generation first: a student out of generations keeps their regenerations", async () => {
+    for (let i = 0; i < DAILY_GENERATION_QUOTA; i++) await consumeGenerationQuota(USER);
+    expect(await consumeQuotas(USER, { regeneration: true })).toEqual({
+      failure: {
+        kind: "quota",
+        message: "You have used today's AI requests. They reset tomorrow.",
+      },
+    });
+    const regenerations = await RateLimit.find({
+      key: quotaKey("ai-regenerations", `user:${USER}`),
+    }).lean();
+    expect(regenerations).toHaveLength(0);
+  });
+
+  it("a regeneration over its limit gives the generation back", async () => {
+    for (let i = 0; i < DAILY_REGENERATION_QUOTA; i++) {
+      expect("receipt" in (await consumeQuotas(USER, { regeneration: true }))).toBe(true);
+    }
+    expect(await consumeQuotas(USER, { regeneration: true })).toEqual({
+      failure: { kind: "quota", message: REGENERATION_QUOTA_MESSAGE },
+    });
+    const [generations] = await RateLimit.find({
+      key: quotaKey("ai-generations", `user:${USER}`),
+    }).lean();
+    expect(generations?.count).toBe(DAILY_REGENERATION_QUOTA);
+  });
+
+  it("refundQuotas gives back exactly what a receipt took, once", async () => {
+    const taken = await consumeQuotas(USER, { regeneration: true });
+    if (!("receipt" in taken)) throw new Error("expected a receipt");
+    await refundQuotas(taken.receipt);
+    await refundQuotas(taken.receipt);
+    const counters = await RateLimit.find({ key: /:user:64b0000000000000000000a1$/ }).lean();
+    expect(counters.map((c) => c.count)).toEqual([0, 0]);
+    // All 20 are available again.
+    for (let i = 0; i < DAILY_GENERATION_QUOTA; i++) {
+      expect(await consumeGenerationQuota(USER)).toBeNull();
+    }
+  });
+});
+
+describe("erasure never lowers the budget's measure", () => {
+  it("folds the student's rows into the non-personal erased row before deleting them", async () => {
+    vi.stubEnv("AI_DAILY_TOKEN_BUDGET", "10000");
+    await recordUsage({
+      userId: USER,
+      feature: "plan-suggestions",
+      kind: "generation",
+      usage: usage(9_000, 2_000),
+      servedModel: "claude-sonnet-5-5",
+      failed: true,
+    });
+    await recordUsage({
+      userId: OTHER,
+      feature: "plan-suggestions",
+      kind: "generation",
+      usage: usage(100, 0),
+    });
+    expect(await tokensUsedToday()).toBe(11_100);
+    expect((await budgetFailure())?.kind).toBe("budget");
+
+    expect(await eraseUsage(USER)).toBe(1);
+    expect(await tokensUsedToday()).toBe(11_100);
+    expect((await budgetFailure())?.kind).toBe("budget");
+    expect(await AiUsage.countDocuments({ userId: usageSubject(USER) })).toBe(0);
+    const erased = await AiUsage.findOne({ userId: usageSubject(ERASED_SUBJECT) }).lean();
+    expect(erased).toMatchObject({
+      day: "2026-09-30",
+      feature: "plan-suggestions",
+      generations: 1,
+      failures: 1,
+      inputTokens: 9_000,
+      outputTokens: 2_000,
+      models: ["claude-sonnet-5-5"],
+    });
+
+    // A second erased student adds to the same row.
+    expect(await eraseUsage(OTHER)).toBe(1);
+    expect(await tokensUsedToday()).toBe(11_100);
+    expect(await AiUsage.countDocuments()).toBe(1);
+    expect(
+      (await AiUsage.findOne({ userId: usageSubject(ERASED_SUBJECT) }).lean())?.generations,
+    ).toBe(2);
   });
 });

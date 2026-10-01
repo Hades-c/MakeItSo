@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
-import { insertStudent } from "./helpers";
+import { insertStudent, stubAuthEnv } from "./helpers";
 import AiCache from "@/models/AiCache";
 import AiUsage from "@/models/AiUsage";
 import RateLimit from "@/models/RateLimit";
@@ -13,10 +13,20 @@ import {
 } from "@/server/account/erasers";
 import { writePersonal, writeShared } from "@/server/ai/cache";
 import { reportEntry } from "@/server/ai/reports";
-import { consumeGenerationQuota, recordUsage, usageSubject } from "@/server/ai/usage";
+import {
+  consumeGenerationQuota,
+  ERASED_SUBJECT,
+  quotaSubject,
+  recordUsage,
+  tokensUsedToday,
+  usageSubject,
+} from "@/server/ai/usage";
 import { getDb } from "@/server/db";
 
-/** W6 in the account data registry: "ai" = personal aicache_v2 entries + reports + aiusages (PLAN §9). */
+/**
+ * W6 in the account data registry: "ai" = personal aicache_v2 entries + reports + aiusages (PLAN §9), and the
+ * mailbox-keyed quota counters in the export (they are not erased: see server/ai/account-data.ts).
+ */
 
 let testDb: TestDb;
 
@@ -25,8 +35,13 @@ beforeAll(async () => {
   await getDb();
 });
 
+beforeEach(() => {
+  stubAuthEnv();
+});
+
 afterEach(async () => {
   await testDb.clear();
+  vi.unstubAllEnvs();
 });
 
 afterAll(async () => {
@@ -69,13 +84,20 @@ describe('the "ai" registration', () => {
     expect(accountDataNames()).toContain("ai");
   });
 
-  it("exports only this student's entries, reports and usage", async () => {
+  it("exports only this student's entries, reports, usage and quota counters", async () => {
     const { me } = await seed();
     const exported = (await exportAccountData(me.id)).ai as {
       aicache_v2: { feature: string; key: string; data: unknown }[];
       reports: { feature: string; key: string; reason: string | null }[];
       aiusages: { feature: string; generations: number }[];
+      quotas: { key: string; count: number }[];
     };
+    expect(exported.quotas).toEqual([
+      expect.objectContaining({
+        key: `ai-generations-20260930:${await quotaSubject(me.id)}`,
+        count: 1,
+      }),
+    ]);
     expect(exported.aicache_v2).toEqual([
       expect.objectContaining({
         feature: "plan-suggestions",
@@ -93,11 +115,19 @@ describe('the "ai" registration', () => {
     expect(text).not.toContain("other@davidson.edu");
   });
 
-  it("erases them (and W3's eraser takes the quota counters), leaving the other student and the shared entry", async () => {
+  it("erases them, leaving the other student and the shared entry; the budget total and the mailbox quota stay", async () => {
     const { me, other } = await seed();
+    const subject = await quotaSubject(me.id);
+    const tokensBefore = await tokensUsedToday();
     const removed = await eraseAccountData(me.id);
     expect(removed.ai).toBe(3);
-    expect(removed.ratelimits).toBe(1);
+    // The quota counters are keyed by the mailbox, not the account: W3's eraser finds none of them…
+    expect(removed.ratelimits).toBe(0);
+    // …and they stay (until their window ends), so deleting and re-registering does not reset them.
+    expect(await RateLimit.countDocuments({ key: new RegExp(`:${subject}$`) })).toBe(1);
+    // Erasing never lowers the budget breaker's total: the rows moved to the non-personal "erased" row.
+    expect(await tokensUsedToday()).toBe(tokensBefore);
+    expect(await AiUsage.countDocuments({ userId: usageSubject(ERASED_SUBJECT) })).toBe(1);
 
     expect(
       await AiCache.countDocuments({ scope: "user", userId: new mongoose.Types.ObjectId(me.id) }),
@@ -111,7 +141,6 @@ describe('the "ai" registration', () => {
     expect(await AiUsage.countDocuments({ userId: usageSubject(me.id) })).toBe(0);
     expect(await AiUsage.countDocuments({ userId: usageSubject(other.id) })).toBe(1);
     expect(await RateLimit.countDocuments({ key: new RegExp(`:user:${me.id}$`) })).toBe(0);
-    expect(await RateLimit.countDocuments({ key: new RegExp(`:user:${other.id}$`) })).toBe(1);
 
     const shared = await AiCache.findOne({ key: "shared-key" }).lean();
     expect(shared!.reports!.userIds.map(String)).toEqual([other.id]);
@@ -125,6 +154,7 @@ describe('the "ai" registration', () => {
       aicache_v2: [],
       reports: [],
       aiusages: [],
+      quotas: [],
     });
     expect((await eraseAccountData("not-an-id")).ai).toBe(0);
   });

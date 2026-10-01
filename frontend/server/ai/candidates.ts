@@ -34,6 +34,10 @@ import { getCourse, getCourseHistory, searchCourses } from "@/server/catalog";
  * the career's departments, each with the upcoming terms it may be taken in: a published term where it is offered
  * ("scheduled"), or an unpublished one when it ran in a same-season term among the last 4 published regular terms
  * ("past-offerings").
+ *
+ * Order is stable: it depends on the courses, their requirement slots and restrictions, never on seat counts,
+ * which change every catalog refresh (every 15 minutes for the registration term). The same catalog gives the
+ * same candidates in the same order, so the prompt and the personal cache do not churn with enrolment.
  */
 
 export type CandidateFlag = "restricted-standing" | "comp-met-w-section" | "permission-required";
@@ -45,7 +49,7 @@ export interface PlanCandidate extends GroundingCandidate {
   ranIn: TermCode[];
   fills: ReqCode[];
   flags: CandidateFlag[];
-  /** Open seats in the target term (published terms only). */
+  /** Open seats in the target term (published terms only; context only: never part of the order or the prompt). */
   openSeats: number | null;
 }
 
@@ -57,6 +61,7 @@ export interface PlanCandidateInput {
   classYear: number | null;
   /** COMP met (or being met) before the target term: W sections are closed to the student. */
   compMet: boolean;
+  /** At most this many (default MAX_PLAN_CANDIDATES; Infinity for the whole pool). */
   limit?: number;
   hasData?: TermDataProbe;
 }
@@ -205,7 +210,6 @@ export async function planCandidates(input: PlanCandidateInput): Promise<PlanCan
         a.flags.length - b.flags.length ||
         b.fills.length - a.fills.length ||
         Number(b.sameSeason) - Number(a.sameSeason) ||
-        (b.openSeats ?? 0) - (a.openSeats ?? 0) ||
         a.courseCode.localeCompare(b.courseCode),
     )
     .slice(0, input.limit ?? MAX_PLAN_CANDIDATES)
@@ -216,6 +220,8 @@ export async function planCandidates(input: PlanCandidateInput): Promise<PlanCan
 
 export interface CareerCandidate extends GroundingCandidate {
   title: string;
+  /** A curated course of the career path, or a registration-term course of one of its departments. */
+  source: "curated" | "department";
   /** The curated reason from the career path, when the course is one of its curated courses. */
   curatedWhy?: string;
   termList: { code: TermCode; basis: Basis }[];
@@ -227,12 +233,14 @@ export interface CareerCandidateInput {
   /** Upcoming regular terms (registration term → graduation), in order. */
   windowTerms: readonly TermCode[];
   taken: ReadonlySet<string>;
+  /** At most this many in all, and this many department courses (defaults 40 / 20; Infinity for the pool). */
   limit?: number;
+  departmentLimit?: number;
   hasData?: TermDataProbe;
 }
 
 export const MAX_CAREER_CANDIDATES = 40;
-const MAX_DEPARTMENT_CANDIDATES = 20;
+export const MAX_DEPARTMENT_CANDIDATES = 20;
 
 /**
  * Terms of the window a course may be taken in, from its availability history: a term with sections where it is
@@ -261,6 +269,7 @@ export async function careerCandidates(input: CareerCandidateInput): Promise<Car
   const out: CareerCandidate[] = [];
   const canonicals = new Set<string>();
   const limit = input.limit ?? MAX_CAREER_CANDIDATES;
+  const departmentLimit = input.departmentLimit ?? MAX_DEPARTMENT_CANDIDATES;
   const hasData = input.hasData ?? termDataProbe();
   const published = await publishedTerms(input.windowTerms, hasData);
   const recent = await recentTermsWithData(
@@ -272,6 +281,7 @@ export async function careerCandidates(input: CareerCandidateInput): Promise<Car
   const add = (
     course: Course,
     termList: { code: TermCode; basis: Basis }[],
+    source: CareerCandidate["source"],
     curatedWhy?: string,
   ) => {
     if (termList.length === 0 || !suggestible(course)) return;
@@ -286,6 +296,7 @@ export async function careerCandidates(input: CareerCandidateInput): Promise<Car
       terms: new Map(termList.map((t) => [t.code, t.basis])),
       termList,
       title: course.title,
+      source,
       ...(curatedWhy ? { curatedWhy } : {}),
     });
   };
@@ -306,25 +317,46 @@ export async function careerCandidates(input: CareerCandidateInput): Promise<Car
       .sort(compareTerms);
     const latest = offered[offered.length - 1];
     const course = latest ? await getCourse(latest, code) : null;
-    if (course) add(course, termList, curated.why);
+    if (course) add(course, termList, "curated", curated.why);
   }
 
   const registration = input.resolved.registration;
   const departments = input.career.departments.map((d) => d.code);
   if (departments.length > 0 && published.has(registration)) {
     let added = 0;
+    // By code (100-level first), never by seats: see the module comment.
     const summaries = (await searchAll(registration, { dept: departments }))
       .filter((s) => /^[A-Z]{2,4} [1-3]\d\d/.test(s.code))
-      .sort((a, b) => b.openSeats - a.openSeats || a.code.localeCompare(b.code));
+      .sort(
+        (a, b) =>
+          courseNumber(a.code).localeCompare(courseNumber(b.code)) || a.code.localeCompare(b.code),
+      );
     for (const summary of summaries) {
-      if (out.length >= limit || added >= MAX_DEPARTMENT_CANDIDATES) break;
+      if (out.length >= limit || added >= departmentLimit) break;
       const course = await getCourse(registration, summary.code);
       const before = out.length;
-      if (course) add(course, [{ code: registration, basis: "scheduled" }]);
+      if (course) add(course, [{ code: registration, basis: "scheduled" }], "department");
       if (out.length > before) added++;
     }
   }
   return out;
+}
+
+/** "CSC 221" → "221" (the level-first order of department candidates). */
+function courseNumber(code: string): string {
+  return code.split(" ")[1] ?? code;
+}
+
+/**
+ * The candidates the prompt gets from a career pool (careerCandidates with both limits at Infinity): every
+ * curated course, then the first MAX_DEPARTMENT_CANDIDATES department courses, MAX_CAREER_CANDIDATES in all.
+ */
+export function selectCareerCandidates(pool: readonly CareerCandidate[]): CareerCandidate[] {
+  const curated = pool.filter((c) => c.source === "curated");
+  const department = pool
+    .filter((c) => c.source === "department")
+    .slice(0, MAX_DEPARTMENT_CANDIDATES);
+  return [...curated, ...department].slice(0, MAX_CAREER_CANDIDATES);
 }
 
 /** The terms among `terms` that have sections. */

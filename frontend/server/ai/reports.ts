@@ -2,7 +2,7 @@ import "server-only";
 import mongoose from "mongoose";
 import type { AiFeature } from "@/lib/types/ai";
 import AiCache from "@/models/AiCache";
-import { REPORTS_TO_HIDE } from "@/server/ai/config";
+import { REPORTS_TO_HIDE, TTL_MS } from "@/server/ai/config";
 import { now } from "@/server/clock";
 import { getDb } from "@/server/db";
 import { ApiError } from "@/server/http/errors";
@@ -11,8 +11,11 @@ import { ApiError } from "@/server/http/errors";
  * "Report this" on shared entries and the admin purge (PLAN §6.1 W6 "Shared entries").
  *
  *   - A report adds the student to the entry's reporters (a set: reporting twice counts once). With 3 distinct
- *     reporters the entry is hidden pending review; nobody sees it until an admin purges it (it is then
- *     regenerated on the next view) — a hidden entry is never regenerated over. One atomic update.
+ *     reporters the entry is hidden pending review, in the same atomic update: its purge time (expiresAt) moves a
+ *     year ahead so the TTL monitor cannot delete it, reads return it as hidden whatever its validUntil
+ *     (server/ai/cache.ts), and writes never overwrite it, so neither a student's view nor the pre-generation or
+ *     weekly job regenerates it. Nobody sees an answer for it until an admin purges it (it is then regenerated on
+ *     the next view).
  *   - The client reports what it was shown: `key` is the entry's provenance.inputHash (for course-about that is
  *     also the cache key; a professor summary is stored under "rmp:<legacyId>", which the client never sees).
  *   - Purge (admin): delete one entry or every entry of a feature (personal entries included).
@@ -33,6 +36,8 @@ export async function reportEntry(
   const reporter = new mongoose.Types.ObjectId(userId);
   const at = now();
   const reason = input.reason?.trim() ? input.reason.trim().slice(0, 500) : null;
+  // Kept for the admin: never before the real clock plus a year (FIXTURES_NOW may be pinned in the past).
+  const keepUntil = new Date(Math.max(at.getTime(), Date.now()) + TTL_MS.hidden);
   const userIds = { $ifNull: ["$reports.userIds", []] };
   const doc = await AiCache.collection.findOneAndUpdate(
     { feature: input.feature, scope: "shared", userId: null, inputHash: input.key },
@@ -75,6 +80,13 @@ export async function reportEntry(
               at,
               { $ifNull: ["$hiddenAt", null] },
             ],
+          },
+        },
+      },
+      {
+        $set: {
+          expiresAt: {
+            $cond: [{ $eq: ["$hidden", true] }, { $max: ["$expiresAt", keepUntil] }, "$expiresAt"],
           },
         },
       },

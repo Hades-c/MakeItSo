@@ -18,12 +18,28 @@ export const AI_MODEL = "claude-sonnet-5-5";
 export const AI_BETAS = ["server-side-fallback-2026-07-01"] as const;
 export const AI_FALLBACKS = "default" as const;
 
-/** Per-request timeout and retries of the SDK client (one retry: worst case ≈ 2 × 45 s < maxDuration 120 s). */
+/**
+ * Defaults of the SDK client: 45 s per attempt, one retry. Each call also gets per-request options derived from
+ * the time left in the request (server/ai/client.ts callBudget), so no call can outlive maxDuration.
+ */
 export const AI_TIMEOUT_MS = 45_000;
 export const AI_MAX_RETRIES = 1;
 
 /** `export const maxDuration` of every AI route (seconds). */
 export const AI_ROUTE_MAX_DURATION = 120;
+
+/**
+ * All model work of one request (or one cron run) must be over this long after it started: maxDuration minus
+ * 10 s for the route's own reads and writes, so the platform never cuts a request off before its usage is
+ * recorded and its AiResult is sent.
+ */
+export const AI_REQUEST_BUDGET_MS = 110_000;
+/** No model call is started with less time than this left (it is answered as a timeout instead). */
+export const AI_MIN_CALL_MS = 15_000;
+/** The grounding retry is only started with at least this much time left. */
+export const AI_MIN_RETRY_MS = 30_000;
+/** Allowance for the SDK's back-off between its two attempts (0.5 s × jitter; retry-after is capped by the abort signal). */
+export const AI_RETRY_BACKOFF_ALLOWANCE_MS = 2_000;
 
 export type AiEffort = "low" | "medium" | "high";
 
@@ -55,8 +71,10 @@ export const TTL_MS = {
   courseAbout: 30 * DAY_MS,
   professorSummary: 7 * DAY_MS,
   personal: 30 * DAY_MS,
-  /** Refused / invalid shared items are not retried for a day. */
+  /** Refused / invalid shared items (answers the model gave, never API errors) are not retried for a day. */
   negative: DAY_MS,
+  /** A hidden shared entry (3 reports) is kept this long for the admin, whatever its own lifetime was. */
+  hidden: 365 * DAY_MS,
 } as const;
 
 /** Distinct reporters that hide a shared entry pending review. */
@@ -64,9 +82,6 @@ export const REPORTS_TO_HIDE = 3;
 
 /** More than this share of suggested courses failing grounding makes the whole answer invalid. */
 export const MAX_DROPPED_SHARE = 0.3;
-
-/** A grounding retry is only started while the request is younger than this (the route has 120 s). */
-export const RETRY_DEADLINE_MS = 50_000;
 
 /** Professor summaries need at least this many ratings. */
 export const MIN_RATINGS_FOR_SUMMARY = 5;

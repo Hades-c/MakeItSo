@@ -2,7 +2,8 @@ import "server-only";
 import type { TermCode } from "@/lib/term";
 import { COURSE_CODE_PATTERN, normalizeCourseCode } from "@/lib/types/common";
 import { MAX_DROPPED_SHARE } from "@/server/ai/config";
-import { cleanParagraph } from "@/server/ai/sanitize";
+import { anyOf, cleanParagraph, forbiddenClaims, type SentenceFilter } from "@/server/ai/sanitize";
+import { deadlines, unknownCourses } from "@/server/ai/text-grounding";
 
 /**
  * Grounding of model-suggested courses (PLAN §5 "AI grounding & validation"). A suggestion is kept only when
@@ -13,6 +14,10 @@ import { cleanParagraph } from "@/server/ai/sanitize";
  *       repeat of an earlier suggestion.
  * Restriction flags travel with the candidate (they flag, never block). More than 30% of the suggestions dropped
  * makes the whole answer invalid (the caller retries once, never caches it, and logs it with the promptVersion).
+ *
+ * The model's "why" of a kept pick is cleaned too: sentences that name a course that is neither a candidate nor
+ * in the student's plan, give a deadline or date, make a forbidden claim (sanitize.ts) or fail the caller's own
+ * filter (e.g. an unofficial major) are dropped; with nothing left, the server-written fallback reason is used.
  */
 
 export type Basis = "scheduled" | "past-offerings";
@@ -61,6 +66,8 @@ export interface GroundingOptions<C extends GroundingCandidate = GroundingCandid
   maxItems: number;
   /** Reason text when the model's "why" is empty after cleaning. */
   fallbackReason: (candidate: C) => string;
+  /** More sentences of a "why" to drop (on top of unknown courses, dates and forbidden claims). */
+  reasonFilter?: SentenceFilter;
 }
 
 /** Index candidates by their own code and every sibling code. */
@@ -88,6 +95,13 @@ export function groundPicks<C extends GroundingCandidate>(
   const items: GroundedItem[] = [];
   const dropped: DroppedPick[] = [];
   const seen = new Set<string>();
+  const mentionable = new Set([...index.keys(), ...options.taken]);
+  const reasonFilter = anyOf(
+    forbiddenClaims,
+    unknownCourses(mentionable),
+    deadlines,
+    ...(options.reasonFilter ? [options.reasonFilter] : []),
+  );
 
   for (const pick of picks) {
     const code = normalizeCourseCode(pick.courseCode);
@@ -126,7 +140,9 @@ export function groundPicks<C extends GroundingCandidate>(
     }
     seen.add(candidate.canonical);
     if (items.length >= options.maxItems) continue;
-    const reason = cleanParagraph(pick.why, REASON_MAX_LENGTH) || options.fallbackReason(candidate);
+    const reason =
+      cleanParagraph(pick.why, REASON_MAX_LENGTH, reasonFilter) ||
+      options.fallbackReason(candidate);
     items.push({ termCode, courseCode: candidate.courseCode, reason, basis });
   }
 
@@ -137,4 +153,21 @@ export function groundPicks<C extends GroundingCandidate>(
     droppedShare,
     invalid: droppedShare > MAX_DROPPED_SHARE || items.length === 0,
   };
+}
+
+/**
+ * A stored answer is still grounded: every item is a candidate of the current pool for its term, with the same
+ * basis (a course no longer offered, no longer filling an open slot, or whose term got scheduled makes it stale).
+ */
+export function stillOffered(
+  items: readonly { courseCode: string; termCode: string; basis?: Basis }[],
+  pool: readonly GroundingCandidate[],
+): boolean {
+  const index = candidateIndex(pool);
+  return items.every((item) => {
+    const candidate = index.get(item.courseCode);
+    return (
+      candidate !== undefined && candidate.terms.get(item.termCode) === (item.basis ?? "scheduled")
+    );
+  });
 }

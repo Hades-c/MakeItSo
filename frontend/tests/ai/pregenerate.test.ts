@@ -4,6 +4,7 @@ import * as cronRoute from "@/app/api/cron/ai/route";
 import AiCache from "@/models/AiCache";
 import AiUsage from "@/models/AiUsage";
 import RateLimit from "@/models/RateLimit";
+import { AI_MIN_CALL_MS } from "@/server/ai/config";
 import { courseAboutFor } from "@/server/ai/features/course-about";
 import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
 import { pregenerateCourseAbout, PregenerateResultSchema } from "@/server/ai/pregenerate";
@@ -94,6 +95,31 @@ describe("pregenerateCourseAbout", () => {
     vi.stubEnv("AI_DAILY_TOKEN_BUDGET", "1");
     const result = await pregenerateCourseAbout({ concurrency: 1 });
     expect(result).toMatchObject({ stoppedEarly: "budget", generated: 1 });
+  });
+
+  it("stops on the first request the API rejects, remembering nothing; the next run after the fix generates", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    setMockAiScenario("bad_request");
+    const broken = await pregenerateCourseAbout({ concurrency: 4 });
+    expect(broken).toMatchObject({ stoppedEarly: "error", generated: 0 });
+    // One failing call per worker at most, not one per course.
+    expect(mockAiRequests().length).toBeLessThanOrEqual(4);
+    expect(broken.failed).toBe(mockAiRequests().length);
+    expect(await AiCache.countDocuments()).toBe(0);
+
+    resetMockAi();
+    const course = await getCourse("202602", "CSC 221");
+    expect(await courseAboutFor(course!, { userId: null })).toMatchObject({
+      kind: "ok",
+      cached: false,
+    });
+    expect(mockAiRequests()).toHaveLength(1);
+  });
+
+  it("starts no generation with less than the minimum call time left", async () => {
+    const result = await pregenerateCourseAbout({ timeBudgetMs: AI_MIN_CALL_MS - 1 });
+    expect(result).toMatchObject({ stoppedEarly: "deadline", generated: 0 });
+    expect(mockAiRequests()).toHaveLength(0);
   });
 
   it("counts model failures and goes on", async () => {

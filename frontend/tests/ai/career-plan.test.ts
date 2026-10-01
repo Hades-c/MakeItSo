@@ -161,6 +161,7 @@ describe("career-plan grounding", () => {
     terms: new Map([["202602", "scheduled" as const]]),
     termList: [{ code: "202602", basis: "scheduled" as const }],
     title: "Data Structures",
+    source: "curated" as const,
     curatedWhy: "Core programming course.",
   };
   const context = {

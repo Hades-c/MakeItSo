@@ -6,8 +6,13 @@ import "server-only";
  *   - links and e-mail addresses are removed (URLs, www.…, bare domains, addresses);
  *   - Markdown markers, control characters and repeated whitespace are removed;
  *   - lengths are enforced (cut at a sentence or word boundary, with "…");
- *   - sentences or list items that talk about prerequisites, difficulty, workload or grades are dropped: the UI
- *     never shows model-written prerequisites, difficulty or workload (PLAN §5 "AI grounding").
+ *   - sentences or list items that talk about prerequisites or eligibility (course codes a student must have taken,
+ *     instructor permission, "requires", "background in"…), difficulty, workload or grades are dropped: the UI
+ *     never shows model-written prerequisites, difficulty or workload (PLAN §5 "AI grounding"). Difficulty words
+ *     (and "requires"/"required") that the official catalog description itself uses (a physics course about
+ *     light, "an intensive writing course", "required weekly meetings") may be passed as `official` and are then
+ *     not treated as the model's claims; prerequisite talk (codes, permission, "taken", "background in") never
+ *     is.
  */
 
 const URL_PATTERN = /\b(?:https?:\/\/|www\.)[^\s<>"')\]]*[^\s<>"')\].,;:!?]/gi;
@@ -17,9 +22,45 @@ const BARE_DOMAIN_PATTERN =
 const CONTROL_PATTERN =
   /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200B-\u200F\u2028\u2029\u202A-\u202E]/g;
 
-/** Talk the UI must never show from a model (prerequisites, difficulty, workload, grading). */
-export const FORBIDDEN_CLAIM_PATTERN =
-  /\b(?:pre-?req\w*|pre-?requisites?|workloads?|work\s+load|difficult\w*|easy|easier|easiest|grading|graded|grades?|gpa|hours?\s+(?:a|per)\s+week|time-consuming|rigorous)\b/i;
+/** Prerequisite and eligibility talk: never from a model (the official prerequisite text is shown as is). */
+export const PREREQUISITE_PATTERN =
+  /\b(?:pre-?req\w*|co-?req\w*|permission\s+of\s+(?:the\s+)?(?:instructor|professor|department|chair)|(?:instructor|professor|department(?:al)?)(?:'s)?\s+(?:permission|consent|approval)|consent\s+of\s+(?:the\s+)?(?:instructor|professor|department)|must\s+(?:first\s+)?(?:complete|take|pass|have)|(?:already|previously|first)\s+(?:taken|completed|passed)|taken|background\s+in|familiarity\s+with|prior\s+(?:experience|knowledge|coursework|courses?|exposure|study|training)|before\s+(?:enrolling|taking|registering)|placement|eligib\w*)\b/i;
+
+const DIFFICULTY_SOURCE = String.raw`requires?|required|difficult\w*|easy|easier|easiest|hard|harder|hardest|tough\w*|challeng\w*|demanding|intensive\w*|intense\w*|rigou?r\w*|heavy|heavier|light|lighter|lightweight|manageable|fast-?paced|slow-?paced|workloads?|work\s*load|reading\s+load|time-?consuming|time\s+commitment|hours?\s+(?:a|per|each)\s+week|grading|graded|grades?|gpa`;
+
+/** Difficulty, workload and grading words, and "required" (may be exempted by official text, see above). */
+export const DIFFICULTY_PATTERN = new RegExp(`\\b(?:${DIFFICULTY_SOURCE})\\b`, "i");
+const DIFFICULTY_ALL = new RegExp(DIFFICULTY_PATTERN.source, "gi");
+
+/** Talk the UI must never show from a model (prerequisites, eligibility, difficulty, workload, grading). */
+export const FORBIDDEN_CLAIM_PATTERN = new RegExp(
+  `${PREREQUISITE_PATTERN.source}|${DIFFICULTY_PATTERN.source}`,
+  "i",
+);
+
+function normalizedWord(match: string): string {
+  return match.toLowerCase().replace(/\s+/g, " ").replace(/-/g, "");
+}
+
+/** The difficulty words an official text itself uses (see the module comment). */
+export function officialDifficultyWords(officialText: string): Set<string> {
+  return new Set([...officialText.matchAll(DIFFICULTY_ALL)].map((m) => normalizedWord(m[0])));
+}
+
+/** True when `text` makes a claim the UI must not show (difficulty words in `official` excepted). */
+export function hasForbiddenClaim(text: string, official?: ReadonlySet<string>): boolean {
+  if (PREREQUISITE_PATTERN.test(text)) return true;
+  for (const match of text.matchAll(DIFFICULTY_ALL)) {
+    if (!official?.has(normalizedWord(match[0]))) return true;
+  }
+  return false;
+}
+
+/** A sentence or list item test: true = drop it. */
+export type SentenceFilter = (text: string) => boolean;
+
+/** The default filter: forbidden claims. */
+export const forbiddenClaims: SentenceFilter = (text) => hasForbiddenClaim(text);
 
 export interface CleanOptions {
   maxLength: number;
@@ -87,23 +128,31 @@ export function sentences(text: string): string[] {
     .filter(Boolean);
 }
 
-/** Drop the sentences that match `pattern` (default: forbidden claims). */
-export function dropSentences(text: string, pattern: RegExp = FORBIDDEN_CLAIM_PATTERN): string {
+/** Drop the sentences that `drop` (a filter or a pattern; default: forbidden claims) matches. */
+export function dropSentences(
+  text: string,
+  drop: SentenceFilter | RegExp = forbiddenClaims,
+): string {
+  const test = drop instanceof RegExp ? (sentence: string) => drop.test(sentence) : drop;
   return sentences(text)
-    .filter((sentence) => !pattern.test(sentence))
+    .filter((sentence) => !test(sentence))
     .join(" ");
 }
 
-/** Clean a list: each item cleaned, forbidden claims and empty or duplicate items dropped, at most `maxItems`. */
+/** Clean a list: each item cleaned, filtered items (default: forbidden claims), empty or duplicate ones dropped. */
 export function cleanList(
   items: readonly string[],
-  { maxItems, maxLength }: { maxItems: number; maxLength: number },
+  {
+    maxItems,
+    maxLength,
+    drop = forbiddenClaims,
+  }: { maxItems: number; maxLength: number; drop?: SentenceFilter },
 ): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const item of items) {
     const cleaned = cleanText(item, { maxLength });
-    if (!cleaned || FORBIDDEN_CLAIM_PATTERN.test(cleaned)) continue;
+    if (!cleaned || drop(cleaned)) continue;
     const key = cleaned.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
@@ -113,10 +162,19 @@ export function cleanList(
   return out;
 }
 
-/** A paragraph: cleaned, forbidden-claim sentences dropped, cut to length. */
-export function cleanParagraph(input: string, maxLength: number): string {
+/** A paragraph: cleaned, filtered sentences (default: forbidden claims) dropped, cut to length. */
+export function cleanParagraph(
+  input: string,
+  maxLength: number,
+  drop: SentenceFilter = forbiddenClaims,
+): string {
   const cleaned = cleanText(input, { maxLength: maxLength * 2 });
-  return truncate(dropSentences(cleaned), maxLength);
+  return truncate(dropSentences(cleaned, drop), maxLength);
+}
+
+/** Combine sentence filters: a sentence is dropped when any of them matches. */
+export function anyOf(...filters: SentenceFilter[]): SentenceFilter {
+  return (text) => filters.some((filter) => filter(text));
 }
 
 /** Words of a text for overlap checks (lower case, letters and digits only). */

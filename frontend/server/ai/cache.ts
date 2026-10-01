@@ -4,13 +4,16 @@ import mongoose from "mongoose";
 import type { AiFeature, AiProvenance } from "@/lib/types/ai";
 import AiCache from "@/models/AiCache";
 import { now } from "@/server/clock";
-import { getDb } from "@/server/db";
+import { getDb, trusted } from "@/server/db";
 import { isDuplicateKeyError } from "@/server/http/errors";
 
 /**
  * aicache_v2 access (models/AiCache.ts). Shared entries (course-about, professor-summary) are keyed only by what
  * the server derived from official data, so no student can change what another student receives; personal entries
- * are keyed by the student's id. Reads ignore expired entries (the TTL monitor deletes them within a minute or so).
+ * are keyed by the student's id. Reads ignore expired entries (the TTL monitor deletes them within a minute or so),
+ * except hidden ones: a shared entry hidden by reports is returned as hidden whatever its validUntil, is kept
+ * (its expiresAt moves a year ahead when it is hidden: server/ai/reports.ts), and is never overwritten by a
+ * write; only the admin purge removes it.
  */
 
 /** JSON with object keys sorted at every level, so equal inputs hash equally whatever their key order. */
@@ -57,9 +60,9 @@ interface StoredEntry {
 }
 
 function toEntry<T>(doc: StoredEntry | null, at: Date): CacheEntry<T> | null {
-  if (!doc || !(doc.validUntil instanceof Date) || doc.validUntil.getTime() <= at.getTime()) {
-    return null;
-  }
+  if (!doc || !(doc.validUntil instanceof Date)) return null;
+  // A hidden entry stays hidden until an admin purges it, even past its own lifetime.
+  if (doc.hidden !== true && doc.validUntil.getTime() <= at.getTime()) return null;
   const status: EntryStatus =
     doc.status === "refused" || doc.status === "invalid" ? doc.status : "ok";
   return {
@@ -127,7 +130,7 @@ async function write(
     key: string;
   },
   entry: EntryWrite,
-): Promise<AiProvenance> {
+): Promise<AiProvenance | null> {
   await getDb();
   const at = now();
   const validUntil = new Date(at.getTime() + entry.ttlMs);
@@ -148,12 +151,16 @@ async function write(
     // Purge time: never before the real clock plus the lifetime (FIXTURES_NOW may be pinned in the past).
     expiresAt: new Date(Math.max(validUntil.getTime(), Date.now() + entry.ttlMs)),
   };
+  // A hidden document never matches, so the upsert collides with it on the unique key and the update after the
+  // collision matches nothing: the hidden entry is left as it is.
+  const unlessHidden = { ...filter, hidden: trusted({ $ne: true }) };
   try {
-    await AiCache.updateOne(filter, { $set: set }, { upsert: true });
+    await AiCache.updateOne(unlessHidden, { $set: set }, { upsert: true });
   } catch (error) {
-    // Two first writers can race on the upsert; the loser writes as an update.
+    // Two first writers can race on the upsert (the loser writes as an update), or the entry is hidden.
     if (!isDuplicateKeyError(error)) throw error;
-    await AiCache.updateOne(filter, { $set: set });
+    const result = await AiCache.updateOne(unlessHidden, { $set: set });
+    if (result.matchedCount === 0) return null;
   }
   return {
     model: entry.servedModel,
@@ -163,22 +170,28 @@ async function write(
   };
 }
 
-/** Store (or refresh) a shared entry; reports and the hidden flag of an existing entry are kept. */
+/**
+ * Store (or refresh) a shared entry; the reports of an existing entry are kept. Null when the entry is hidden
+ * pending review: nothing is written over it.
+ */
 export function writeShared(
   feature: AiFeature,
   key: string,
   entry: EntryWrite,
-): Promise<AiProvenance> {
+): Promise<AiProvenance | null> {
   return write({ feature, scope: "shared", userId: null, key }, entry);
 }
 
-export function writePersonal(
+export async function writePersonal(
   feature: AiFeature,
   userId: string,
   key: string,
   entry: EntryWrite,
 ): Promise<AiProvenance> {
-  return write({ feature, scope: "user", userId: objectId(userId), key }, entry);
+  const provenance = await write({ feature, scope: "user", userId: objectId(userId), key }, entry);
+  // Personal entries are never reported, so never hidden.
+  if (!provenance) throw new Error("A personal AI entry cannot be hidden.");
+  return provenance;
 }
 
 /** Forget a personal entry (e.g. its stored draft is gone). */

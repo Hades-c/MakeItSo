@@ -1,8 +1,15 @@
 import "server-only";
 import { aiFailure, STUDENT_NAME_PLACEHOLDER, type AiResult, type ColdEmail } from "@/lib/types/ai";
 import { hashInput, readPersonal, writePersonal } from "@/server/ai/cache";
+import { requestDeadline } from "@/server/ai/client";
 import { AI_MODEL, TTL_MS } from "@/server/ai/config";
-import { callModel, failureOf, okResult, spendOnGeneration } from "@/server/ai/features/common";
+import {
+  callModel,
+  failureOf,
+  okResult,
+  refundIfNothingAnswered,
+  spendOnGeneration,
+} from "@/server/ai/features/common";
 import { alumnusPayload, studentProfilePayload } from "@/server/ai/payloads";
 import {
   coldEmailRequest,
@@ -57,6 +64,7 @@ export async function generateColdEmail(
   userId: string,
   input: { alumnusId: string; careerSlug?: string; regenerate: boolean },
 ): Promise<AiResult<ColdEmailResult>> {
+  const deadlineAt = requestDeadline();
   const alumnus = getAlumnus(input.alumnusId);
   const alumnusData = alumnus ? alumnusPayload(alumnus) : null;
   if (!alumnusData) {
@@ -84,12 +92,8 @@ export async function generateColdEmail(
   const key = career ? `${input.alumnusId}:${career.slug}` : input.alumnusId;
 
   const cached = await readPersonal<ColdEmailResult>("cold-email", userId, key);
-  if (
-    !input.regenerate &&
-    cached?.status === "ok" &&
-    cached.inputHash === inputHash &&
-    cached.data
-  ) {
+  const current = cached?.status === "ok" && cached.inputHash === inputHash && cached.data !== null;
+  if (!input.regenerate && current && cached?.data) {
     await recordUsage({
       userId,
       feature: "cold-email",
@@ -103,12 +107,20 @@ export async function generateColdEmail(
     });
   }
 
-  const regeneration = input.regenerate && cached?.status === "ok";
+  // A regeneration only when it replaces the draft that would have been served.
+  const regeneration = input.regenerate && current;
   const spend = await spendOnGeneration(userId, { regeneration });
-  if (spend) return spend;
+  if ("failure" in spend) return spend.failure;
 
-  const outcome = await callModel(OutputSchema, coldEmailRequest(data), { userId, regeneration });
-  if (outcome.kind !== "ok") return failureOf(outcome);
+  const outcome = await callModel(OutputSchema, coldEmailRequest(data), {
+    userId,
+    regeneration,
+    deadlineAt,
+  });
+  if (outcome.kind !== "ok") {
+    await refundIfNothingAnswered(spend.receipt, outcome);
+    return failureOf(outcome);
+  }
   const email = cleanColdEmail(outcome.data);
   if (!email) return aiFailure("invalid");
 
