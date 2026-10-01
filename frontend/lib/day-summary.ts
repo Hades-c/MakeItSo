@@ -51,7 +51,7 @@ export interface SummaryEvent {
 export interface SummaryMilestone {
   /** What it is, e.g. "WebTree". */
   name: string;
-  verb: "opens" | "closes" | "begins" | "ends";
+  verb: "opens" | "reopens" | "closes" | "begins" | "ends";
   /** The published time, or null when the row has none. */
   at: Date | null;
   /** The Davidson day it happens on ("YYYY-MM-DD"); needed when `at` is null. */
@@ -100,8 +100,6 @@ export interface DaySummary {
 /** How far ahead "due soon" looks, in days. */
 export const DEADLINE_WINDOW_DAYS = 3;
 
-const DAY_MS = 86_400_000;
-
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 
 /** "one class", "three classes", "12 classes". */
@@ -116,6 +114,7 @@ function capitalize(text: string): string {
 
 const PAST: Record<SummaryMilestone["verb"], string> = {
   opens: "opened",
+  reopens: "reopened",
   closes: "closed",
   begins: "began",
   ends: "ended",
@@ -134,16 +133,17 @@ function byStart<T extends { start: Date }>(a: T, b: T): number {
   return a.start.getTime() - b.start.getTime();
 }
 
-/** In the window: a timed deadline from now through 3 × 24 h; an all-day one from today through day 3. */
+/**
+ * In the window: due today through day DEADLINE_WINDOW_DAYS, by Davidson calendar day for timed and all-day
+ * deadlines alike (Saturday 9 a.m. and Saturday 1 p.m. are both "Saturday"); a timed deadline whose time has passed
+ * is gone.
+ */
 function isDueSoon(deadline: SummaryDeadline, now: Date, timeZone: string): boolean {
   const due = deadline.due.getTime();
   if (Number.isNaN(due)) return false;
-  if (deadline.allDay) {
-    const days = calendarDaysBetween(now, deadline.due, timeZone);
-    return days >= 0 && days <= DEADLINE_WINDOW_DAYS;
-  }
-  const t = now.getTime();
-  return due >= t && due <= t + DEADLINE_WINDOW_DAYS * DAY_MS;
+  if (!deadline.allDay && due < now.getTime()) return false;
+  const days = calendarDaysBetween(now, deadline.due, timeZone);
+  return days >= 0 && days <= DEADLINE_WINDOW_DAYS;
 }
 
 /** The lead clause for a day without classes. */

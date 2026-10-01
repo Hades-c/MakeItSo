@@ -32,6 +32,21 @@ export async function attempt<T>(what: string, work: () => Promise<T>): Promise<
   }
 }
 
+/**
+ * Runs a panel's pure computation (building the agenda, Due soon, labels) and turns a throw into null (logged),
+ * so the panel shows its small error state instead of taking the whole page down; a missing test fixture is
+ * never hidden. Render errors inside the panel's components are caught by its PanelBoundary.
+ */
+export function safely<T>(what: string, work: () => T): T | null {
+  try {
+    return work();
+  } catch (error) {
+    if (error instanceof MissingFixtureError) throw error;
+    console.error(`[today] could not build ${what}:`, error);
+    return null;
+  }
+}
+
 export const loadProfile = cache((userId: string): Promise<Loaded<ProfileView>> =>
   attempt("the profile", () => getProfile(userId)),
 );

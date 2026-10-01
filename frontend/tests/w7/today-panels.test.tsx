@@ -6,6 +6,7 @@ import type { ResolvedTerms } from "@/lib/types/catalog";
 import type { FeedItem } from "@/lib/types/feeds";
 import type { DaySchedule, PlanProgress, PlanView, StudentDeadline } from "@/lib/types/plan";
 import type { ProfileView } from "@/server/auth/profile";
+import type * as LoadModule from "@/server/today/load";
 import type { Loaded } from "@/server/today/load";
 
 /**
@@ -175,18 +176,27 @@ const state = vi.hoisted(() => ({
   schedule: null as unknown as (day: string) => unknown,
   feeds: null as unknown,
   campus: null as unknown,
+  /** Make the curated-deadlines read throw (a pure computation failing inside a panel). */
+  curatedThrows: false,
 }));
 
-vi.mock("@/server/today/load", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  loadProfile: async () => state.profile,
-  loadTerms: async () => state.terms,
-  loadPlan: async () => state.plan,
-  loadProgress: async () => state.progress,
-  loadSchedule: async (_user: string, day: string) => state.schedule(day),
-  loadFeedItems: async () => state.feeds,
-  loadCampusEvents: async () => state.campus,
-}));
+vi.mock("@/server/today/load", async (importOriginal) => {
+  const original = await importOriginal<typeof LoadModule>();
+  return {
+    ...original,
+    contentDeadlines: (from: string, to: string) => {
+      if (state.curatedThrows) throw new Error("bad curated row");
+      return original.contentDeadlines(from, to);
+    },
+    loadProfile: async () => state.profile,
+    loadTerms: async () => state.terms,
+    loadPlan: async () => state.plan,
+    loadProgress: async () => state.progress,
+    loadSchedule: async (_user: string, day: string) => state.schedule(day),
+    loadFeedItems: async () => state.feeds,
+    loadCampusEvents: async () => state.campus,
+  };
+});
 
 const { TodayHeader } = await import("@/app/(hub)/today/_components/today-header");
 const { TimelinePanel } = await import("@/app/(hub)/today/_components/timeline-panel");
@@ -210,6 +220,7 @@ beforeEach(() => {
   state.schedule = (day: string) => ok(schedule(day));
   state.feeds = ok(FEEDS);
   state.campus = ok(FEEDS);
+  state.curatedThrows = false;
 });
 
 /** Every element marked data-aggregated holds a SourceTag of that source ("Source: <label>"). */
@@ -242,18 +253,18 @@ describe("the header", () => {
     );
     expect(screen.getByText("Wednesday, September 30")).toHaveAttribute("dateTime", "2026-09-30");
     expect(screen.getByText(/· Fall 2026/)).toBeVisible();
-    // Deadlines for the student: the WebTree window, the office programs open to all, their own (not the
-    // seniors' minor declaration).
+    // Deadlines for the student: their own problem set only. Due soon also lists the WebTree window and
+    // optional program applications, which are not deadlines (nor is the seniors' minor declaration theirs).
     const { from, to } = dueSoonRange(NOON);
-    const forYou = buildDueSoon({
+    const listed = buildDueSoon({
       now: NOON,
       standing: "first-year",
       contentDeadlines: deadlinesBetween(from, to),
       studentDeadlines: [DEADLINE],
-    }).filter((item) => item.forYou);
-    expect(forYou.length).toBeGreaterThan(2);
+    });
+    expect(listed.some((item) => item.kind === "registration" && item.forYou)).toBe(true);
     expect(screen.getByTestId("day-counts")).toHaveTextContent(
-      `3 classes today · ${forYou.length} deadlines in the next two weeks`,
+      "3 classes today · 1 deadline in the next two weeks",
     );
     const strip = screen.getByRole("navigation", { name: "This school week" });
     const links = within(strip).getAllByRole("link");
@@ -405,6 +416,56 @@ describe("the timeline", () => {
     await show(panel());
     expect(screen.getByTestId("panel-error")).toHaveTextContent("Your schedule could not load");
   });
+
+  it("says next up from the real today: nothing for a past day, never 'Tomorrow' two days out", async () => {
+    // Monday (already past on Wednesday): no next-up line pointing at Tuesday.
+    await show(panel("2026-09-28", false));
+    expect(screen.getByRole("region", { name: /^Monday, September 28/ })).not.toHaveTextContent(
+      /Tomorrow|Tue /,
+    );
+    document.body.innerHTML = "";
+    // Thursday: Friday is two days from today, so its weekday, not "Tomorrow".
+    await show(panel("2026-10-01", false));
+    const card = screen.getByRole("region", { name: /^Thursday, October 1/ });
+    expect(card).toHaveTextContent("Fri 10:30 AM · CSC 221 title");
+    expect(card).not.toHaveTextContent("Tomorrow");
+  });
+
+  it("lists the day's all-day deadlines for the student, matching the strip's count", async () => {
+    state.profile = ok({ ...PROFILE, standing: { standing: "senior", estimated: true } });
+    state.plan = ok(plan({ deadlines: [] }));
+    const { container } = await show(panel("2026-10-01", false));
+    const allDay = screen.getByTestId("timeline-all-day");
+    expect(allDay).toHaveTextContent("Due that day");
+    expect(allDay).toHaveTextContent("Minor Declaration Deadline for Seniors");
+    expect(expectAllTagged(container)).toBe(1);
+    expect(screen.getByTestId("timeline-empty")).toHaveTextContent("No classes that day.");
+  });
+
+  it("never draws WebTree's opening as a deadline", async () => {
+    state.plan = ok(plan({ deadlines: [] }));
+    state.schedule = (day: string) => ok(schedule(day, { entries: [], empty: "no-classes-today" }));
+    await show(
+      TimelinePanel({
+        userId: USER,
+        now: new Date("2026-10-12T12:00:00-04:00"),
+        timeZone: TZ,
+        day: "2026-10-12",
+        stripDays: stripDays("2026-10-12"),
+        eventsOn: false,
+      }),
+    );
+    expect(document.querySelector('[data-kind="deadline"]')).toBeNull();
+    expect(screen.queryByText(/WebTree Open/)).toBeNull();
+  });
+
+  it("degrades to its error state when building the day throws", async () => {
+    state.curatedThrows = true;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    await show(panel());
+    expect(screen.getByTestId("panel-error")).toHaveTextContent("Your schedule could not load");
+    log.mockRestore();
+  });
 });
 
 describe("Due soon", () => {
@@ -430,10 +491,32 @@ describe("Due soon", () => {
     }
   });
 
-  it("degrades to a small error state", async () => {
+  it("keeps the calendar and program rows when only the plan fails", async () => {
     state.plan = FAIL;
     await show(DueSoonPanel({ userId: USER, now: NOON }));
-    expect(screen.getByTestId("panel-error")).toHaveTextContent("Your deadlines could not load");
+    expect(screen.queryByTestId("panel-error")).toBeNull();
+    expect(screen.getByTestId("due-soon-own-error")).toHaveTextContent(
+      "Your own deadlines could not load right now.",
+    );
+    const items = screen.getAllByTestId("due-soon-item");
+    expect(items.some((li) => li.textContent?.includes("WebTree Open"))).toBe(true);
+    expect(items.some((li) => li.dataset.kind === "student")).toBe(false);
+  });
+
+  it("gives WebTree its registration kind, not a deadline's", async () => {
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    const webtree = screen
+      .getAllByTestId("due-soon-item")
+      .find((li) => li.textContent?.includes("WebTree Open"));
+    expect(webtree).toHaveAttribute("data-kind", "registration");
+  });
+
+  it("degrades to a small error state when building the list throws", async () => {
+    state.curatedThrows = true;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    expect(screen.getByTestId("panel-error")).toHaveTextContent("Due soon could not load");
+    log.mockRestore();
   });
 });
 
@@ -477,6 +560,19 @@ describe("this week on campus", () => {
     expect(screen.getByRole("link", { name: "Events" })).toHaveAttribute("href", "/events");
   });
 
+  it("leaves out long-running items already under way", async () => {
+    state.campus = ok([
+      feed("season", "2026-07-23T09:00:00-04:00", "2026-10-01T17:00:00-04:00", {
+        title: "Rhodes Scholarship Application Deadlines",
+      }),
+      ...FEEDS,
+    ]);
+    await show(CampusPanel({ now: NOON, timeZone: TZ }));
+    expect(screen.getAllByTestId("campus-item")).toHaveLength(2);
+    expect(screen.queryByText(/Rhodes/)).toBeNull();
+    expect(screen.queryByText(/Under way/)).toBeNull();
+  });
+
   it("says so when nothing is on, and degrades on failure", async () => {
     state.campus = ok([]);
     await show(CampusPanel({ now: NOON, timeZone: TZ }));
@@ -491,7 +587,9 @@ describe("this week on campus", () => {
 
 describe("opportunities and quick links", () => {
   it("lists curated programs after the Due soon window and the Handshake entry point", async () => {
-    const { container } = render(OpportunitiesPanel({ now: NOON, careersOn: true }));
+    const { container } = await show(
+      OpportunitiesPanel({ userId: USER, now: NOON, careersOn: true }),
+    );
     const items = screen.getAllByTestId("opportunity-item");
     expect(items.length).toBeGreaterThan(1);
     expect(expectAllTagged(container)).toBe(items.length);
@@ -504,9 +602,27 @@ describe("opportunities and quick links", () => {
     expect(screen.getByRole("link", { name: "Careers" })).toHaveAttribute("href", "/careers");
   });
 
-  it("leaves out the Careers link while careers is off", () => {
-    render(OpportunitiesPanel({ now: NOON, careersOn: false }));
+  it("leaves out the Careers link while careers is off", async () => {
+    await show(OpportunitiesPanel({ userId: USER, now: NOON, careersOn: false }));
     expect(screen.queryByRole("link", { name: "Careers" })).toBeNull();
+  });
+
+  it("says who a program is for, and keeps only the short date beside the title", async () => {
+    await show(
+      OpportunitiesPanel({
+        userId: USER,
+        now: new Date("2026-10-12T12:00:00-04:00"),
+        careersOn: true,
+      }),
+    );
+    const items = screen.getAllByTestId("opportunity-item").slice(0, -1);
+    expect(items.length).toBeGreaterThan(0);
+    // At least one program on Oct 12 is for seniors or graduate students: the first-year sees who it is for.
+    expect(screen.getAllByTestId("opportunity-audience").length).toBeGreaterThan(0);
+    for (const li of items) {
+      const date = li.querySelector("p.shrink-0");
+      expect(date?.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}$/);
+    }
   });
 
   it("links the portals, tagging the platforms", () => {
@@ -518,33 +634,61 @@ describe("opportunities and quick links", () => {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
     }
     expect(expectAllTagged(container)).toBe(2);
+    // The tag sits under the name (a column), so a narrow card never splits the name mid-word.
+    const davidsonOne = links.find((a) => a.textContent?.includes("Davidson One"));
+    const column = davidsonOne?.querySelector("span.flex-col");
+    expect(column?.querySelector('[data-source="davidson-one"]')).not.toBeNull();
+    expect(container.querySelector(".break-words")).toBeNull();
+  });
+});
+
+describe("panel boundaries", () => {
+  it("turns a panel that throws while rendering into its error state, and the others still render", async () => {
+    const { PanelBoundary } = await import("@/app/(hub)/today/_components/panel-boundary");
+    function Boom(): React.ReactElement {
+      throw new Error("render failed");
+    }
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <>
+        <PanelBoundary id="due-soon" title="Due soon" what="Due soon">
+          <Boom />
+        </PanelBoundary>
+        <PanelBoundary id="quick-links" title="Quick links" what="Quick links">
+          {QuickLinks()}
+        </PanelBoundary>
+      </>,
+    );
+    expect(screen.getByTestId("panel-error")).toHaveTextContent("Due soon could not load");
+    expect(screen.getByRole("region", { name: /Quick links/ })).toBeVisible();
+    expect(screen.getAllByRole("link").length).toBe(8);
+    log.mockRestore();
   });
 });
 
 describe("the action row", () => {
-  it("offers Plan Spring 2027 two weeks before WebTree opens, with its dates and tag", async () => {
-    const { container } = await show(TodayActions({ userId: USER, now: NOON, timeZone: TZ }));
+  it("offers Plan Spring 2027 only while WebTree is open, with its dates and tag", async () => {
+    const { container } = await show(
+      TodayActions({ userId: USER, now: new Date("2026-10-20T12:00:00-04:00"), timeZone: TZ }),
+    );
     expect(screen.getByRole("link", { name: "Plan Spring 2027" })).toHaveAttribute(
       "href",
       "/plan?tab=next",
     );
     expect(screen.getByTestId("webtree-window")).toHaveTextContent(
-      "WebTree opens Mon, Oct 12 at 7:00 AM for Spring 2027 course preferences.",
+      "WebTree is open for Spring 2027 course preferences until Tue, Nov 3 at 5:00 PM.",
     );
     expect(expectAllTagged(container)).toBe(1);
-    expect(screen.getByRole("link", { name: "Browse courses" })).toHaveAttribute(
-      "href",
-      "/courses",
-    );
     expect(screen.queryByTestId("onboarding-nudge")).toBeNull();
   });
 
-  it("says until when WebTree is open", async () => {
-    await show(
-      TodayActions({ userId: USER, now: new Date("2026-10-20T12:00:00-04:00"), timeZone: TZ }),
-    );
-    expect(screen.getByTestId("webtree-window")).toHaveTextContent(
-      "WebTree is open for Spring 2027 course preferences until Tue, Nov 3 at 5:00 PM.",
+  it("has no call to action before WebTree opens (the fixtures day), only Browse courses", async () => {
+    await show(TodayActions({ userId: USER, now: NOON, timeZone: TZ }));
+    expect(screen.queryByTestId("plan-next-cta")).toBeNull();
+    expect(screen.queryByTestId("webtree-window")).toBeNull();
+    expect(screen.getByRole("link", { name: "Browse courses" })).toHaveAttribute(
+      "href",
+      "/courses",
     );
   });
 
@@ -554,7 +698,9 @@ describe("the action row", () => {
     );
     expect(screen.queryByTestId("plan-next-cta")).toBeNull();
     state.terms = FAIL;
-    await show(TodayActions({ userId: USER, now: NOON, timeZone: TZ }));
+    await show(
+      TodayActions({ userId: USER, now: new Date("2026-10-20T12:00:00-04:00"), timeZone: TZ }),
+    );
     expect(screen.queryByTestId("plan-next-cta")).toBeNull();
   });
 

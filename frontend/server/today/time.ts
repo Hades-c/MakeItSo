@@ -30,6 +30,12 @@ export function etClock(at: Date | string): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/** The Monday of the Monday-to-Sunday week `day` falls in. */
+export function mondayOf(day: string): string {
+  const offset: Record<string, number> = { M: 0, T: -1, W: -2, R: -3, F: -4, S: -5, U: -6 };
+  return addDaysToKey(day, offset[weekdayOf(day)] ?? 0);
+}
+
 /**
  * The five days the week strip shows: Monday to Friday of this week, or of next week on a weekend (the school week
  * ahead).

@@ -3,6 +3,8 @@ import type { SourceId } from "@/lib/sources";
 import type { Office, PortalLink, Program } from "@/lib/types/content";
 import { HANDSHAKE, getLink } from "@/server/content/links";
 import { getOffice, PROGRAMS } from "@/server/content/offices";
+import type { ClassStanding } from "@/lib/term";
+import { audienceIncludes } from "@/server/today/calendar";
 import { addDaysToKey } from "@/server/today/time";
 
 /**
@@ -24,6 +26,10 @@ export interface Opportunity {
   /** The next published deadline. */
   deadline: { label: string; date: string };
   amount: string | null;
+  /** Who it is for, as the office publishes it. */
+  audience: string | null;
+  /** The audience certainly includes the student (calendar audienceIncludes); else the panel says who it is for. */
+  forYou: boolean;
   source: SourceId;
   url: string;
   verifiedAt: string;
@@ -32,6 +38,7 @@ export interface Opportunity {
 export function upcomingOpportunities(
   after: string,
   today: string,
+  standing: ClassStanding | null,
   programs: readonly Program[] = PROGRAMS,
   officeOf: (slug: string) => Pick<Office, "name"> | undefined = getOffice,
 ): Opportunity[] {
@@ -49,6 +56,8 @@ export function upcomingOpportunities(
           office: officeOf(program.officeSlug)?.name ?? null,
           deadline: { label: next.label, date: next.date },
           amount: program.amount,
+          audience: program.audience,
+          forYou: audienceIncludes(program.audience, standing),
           source: program.source,
           url: program.url,
           verifiedAt: program.verifiedAt,

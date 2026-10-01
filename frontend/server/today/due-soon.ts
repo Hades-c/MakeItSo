@@ -5,7 +5,7 @@ import type { ClassStanding } from "@/lib/term";
 import type { StudentDeadline } from "@/lib/types/plan";
 import { clockLabel } from "@/components/domain/time-geometry";
 import type { ContentDeadline } from "@/server/content/academic-calendar";
-import { audienceIncludes } from "@/server/today/calendar";
+import { audienceIncludes, calendarCategoryOf } from "@/server/today/calendar";
 import { addDaysToKey, etClock, etDay, zonedInstant } from "@/server/today/time";
 
 /**
@@ -22,7 +22,12 @@ import { addDaysToKey, etClock, etDay, zonedInstant } from "@/server/today/time"
 
 export const DUE_SOON_DAYS = 14;
 
-export type DueSoonKind = "deadline" | "window" | "program" | "student";
+/**
+ * deadline: a calendar row of category "deadline" due on one day; window: a multi-day deadline row; registration:
+ * a calendar registration row (WebTree, Banner add/drop, schedules available), an opening or a window, never a
+ * deadline; program: an office program's deadline (optional applications); student: the student's own.
+ */
+export type DueSoonKind = "deadline" | "window" | "registration" | "program" | "student";
 
 export interface DueSoonItem {
   id: string;
@@ -63,7 +68,13 @@ export function dueSoonRange(now: Date): { from: string; to: string } {
 
 function fromContent(deadline: ContentDeadline, today: string, standing: ClassStanding | null) {
   const kind: DueSoonKind =
-    deadline.kind === "program" ? "program" : deadline.endDate ? "window" : "deadline";
+    deadline.kind === "program"
+      ? "program"
+      : calendarCategoryOf(deadline) === "registration"
+        ? "registration"
+        : deadline.endDate
+          ? "window"
+          : "deadline";
   const timedInstant =
     deadline.time && !deadline.endDate ? zonedInstant(deadline.date, deadline.time) : null;
   return {
@@ -105,7 +116,24 @@ function fromStudent(deadline: StudentDeadline): DueSoonItem {
   };
 }
 
-const KIND_ORDER: Record<DueSoonKind, number> = { window: 0, deadline: 1, program: 2, student: 3 };
+const KIND_ORDER: Record<DueSoonKind, number> = {
+  registration: 0,
+  window: 1,
+  deadline: 2,
+  program: 3,
+  student: 4,
+};
+
+/**
+ * The deadlines among Due soon items that are the student's to meet (the header's "N deadlines in the next two
+ * weeks"): the calendar's one-day deadline rows for their class year and their own. Registration openings and
+ * windows, multi-day rows and optional program applications are listed, never counted as deadlines.
+ */
+export function ownDeadlineCount(items: readonly DueSoonItem[]): number {
+  return items.filter(
+    (item) => item.forYou && (item.kind === "deadline" || item.kind === "student"),
+  ).length;
+}
 
 export function buildDueSoon(input: DueSoonInput): DueSoonItem[] {
   const { from, to } = dueSoonRange(input.now);

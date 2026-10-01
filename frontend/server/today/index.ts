@@ -8,7 +8,8 @@ import "server-only";
  *               to { ok: false } instead of throwing
  *   summary     the deterministic day summary (lib/day-summary buildDaySummary) from the loaded parts
  *   agenda      one day of the timeline: classes, deadlines, campus events, the visible hours
- *   week        the five-day strip
+ *   week        the five-day strip and the timeline's "next up" label
+ *   campus      This week on campus: the next dated happenings (long-running items under way left out)
  *   due-soon    calendar deadlines + registration windows + program deadlines + the student's own, merged
  *   degree      the compact degree map's terms × slots
  *   calendar    breaks, milestones ("WebTree opens"), the WebTree window behind "Plan <term>", audiences
@@ -20,6 +21,7 @@ import "server-only";
 
 export * from "@/server/today/agenda";
 export * from "@/server/today/calendar";
+export * from "@/server/today/campus";
 export * from "@/server/today/degree";
 export * from "@/server/today/due-soon";
 export * from "@/server/today/load";

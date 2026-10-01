@@ -164,6 +164,7 @@ describe("the panels' data", () => {
       schedule: schedule.value,
       studentDeadlines: [],
       contentDeadlines: contentDeadlines("2026-09-30", "2026-09-30"),
+      standing: "first-year",
       feedItems: [],
       now: NOON,
     });
@@ -182,7 +183,12 @@ describe("the panels' data", () => {
     const counts = await Promise.all(
       stripDays("2026-09-30").map(async (day) => {
         const loaded = await loadSchedule(user, day);
-        return stripCount({ day, schedule: loaded.ok ? loaded.value : null }, [], "first-year");
+        return stripCount(
+          { day, schedule: loaded.ok ? loaded.value : null },
+          [],
+          contentDeadlines("2026-09-28", "2026-10-02"),
+          "first-year",
+        );
       }),
     );
     expect(counts).toEqual([3, 0, 3, 0, 2]);

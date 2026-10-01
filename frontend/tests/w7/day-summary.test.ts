@@ -43,6 +43,36 @@ interface Case {
 
 const CASES: Case[] = [
   {
+    name: "timed and all-day deadlines on day 3 count alike (by Davidson calendar day)",
+    input: {
+      now: edt("12:00"),
+      hasSchedule: true,
+      classes: [],
+      noClasses: "no-classes-today",
+      deadlines: [
+        { title: "Essay", due: edt("09:00", "2026-10-03") },
+        { title: "Lab", due: edt("13:00", "2026-10-03") },
+      ],
+    },
+    sentence: "No classes today, and two deadlines in the next three days, the first Saturday.",
+    facts: { deadlinesSoon: 2 },
+  },
+  {
+    name: "a window reopening for the student, after its time",
+    input: {
+      now: edt("09:00", "2026-08-22"),
+      hasSchedule: true,
+      classes: [],
+      noClasses: "weekend",
+      milestones: [
+        { name: "Banner Self-Service Add/Drop", verb: "reopens", at: edt("07:00", "2026-08-22") },
+      ],
+    },
+    sentence:
+      "No classes this weekend, and Banner Self-Service Add/Drop reopened today at 7:00 AM.",
+    facts: { milestonesToday: 1 },
+  },
+  {
     name: "3-class weekday, before the first class",
     input: { now: edt("09:12"), hasSchedule: true, classes: WEDNESDAY },
     sentence:
