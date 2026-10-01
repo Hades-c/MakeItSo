@@ -229,10 +229,7 @@ describe("NextAuth options", () => {
     } as never)) as JWT;
     expect(token).toMatchObject({ id: user.id, sv: 2, email: user.email });
 
-    await User.updateOne(
-      { _id: user.id },
-      { $set: { name: "Renamed" }, $inc: { sessionVersion: 1 } },
-    );
+    await User.updateOne({ _id: user.id }, { $set: { name: "Renamed" } });
     const updated = (await jwt!({ token, trigger: "update" } as never)) as JWT;
     expect(updated).toMatchObject({ name: "Renamed", sv: 2 });
 
@@ -241,6 +238,54 @@ describe("NextAuth options", () => {
       token: updated,
     } as never);
     expect(built.user).toMatchObject({ id: user.id, name: "Renamed", sessionVersion: 2 });
+
+    // A bumped version (sign out everywhere, password change) revokes the token for good, update() included.
+    await User.updateOne({ _id: user.id }, { $inc: { sessionVersion: 1 } });
+    const revoked = (await jwt!({ token: updated, trigger: "update" } as never)) as JWT;
+    expect(revoked).toEqual({ revoked: true });
+    expect(await jwt!({ token: revoked } as never)).toEqual({ revoked: true });
+  });
+
+  it("GET /api/auth/session agrees with revocation: a revoked token gets an empty session", async () => {
+    const user = await insertUser({ raw: { sessionVersion: 0 } });
+    const { jwt, session } = getAuthOptions().callbacks!;
+    const token = (await jwt!({
+      token: {},
+      user: { id: user.id, email: user.email, name: user.name, sessionVersion: 0 },
+      account: null,
+      trigger: "signIn",
+    } as never)) as JWT;
+    // A later request with the same, still current, token keeps the user.
+    const again = (await jwt!({ token } as never)) as JWT;
+    expect(again).toMatchObject({ id: user.id, sv: 0 });
+
+    await User.updateOne({ _id: user.id }, { $inc: { sessionVersion: 1 } });
+    const after = (await jwt!({ token: again } as never)) as JWT;
+    expect(after).toEqual({ revoked: true });
+    const body = await session!({
+      session: {
+        user: { name: user.name, email: user.email },
+        expires: "2026-10-14T00:00:00.000Z",
+      },
+      token: after,
+    } as never);
+    expect(body).toEqual({});
+
+    // A deleted account's token is revoked too.
+    await User.deleteOne({ _id: user.id });
+    expect(await jwt!({ token: again } as never)).toEqual({ revoked: true });
+  });
+
+  it("keeps the token when the version cannot be read (no sign-out during a database outage)", async () => {
+    const user = await insertUser({ raw: { sessionVersion: 0 } });
+    const { jwt } = getAuthOptions().callbacks!;
+    const token = { id: user.id, sv: 0, email: user.email, name: user.name };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(User, "findById").mockImplementationOnce(() => {
+      throw new Error("connection refused");
+    });
+    expect(await jwt!({ token } as never)).toMatchObject({ id: user.id, sv: 0 });
+    expect(warn).toHaveBeenCalled();
   });
 
   it("passes refusals through and hides database errors behind a generic message", async () => {

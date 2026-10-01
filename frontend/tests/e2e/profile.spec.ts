@@ -330,6 +330,9 @@ test("profile: changing the password keeps this browser signed in and signs the 
     await expect(laptopPage).toHaveURL(/\/today$/);
     await phonePage.goto("/today");
     await expect(phonePage).toHaveURL(/\/login\?callbackUrl=%2Ftoday$|\/login$/);
+    // NextAuth's own session endpoint agrees: the revoked token no longer names the student.
+    const phoneSession = await phonePage.request.get("/api/auth/session");
+    expect(await phoneSession.json()).toEqual({});
 
     await phonePage.goto("/login");
     await phonePage.getByLabel("Email").fill(email);

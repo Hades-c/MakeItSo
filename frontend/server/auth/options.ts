@@ -181,6 +181,22 @@ function buildAuthOptions(secret: string): NextAuthOptions {
         }
         // Re-read name/email when the client calls update() after a profile change. Never the session version:
         // a revoked token must not be able to refresh itself.
+        // A token whose session version is behind the account's (sign out everywhere, password change or reset,
+        // deletion) is revoked: NextAuth's own GET /api/auth/session must not keep answering with the user. It is
+        // marked for good and emptied. A failed read keeps the token (pages still fail closed in
+        // resolveSessionUser); signing everyone out during a database outage would be worse.
+        if (!user && token.id && !token.revoked) {
+          try {
+            await getDb();
+            const current = await User.findById(token.id).select("sessionVersion").lean();
+            if (!current || (current.sessionVersion ?? 0) !== (token.sv ?? 0)) {
+              return { revoked: true };
+            }
+          } catch (error) {
+            console.warn("[auth] could not check the session version:", error);
+          }
+        }
+        if (token.revoked) return { revoked: true };
         if (trigger === "update" && token.id) {
           await getDb();
           const dbUser = await User.findById(token.id).select("name email").lean();
@@ -192,6 +208,8 @@ function buildAuthOptions(secret: string): NextAuthOptions {
         return token;
       },
       async session({ session, token }) {
+        // Revoked: an empty body, which the client and getServerSession read as signed out.
+        if (token.revoked || !token.id) return {} as typeof session;
         if (session.user && token.id) {
           session.user.id = token.id;
           session.user.name = token.name ?? session.user.name;

@@ -17,5 +17,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     sv?: number;
+    /** Set once the account's sessionVersion moved past `sv`: the token is revoked for good. */
+    revoked?: boolean;
   }
 }
