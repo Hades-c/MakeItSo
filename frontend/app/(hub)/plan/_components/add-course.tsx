@@ -19,7 +19,7 @@ import { meetingsText } from "../_lib/week";
 import { listedCrns, MAX_ALTERNATES, MAX_CHOICES } from "../_lib/webtree-edit";
 
 /**
- * "Add a course" for the WebTree list: pick a course from the plan (the courses already planned for the term) or
+ * "Add a course" for the WebTree list (a form, not a search landmark: the top bar holds the one site search): pick a course from the plan (the courses already planned for the term) or
  * from a catalog search (GET /api/catalog/search, the public catalog route), then one of its sections (GET
  * /api/catalog/courses/[term]/[code]) and where it goes: a new choice at the end, or an alternate for a choice.
  * The parent applies the edit and saves the list.
@@ -214,11 +214,7 @@ export function AddCourse({
         </div>
       ) : null}
 
-      <form
-        role="search"
-        onSubmit={(event) => void search(event)}
-        className="flex flex-col gap-1.5"
-      >
+      <form onSubmit={(event) => void search(event)} className="flex flex-col gap-1.5">
         <Label htmlFor={`${idBase}-q`}>Search the {termLabel} schedule</Label>
         <div className="flex gap-2">
           <Input

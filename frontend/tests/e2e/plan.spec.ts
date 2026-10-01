@@ -19,6 +19,9 @@ import {
  */
 
 async function checkPage(page: Page, what: string) {
+  // A refresh after a save may still be streaming: let it settle (the title is part of its metadata).
+  await page.waitForLoadState("networkidle");
+  await expect(page).toHaveTitle(/My plan/);
   expect(await horizontalOverflow(page), `${what}: horizontal overflow`).toBeLessThanOrEqual(0);
   expect(await seriousViolations(page), `${what}: axe`).toEqual([]);
   if (isMobile(page)) expect(await smallTapTargets(page), `${what}: tap targets`).toEqual([]);
