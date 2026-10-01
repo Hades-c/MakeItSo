@@ -7,6 +7,7 @@ import { EventSourcesCard } from "@/app/(hub)/events/_components/event-sources";
 import { EventsFilters } from "@/app/(hub)/events/_components/events-filters";
 import { EventsResults } from "@/app/(hub)/events/_components/events-results";
 import { LibraryHoursCard } from "@/app/(hub)/events/_components/library-hours";
+import { FocusClearance } from "@/app/(hub)/profile/_components/focus-clearance";
 import {
   loadEventSourceStatuses,
   loadEvents,
@@ -261,6 +262,23 @@ describe("the page", () => {
     expect(results?.props.window).toEqual(rangeWindow("week", NOW, TZ));
     expect(results?.props.timeZone).toBe(TZ);
     await expect(generateMetadata()).resolves.toEqual({ title: "Events" });
+  });
+
+  it("puts today's library hours before the list (phone order) and keeps focus clear of the fixed bars", async () => {
+    const page = await EventsPage({ searchParams: Promise.resolve({}) });
+    const order: unknown[] = [];
+    (function walk(node: ReactNode): void {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!isValidElement(node)) return;
+      const element = node as AnyElement;
+      order.push(element.type);
+      walk(element.props.children as ReactNode);
+    })(page);
+    const at = (type: unknown) => order.indexOf(type);
+    expect(at(LibraryHoursCard)).toBeGreaterThan(-1);
+    expect(at(LibraryHoursCard)).toBeLessThan(at(EventsFilters));
+    expect(at(EventsResults)).toBeLessThan(at(EventSourcesCard));
+    expect(at(FocusClearance)).toBeGreaterThan(-1);
   });
 
   it("answers 404 while FEATURE_EVENTS is off", async () => {

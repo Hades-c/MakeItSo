@@ -129,8 +129,13 @@ export function eventTimeLabel(item: FeedItem, { now, timeZone }: PresentOptions
         ? `${since} · through today`
         : `${since} · through ${formatShortDate(`${last}T12:00:00Z`, "UTC")}`;
     }
+    // An end at exactly midnight counts for the day before it (lastDay), so "until 12:00 AM today" would name the
+    // midnight that already passed this morning.
+    const endsAtMidnight = dayKey(item.endsAt, timeZone) > last;
     return last === today
-      ? `${since} · until ${formatTime(item.endsAt, timeZone)} today`
+      ? endsAtMidnight
+        ? `${since} · until midnight tonight`
+        : `${since} · until ${formatTime(item.endsAt, timeZone)} today`
       : `${since} · until ${dateAndTime(item.endsAt, timeZone)}`;
   }
 

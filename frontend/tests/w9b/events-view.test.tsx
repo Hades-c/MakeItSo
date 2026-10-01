@@ -1,10 +1,11 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EventList } from "@/app/(hub)/events/_components/event-list";
 import { EventSourcesView } from "@/app/(hub)/events/_components/event-sources";
 import { EventsFilters } from "@/app/(hub)/events/_components/events-filters";
 import { EventsResultsView } from "@/app/(hub)/events/_components/events-results";
+import { resetShowMoreFocus } from "@/app/(hub)/events/_components/show-more";
 import {
   LibraryHoursView,
   listedLocations,
@@ -23,7 +24,14 @@ const NOW = new Date("2026-09-30T12:00:00-04:00");
 
 beforeEach(() => {
   router.push.mockReset();
+  resetShowMoreFocus();
 });
+
+/** A click as a keyboard activation produces it (detail 0), with the navigation itself cancelled. */
+function keyboardClick(element: HTMLElement) {
+  element.addEventListener("click", (event) => event.preventDefault(), { once: true });
+  fireEvent.click(element, { detail: 0 });
+}
 
 function view(patch: Partial<EventsView> = {}): EventsView {
   return { ...DEFAULT_EVENTS_VIEW, ...patch };
@@ -144,6 +152,32 @@ describe("EventList", () => {
     expect(screen.queryByRole("link", { name: "Show more" })).toBeNull();
     expect(screen.getByText(/Narrow the dates or the filters/)).toBeInTheDocument();
   });
+  it("stretches each title link over its row (a ≥44px tap target on phones)", () => {
+    render(<EventList items={ITEMS} hasMore={false} view={view()} now={NOW} timeZone={TZ} />);
+    const [rhodes] = screen.getAllByTestId("event-item");
+    expect(rhodes).toHaveClass("relative");
+    const link = within(rhodes!).getByRole("link");
+    expect(link.className).toMatch(/after:absolute after:inset-0/);
+    expect(rhodes).toHaveAttribute("data-event-index", "0");
+  });
+
+  it("after Show more, focuses the first newly loaded item, also once Show more is gone", async () => {
+    const more: FeedItem[] = [
+      ...ITEMS,
+      { ...ITEMS[3]!, id: "late-1", title: "Late One", startsAt: "2026-10-11T22:00:00.000Z" },
+      { ...ITEMS[3]!, id: "late-2", title: "Late Two", startsAt: "2026-10-12T22:00:00.000Z" },
+    ];
+    const { rerender } = render(
+      <EventList items={ITEMS} hasMore view={view()} now={NOW} timeZone={TZ} />,
+    );
+    const showMore = screen.getByRole("link", { name: "Show more" });
+    showMore.focus();
+    keyboardClick(showMore);
+    rerender(<EventList items={more} hasMore={false} view={view()} now={NOW} timeZone={TZ} />);
+    expect(screen.queryByRole("link", { name: "Show more" })).toBeNull();
+    await act(async () => {});
+    expect(screen.getByRole("link", { name: /^Late One/ })).toHaveFocus();
+  });
 });
 
 describe("EventsResultsView", () => {
@@ -188,6 +222,38 @@ describe("EventsResultsView", () => {
     expect(screen.getByRole("heading", { name: /not synced yet/ })).toBeInTheDocument();
   });
 
+  it("says no 'today' twice for the today range", () => {
+    show(view({ range: "today" }), ITEMS.slice(0, 2), synced);
+    expect(screen.getByRole("status")).toHaveTextContent(/^Today: 2 items\.$/);
+  });
+
+  it("moves focus to the search box when Clear filters is used from the keyboard", () => {
+    render(
+      <>
+        <EventsFilters view={view({ kinds: ["deadline"] })} />
+        <EventsResultsView
+          view={view({ kinds: ["deadline"] })}
+          window={window}
+          now={NOW}
+          timeZone={TZ}
+          result={{ items: [], hasMore: false }}
+          statuses={synced}
+        />
+      </>,
+    );
+    const [inBar, inEmpty] = screen.getAllByRole("link", { name: "Clear filters" });
+    keyboardClick(inEmpty!);
+    expect(screen.getByRole("searchbox", { name: "Search events" })).toHaveFocus();
+    screen.getByRole("searchbox").blur();
+    keyboardClick(inBar!);
+    expect(screen.getByRole("searchbox", { name: "Search events" })).toHaveFocus();
+    // A tap or click (detail 1) leaves focus alone: no on-screen keyboard popping up.
+    inBar!.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    screen.getByRole("searchbox").blur();
+    fireEvent.click(inBar!, { detail: 1 });
+    expect(screen.getByRole("searchbox", { name: "Search events" })).not.toHaveFocus();
+  });
+
   it("explains an empty list with and without filters", () => {
     const { unmount } = show(view({ kinds: ["deadline"], range: "today" }), [], synced);
     expect(
@@ -201,7 +267,7 @@ describe("EventsResultsView", () => {
       "href",
       "/events?kinds=deadline",
     );
-    expect(screen.getByRole("status")).toHaveTextContent("Today: No items today.");
+    expect(screen.getByRole("status")).toHaveTextContent(/^Today: No items\.$/);
     unmount();
     show(view(), [], null);
     expect(

@@ -5,6 +5,7 @@ import { formatLongDate } from "@/lib/format";
 import { now } from "@/server/clock";
 import { readEnv } from "@/server/env";
 import { featureMetadata, requireFeature } from "@/server/features";
+import { FocusClearance } from "../profile/_components/focus-clearance";
 import { EventSourcesCard } from "./_components/event-sources";
 import { EventsFilters } from "./_components/events-filters";
 import { EventsResults } from "./_components/events-results";
@@ -21,6 +22,7 @@ import { rangeWindow } from "./_lib/range";
  * - generateMetadata is featureMetadata() and requireFeature() is the first line (404 while the flag is off; no
  *   static `metadata`, no loading.tsx).
  * - "Today" and every date boundary come from the server's now() in APP_TIMEZONE, rendered on the server.
+ * - Focus is kept clear of the fixed bars (FocusClearance, until globals.css has the scroll-padding).
  * - The page itself reads nothing: each data block is an async server component in its own Suspense boundary, so
  *   a slow read (LibCal's inline refresh waits up to 5 s) never holds up the rest, and each block has its own
  *   loading, empty and error state.
@@ -40,22 +42,30 @@ export default async function EventsPage({
 
   return (
     <>
+      <FocusClearance />
       <PageHeader
         kicker={formatLongDate(at, timeZone)}
         title="Events"
         subtitle="Campus events and deadlines from every calendar, in one list."
       />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        <div className="flex min-w-0 flex-col gap-5">
+      {/*
+        Below lg one column: today's library hours first (on a phone they would otherwise sit after the whole list,
+        thousands of pixels down), then the filters and the list, then the calendars' as-of times. From lg the list
+        takes the left column across both rows and the two cards stack on the right. DOM order = phone order.
+      */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_1fr]">
+        <aside aria-label="Library hours today" className="min-w-0 lg:col-start-2 lg:row-start-1">
+          <Suspense fallback={<CardSkeleton title="Library hours" />}>
+            <LibraryHoursCard today={window.today} now={at} timeZone={timeZone} />
+          </Suspense>
+        </aside>
+        <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-span-2 lg:row-start-1">
           <EventsFilters view={view} />
           <Suspense fallback={<EventsResultsSkeleton />}>
             <EventsResults view={view} window={window} now={at} timeZone={timeZone} />
           </Suspense>
         </div>
-        <aside aria-label="Library hours and calendars" className="flex min-w-0 flex-col gap-5">
-          <Suspense fallback={<CardSkeleton title="Library hours" />}>
-            <LibraryHoursCard today={window.today} now={at} timeZone={timeZone} />
-          </Suspense>
+        <aside aria-label="Calendars" className="min-w-0 lg:col-start-2 lg:row-start-2">
           <Suspense fallback={<CardSkeleton title="Calendars" />}>
             <EventSourcesCard now={at} timeZone={timeZone} />
           </Suspense>

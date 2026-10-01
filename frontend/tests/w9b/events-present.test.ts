@@ -150,6 +150,16 @@ describe("eventTimeLabel", () => {
     expect(label({ startsAt: "2026-09-29T20:00:00Z" })).toBe("Since Sep 29");
   });
 
+  it("says 'until midnight tonight', not '12:00 AM today', for an ongoing item ending at midnight", () => {
+    expect(label({ startsAt: "2026-09-29T13:00:00Z", endsAt: "2026-10-01T04:00:00Z" })).toBe(
+      "Since Sep 29 · until midnight tonight",
+    );
+    // One minute later is tomorrow's 12:01 AM, named with its date.
+    expect(label({ startsAt: "2026-09-29T13:00:00Z", endsAt: "2026-10-01T04:01:00Z" })).toBe(
+      "Since Sep 29 · until Oct 1, 12:01 AM",
+    );
+  });
+
   it("prints the wall clock on both sides of the DST change", () => {
     const options = { now: new Date("2026-11-01T00:30:00-04:00"), timeZone: TZ };
     // 1:30 AM EDT and 1:30 AM EST are an hour apart and both read 1:30 AM.

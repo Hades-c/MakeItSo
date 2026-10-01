@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { CalendarClock, Clock, ExternalLink, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SourceTag } from "@/components/ui/source-tag";
 import type { FeedItem } from "@/lib/types/feeds";
 import { eventsHref, nextEventsLimit, type EventsView } from "../_lib/params";
@@ -12,12 +10,15 @@ import {
   type EventGroup,
   type PresentOptions,
 } from "../_lib/present";
+import { ShowMoreFocus, ShowMoreLink } from "./show-more";
 
 /**
  * The grouped list of feed items (server-compatible, no hooks): one labelled section per America/New_York day
  * (Ongoing first), each item with its time line, an external link to the source page, the location, a short
  * summary and the source tag its stored `source` names (PLAN §5 "Sources (truthfulness)"). Aggregated items carry
- * data-source for expectAllTagged() in e2e. "Show more" is a plain link that raises ?limit.
+ * data-source for expectAllTagged() in e2e. "Show more" is a plain link that raises ?limit; afterwards focus moves
+ * to the first newly loaded item (./show-more). The title link is stretched over its whole row, so the tap target
+ * is the row on phones (PLAN §7: ≥44px), not one line of text.
  */
 
 export interface EventListProps {
@@ -32,19 +33,17 @@ export function EventList({ items, hasMore, view, now, timeZone }: EventListProp
   const options: PresentOptions = { now, timeZone };
   const groups = groupEvents(items, options);
   const nextLimit = hasMore ? nextEventsLimit(view.limit) : null;
+  const order = new Map(items.map((item, index) => [item.id, index]));
 
   return (
     <div className="flex flex-col gap-5">
       {groups.map((group) => (
-        <EventGroupSection key={group.key} group={group} options={options} />
+        <EventGroupSection key={group.key} group={group} order={order} options={options} />
       ))}
+      <ShowMoreFocus count={items.length} />
       {nextLimit ? (
         <div className="flex justify-center">
-          <Button asChild variant="secondary">
-            <Link href={eventsHref(view, { limit: nextLimit })} scroll={false}>
-              Show more
-            </Link>
-          </Button>
+          <ShowMoreLink href={eventsHref(view, { limit: nextLimit })} count={items.length} />
         </div>
       ) : hasMore ? (
         <p className="text-center text-sm text-fg-3">
@@ -55,7 +54,15 @@ export function EventList({ items, hasMore, view, now, timeZone }: EventListProp
   );
 }
 
-function EventGroupSection({ group, options }: { group: EventGroup; options: PresentOptions }) {
+function EventGroupSection({
+  group,
+  order,
+  options,
+}: {
+  group: EventGroup;
+  order: ReadonlyMap<string, number>;
+  options: PresentOptions;
+}) {
   const headingId = `events-day-${group.key}`;
   return (
     <section
@@ -81,14 +88,22 @@ function EventGroupSection({ group, options }: { group: EventGroup; options: Pre
       </h2>
       <ol className="mt-2 divide-y divide-line">
         {group.items.map((item) => (
-          <EventRow key={item.id} item={item} options={options} />
+          <EventRow key={item.id} item={item} index={order.get(item.id)} options={options} />
         ))}
       </ol>
     </section>
   );
 }
 
-function EventRow({ item, options }: { item: FeedItem; options: PresentOptions }) {
+function EventRow({
+  item,
+  index,
+  options,
+}: {
+  item: FeedItem;
+  index: number | undefined;
+  options: PresentOptions;
+}) {
   const deadline = isDeadlineItem(item);
   const time = eventTimeLabel(item, options);
   return (
@@ -96,7 +111,8 @@ function EventRow({ item, options }: { item: FeedItem; options: PresentOptions }
       data-testid="event-item"
       data-source={item.source}
       data-kind={deadline ? "deadline" : item.kind}
-      className="flex flex-col gap-1 py-3 md:flex-row md:gap-4"
+      data-event-index={index}
+      className="relative flex flex-col gap-1 py-3 md:flex-row md:gap-4"
     >
       <p className="flex shrink-0 items-start gap-1.5 font-mono text-xs leading-5 font-medium text-fg-2 md:w-40">
         {deadline ? (
@@ -112,7 +128,8 @@ function EventRow({ item, options }: { item: FeedItem; options: PresentOptions }
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-xs break-words hover:text-primary hover:underline"
+            data-event-link=""
+            className="rounded-xs break-words after:absolute after:inset-0 hover:text-primary hover:underline"
           >
             {item.title} <span className="sr-only">(opens in a new tab)</span>
             <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />

@@ -21,6 +21,7 @@ import {
 import { windowEndLabel } from "../_lib/present";
 import { EVENT_RANGE_LABELS, type EventsWindow } from "../_lib/range";
 import { EventList } from "./event-list";
+import { ClearFiltersLink } from "./events-filters";
 
 export interface EventsResultsProps {
   view: EventsView;
@@ -63,12 +64,13 @@ export function EventsResultsView({
   statuses,
 }: EventsResultsViewProps) {
   const count = result.items.length;
+  // The range label already says "Today" when the window ends today, so no suffix then ("Today: 11 items.").
   const through =
-    window.lastDay === window.today ? "today" : `through ${windowEndLabel(window.lastDay)}`;
+    window.lastDay === window.today ? null : `through ${windowEndLabel(window.lastDay)}`;
   const summary =
     count === 0
-      ? `No items ${through}.`
-      : `${result.hasMore ? "At least " : ""}${count} ${count === 1 ? "item" : "items"}, ${through}.`;
+      ? `No items${through ? ` ${through}` : ""}.`
+      : `${result.hasMore ? "At least " : ""}${count} ${count === 1 ? "item" : "items"}${through ? `, ${through}` : ""}.`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -144,9 +146,7 @@ function EventsEmpty({
           <>
             {filtered ? (
               <Button asChild variant="secondary">
-                <Link href={eventsHref(DEFAULT_EVENTS_VIEW, { range: view.range })} scroll={false}>
-                  Clear filters
-                </Link>
+                <ClearFiltersLink view={view}>Clear filters</ClearFiltersLink>
               </Button>
             ) : null}
             {wider ? (

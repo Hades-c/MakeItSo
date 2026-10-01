@@ -92,10 +92,10 @@ export function EventsFilters({ view }: EventsFiltersProps) {
       }}
     >
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="events-q">Search events</Label>
+        <Label htmlFor={EVENTS_SEARCH_ID}>Search events</Label>
         <div className="flex gap-2">
           <Input
-            id="events-q"
+            id={EVENTS_SEARCH_ID}
             type="search"
             name="q"
             value={q}
@@ -192,19 +192,45 @@ export function EventsFilters({ view }: EventsFiltersProps) {
         )}
       >
         {filtered ? (
-          <Link
-            href={eventsHref(DEFAULT_EVENTS_VIEW, { range: view.range })}
-            scroll={false}
+          <ClearFiltersLink
+            view={view}
             className="-my-2 inline-flex min-h-11 items-center gap-1.5 rounded-sm font-semibold text-primary hover:underline md:min-h-0"
           >
             <X aria-hidden className="size-4" />
             Clear filters
-          </Link>
+          </ClearFiltersLink>
         ) : null}
         <p role="status" className="text-fg-3">
           {pending ? "Updating…" : ""}
         </p>
       </div>
     </form>
+  );
+}
+
+export const EVENTS_SEARCH_ID = "events-q";
+
+/**
+ * "Clear filters" (here and in the empty state): the link disappears once the view is unfiltered, so when it was
+ * activated from the keyboard (a click with detail 0) focus moves to the search box first, rather than falling to
+ * <body>. A tap leaves focus alone (no on-screen keyboard popping up).
+ */
+export function ClearFiltersLink({
+  view,
+  onClick,
+  ...props
+}: Omit<React.ComponentProps<typeof Link>, "href" | "scroll"> & {
+  view: Pick<EventsView, "range">;
+}) {
+  return (
+    <Link
+      {...props}
+      href={eventsHref(DEFAULT_EVENTS_VIEW, { range: view.range })}
+      scroll={false}
+      onClick={(event) => {
+        onClick?.(event);
+        if (event.detail === 0) document.getElementById(EVENTS_SEARCH_ID)?.focus();
+      }}
+    />
   );
 }
