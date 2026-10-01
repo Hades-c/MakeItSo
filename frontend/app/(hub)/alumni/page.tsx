@@ -1,32 +1,52 @@
 import type { Metadata } from "next";
-import { Users } from "lucide-react";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Suspense } from "react";
 import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { featureMetadata, requireFeature } from "@/server/features";
+import type { SearchParamsRecord } from "@/app/(hub)/careers/_lib/filters";
+import { AlumniDirectory } from "./_components/alumni-directory";
 
-// Stub (wave 0). Wave 3 builds the verified alumni directory (signed-in users only). Behind FEATURE_ALUMNI and
-// FEATURE_CAREERS (Alumni lives under Careers; 404 while either is off, and the shell hides Alumni then): keep
-// featureMetadata() as generateMetadata (a static `metadata` would title the 404 "Alumni") and requireFeature() as
-// the page's first line.
+/**
+ * /alumni (PLAN §3; §1 "Alumni"): the verified alumni directory, for verified @davidson.edu accounts only. Behind
+ * FEATURE_ALUMNI and FEATURE_CAREERS (404 while either is off; the shell hides Alumni then): featureMetadata() is
+ * the generateMetadata (a static `metadata` would title the 404 "Alumni") and requireFeature() the page's first
+ * line. Who is asking and what they may see is decided in <AlumniDirectory>, a server component below a Suspense
+ * boundary; nothing about alumni reaches the browser for a viewer who may not see them.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   return featureMetadata("alumni", { title: "Alumni" });
 }
 
-export default async function AlumniPage() {
+export default async function AlumniPage({
+  searchParams,
+}: { searchParams?: Promise<SearchParamsRecord> } = {}) {
   await requireFeature("alumni");
+  const params = (await searchParams) ?? {};
   return (
     <>
-      <PageHeader title="Alumni" subtitle="Davidson alumni you can learn from and reach out to." />
-      <EmptyState
-        icon={Users}
-        title="Verified alumni are coming soon"
-        description={
-          <p>
-            Only alumni whose Davidson degree and LinkedIn profile have both been verified will be
-            listed, with the date they were last checked.
-          </p>
-        }
+      <PageHeader
+        title="Alumni"
+        subtitle="Davidson alumni confirmed from public sources, with where each fact comes from."
       />
+      <Suspense fallback={<DirectorySkeleton />}>
+        <AlumniDirectory params={params} />
+      </Suspense>
     </>
+  );
+}
+
+function DirectorySkeleton() {
+  return (
+    <div>
+      <p role="status" className="sr-only">
+        Loading alumni…
+      </p>
+      <Skeleton className="mb-5 h-24 rounded-xl" />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Skeleton className="h-56 rounded-xl" />
+        <Skeleton className="h-56 rounded-xl" />
+        <Skeleton className="h-56 rounded-xl" />
+      </div>
+    </div>
   );
 }
