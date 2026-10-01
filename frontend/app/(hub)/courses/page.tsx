@@ -88,7 +88,7 @@ export default async function CoursesPage({
           {status}
         </ResultsHeading>
         {showsResults ? (
-          <p className="flex items-center gap-2 text-xs text-fg-2">
+          <p className="flex flex-wrap items-center gap-2 text-xs text-fg-2">
             Schedule data
             <SourceTag source="course-schedule" asOf={result?.asOf ?? null} />
           </p>

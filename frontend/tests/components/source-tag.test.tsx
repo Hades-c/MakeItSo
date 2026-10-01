@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { AiChip } from "@/components/ui/ai-chip";
 import { CourseCode } from "@/components/ui/course-code";
 import { SourceTag, SourceTagList } from "@/components/ui/source-tag";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
 describe("SourceTag", () => {
   it("names the source in words (uppercased by CSS, not in the DOM)", () => {
@@ -14,15 +13,15 @@ describe("SourceTag", () => {
     expect(tag).toHaveTextContent("Source: Davidson One");
   });
 
-  it("adds an 'as of' time for screen readers and a focusable tooltip trigger", () => {
-    render(
-      <TooltipProvider>
-        <SourceTag source="handshake" asOf="2026-09-30T13:05:00Z" />
-      </TooltipProvider>,
-    );
+  it("shows the 'as of' time as visible text (no hover or focus tooltip, so touch users see it)", () => {
+    const { container } = render(<SourceTag source="handshake" asOf="2026-09-30T13:05:00Z" />);
     const tag = screen.getByText("Handshake", { exact: false });
-    expect(tag).toHaveTextContent("Source: Handshake, as of Sep 30, 9:05 AM");
-    expect(tag).toHaveAttribute("tabindex", "0");
+    expect(tag).toHaveTextContent("Source: Handshake");
+    expect(tag).not.toHaveAttribute("tabindex");
+    expect(container).toHaveTextContent("Source: Handshake, as of Sep 30, 9:05 AM");
+    expect(screen.getByTestId("source-as-of")).toHaveTextContent("as of Sep 30, 9:05 AM");
+    expect(screen.getByTestId("source-as-of")).not.toHaveClass("sr-only");
+    expect(container.querySelector("[tabindex]")).toBeNull();
   });
 
   it("drops an unparseable 'as of' date instead of throwing", () => {

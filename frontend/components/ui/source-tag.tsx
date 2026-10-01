@@ -1,11 +1,10 @@
 import { SOURCES, type SourceId } from "@/lib/sources";
 import { DEFAULT_TIME_ZONE, formatAsOf } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Tooltip } from "./tooltip";
 
 export interface SourceTagProps {
   source: SourceId;
-  /** When the data was fetched or last verified; shown as an "as of" tooltip and to screen readers. */
+  /** When the data was fetched or last verified; shown as visible "as of <time>" text after the tag. */
   asOf?: Date | string | null;
   timeZone?: string;
   className?: string;
@@ -42,14 +41,19 @@ export function SourceTag({
     );
   }
 
+  // Visible text, not a tooltip: a hover or focus tooltip never opens on touch, so phone users would get no
+  // freshness information (PLAN §7: no hover-only content), and the tag stays a plain label, not a small target.
   return (
-    <Tooltip content={`${label}, ${asOfText}`}>
-      <span tabIndex={0} className={cn(TAG, "cursor-help", className)} data-source={source}>
+    <span className={cn("inline-flex flex-wrap items-center gap-x-1.5", className)}>
+      <span className={TAG} data-source={source}>
         <span className="sr-only">Source: </span>
         {label}
-        <span className="sr-only">, {asOfText}</span>
       </span>
-    </Tooltip>
+      <span className="text-xs whitespace-nowrap text-fg-3" data-testid="source-as-of">
+        <span className="sr-only">, </span>
+        {asOfText}
+      </span>
+    </span>
   );
 }
 

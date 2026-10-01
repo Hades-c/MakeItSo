@@ -20,7 +20,7 @@ import type { Availability } from "@/lib/types/catalog";
 import { detectConflicts } from "@/server/plan";
 import { course, planItem, section, withSection } from "./helpers";
 
-/** The app wraps every page in a TooltipProvider (SourceTag with an "as of" uses a tooltip). */
+/** The app wraps every page in a TooltipProvider (some course components use tooltips). */
 const render = (ui: React.ReactElement) => rtlRender(<TooltipProvider>{ui}</TooltipProvider>);
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
