@@ -208,6 +208,49 @@ describe("career-plan grounding", () => {
     });
   });
 
+  it("grounds free text: unknown courses, unofficial programs, deadlines and employers are dropped", () => {
+    const grounded = groundCareerPlan(
+      {
+        overview:
+          "Declare the Major in Computer Science and take CSC 221 early. Declare the Major in Underwater Basketweaving and take CSC 999. Many graduates join Goldman Sachs.",
+        majors: [CS_MAJOR],
+        minors: [],
+        courses: [
+          {
+            courseCode: "CSC 221",
+            termCode: "202602",
+            why: "Core of the Software Engineering path. Apply by November 15.",
+          },
+        ],
+        experiences: [
+          {
+            title: "Google STEP internship",
+            when: "Summer after sophomore year",
+            why: "Apply by November 15 for the Google STEP program.",
+          },
+          {
+            title: "Research with faculty",
+            when: "Summer after junior year",
+            why: "Build on Data Structures. Present at the ACM conference.",
+          },
+        ],
+      },
+      { ...context, vocabulary: ["Software Engineering"] },
+    );
+    expect(grounded.invalid).toBe(false);
+    expect(grounded.plan.overview).toBe(
+      "Declare the Major in Computer Science and take CSC 221 early.",
+    );
+    expect(grounded.plan.courses[0]?.reason).toBe("Core of the Software Engineering path.");
+    expect(grounded.plan.experiences).toEqual([
+      {
+        title: "Research with faculty",
+        when: "Summer after junior year",
+        why: "Build on Data Structures.",
+      },
+    ]);
+  });
+
   it("is invalid without an overview", () => {
     expect(
       groundCareerPlan(

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MAX_DROPPED_SHARE } from "@/server/ai/config";
-import { groundPicks, type GroundingCandidate } from "@/server/ai/grounding";
+import { groundPicks, stillOffered, type GroundingCandidate } from "@/server/ai/grounding";
 
 /** Grounding of suggested courses (PLAN §5): candidates only, allowed terms, not taken, > 30% dropped = invalid. */
 
@@ -142,5 +142,62 @@ describe("groundPicks", () => {
       options,
     );
     expect(result.items.map((i) => i.reason)).toEqual(["Fallback reason.", "See"]);
+  });
+
+  it("drops reason sentences naming courses outside the candidates and the plan, or giving dates", () => {
+    const result = groundPicks(
+      [
+        pick(
+          "ECO 101",
+          "202602",
+          "Take it together with ECO 999 and FAK 123 next spring. Counts toward SSRQ.",
+        ),
+        pick("SOC 101", "202602", "Builds on ECO 101 and your CSC 121. Apply by November 15."),
+        pick("ART 111", "202602", "Pairs with PSY 303 in the same term."),
+      ],
+      CANDIDATES,
+      { ...options, taken: new Set(["CSC 121"]) },
+    );
+    expect(result.items.map((i) => i.reason)).toEqual([
+      "Counts toward SSRQ.",
+      "Builds on ECO 101 and your CSC 121.",
+      // PSY 303 is a cross-listing of the BIO 331 candidate.
+      "Pairs with PSY 303 in the same term.",
+    ]);
+  });
+
+  it("applies the caller's own reason filter", () => {
+    const result = groundPicks(
+      [pick("ECO 101", "202602", "Great for the Major in Magic.")],
+      CANDIDATES,
+      {
+        ...options,
+        reasonFilter: (text) => /Magic/.test(text),
+      },
+    );
+    expect(result.items[0]?.reason).toBe("Fallback reason.");
+  });
+});
+
+describe("stillOffered", () => {
+  it("holds while every stored item is a candidate for its term with the same basis", () => {
+    const items = [
+      { courseCode: "ECO 101", termCode: "202602", basis: "scheduled" as const },
+      { courseCode: "PSY 303", termCode: "202602", basis: "scheduled" as const },
+      { courseCode: "MUS 101", termCode: "202701", basis: "past-offerings" as const },
+    ];
+    expect(stillOffered(items, CANDIDATES)).toBe(true);
+    // No longer a candidate (dropped from the term, or no longer fills an open slot).
+    expect(
+      stillOffered(
+        items,
+        CANDIDATES.filter((c) => c.courseCode !== "ECO 101"),
+      ),
+    ).toBe(false);
+    // The term got scheduled: the past-offerings pick is stale.
+    const scheduled = CANDIDATES.map((c) =>
+      c.courseCode === "MUS 101" ? candidate("MUS 101", { "202701": "scheduled" }) : c,
+    );
+    expect(stillOffered(items, scheduled)).toBe(false);
   });
 });

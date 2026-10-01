@@ -99,8 +99,8 @@ const CAPITALISED = String.raw`\p{Lu}[\p{L}'’.-]*`;
 const RUN = String.raw`${CAPITALISED}(?:,?\s+(?:and|of|&|the|${CAPITALISED}))*`;
 /** "major in X", "Minor in X", "majors in the X". */
 const PROGRAM_AFTER = new RegExp(String.raw`\b[Mm](aj|in)ors?\s+in\s+(?:the\s+)?(${RUN})`, "gu");
-/** "X major", "an X minor". */
-const PROGRAM_BEFORE = new RegExp(String.raw`(${RUN})\s+[Mm](aj|in)ors?\b`, "gu");
+/** "X major", "an X minor" (not "the Major in X": that is PROGRAM_AFTER's). */
+const PROGRAM_BEFORE = new RegExp(String.raw`(${RUN})\s+[Mm](aj|in)ors?\b(?!\s+in\b)`, "gu");
 
 function wordsOf(run: string): string[] {
   return subjectKey(run).split(" ").filter(Boolean);
@@ -370,14 +370,15 @@ const isAcronym = (token: string) => /^\p{Lu}{2,}s?$/u.test(token);
  * Drop text (one sentence or list item) with a proper noun the vocabulary does not know: an unknown acronym, an
  * unknown capitalised word next to another capitalised word ("Goldman Sachs", "at Jane Street"; the first word
  * of the sentence counts as a neighbour unless it is a common word), and in strict mode any unknown capitalised
- * word, the first one included ("Google internship").
+ * word, the first one included ("Google internship"). Course codes are left to unknownCourses.
  */
 export function properNouns(
   vocabulary: ReadonlySet<string>,
   { strict }: { strict: boolean },
 ): SentenceFilter {
   return (text) => {
-    const list = tokens(text);
+    // Course codes ("CSC 221") are checked by unknownCourses; their department prefix is no proper noun.
+    const list = tokens(text.replace(COURSE_CODE_IN_TEXT, " "));
     const known = (token: string) => vocabulary.has(lowerWord(token));
     const capitalisedNeighbour = (index: number) => {
       const token = list[index];
