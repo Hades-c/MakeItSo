@@ -23,7 +23,9 @@ export function HeaderActionsView({ signedIn }: { signedIn: boolean }) {
       <Button asChild variant="ghost">
         <Link href={routes.login()}>Sign in</Link>
       </Button>
-      <Button asChild>
+      {/* Below 360px the header has room for Sign in only (WCAG 1.4.10 reflow at 320px); the hero's "Create your
+          account" is right below it. */}
+      <Button asChild className="max-[22.5rem]:hidden">
         <Link href={routes.register()}>Create account</Link>
       </Button>
     </>

@@ -80,6 +80,10 @@ describe("/ for visitors", () => {
       "href",
       "/register",
     );
+    // Hidden below 360px (the hero's CTA covers it), so the header fits a 320px screen.
+    expect(within(account).getByRole("link", { name: "Create account" })).toHaveClass(
+      "max-[22.5rem]:hidden",
+    );
     expect(screen.getByRole("link", { name: /Create your account/ })).toHaveAttribute(
       "href",
       "/register",
