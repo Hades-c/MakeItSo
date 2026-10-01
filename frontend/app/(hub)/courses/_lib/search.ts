@@ -183,6 +183,25 @@ async function safe<T>(what: string, run: () => Promise<T>): Promise<T | null> {
   }
 }
 
+/**
+ * The term /courses shows without ?term=: browseTerm(), which may cold-load the registration term. While the
+ * schedule cannot be read (a 503: never ingested and the upstream is down), the resolved registration term, so the
+ * page renders its own "could not be searched" state instead of the error boundary.
+ */
+async function defaultTerm(resolved: ResolvedTerms): Promise<TermCode> {
+  try {
+    return await browseTerm();
+  } catch (error) {
+    rethrowFatal(error);
+    if (!(error instanceof ApiError && error.status === 503)) throw error;
+    console.warn(
+      "[courses] the default term could not be read; showing the registration term:",
+      error.message,
+    );
+    return resolved.registration;
+  }
+}
+
 /** Everything /courses renders. `plan` is the signed-in student's plan (null: unknown). */
 export async function loadSearch(
   query: CatalogQuery,
@@ -190,7 +209,7 @@ export async function loadSearch(
 ): Promise<SearchView> {
   const resolved = await resolveTerms();
   const window: PlanWindow = { current: resolved.current, registration: resolved.registration };
-  const term = query.term ?? (await browseTerm());
+  const term = query.term ?? (await defaultTerm(resolved));
   const [filters, searched] = await Promise.all([
     safe("the filters", () => getCatalogFilters(term)),
     (async () => {

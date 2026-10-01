@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect, unstable_rethrow } from "next/navigation";
 import { routes } from "@/lib/routes";
 import { cache } from "react";
 import { termLabel } from "@/lib/term";
 import { requireUser } from "@/server/auth/session";
 import { now } from "@/server/clock";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { readEnv } from "@/server/env";
+import { ApiError } from "@/server/http/errors";
 import {
   canonicalSlugDiffers,
   loadCoursePage,
@@ -32,9 +35,26 @@ const resolvePage = cache(async (term: string, code: string) => {
   return resolveCoursePage(params);
 });
 
+/** The schedule cannot be read right now (a 503 from the catalog: never ingested and the upstream is down). */
+function isUnavailable(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.status === 503;
+}
+
+/** resolvePage, or "unavailable" while the schedule cannot be read (the page then says so with a 200). */
+async function resolveOrUnavailable(term: string, code: string) {
+  try {
+    return await resolvePage(term, code);
+  } catch (error) {
+    unstable_rethrow(error);
+    if (isUnavailable(error)) return "unavailable" as const;
+    throw error;
+  }
+}
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { term, code } = await params;
-  const page = await resolvePage(term, code);
+  const page = await resolveOrUnavailable(term, code);
+  if (page === "unavailable") return { title: "Course" };
   if (!page) notFound();
   return {
     title: `${page.params.code} · ${termLabel(page.params.term)}`,
@@ -57,7 +77,18 @@ export default async function CoursePage({
 }) {
   const user = await requireUser();
   const { term, code } = await params;
-  const resolved = await resolvePage(term, code);
+  const resolved = await resolveOrUnavailable(term, code);
+  if (resolved === "unavailable") {
+    return (
+      <>
+        <PageHeader title="Course" />
+        <ErrorState
+          title="This course could not load"
+          description="The course schedule is temporarily unavailable. Try again in a few minutes."
+        />
+      </>
+    );
+  }
   if (!resolved) notFound();
   const crn = firstParam((await searchParams).crn);
   // One URL per course page: /courses/202602/csc%20221, /CSC221 and /csc-221 redirect to /CSC-221.
