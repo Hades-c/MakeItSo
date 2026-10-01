@@ -1,6 +1,6 @@
 import "server-only";
 import { after } from "next/server";
-import { z } from "zod";
+import * as z from "zod";
 import { IsoDateSchema, queryInt, queryList, queryText } from "@/lib/types/common";
 import {
   EventsQuerySchema,

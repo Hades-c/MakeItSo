@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { dayKey, DEFAULT_TIME_ZONE } from "@/lib/format";
 
 /**

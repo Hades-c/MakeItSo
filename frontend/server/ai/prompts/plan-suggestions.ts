@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { dataBlock, DATA_RULES } from "@/server/ai/blocks";
 import type { GenerateRequest } from "@/server/ai/client";
 import { FEATURE_SETTINGS } from "@/server/ai/config";

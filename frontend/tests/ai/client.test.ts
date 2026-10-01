@@ -15,7 +15,7 @@ import type {
   MessageCreateParamsNonStreaming,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
+import * as z from "zod";
 import { AI_FAILURE_MESSAGES } from "@/lib/types/ai";
 import {
   anthropicClient,

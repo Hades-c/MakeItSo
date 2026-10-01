@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
+import * as z from "zod";
 import {
   ALUMNUS_SOURCED_FIELDS,
   AlumnusSchema,

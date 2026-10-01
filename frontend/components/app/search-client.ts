@@ -7,7 +7,7 @@
  * 404/501, other errors and network failures all mean "Search is unavailable", and the palette falls back to the
  * course catalog (/courses?q=…).
  */
-import { z } from "zod";
+import * as z from "zod";
 import {
   SEARCH_MAX_LIMIT,
   SEARCH_RESULT_KINDS,

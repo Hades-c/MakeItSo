@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { SOURCE_IDS, SYNCED_SOURCE_IDS } from "@/lib/sources";
 import { TERM_CODE_PATTERN } from "@/lib/term";
 

@@ -24,6 +24,21 @@ export default defineConfig([
         { prefer: "type-imports", fixStyle: "inline-type-imports" },
       ],
       "no-console": ["warn", { allow: ["warn", "error"] }],
+      // Turbopack tree-shakes `import * as z from "zod"` (and named imports) but not zod's `z` re-export: that
+      // pulled all of zod, every locale included, into each client page (about 90 KB gzipped instead of 30).
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportDeclaration[source.value=/^zod/] ImportSpecifier[imported.name='z']",
+          message:
+            'Import zod as a namespace: `import * as z from "zod"` (tree-shaken in client bundles).',
+        },
+        {
+          selector: "ImportDeclaration[source.value=/^zod/] ImportDefaultSpecifier",
+          message:
+            'Import zod as a namespace: `import * as z from "zod"` (tree-shaken in client bundles).',
+        },
+      ],
     },
   },
   {

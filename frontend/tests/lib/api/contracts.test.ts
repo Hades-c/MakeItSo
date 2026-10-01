@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
+import * as z from "zod";
 import { accountApi } from "@/lib/api/account";
 import { aiApi } from "@/lib/api/ai";
 import { catalogApi } from "@/lib/api/catalog";

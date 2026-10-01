@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { InstructorSchema } from "@/lib/types/catalog";
 import { HttpsUrlSchema, IsoDateTimeSchema } from "@/lib/types/common";
 

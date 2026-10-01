@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { RMP_DAVIDSON_SCHOOL_ID, type RosterSyncResult } from "@/lib/types/ratings";
 import RmpTeacher from "@/models/RmpTeacher";
 import { now } from "@/server/clock";

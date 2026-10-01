@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { ReqCodeSchema, WAYS_OF_KNOWING, type ReqCode } from "@/lib/types/catalog";
 import { CourseCodeSchema, HttpsUrlSchema, IsoDateSchema } from "@/lib/types/common";
 import { RequirementSlotSchema, type RequirementSlot } from "@/lib/types/plan";

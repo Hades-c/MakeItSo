@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 
 /**
  * The JSON error body every route handler returns (PLAN §2 "API errors"):

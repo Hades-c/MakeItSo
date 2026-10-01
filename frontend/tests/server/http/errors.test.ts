@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { z } from "zod";
+import * as z from "zod";
 import { ApiErrorBodySchema } from "@/lib/api/errors";
 import { EnvError } from "@/server/env";
 import { ApiError, notImplemented, toErrorResponse, zodIssues } from "@/server/http";

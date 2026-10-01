@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import type * as z from "zod";
 
 /**
  * Route contracts (PLAN §4.1.16). Each `lib/api/<family>.ts` file declares its routes with `apiRoute({...})`:

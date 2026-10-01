@@ -1,5 +1,5 @@
 import "server-only";
-import type { z } from "zod";
+import type * as z from "zod";
 import {
   ALUMNUS_SOURCED_FIELDS,
   AlumnusSchema,

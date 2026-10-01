@@ -1,5 +1,5 @@
 import "server-only";
-import type { z } from "zod";
+import type * as z from "zod";
 import { OfficeSchema, ProgramSchema, type Office, type Program } from "@/lib/types/content";
 import {
   defineContent,

@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import type { OutboundServiceId } from "@/lib/sources";
 import { readEnv } from "@/server/env";
 import { EXTERNAL_HOSTS, fetchExternal } from "@/server/http/external";

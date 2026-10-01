@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { notFound } from "next/navigation";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
+import * as z from "zod";
 import { startTestDb, type TestDb } from "../../helpers/db";
 import User from "@/models/User";
 import type { SessionUser } from "@/server/auth/session";

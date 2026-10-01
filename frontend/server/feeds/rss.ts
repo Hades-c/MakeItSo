@@ -1,6 +1,6 @@
 import "server-only";
 import { XMLParser } from "fast-xml-parser";
-import { z } from "zod";
+import * as z from "zod";
 import { cleanLine, summaryFromHtml, TITLE_MAX } from "@/server/feeds/text";
 import { DAY_MS } from "@/server/feeds/time";
 import { FeedParseError, type NormalizedFeedItem, type ParseContext } from "@/server/feeds/types";

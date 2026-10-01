@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { parseClock, clockLabel } from "@/components/domain/time-geometry";
 import type { AddPlanItemBody } from "@/lib/api/plan";
 import { dayKey } from "@/lib/format";

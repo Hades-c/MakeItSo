@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { apiRoute } from "@/lib/api/spec";
 import { CLASS_STANDINGS } from "@/lib/term";
 import { IsoDateTimeSchema, ObjectIdSchema, SlugSchema, TermCodeSchema } from "@/lib/types/common";

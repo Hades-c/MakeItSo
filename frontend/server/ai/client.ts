@@ -19,7 +19,7 @@ import type {
   BetaUsage,
   MessageCreateParamsNonStreaming,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import type { z } from "zod";
+import type * as z from "zod";
 import { aiFailure, type AiFailureKind, type AiFeature } from "@/lib/types/ai";
 import { readEnv } from "@/server/env";
 import {

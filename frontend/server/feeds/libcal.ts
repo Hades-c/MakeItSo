@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import type { LibraryLocationHours } from "@/lib/types/feeds";
 import { cleanLine, oneLine } from "@/server/feeds/text";
 import {

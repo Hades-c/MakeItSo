@@ -14,7 +14,7 @@ import type { AiFailureKind } from "@/lib/types/ai";
 import { AI_FAILURE_MESSAGES } from "@/lib/types/ai";
 import { formatMediumDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
-import type { z } from "zod";
+import type * as z from "zod";
 
 /**
  * The AI "About this course" panel (PLAN §3 R2, §6.1 W6 course-about; §7: every AI output carries the AiChip).

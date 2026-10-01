@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
-import type { z } from "zod";
+import type * as z from "zod";
 import type { AuthMode, CacheMode, HttpMethod } from "@/lib/api/spec";
 import { aiResultStatus } from "@/lib/types/ai";
 import { readEnv } from "@/server/env";

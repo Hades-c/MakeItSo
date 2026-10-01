@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
+import * as z from "zod";
 import type { Instructor } from "@/lib/types/catalog";
 import { matchInstructor, type MatchOutcome } from "@/server/rmp/match";
 import { RMP_OVERRIDES } from "@/server/rmp/overrides";

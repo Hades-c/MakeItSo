@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { cleanLine, LOCATION_MAX, summaryFromHtml, TITLE_MAX } from "@/server/feeds/text";
 import {
   addDaysToKey,

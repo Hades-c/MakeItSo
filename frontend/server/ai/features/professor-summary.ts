@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { getFlags } from "@/lib/flags";
 import { termLabel, type TermCode } from "@/lib/term";
 import { aiFailure, type AiProvenance, type AiResult, type ProfessorSummary } from "@/lib/types/ai";

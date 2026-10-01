@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { z } from "zod";
+import * as z from "zod";
 import {
   type Course,
   CourseSchema,

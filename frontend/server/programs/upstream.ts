@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { ExternalFetchError, fetchExternal } from "@/server/http/external";
 import {
   ACALOG_CATALOG,

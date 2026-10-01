@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { apiRoute } from "@/lib/api/spec";
 import { CourseCodeSchema, TermCodeSchema } from "@/lib/types/common";
 import { InstructorRatingSchema, RosterSyncResultSchema } from "@/lib/types/ratings";

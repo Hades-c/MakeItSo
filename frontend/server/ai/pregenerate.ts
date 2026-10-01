@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { getFlags } from "@/lib/flags";
 import { TermCodeSchema } from "@/lib/types/common";
 import { AI_MIN_CALL_MS, AI_REQUEST_BUDGET_MS } from "@/server/ai/config";

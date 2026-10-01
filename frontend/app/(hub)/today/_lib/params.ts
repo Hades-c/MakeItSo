@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { routes } from "@/lib/routes";
 import { IsoDateSchema } from "@/lib/types/common";
 

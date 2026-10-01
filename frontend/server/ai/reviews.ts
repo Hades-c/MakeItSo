@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import RmpTeacher from "@/models/RmpTeacher";
 import { getDb } from "@/server/db";
 import { fetchExternal } from "@/server/http/external";

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { PlanDraftSchema } from "@/lib/types/plan";
 import { CourseCodeSchema, IsoDateTimeSchema, TermCodeSchema } from "@/lib/types/common";

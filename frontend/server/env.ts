@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 
 /**
  * Server environment, validated with zod and read lazily (PLAN §2 "Env").

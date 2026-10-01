@@ -1,5 +1,5 @@
 import "server-only";
-import type { z } from "zod";
+import type * as z from "zod";
 import type { SourceId } from "@/lib/sources";
 import type { TermCode } from "@/lib/term";
 import {

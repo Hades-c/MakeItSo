@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { queryString } from "@/lib/routes";
 import { queryText } from "@/lib/types/common";
 import { CAREER_CLUSTERS, type Career } from "@/lib/types/content";

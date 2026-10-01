@@ -1,5 +1,5 @@
 import "server-only";
-import type { z } from "zod";
+import type * as z from "zod";
 import { CAREER_CLUSTERS, CareerSchema, type Career } from "@/lib/types/content";
 import { defineContent } from "@/server/content/define";
 

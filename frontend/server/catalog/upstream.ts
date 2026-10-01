@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import type { TermCode } from "@/lib/term";
 import { fetchExternal } from "@/server/http/external";
 

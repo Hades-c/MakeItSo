@@ -1,6 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import * as z from "zod";
 import type { ApiErrorBody, ApiErrorCode, ApiIssue } from "@/lib/api/errors";
 import { EnvError } from "@/server/env";
 

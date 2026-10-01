@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { getFlags } from "@/lib/flags";
 import type { Instructor } from "@/lib/types/catalog";
 import { type InstructorRating, RmpRatingSchema, type RosterSyncResult } from "@/lib/types/ratings";

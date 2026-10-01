@@ -1,5 +1,5 @@
 import "server-only";
-import { z } from "zod";
+import * as z from "zod";
 import { ProgramOfferingKindSchema, type ProgramOfferingKind } from "@/lib/types/catalog";
 import { IsoDateSchema } from "@/lib/types/common";
 import { ACALOG_CATALOG } from "@/server/programs/catalog-info";

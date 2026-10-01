@@ -1,6 +1,6 @@
 import "server-only";
 import mongoose from "mongoose";
-import type { z } from "zod";
+import type * as z from "zod";
 import {
   AddPlanItemBodySchema,
   UpdatePlanItemBodySchema,

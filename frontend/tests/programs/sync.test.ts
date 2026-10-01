@@ -6,7 +6,7 @@ import Program from "@/models/Program";
 import SourceSync from "@/models/SourceSync";
 import { now } from "@/server/clock";
 import { getDb, trusted } from "@/server/db";
-import { z } from "zod";
+import * as z from "zod";
 import { ExternalFetchError, MissingFixtureError } from "@/server/http";
 import { getProgram, listPrograms, programNames } from "@/server/programs";
 import { MAX_LIST_DROP_SHARE, programListUrl } from "@/server/programs/catalog-info";
