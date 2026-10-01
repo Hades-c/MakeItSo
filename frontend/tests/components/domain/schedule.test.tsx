@@ -304,6 +304,7 @@ describe("DayTimeline", () => {
         startHour={9}
         endHour={16}
         items={WEDNESDAY}
+        showFreeGaps={false}
         label="Schedule for Wednesday, September 30"
       />,
     );
@@ -343,6 +344,7 @@ describe("DayTimeline", () => {
             source: "wildcatsync",
           },
         ]}
+        showFreeGaps={false}
         label="Schedule"
       />,
     );
