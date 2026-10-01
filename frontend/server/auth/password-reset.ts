@@ -97,7 +97,7 @@ export async function requestPasswordReset(email: string): Promise<CheckInboxRes
     const user = await findAccountByEmail(email);
     if (!user) return;
     const userId = user._id.toString();
-    if ((await codeGuessesExhausted(userId, at)).exhausted) return;
+    if ((await codeGuessesExhausted(userId, at, "reset-password")).exhausted) return;
     const verified = isEmailVerified(user);
     const sends = await consumeAuthLimit(
       verified ? `reset-send:user:${userId}` : `verify-resend:user:${userId}`,

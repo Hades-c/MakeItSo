@@ -383,7 +383,7 @@ describe("a reset that verifies an unverified account is a change of owner (revi
   });
 });
 
-describe("code budgets shared across verification and reset (review regression: slow brute force)", () => {
+describe("the reset wrong-code budget (review regression: slow brute force)", () => {
   it("an unverified account's reset and verification codes share one send budget", async () => {
     const pending = await insertUser({
       email: "pending@davidson.edu",
@@ -421,7 +421,7 @@ describe("code budgets shared across verification and reset (review regression: 
       }
     }
     expect(wrong).toBe(15);
-    const counter = await RateLimit.collection.findOne({ key: `code-fail:user:${owner.id}` });
+    const counter = await RateLimit.collection.findOne({ key: `reset-fail:user:${owner.id}` });
     // Only 10 guesses were actually compared; the rest were refused unchecked (same 400).
     expect(counter?.count).toBeGreaterThanOrEqual(10);
     const mailsBefore = consoleOutbox().length;

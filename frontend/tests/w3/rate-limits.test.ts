@@ -243,6 +243,12 @@ describe("reserve / release (only failures count)", () => {
     // The next UTC day starts a new budget.
     const tomorrow = new Date(fixedWindowStart(at, 86_400).getTime() + 86_400_000);
     expect(await codeGuessesExhausted(userId, tomorrow)).toMatchObject({ exhausted: false });
+    // The public password reset has its own budget: verification's is untouched by it, and vice versa.
+    expect(codeFailureKey(userId, "reset-password")).toBe(`reset-fail:user:${userId}`);
+    expect(await codeGuessesExhausted(userId, at, "reset-password")).toMatchObject({
+      exhausted: false,
+    });
+    expect((await reserveCodeGuess(userId, at, "reset-password")).allowed).toBe(true);
   });
 
   it("allows 3 e-mails per hour per address and kind", async () => {

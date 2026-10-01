@@ -120,7 +120,7 @@ export async function resendVerification(userId: string): Promise<{ sent: boolea
   if (isEmailVerified(user)) return { sent: false };
   const mailer = getMailer(() => at);
   if (!mailer) throw new ApiError(503, "unavailable", VERIFICATION_UNAVAILABLE_MESSAGE);
-  const budget = await codeGuessesExhausted(userId, at);
+  const budget = await codeGuessesExhausted(userId, at, "verify-email");
   if (budget.exhausted) throw lockedError(budget.retryAfterSec);
   const sends = await consumeAuthLimit(
     `verify-resend:user:${userId}`,

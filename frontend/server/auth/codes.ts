@@ -12,8 +12,9 @@ import { readEnv } from "@/server/env";
  * live code per (user, purpose). Sends are limited by the callers (3/h per user; an unverified account's
  * verification and reset codes share one budget, in ratelimits).
  *
- * Wrong codes also count against one budget per account across every code and purpose: 10 a day
- * (server/auth/rate-limits.ts reserveCodeGuess, "code-fail:user:<id>"). Each check reserves a guess before
+ * Wrong codes also count against a budget per account and purpose: 10 a day (server/auth/rate-limits.ts
+ * reserveCodeGuess: "code-fail:user:<id>" for the signed-in verification, "reset-fail:user:<id>" for the public
+ * password reset, kept apart so anonymous reset guesses cannot lock the owner's verification). Each check reserves a guess before
  * comparing (atomic, so parallel guesses cannot exceed it) and a right code gives it back. Once the day's 10 are
  * used up, codes are not compared at all (reason "locked") and the callers send no new ones. Without this cap an
  * attacker could spend 5 guesses on every new code, about 30 an hour through verification and reset together,
@@ -130,15 +131,18 @@ export async function consumeCode(
     return { ok: false, reason: "too_many_attempts", attemptsLeft: 0 };
   }
 
-  const guess = await reserveCodeGuess(userId, now);
+  const guess = await reserveCodeGuess(userId, now, purpose);
   if (!guess.allowed) {
+    console.warn(
+      `[auth] ${purpose} codes locked for user ${userId}: the day's wrong-code budget is used up`,
+    );
     return { ok: false, reason: "locked", attemptsLeft: 0, retryAfterSec: guess.retryAfterSec };
   }
   const attemptsLeft = Math.max(0, MAX_CODE_ATTEMPTS - (doc.attempts ?? MAX_CODE_ATTEMPTS));
   if (!/^\d{6}$/.test(code) || !sameHash(doc.codeHash, hashCode(userId, purpose, code))) {
     return { ok: false, reason: "mismatch", attemptsLeft };
   }
-  await releaseCodeGuess(userId, now);
+  await releaseCodeGuess(userId, now, purpose);
   // Consume exactly once, even if two correct submissions race.
   const consumed = await VerificationCode.updateOne(
     { _id: doc._id, consumedAt: null },

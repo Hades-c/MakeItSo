@@ -202,26 +202,29 @@ describe("verification codes (PLAN §6.1 W3)", () => {
 describe("the per-account wrong-code budget (review regression: slow brute force)", () => {
   const wrongFor = (code: string) => (code === "000000" ? "111111" : "000000");
 
-  it("caps wrong codes at 10 a day across every code and purpose, then checks none", async () => {
+  it("caps wrong codes at 10 a day per purpose, then checks none; the other purpose keeps its budget", async () => {
     const id = userId();
     let wrong = 0;
-    for (const purpose of ["verify-email", "reset-password"] as const) {
-      const code = await issueCode(id, "casey@davidson.edu", purpose, at);
+    for (let round = 0; round < 2; round++) {
+      const code = await issueCode(id, "casey@davidson.edu", "reset-password", later(round));
       for (let i = 0; i < MAX_CODE_ATTEMPTS; i++) {
-        const check = await consumeCode(id, purpose, wrongFor(code), later(1000));
+        const check = await consumeCode(id, "reset-password", wrongFor(code), later(1000));
         if (!check.ok && check.reason === "mismatch") wrong++;
       }
     }
     expect(wrong).toBe(CODE_FAILURES_PER_DAY);
-    // A fresh code, even the RIGHT one, is not compared any more today.
-    const fresh = await issueCode(id, "casey@davidson.edu", "verify-email", later(2000));
-    const locked = await consumeCode(id, "verify-email", fresh, later(3000));
+    // A fresh reset code, even the RIGHT one, is not compared any more today.
+    const fresh = await issueCode(id, "casey@davidson.edu", "reset-password", later(2000));
+    const locked = await consumeCode(id, "reset-password", fresh, later(3000));
     expect(locked).toMatchObject({ ok: false, reason: "locked" });
     if (!locked.ok) expect(locked.retryAfterSec).toBeGreaterThan(0);
+    // Public reset guesses never lock the signed-in verification.
+    const verify = await issueCode(id, "casey@davidson.edu", "verify-email", later(2000));
+    expect(await consumeCode(id, "verify-email", verify, later(3000))).toMatchObject({ ok: true });
     // The next UTC day brings a new budget.
     const nextDay = new Date(Date.UTC(2026, 9, 1, 0, 0, 1));
-    const again = await issueCode(id, "casey@davidson.edu", "verify-email", nextDay);
-    expect(await consumeCode(id, "verify-email", again, nextDay)).toMatchObject({ ok: true });
+    const again = await issueCode(id, "casey@davidson.edu", "reset-password", nextDay);
+    expect(await consumeCode(id, "reset-password", again, nextDay)).toMatchObject({ ok: true });
   });
 
   it("gives a right code's guess back and spends nothing without a live code", async () => {
@@ -239,26 +242,25 @@ describe("the per-account wrong-code budget (review regression: slow brute force
     expect(counter?.count ?? 0).toBe(0);
   });
 
-  it("holds under parallel guesses on two live codes", async () => {
+  it("holds under parallel guesses", async () => {
     const id = userId();
     const first = await issueCode(id, "casey@davidson.edu", "verify-email", at);
     for (let i = 0; i < MAX_CODE_ATTEMPTS; i++) {
       await consumeCode(id, "verify-email", wrongFor(first), later(1000));
     }
-    const reset = await issueCode(id, "casey@davidson.edu", "reset-password", at);
-    await consumeCode(id, "reset-password", wrongFor(reset), later(1000));
-    // 6 of 10 spent; 9 guesses (5 + 4 attempts left on the two live codes) race for the last 4.
-    const verify = await issueCode(id, "casey@davidson.edu", "verify-email", later(2000));
-    const results = await Promise.all([
-      ...Array.from({ length: 5 }, () =>
-        consumeCode(id, "verify-email", wrongFor(verify), later(3000)),
+    const second = await issueCode(id, "casey@davidson.edu", "verify-email", later(1500));
+    for (let i = 0; i < 2; i++) {
+      await consumeCode(id, "verify-email", wrongFor(second), later(1600));
+    }
+    // 7 of 10 spent; 5 parallel guesses on a new code race for the last 3.
+    const third = await issueCode(id, "casey@davidson.edu", "verify-email", later(2000));
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        consumeCode(id, "verify-email", wrongFor(third), later(3000)),
       ),
-      ...Array.from({ length: 4 }, () =>
-        consumeCode(id, "reset-password", wrongFor(reset), later(3000)),
-      ),
-    ]);
-    expect(results.filter((r) => !r.ok && r.reason === "mismatch")).toHaveLength(4);
-    expect(results.filter((r) => !r.ok && r.reason === "locked")).toHaveLength(5);
+    );
+    expect(results.filter((r) => !r.ok && r.reason === "mismatch")).toHaveLength(3);
+    expect(results.filter((r) => !r.ok && r.reason === "locked")).toHaveLength(2);
   });
 });
 

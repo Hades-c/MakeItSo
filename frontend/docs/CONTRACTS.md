@@ -133,7 +133,9 @@ The frozen interfaces every workstream codes against. They change only through t
   "Sign-in failed. Please try again."), so a crafted `/login?error=` link cannot show arbitrary text.
 - **Codes**: 6 digits, stored as a sha256, valid 15 minutes (`VerificationCode.codeExpiresAt`, checked against
   server `now()`), purged 24 h after sending (`expiresAt`, the TTL on the real clock), 5 attempts per code, 3 sends
-  per hour, and 10 wrong codes a day per account over all purposes (`code-fail:user:<id>`). `User.verificationSentAt`
+  per hour, and 10 wrong codes a day per account and channel: the signed-in verification (`code-fail:user:<id>`) and
+  the public password-reset confirm (`reset-fail:user:<id>`) are separate, so anonymous reset guesses never lock
+  the owner's verification. `User.verificationSentAt`
   starts the 24 h window after which a later sign-up of the same address may replace an unverified one (never a
   legacy account, never before a code was sent), so turning on a mail provider does NOT need
   `scripts/flag-legacy-accounts.ts` first.

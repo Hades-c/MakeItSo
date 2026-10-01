@@ -17,8 +17,8 @@ import mongoose, {
  *   (server/auth/rate-limits.ts purgeTime), so a pinned FIXTURES_NOW in tests never lets the TTL monitor delete
  *   a code that is still live for the code under test.
  * - Attempts: 5 per code (`attempts`, incremented atomically before comparing; reset by a new send). On top of
- *   that, wrong codes of every purpose count against one per-account budget of 10 a day
- *   (`code-fail:user:<userId>` in ratelimits, server/auth/codes.ts).
+ *   that, wrong codes count against a per-account budget of 10 a day per purpose (`code-fail:user:<userId>` for
+ *   verification, `reset-fail:user:<userId>` for the public password reset; ratelimits, server/auth/codes.ts).
  * - Sends: 3 per hour per user and purpose, enforced with `consumeRateLimit("verify-resend:user:<userId>", 3, 3600)`
  *   (and "reset-send:user:<userId>") in the ratelimits collection (server/http/rate-limit.ts). NOT counted here:
  *   this document disappears with its 15-minute code, so a counter in it would reset every 15 minutes and allow

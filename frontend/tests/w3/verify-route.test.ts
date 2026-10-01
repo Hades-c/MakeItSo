@@ -161,36 +161,19 @@ describe("POST /api/account/verify", () => {
   });
 });
 
-describe("wrong codes: one budget per account across verification and reset (review regression)", () => {
-  it("a squatter without the mailbox gets 10 guesses a day in all, not 15 + 15 an hour", async () => {
+describe("wrong codes: a budget per account and channel (review regressions)", () => {
+  it("a squatter without the mailbox gets 10 verification guesses a day, not 15 an hour", async () => {
     const { id, code } = await registerAndSignIn("victim@davidson.edu");
     let guesses = 0;
     for (let i = 0; i < 5; i++) {
       const res = await postVerify(wrongCode(code));
       if (res.status === 400 || res.status === 429) guesses++;
     }
-    // Reset codes for an unverified account come out of the same send budget as verification codes.
-    expect(
-      (
-        await requestReset(
-          jsonRequest("/api/auth/password-reset", { body: { email: "victim@davidson.edu" } }),
-        )
-      ).status,
-    ).toBe(202);
-    const resetCode = lastConsoleMessage("victim@davidson.edu")!.code!;
+    expect((await postResend()).status).toBe(202);
+    const second = lastConsoleMessage("victim@davidson.edu")!.code!;
     for (let i = 0; i < 5; i++) {
-      await RateLimit.deleteMany({ key: /^reset-confirm:ip/ });
-      const res = await confirmReset(
-        jsonRequest("/api/auth/password-reset/confirm", {
-          body: {
-            email: "victim@davidson.edu",
-            code: wrongCode(resetCode),
-            newPassword: "squatter's new pw",
-          },
-        }),
-      );
-      expect(res.status).toBe(400);
-      guesses++;
+      const res = await postVerify(wrongCode(second));
+      if (res.status === 400 || res.status === 429) guesses++;
     }
     expect(guesses).toBe(10);
     expect(await RateLimit.collection.findOne({ key: `code-fail:user:${id}` })).toMatchObject({
@@ -208,6 +191,47 @@ describe("wrong codes: one budget per account across verification and reset (rev
     stubNowPlus(9 * 3600_000);
     expect((await postResend()).status).toBe(202);
     expect((await postVerify(lastConsoleMessage("victim@davidson.edu")!.code!)).status).toBe(200);
+  });
+
+  it("anonymous password-reset guesses never lock the owner's own verification (hardening regression)", async () => {
+    const { id, code } = await registerAndSignIn("owner@davidson.edu");
+    // Someone who only knows the address: a reset request, then 10+ wrong confirms (the per-IP rule cleared, as
+    // from many IPs).
+    expect(
+      (
+        await requestReset(
+          jsonRequest("/api/auth/password-reset", { body: { email: "owner@davidson.edu" } }),
+        )
+      ).status,
+    ).toBe(202);
+    for (let round = 0; round < 3; round++) {
+      if (round > 0) {
+        await requestReset(
+          jsonRequest("/api/auth/password-reset", { body: { email: "owner@davidson.edu" } }),
+        );
+      }
+      const resetCode = lastConsoleMessage("owner@davidson.edu")?.code ?? "000000";
+      for (let i = 0; i < 5; i++) {
+        await RateLimit.deleteMany({ key: /^reset-confirm:ip/ });
+        const res = await confirmReset(
+          jsonRequest("/api/auth/password-reset/confirm", {
+            body: {
+              email: "owner@davidson.edu",
+              code: wrongCode(resetCode),
+              newPassword: "attacker's new pw",
+            },
+          }),
+        );
+        expect(res.status).toBe(400);
+      }
+    }
+    expect(await RateLimit.collection.findOne({ key: `reset-fail:user:${id}` })).toMatchObject({
+      count: 10,
+    });
+    expect(await RateLimit.collection.findOne({ key: `code-fail:user:${id}` })).toBeNull();
+
+    // The owner, signed in, can still ask for a code and verify with the real one.
+    expect((await postVerify(code)).status).toBe(200);
   });
 });
 

@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { normalizeEmail } from "@/lib/api/account";
 import RateLimit from "@/models/RateLimit";
+import type { VerificationPurpose } from "@/models/VerificationCode";
 import { getDb } from "@/server/db";
 import { isDuplicateKeyError } from "@/server/http/errors";
 import {
@@ -30,9 +31,11 @@ import {
  *   registration     5 / h per client IP (defineRoute rule "register")
  *   e-mails          3 / h per address and kind ("register-mail:email:<hash>", "reset-mail:email:<hash>") on top
  *                    of the per-user code sends (verify-resend / reset-send: 3 / h, server/auth/codes.ts)
- *   code guesses     10 wrong one-time codes a day per account, all purposes together ("code-fail:user:<id>"),
- *                    on top of 5 attempts per code. Once used up, codes are neither checked nor sent until the
- *                    window ends.
+ *   code guesses     10 wrong one-time codes a day per account and channel, on top of 5 attempts per code: the
+ *                    signed-in mailbox verification ("code-fail:user:<id>") and the public password-reset
+ *                    confirm ("reset-fail:user:<id>") have separate budgets, so anonymous reset guesses can never
+ *                    lock the owner's own in-session verification (or stop its codes). Once a channel's budget is
+ *                    used up, its codes are neither checked nor sent until the window ends.
  *   export 5 / day, password change and account deletion 10 / h, verification 30 / h (per user), password reset
  *   5 / h (request) and 10 / 15 min (confirm) per IP.
  *
@@ -152,8 +155,15 @@ export function knownSignInKey(email: string, ip: string): string {
   return `login-ok:email:${emailKey(email)}:ip:${ipKey(ip)}`;
 }
 
-export function codeFailureKey(userId: string): string {
-  return `code-fail:user:${userId}`;
+/**
+ * The wrong-code budget of one channel: the signed-in verification (`verify-email`) or the public password reset
+ * (`reset-password`, which anyone who knows the address can spend).
+ */
+export function codeFailureKey(
+  userId: string,
+  purpose: VerificationPurpose = "verify-email",
+): string {
+  return purpose === "reset-password" ? `reset-fail:user:${userId}` : `code-fail:user:${userId}`;
 }
 
 // ---- Fixed windows (reserve / release / peek) --------------------------------------------------------------------
@@ -394,25 +404,39 @@ export async function clearLoginFailures(email: string): Promise<void> {
  * Reserve one code guess for the account before the code is compared. `allowed: false` = the day's 10 wrong
  * codes are used up: do not compare. A guess that turns out right is given back with releaseCodeGuess.
  */
-export function reserveCodeGuess(userId: string, at: Date): Promise<RateLimitResult> {
+export function reserveCodeGuess(
+  userId: string,
+  at: Date,
+  purpose: VerificationPurpose = "verify-email",
+): Promise<RateLimitResult> {
   return consumeAuthLimit(
-    codeFailureKey(userId),
+    codeFailureKey(userId, purpose),
     CODE_FAILURES_PER_DAY,
     CODE_FAILURE_WINDOW_SEC,
     at,
   );
 }
 
-export function releaseCodeGuess(userId: string, at: Date): Promise<void> {
-  return releaseAuthLimit(codeFailureKey(userId), CODE_FAILURE_WINDOW_SEC, at);
+export function releaseCodeGuess(
+  userId: string,
+  at: Date,
+  purpose: VerificationPurpose = "verify-email",
+): Promise<void> {
+  return releaseAuthLimit(codeFailureKey(userId, purpose), CODE_FAILURE_WINDOW_SEC, at);
 }
 
-/** The account has no code guesses left today, so no new code is sent either. */
+/** The account has no code guesses left today on this channel, so no new code of it is sent either. */
 export function codeGuessesExhausted(
   userId: string,
   at: Date,
+  purpose: VerificationPurpose = "verify-email",
 ): Promise<{ exhausted: boolean; retryAfterSec: number }> {
-  return peekAuthLimit(codeFailureKey(userId), CODE_FAILURES_PER_DAY, CODE_FAILURE_WINDOW_SEC, at);
+  return peekAuthLimit(
+    codeFailureKey(userId, purpose),
+    CODE_FAILURES_PER_DAY,
+    CODE_FAILURE_WINDOW_SEC,
+    at,
+  );
 }
 
 export { describeWait } from "@/app/(auth)/_lib/sign-in-errors";
