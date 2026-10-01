@@ -13,10 +13,40 @@ import {
  * The AI panels on /careers/[slug] (W9a-ai) against the production build with AI_PROVIDER=mock and fixtures
  * (server "now" 2026-09-30): the gate for an unverified account, the career plan with catalog titles and "Send
  * to my plan" (→ a pending draft in My plan → Suggestions), and the cold e-mail to a contactable alumnus with
- * {{studentName}} filled in the browser. Desktop 1440 and phone 390.
+ * {{studentName}} filled in the browser. Desktop 1440 and phone 390, each in light and dark, plus a 360px pass;
+ * driven by the keyboard so focus is checked to stay in the panel (WCAG 2.4.3).
  */
 
 const PASSWORD = "career ai e2e password 7";
+
+/** axe in light and dark, overflow and tap targets at the project viewport and at 360x800. */
+async function checkLayout(page: Page, label: string) {
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+    expect(await seriousViolations(page), `${label}: axe ${colorScheme}`).toEqual([]);
+    expect(await horizontalOverflow(page), `${label}: overflow ${colorScheme}`).toBeLessThanOrEqual(
+      0,
+    );
+  }
+  if (isMobile(page)) {
+    expect(await smallTapTargets(page), `${label}: tap targets under 44px`).toEqual([]);
+  }
+  const viewport = page.viewportSize();
+  await page.setViewportSize({ width: 360, height: 800 });
+  expect(await horizontalOverflow(page), `${label}: overflow at 360`).toBeLessThanOrEqual(0);
+  expect(await smallTapTargets(page), `${label}: tap targets under 44px at 360`).toEqual([]);
+  if (viewport) await page.setViewportSize(viewport);
+  await page.emulateMedia({ colorScheme: "light" });
+}
+
+/** Focus is inside `region` (never dropped to <body>). */
+async function expectFocusWithin(region: ReturnType<Page["getByRole"]>) {
+  await expect
+    .poll(() => region.evaluate((el) => el.contains(document.activeElement)), {
+      message: "focus stays in the panel",
+    })
+    .toBe(true);
+}
 
 async function newStudent(
   page: Page,
@@ -64,9 +94,13 @@ test("the AI career plan: official titles and availability, then Send to my plan
   expect((await page.goto("/careers/software-engineering"))?.status()).toBe(200);
 
   const card = page.getByRole("region", { name: /^Your AI career plan/ });
-  await card.getByRole("button", { name: "Draft my career plan" }).click();
+  // Keyboard: focus stays in the panel while drafting and lands on the plan when it arrives.
+  await card.getByRole("button", { name: "Draft my career plan" }).focus();
+  await page.keyboard.press("Enter");
+  await expectFocusWithin(card);
   const result = card.getByTestId("ai-career-plan-result");
   await expect(result).toBeVisible({ timeout: 30_000 });
+  await expect(result).toBeFocused();
   await expect(result.getByText("AI-generated content: verify with your advisor")).toBeAttached();
   await expect(result.getByTestId("ai-plan-overview")).not.toBeEmpty();
 
@@ -81,10 +115,20 @@ test("the AI career plan: official titles and availability, then Send to my plan
   );
   await expect(page.getByText("Checking the schedule…")).toHaveCount(0);
   expect(await expectAllTagged(page)).toBeGreaterThan(0);
+  // Official program names are shown as they are (never "Major · Major in …").
+  await expect(result.getByText(/Major · Major|Minor · Minor/)).toHaveCount(0);
 
-  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
-  expect(await seriousViolations(page)).toEqual([]);
-  if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
+  await checkLayout(page, "plan");
+
+  // Draft a new plan by keyboard: focus never drops to <body>, and comes back to the new plan.
+  await card.getByRole("button", { name: "Draft a new plan" }).focus();
+  await page.keyboard.press("Enter");
+  await expectFocusWithin(card);
+  await expect(card.getByRole("button", { name: "Draft a new plan" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(result).toBeFocused();
+  await expect(card.getByText(/shared by your plan and your emails/)).toBeVisible();
 
   await result.getByRole("button", { name: "Send to my plan" }).click();
   await expect(page).toHaveURL(/\/plan\?tab=suggestions$/);
@@ -96,7 +140,7 @@ test("the AI career plan: official titles and availability, then Send to my plan
     drafts: { kind: string; status: string; items: unknown[] }[];
   };
   expect(list[0]).toMatchObject({ kind: "career-plan", status: "pending" });
-  expect(list[0]!.items).toHaveLength(pickCount);
+  expect(list[0]!.items.length).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });
 
@@ -117,10 +161,15 @@ test("cold email: contactable alumni only, the student's name filled in the brow
   await expect(group.getByText("Sallie Permar")).toHaveCount(0);
   await expect(group.getByText("Thomas Marshburn")).toHaveCount(0);
 
+  await expect(card.getByTestId("alumni-provenance")).toContainText("Compiled from public sources");
+
   await group.getByText("Rahael Borchers").click();
-  await card.getByRole("button", { name: "Draft an email" }).click();
+  await card.getByRole("button", { name: "Draft an email" }).focus();
+  await page.keyboard.press("Enter");
+  await expectFocusWithin(card);
   const result = card.getByTestId("ai-email-result");
   await expect(result).toBeVisible({ timeout: 30_000 });
+  await expect(result).toBeFocused();
   const body = result.getByTestId("ai-email-body");
   await expect(body).toContainText("Dear Rahael Borchers");
   await expect(body).toContainText("Quinn Coldmail");
@@ -132,8 +181,6 @@ test("cold email: contactable alumni only, the student's name filled in the brow
   expect(copied).toMatch(/^Subject: /);
   expect(copied).toContain("Quinn Coldmail");
 
-  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
-  expect(await seriousViolations(page)).toEqual([]);
-  if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
+  await checkLayout(page, "email");
   expect(errors).toEqual([]);
 });
