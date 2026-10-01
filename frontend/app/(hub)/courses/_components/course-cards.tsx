@@ -33,6 +33,7 @@ import {
 } from "../_lib/format";
 import type { CoursePrograms } from "../_lib/programs";
 import type { CourseWeek } from "../_lib/course";
+import { BREAK_TEXT, WRAP_CHIP } from "./wrap";
 
 /**
  * The course page's cards (PLAN §3 /courses/[term]/[code], Lakeside course.html): the index-card header, About
@@ -48,14 +49,21 @@ function CardHeading({
   id,
   title,
   children,
+  focusable = false,
 }: {
   id: string;
   title: string;
   children?: React.ReactNode;
+  /** A focus target for script (tabIndex -1), e.g. the week card after "Show in my week". */
+  focusable?: boolean;
 }) {
   return (
     <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
-      <h2 id={id} className="text-lg font-strong tracking-title text-fg">
+      <h2
+        id={id}
+        tabIndex={focusable ? -1 : undefined}
+        className="min-w-0 text-lg font-strong tracking-title break-words text-fg"
+      >
         {title}
       </h2>
       {children}
@@ -121,9 +129,11 @@ export function CourseHeader({
             ))}
             <SourceTag source="course-schedule" asOf={asOf} />
           </p>
-          <h1 className="text-2xl font-strong tracking-title text-fg md:text-3xl">{title}</h1>
+          <h1 className={cn("text-2xl font-strong tracking-title text-fg md:text-3xl", BREAK_TEXT)}>
+            {title}
+          </h1>
           {course.topics ? (
-            <p className="text-sm text-fg-2">
+            <p className={cn("text-sm text-fg-2", BREAK_TEXT)}>
               Topics vary by section: {course.title.replace(/: topics vary by section$/, "")}
             </p>
           ) : null}
@@ -138,7 +148,7 @@ export function CourseHeader({
           <ul aria-label="Course facts" className="flex flex-wrap gap-2">
             {section ? (
               <li>
-                <Chip variant="neutral" className="text-sm text-fg">
+                <Chip variant="neutral" className={cn(WRAP_CHIP, "text-sm text-fg")}>
                   <Clock aria-hidden />
                   {timed.length > 0
                     ? timed.map((m) => `${longDays(m.days)} ${meetingTime(m)}`).join("; ")
@@ -148,20 +158,20 @@ export function CourseHeader({
             ) : null}
             {rooms.length > 0 ? (
               <li>
-                <Chip variant="neutral" className="text-sm text-fg">
+                <Chip variant="neutral" className={cn(WRAP_CHIP, "text-sm text-fg")}>
                   <MapPin aria-hidden />
                   {rooms.join(", ")}
                 </Chip>
               </li>
             ) : null}
             <li>
-              <Chip variant="neutral" className="text-sm text-fg">
+              <Chip variant="neutral" className={cn(WRAP_CHIP, "text-sm text-fg")}>
                 <BookOpen aria-hidden />
                 {section ? creditsLabel([section.credits]) : creditsLabel(course.credits)}
               </Chip>
             </li>
             <li>
-              <Chip variant="neutral" className="text-sm text-fg">
+              <Chip variant="neutral" className={cn(WRAP_CHIP, "text-sm text-fg")}>
                 <ListChecks aria-hidden />
                 {prereqs.size > 0 ? "Prerequisites listed below" : "No prerequisites listed"}
               </Chip>
@@ -217,15 +227,37 @@ function distinctBySection(
   return [...out].map(([value, list]) => ({ value, sections: list }));
 }
 
+export function RequirementChips({ reqs }: { reqs: readonly RequirementTag[] }) {
+  return (
+    <ul className="flex flex-wrap gap-1.5">
+      {reqs.map((req) => (
+        <li key={req.code} className="max-w-full min-w-0">
+          <Chip variant="neutral" className={cn(WRAP_CHIP, "text-fg")}>
+            <span>
+              {req.name} <span className="font-mono text-fg-3">{req.code}</span>
+            </span>
+          </Chip>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function CourseAboutCard({
   course,
   requirements,
+  requirementsBySection,
   programs,
   disclaimer,
   asOf,
 }: {
   course: Course;
   requirements: RequirementTag[];
+  /**
+   * Requirements per group of sections when the sections disagree (NONE vs no data, topics sections); when
+   * omitted or a single group, `requirements` is shown for the whole course.
+   */
+  requirementsBySection?: { sections: string[]; reqs: RequirementTag[] | null }[];
   programs: CoursePrograms | null;
   disclaimer: string;
   asOf: string | null;
@@ -249,7 +281,11 @@ export function CourseAboutCard({
                   Section {entry.sections.join(", ")}
                 </p>
               ) : null}
-              <p className="text-base leading-relaxed whitespace-pre-line text-fg">{entry.value}</p>
+              <p
+                className={cn("text-base leading-relaxed whitespace-pre-line text-fg", BREAK_TEXT)}
+              >
+                {entry.value}
+              </p>
             </div>
           ))}
         </div>
@@ -258,17 +294,24 @@ export function CourseAboutCard({
       <dl className="mt-4 grid gap-x-6 gap-y-3 border-t border-line pt-4 text-sm md:grid-cols-[9rem_minmax(0,1fr)]">
         <dt className="font-mono text-xs text-fg-3 md:pt-0.5">Requirements</dt>
         <dd className="min-w-0" data-testid="course-requirements">
-          {requirements.length > 0 ? (
-            <ul className="flex flex-wrap gap-1.5">
-              {requirements.map((req) => (
-                <li key={req.code}>
-                  <Chip variant="neutral" className="text-fg">
-                    {req.name}
-                    <span className="font-mono text-fg-3">{req.code}</span>
-                  </Chip>
+          {requirementsBySection && requirementsBySection.length > 1 ? (
+            <ul className="flex flex-col gap-2" data-testid="requirements-by-section">
+              {requirementsBySection.map((group) => (
+                <li key={group.sections.join(",")} className="flex flex-col gap-1">
+                  <span className="font-mono text-xs font-semibold text-fg-2">
+                    {group.sections.length === 1 ? "Section" : "Sections"}{" "}
+                    {group.sections.join(", ")}
+                  </span>
+                  {group.reqs && group.reqs.length > 0 ? (
+                    <RequirementChips reqs={group.reqs} />
+                  ) : (
+                    <span className="text-fg-2">No requirement data in the schedule</span>
+                  )}
                 </li>
               ))}
             </ul>
+          ) : requirements.length > 0 ? (
+            <RequirementChips reqs={requirements} />
           ) : (
             <span className="text-fg-2">No requirement data in the schedule</span>
           )}
@@ -279,6 +322,10 @@ export function CourseAboutCard({
         <dd className="min-w-0" data-aggregated="catalog" data-testid="also-counts-for">
           {programs === null ? (
             <span className="text-fg-2">The catalog’s programs can’t be read right now.</span>
+          ) : programs.matches.length === 0 && programs.pagesRead === 0 ? (
+            <span className="text-fg-2" data-testid="programs-not-read">
+              The catalog’s program pages haven’t been read yet.
+            </span>
           ) : programs.matches.length === 0 ? (
             <span className="text-fg-2">
               No major or minor in the catalog pages read so far names this course.
@@ -302,7 +349,7 @@ export function CourseAboutCard({
           )}
           <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-fg-3">
             <SourceTag source="catalog" />
-            {programs && programs.pagesRead < programs.pagesTotal
+            {programs && programs.pagesRead > 0 && programs.pagesRead < programs.pagesTotal
               ? `Based on ${programs.pagesRead} of ${programs.pagesTotal} program pages`
               : null}
           </p>
@@ -317,7 +364,7 @@ export function CourseAboutCard({
           ) : (
             <ul className="flex flex-col gap-1.5">
               {prereqs.map((entry) => (
-                <li key={entry.value} className="text-fg">
+                <li key={entry.value} className={cn("text-fg", BREAK_TEXT)}>
                   {several(prereqs) ? (
                     <span className="mr-1 font-mono text-xs font-semibold text-fg-2">
                       {entry.sections.join(", ")}:
@@ -410,11 +457,11 @@ export function CourseWeekCard({
     <section
       id="week"
       aria-labelledby="week-title"
-      className={CARD}
+      className={cn(CARD, "scroll-mt-24")}
       data-aggregated="my-plan"
       data-testid="course-week"
     >
-      <CardHeading id="week-title" title={`Your week with ${code}`}>
+      <CardHeading id="week-title" title={`Your week with ${code}`} focusable>
         <span className="flex items-center gap-2">
           {chosen ? (
             conflicts > 0 ? (
@@ -425,7 +472,7 @@ export function CourseWeekCard({
             ) : (
               <span className="inline-flex items-center gap-1 rounded-full bg-success-wash px-2 py-0.5 text-xs font-semibold text-success">
                 <CircleCheck aria-hidden className="size-3.5" />
-                No conflicts
+                {week.unplaced.length > 0 ? "No conflicts among chosen sections" : "No conflicts"}
               </span>
             )
           ) : null}
@@ -459,7 +506,7 @@ export function CourseWeekCard({
 function UnplacedList({ items, term }: { items: readonly PlanItem[]; term: TermCode }) {
   return (
     <div className="mt-3 text-sm text-fg-2">
-      <p>Not on the grid (no section chosen yet):</p>
+      <p>Not on the grid and not checked for conflicts (no section chosen yet):</p>
       <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
         {items.map((item) => (
           <li key={item.id}>

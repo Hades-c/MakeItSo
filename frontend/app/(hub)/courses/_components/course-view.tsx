@@ -8,6 +8,8 @@ import { AddCourse } from "./add-course";
 import { CourseAboutPanel } from "./course-about-panel";
 import { CourseAboutCard, CourseHeader, CourseWeekCard, OtherTermsCard } from "./course-cards";
 import { CourseSections } from "./course-sections";
+import { WeekFocus } from "./week-focus";
+import { requirementGroups } from "../_lib/format";
 
 /**
  * The course page's body (app/(hub)/courses/[term]/[code]/page.tsx resolves the data and the 404s first):
@@ -24,9 +26,14 @@ export function CourseView({ data, timeZone }: { data: CoursePageData; timeZone?
   const pageHref = routes.course(params.term, params.code);
   const asOf = course ? data.asOf : null;
   const requirements = reference.reqCodes.map((req) => ({ code: req, name: requirementName(req) }));
+  const requirementsBySection = requirementGroups(reference.sections).map((group) => ({
+    sections: group.sections,
+    reqs: group.reqCodes?.map((req) => ({ code: req, name: requirementName(req) })) ?? null,
+  }));
 
   return (
     <>
+      <WeekFocus crn={chosen?.crn ?? null} />
       <nav aria-label="Breadcrumb" className="mb-1 md:mb-2">
         <ol className="flex flex-wrap items-center gap-1.5 text-sm text-fg-3">
           <li>
@@ -67,6 +74,7 @@ export function CourseView({ data, timeZone }: { data: CoursePageData; timeZone?
           <CourseAboutCard
             course={reference}
             requirements={requirements}
+            requirementsBySection={requirementsBySection}
             programs={data.programs}
             disclaimer={REQUIREMENTS_DISCLAIMER}
             asOf={asOf}
@@ -113,6 +121,8 @@ export function CourseView({ data, timeZone }: { data: CoursePageData; timeZone?
                 ratings={data.ratings}
                 sectionHref={(crn) => `${pageHref}?crn=${crn}#week`}
                 asOf={asOf}
+                registerAs={data.registerAs}
+                regForTitles={data.regForTitles}
               />
             ) : null}
             {data.aboutGate && course ? (

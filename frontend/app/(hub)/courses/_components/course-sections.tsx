@@ -15,6 +15,9 @@ import {
   restrictionFlags,
 } from "../_lib/format";
 import { instructorKeyOf, type RatingsLookup } from "../_lib/ratings";
+import type { RegisterAs } from "../_lib/sections";
+import { WRAP_CHIP } from "./wrap";
+import { ShowInWeekLink } from "./week-focus";
 
 /**
  * Every section of the course in the term (PLAN §5 "Sections"): CRN, section, its own title when it differs,
@@ -31,15 +34,20 @@ export function SectionItem({
   chosen,
   ratings,
   sectionHref,
+  registerAs = null,
+  regForTitle = null,
 }: {
   section: Section;
   course: Pick<Course, "title" | "topics">;
   chosen: boolean;
   ratings: RatingsLookup | null;
   sectionHref: string;
+  /** The sibling a max-0 listing registers under (resolved on the server: the first sibling with seats). */
+  registerAs?: RegisterAs | null;
+  /** The title of the course a registration-only listing belongs to. */
+  regForTitle?: string | null;
 }) {
-  const sibling =
-    section.enrollment.max === 0 && section.crossListings[0] ? section.crossListings[0] : null;
+  const sibling = registerAs;
   const flags = restrictionFlags(section);
   const ownTitle = course.topics || section.title !== course.title;
   return (
@@ -53,24 +61,26 @@ export function SectionItem({
       )}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h3 className="flex flex-wrap items-baseline gap-x-2 text-base font-strong text-fg">
+        <h3
+          id={`section-${section.crn}-title`}
+          tabIndex={-1}
+          className="flex flex-wrap items-baseline gap-x-2 text-base font-strong text-fg"
+        >
           <span className="font-mono text-sm">Section {section.section}</span>
           <span className="font-mono text-xs font-medium text-fg-2">CRN {section.crn}</span>
         </h3>
         {chosen ? (
           <span className="text-xs font-semibold text-primary">Shown in your week</span>
         ) : (
-          <Link
-            href={sectionHref}
-            scroll={false}
-            className="inline-flex min-h-11 items-center rounded-sm text-sm font-semibold text-primary hover:underline md:min-h-0"
-          >
+          <ShowInWeekLink href={sectionHref}>
             Show in my week
             <span className="sr-only"> (section {section.section})</span>
-          </Link>
+          </ShowInWeekLink>
         )}
       </div>
-      {ownTitle ? <p className="text-sm font-semibold text-fg">{section.title}</p> : null}
+      {ownTitle ? (
+        <p className="text-sm font-semibold break-words text-fg">{section.title}</p>
+      ) : null}
 
       <ul aria-label="Meetings" className="flex flex-col gap-1">
         {(section.meetings.length > 0 ? orderedMeetings(section.meetings) : [null]).map(
@@ -83,7 +93,7 @@ export function SectionItem({
                   {meeting ? meetingText(meeting, "long") : "Time TBA"}
                 </span>
                 {room ? (
-                  <span className="inline-flex items-center gap-1.5 text-fg-2">
+                  <span className="inline-flex min-w-0 items-center gap-1.5 break-words text-fg-2">
                     <MapPin aria-hidden className="size-3.5 shrink-0 text-fg-3" />
                     {room}
                   </span>
@@ -140,11 +150,8 @@ export function SectionItem({
       {sibling ? (
         <p className="text-sm font-semibold text-fg" data-testid="register-as">
           Register as{" "}
-          <Link
-            href={routes.course(section.termCode, sibling.courseCode)}
-            className="text-primary underline underline-offset-2"
-          >
-            {sibling.courseCode} {sibling.section}
+          <Link href={sibling.href} className="text-primary underline underline-offset-2">
+            {sibling.label}
           </Link>{" "}
           <span className="font-mono text-xs font-medium text-fg-2">(CRN {sibling.crn})</span>
         </p>
@@ -178,9 +185,9 @@ export function SectionItem({
           Registration section for{" "}
           <Link
             href={routes.course(section.termCode, section.regFor)}
-            className="font-semibold text-primary underline underline-offset-2"
+            className="font-semibold break-words text-primary underline underline-offset-2"
           >
-            {section.regFor}
+            {regForTitle ? `${regForTitle} (${section.regFor})` : section.regFor}
           </Link>
         </p>
       ) : null}
@@ -189,7 +196,7 @@ export function SectionItem({
         <ul aria-label="Restrictions" className="flex flex-wrap gap-1.5">
           {flags.map((flag) => (
             <li key={flag}>
-              <Chip variant="outline" className="text-fg">
+              <Chip variant="outline" className={cn(WRAP_CHIP, "text-fg")}>
                 <TriangleAlert aria-hidden className="text-warning" />
                 {flag}
               </Chip>
@@ -202,7 +209,10 @@ export function SectionItem({
           <p className="text-xs font-semibold tracking-label text-fg-3 uppercase">
             Registrar’s notes
           </p>
-          <ul className="mt-1 list-disc pl-5 text-sm text-fg-2" data-testid="section-notes">
+          <ul
+            className="mt-1 list-disc pl-5 text-sm break-words text-fg-2"
+            data-testid="section-notes"
+          >
             {section.notes.map((note) => (
               <li key={note}>{note}</li>
             ))}
@@ -219,12 +229,16 @@ export function CourseSections({
   ratings,
   sectionHref,
   asOf,
+  registerAs = {},
+  regForTitles = {},
 }: {
   course: Course;
   chosenCrn: string | null;
   ratings: RatingsLookup | null;
   sectionHref: (crn: string) => string;
   asOf: string | null;
+  registerAs?: Readonly<Record<string, RegisterAs>>;
+  regForTitles?: Readonly<Record<string, string>>;
 }) {
   return (
     <section
@@ -252,6 +266,8 @@ export function CourseSections({
               chosen={section.crn === chosenCrn}
               ratings={ratings}
               sectionHref={sectionHref(section.crn)}
+              registerAs={registerAs[section.crn] ?? null}
+              regForTitle={section.regFor ? (regForTitles[section.regFor] ?? null) : null}
             />
           </li>
         ))}

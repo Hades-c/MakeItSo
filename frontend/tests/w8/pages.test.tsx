@@ -67,6 +67,7 @@ function view(patch: Partial<SearchView> = {}): SearchView {
     result: { term: "202602", items: [], total: 0, page: 1, pageSize: 20, asOf: null },
     rows: [],
     error: null,
+    unavailableBefore: null,
     ...patch,
   };
 }
@@ -245,6 +246,7 @@ describe("/courses/[term]/[code]", () => {
     await expect(coursePage.generateMetadata(params("202602", "csc-221"))).resolves.toEqual({
       title: "CSC 221 · Spring 2027",
       description: "Data Structures",
+      alternates: { canonical: "/courses/202602/CSC-221" },
     });
     render(
       await coursePage.default({
@@ -265,6 +267,27 @@ describe("/courses/[term]/[code]", () => {
     expect(screen.getByRole("region", { name: "Other terms" })).toBeVisible();
     // AI off or not configured: no panel at all.
     expect(screen.queryByTestId("course-about-ai")).toBeNull();
+  });
+
+  it("redirects other spellings of the code to the canonical URL, keeping ?crn=", async () => {
+    state.resolved = resolved();
+    state.page = pageData();
+    for (const slug of ["csc-221", "CSC%20221", "csc%20221", "CSC221"]) {
+      await expect(
+        coursePage.default({ ...params("202602", slug), searchParams: Promise.resolve({}) }),
+      ).rejects.toMatchObject({
+        digest: expect.stringMatching(/^NEXT_REDIRECT;replace;\/courses\/202602\/CSC-221;308;/),
+      });
+    }
+    await expect(
+      coursePage.default({
+        ...params("202602", "csc-221"),
+        searchParams: Promise.resolve({ crn: "20136" }),
+      }),
+    ).rejects.toMatchObject({
+      digest: expect.stringContaining("/courses/202602/CSC-221?crn=20136;308"),
+    });
+    expect(state.loadCalls).toEqual([]);
   });
 
   it("ignores a malformed ?crn=", async () => {

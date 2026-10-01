@@ -11,6 +11,8 @@ import {
   meetingText,
   openSeatsLabel,
   orderedMeetings,
+  isLabSection,
+  requirementGroups,
   primarySections,
   restrictionFlags,
   sectionLabel,
@@ -19,7 +21,7 @@ import {
   usuallyOfferedText,
 } from "@/app/(hub)/courses/_lib/format";
 import type { Meeting } from "@/lib/types/catalog";
-import { section, withSection } from "./helpers";
+import { course, section, withSection } from "./helpers";
 
 /** PLAN §5 "Sections" and "Availability" display rules, on real fixture sections where they exist. */
 
@@ -128,9 +130,30 @@ describe("restrictions", () => {
 
   it("keeps labs out of the primary sections unless there is nothing else", () => {
     const base = section("202602", "CSC 221", "A");
-    const lab = withSection(base, { section: "L1", crn: "29999" });
+    const lab = withSection(base, { section: "L1", crn: "29999", credits: 0 });
     expect(primarySections([base, lab]).map((s) => s.section)).toEqual(["A"]);
     expect(primarySections([lab]).map((s) => s.section)).toEqual(["L1"]);
+    // Lab-only meetings make a lab whatever its letter.
+    const labMeetings = withSection(base, {
+      section: "B",
+      crn: "29998",
+      meetings: base.meetings.map((m) => ({ ...m, kind: "lab" as const })),
+    });
+    expect(isLabSection(labMeetings)).toBe(true);
+    expect(primarySections([base, labMeetings]).map((s) => s.section)).toEqual(["A"]);
+  });
+
+  it("does not take a credit-bearing L section for a lab (WRI 101 L is a writing seminar)", () => {
+    const wri = section("202602", "WRI 101", "L");
+    expect(wri.credits).toBe(1);
+    expect(isLabSection(wri)).toBe(false);
+    expect(primarySections(course("202602", "WRI 101").sections).map((s) => s.section)).toContain(
+      "L",
+    );
+    // A 0-credit companion lab keeps the old rule.
+    const mil = course("202601", "MIL 101");
+    expect(mil.sections.map((s) => s.section)).toContain("L");
+    expect(primarySections(mil.sections).map((s) => s.section)).not.toContain("L");
   });
 });
 
@@ -164,5 +187,20 @@ describe("availability", () => {
     expect(joinTermLabels(["202401", "202501", "202601"])).toBe(
       "Fall 2024, Fall 2025 and Fall 2026",
     );
+  });
+});
+
+describe("requirementGroups", () => {
+  it("is one group when every primary section agrees", () => {
+    expect(requirementGroups(course("202602", "CSC 221").sections)).toEqual([
+      { sections: ["A", "B"], reqCodes: ["MQRQ"] },
+    ]);
+  });
+
+  it("keeps NONE apart from sections without requirement data", () => {
+    expect(requirementGroups(course("202601", "MUS 357").sections)).toEqual([
+      { sections: ["A"], reqCodes: ["NONE"] },
+      { sections: ["B", "C"], reqCodes: null },
+    ]);
   });
 });

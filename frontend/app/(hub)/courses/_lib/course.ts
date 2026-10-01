@@ -21,9 +21,11 @@ import {
   inPlanTerms,
   planPresence,
   plannedSections,
-  previewWarnings,
+  plannedSectionsCache,
+  warningsByTerm,
   type StudentPlan,
 } from "./student";
+import { registerAsMap, regForTitles, type RegisterAs } from "./sections";
 import { addToPlanTerms, defaultAddTerm, unpublishedNote, type PlanWindow } from "./terms";
 import { weekView, type WeekView } from "./week";
 
@@ -43,6 +45,17 @@ export function parseCourseParams(term: string, code: string): CourseParams | nu
   const parsedCode = parseCourseSlug(code);
   if (!parsedTerm || !parsedCode) return null;
   return { term: parsedTerm.code, code: parsedCode };
+}
+
+/** The requested segments differ from the canonical path (compared decoded). */
+export function canonicalSlugDiffers(term: string, code: string, canonical: string): boolean {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(code);
+  } catch {
+    return true;
+  }
+  return `/courses/${term}/${decoded}` !== canonical;
 }
 
 function rethrowFatal(error: unknown): void {
@@ -149,6 +162,10 @@ export interface CoursePageData extends ResolvedCoursePage {
   ratings: RatingsLookup | null;
   programs: CoursePrograms | null;
   week: CourseWeek | null;
+  /** Max-0 cross-listings: CRN → the sibling to register under. */
+  registerAs: Record<string, RegisterAs>;
+  /** Registration-only listings: the regFor code → that course's title. */
+  regForTitles: Record<string, string>;
   add: {
     terms: AddToPlanTerm[];
     initialTerm: TermCode | null;
@@ -216,32 +233,36 @@ export async function loadCoursePage(
     : null;
   const codes = courseCodes(reference);
 
-  const [filters, ratings, programs, week, aboutGate] = await Promise.all([
+  const [filters, ratings, programs, week, aboutGate, registerAs, regFor] = await Promise.all([
     safe("the departments", () => getCatalogFilters(reference.termCode)),
     course ? loadRatings(course) : Promise.resolve(null),
     loadCoursePrograms([...codes]),
     course && options.plan ? loadWeek(course, chosen, options.plan) : Promise.resolve(null),
     loadAboutGate(options.userId),
+    course ? registerAsMap(course.sections) : Promise.resolve({}),
+    course ? regForTitles(course.sections) : Promise.resolve({}),
   ]);
 
   const subject = reference.sections[0]?.subject ?? reference.code.split(" ")[0] ?? "";
   const departmentName = filters?.departments.find((dept) => dept.code === subject)?.name ?? null;
 
   const terms = addToPlanTerms(history, window);
-  const warnings: Record<TermCode, string[]> = {};
-  if (options.plan && course) {
-    const planned = await safe("the plan's sections", () =>
-      plannedSections(options.plan!, params.term),
-    );
-    if (planned) {
-      const list = previewWarnings(options.plan, course, planned, {
-        term: params.term,
-        terms: resolved,
-        section: chosen,
-      });
-      if (list.length > 0) warnings[params.term] = list.map((warning) => warning.message);
-    }
-  }
+  const plan = options.plan;
+  const warnings: Record<TermCode, string[]> = plan
+    ? await warningsByTerm(plan, {
+        terms: terms.map((term) => term.code),
+        reference,
+        courseIn: (term) =>
+          term === params.term
+            ? Promise.resolve(course)
+            : terms.find((t) => t.code === term)?.availability === "offered"
+              ? safe(`${params.code} in ${term}`, () => getCourse(term, params.code))
+              : Promise.resolve(null),
+        planned: plannedSectionsCache(plan),
+        resolved,
+        sectionIn: (term) => (term === params.term ? chosen : null),
+      })
+    : {};
   const crns: Record<TermCode, string> = {};
   const sectionLabels: Record<TermCode, string> = {};
   if (course && chosen) {
@@ -257,6 +278,8 @@ export async function loadCoursePage(
     ratings,
     programs,
     week,
+    registerAs,
+    regForTitles: regFor,
     add: {
       terms,
       initialTerm: defaultAddTerm(terms, window, params.term),

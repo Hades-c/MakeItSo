@@ -167,8 +167,49 @@ export function subjectOf(code: string): string {
   return code.trim().split(/\s+/)[0]?.toUpperCase() ?? "";
 }
 
-/** Primary sections of a course: labs ("L", "L1") only when there is nothing else. */
-export function primarySections<T extends Pick<Section, "section">>(sections: readonly T[]): T[] {
-  const primary = sections.filter((section) => !/^L\d{0,2}$/.test(section.section));
+/**
+ * A companion lab section: every meeting is a lab, or an "L"/"L1" section that carries no credit. The letter alone
+ * is not enough: WRI 101 L is a 1-credit writing seminar (and BIO 371 L a 1-credit section). Mirrors the catalog's
+ * rule otherwise (contractRequest: one exported isLabSection in server/catalog).
+ */
+export function isLabSection(section: Pick<Section, "section" | "credits" | "meetings">): boolean {
+  if (section.meetings.length > 0 && section.meetings.every((meeting) => meeting.kind === "lab")) {
+    return true;
+  }
+  return section.credits === 0 && /^L\d{0,2}$/.test(section.section);
+}
+
+/** Primary sections of a course: labs only when there is nothing else. */
+export function primarySections<T extends Pick<Section, "section" | "credits" | "meetings">>(
+  sections: readonly T[],
+): T[] {
+  const primary = sections.filter((section) => !isLabSection(section));
   return primary.length > 0 ? primary : [...sections];
+}
+
+/** Sections that share one requirement answer (`reqCodes` null = the schedule has no requirement data for them). */
+export interface RequirementGroup<C extends string = string> {
+  sections: string[];
+  reqCodes: C[] | null;
+}
+
+/**
+ * The course's requirement codes per group of primary sections (PLAN §5: codes come from the listing registered
+ * under). One group when every section agrees; otherwise one per distinct answer, "no data" included, so a NONE
+ * section never hides sections without data.
+ */
+export function requirementGroups<C extends string>(
+  sections: readonly (Pick<Section, "section" | "credits" | "meetings"> & {
+    reqCodes: C[] | null;
+  })[],
+): RequirementGroup<C>[] {
+  const groups = new Map<string, RequirementGroup<C>>();
+  for (const section of primarySections(sections)) {
+    const codes = section.reqCodes ? [...new Set(section.reqCodes)] : null;
+    const key = codes ? [...codes].sort().join(",") : "\u0000";
+    const group = groups.get(key) ?? { sections: [], reqCodes: codes };
+    group.sections.push(section.section);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
 }

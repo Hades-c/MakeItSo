@@ -219,3 +219,95 @@ describe("/courses/[term]/[code] data", () => {
     );
   });
 });
+
+describe("warnings before an add, in every term the control offers", () => {
+  async function completedStudent(code: string) {
+    const userId = await insertStudent({ graduationYear: 2028 });
+    await addItem(userId, {
+      termCode: "202501",
+      courseCode: code,
+      status: "completed",
+      passFail: false,
+      source: "catalog",
+    });
+    return userId;
+  }
+
+  it("course page: the retake shows for each term, and matches what addItem then says", async () => {
+    const userId = await completedStudent("CSC 121");
+    const plan = await loadStudentPlan(userId, now());
+    const page = (await resolveCoursePage({ term: "202602", code: "CSC 121" }))!;
+    const data = await loadCoursePage(page, { userId, requestedCrn: null, plan });
+    const retake = "Already completed in Fall 2025 — plan a retake?";
+    expect(data.add.terms.map((t) => t.code)).toEqual(["202601", "202602", "202701"]);
+    for (const term of ["202601", "202602", "202701"]) {
+      expect(data.add.warnings[term]).toContain(retake);
+    }
+    const added = await addItem(userId, {
+      termCode: "202701",
+      courseCode: "CSC 121",
+      status: "planned",
+      passFail: false,
+      source: "catalog",
+    });
+    expect(added.warnings.map((w) => w.message)).toContain(retake);
+  });
+
+  it("course page: a copy planned in another term is warned about before the add too", async () => {
+    const userId = await insertStudent({ graduationYear: 2028 });
+    await addItem(userId, {
+      termCode: "202701",
+      courseCode: "CSC 221",
+      status: "planned",
+      passFail: false,
+      source: "catalog",
+    });
+    const plan = await loadStudentPlan(userId, now());
+    const page = (await resolveCoursePage({ term: "202602", code: "CSC 221" }))!;
+    const data = await loadCoursePage(page, { userId, requestedCrn: "20136", plan });
+    const copy = data.add.warnings["202602"];
+    expect(copy).toEqual([expect.stringMatching(/^CSC 221 is also in your Fall 2027 plan/)]);
+    const added = await addItem(userId, {
+      termCode: "202602",
+      courseCode: "CSC 221",
+      crn: "20136",
+      status: "planned",
+      passFail: false,
+      source: "catalog",
+    });
+    expect(added.warnings.map((w) => w.message)).toEqual(copy);
+  });
+
+  it("search: rows of a term outside the plan window key their warnings to the terms offered", async () => {
+    const userId = await completedStudent("CSC 221");
+    const plan = await loadStudentPlan(userId, now());
+    const view = await loadSearch(parseCoursesQuery({ term: "202601", q: "CSC 221" }).query, plan);
+    const row = view.rows.find((r) => r.summary.code === "CSC 221")!;
+    const offered = row.add!.terms.map((t) => t.code);
+    expect(Object.keys(row.add!.warnings).sort()).toEqual([...offered].sort());
+    expect(row.add!.warnings["202701"]).toEqual([
+      "Already completed in Fall 2025 — plan a retake?",
+    ]);
+  });
+
+  it("course page: register-as links resolve the sibling with its CRN", async () => {
+    const page = (await resolveCoursePage({ term: "202601", code: "ENV 214" }))!;
+    const data = await loadCoursePage(page, {
+      userId: await insertStudent(),
+      requestedCrn: null,
+      plan: null,
+    });
+    const a = data.course!.sections.find((s) => s.section === "A")!;
+    expect(data.registerAs[a.crn]).toMatchObject({
+      label: "PHY 214 A",
+      href: expect.stringMatching(/^\/courses\/202601\/PHY-214\?crn=\d+$/),
+    });
+  });
+
+  it("search: a past term before the history window says the schedule isn't kept", async () => {
+    const view = await loadSearch(parseCoursesQuery({ term: "202102" }).query, null);
+    expect(view.unavailableBefore).toBe("202201");
+    const current = await loadSearch(parseCoursesQuery({}).query, null);
+    expect(current.unavailableBefore).toBeNull();
+  });
+});

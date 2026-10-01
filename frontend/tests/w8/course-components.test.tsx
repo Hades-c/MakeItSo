@@ -13,6 +13,8 @@ import { CourseFilters } from "@/app/(hub)/courses/_components/course-filters";
 import { parseCoursesQuery } from "@/app/(hub)/courses/_lib/query";
 import { ratingsLookup } from "@/app/(hub)/courses/_lib/ratings";
 import { weekView } from "@/app/(hub)/courses/_lib/week";
+import { requirementGroups } from "@/app/(hub)/courses/_lib/format";
+import { registerAsLink } from "@/app/(hub)/courses/_lib/sections";
 import type { CourseRow as Row } from "@/app/(hub)/courses/_lib/search";
 import type { Availability } from "@/lib/types/catalog";
 import { detectConflicts } from "@/server/plan";
@@ -71,13 +73,23 @@ describe("SectionItem", () => {
   it("sends a max-0 cross-listing to its sibling and flags restrictions", () => {
     const env = course("202601", "ENV 214");
     const a = env.sections.find((s) => s.section === "A")!;
-    render(<SectionItem section={a} course={env} chosen={false} ratings={null} sectionHref="/x" />);
+    const phy = section("202601", "PHY 214", "A");
+    render(
+      <SectionItem
+        section={a}
+        course={env}
+        chosen={false}
+        ratings={null}
+        sectionHref="/x"
+        registerAs={registerAsLink(phy)}
+      />,
+    );
     expect(screen.getByTestId("register-as")).toHaveTextContent(
-      /^Register as PHY 214 A \(CRN \d+\)$/,
+      `Register as PHY 214 A (CRN ${phy.crn})`,
     );
     expect(screen.getByRole("link", { name: "PHY 214 A" })).toHaveAttribute(
       "href",
-      "/courses/202601/PHY-214",
+      `/courses/202601/PHY-214?crn=${phy.crn}`,
     );
     expect(screen.getByText("No seats in this listing")).toBeVisible();
   });
@@ -242,7 +254,7 @@ describe("course cards", () => {
       "CSC/DIG 120, CSC 121, BIO/CSC 209, PHY 240, or permission of instructor.",
     );
     expect(screen.getByTestId("course-requirements")).toHaveTextContent(
-      "Mathematical and Quantitative ThoughtMQRQ",
+      "Mathematical and Quantitative Thought MQRQ",
     );
     const programs = screen.getByTestId("also-counts-for");
     expect(
@@ -336,6 +348,94 @@ describe("course cards", () => {
     );
     expect(screen.getByText("No conflicts")).toBeVisible();
     expect(screen.getByText(/Your plan has CSC 221 B/)).toBeVisible();
+  });
+});
+
+describe("review fixes: course page parts", () => {
+  const csc = course("202602", "CSC 221");
+
+  it("week: 'No conflicts among chosen sections' while some courses have no section", () => {
+    const a = csc.sections[0]!;
+    render(
+      <CourseWeekCard
+        code="CSC 221"
+        term="202602"
+        chosen={a}
+        week={{
+          view: weekView({ planned: [a], chosen: a, conflicts: [] }),
+          unplaced: [planItem({ courseCode: "BIO 201" })],
+          plannedOtherSection: null,
+        }}
+      />,
+    );
+    expect(screen.getByText("No conflicts among chosen sections")).toBeVisible();
+    expect(screen.queryByText("No conflicts")).toBeNull();
+    expect(screen.getByText(/not checked for conflicts/)).toBeVisible();
+    // The heading is a focus target for "Show in my week".
+    expect(screen.getByRole("heading", { name: "Your week with CSC 221" })).toHaveAttribute(
+      "tabindex",
+      "-1",
+    );
+  });
+
+  it("about: lists requirements per section when NONE and 'no data' sections differ", () => {
+    const mus = course("202601", "MUS 357");
+    const groups = requirementGroups(mus.sections).map((group) => ({
+      sections: group.sections,
+      reqs: group.reqCodes?.map((code) => ({ code, name: `name of ${code}` })) ?? null,
+    }));
+    render(
+      <CourseAboutCard
+        course={mus}
+        requirements={[{ code: "NONE", name: "name of NONE" }]}
+        requirementsBySection={groups}
+        programs={{ matches: [], pagesRead: 0, pagesTotal: 51 }}
+        disclaimer="d"
+        asOf={null}
+      />,
+    );
+    const list = screen.getByTestId("requirements-by-section");
+    expect(list).toHaveTextContent("Section Aname of NONE NONE");
+    expect(list).toHaveTextContent("Sections B, CNo requirement data in the schedule");
+    // No program pages read yet: say so instead of a negative answer.
+    expect(screen.getByTestId("programs-not-read")).toHaveTextContent(
+      "The catalog’s program pages haven’t been read yet.",
+    );
+    expect(screen.getByTestId("also-counts-for")).not.toHaveTextContent(/names this course/);
+  });
+
+  it("chips holding free text wrap instead of overflowing", () => {
+    render(
+      <CourseAboutCard
+        course={csc}
+        requirements={[{ code: "NONE", name: "Not approved for any Ways of Knowing requirement" }]}
+        programs={null}
+        disclaimer="d"
+        asOf={null}
+      />,
+    );
+    const chip = screen.getByText(/Not approved for any Ways/).closest("span.rounded-full")!;
+    expect(chip.className).toMatch(/whitespace-normal/);
+    expect(chip.className).not.toMatch(/whitespace-nowrap/);
+  });
+
+  it("registration-only listing: names the course's title", () => {
+    const base = csc.sections[0]!;
+    const reg = withSection(base, { regFor: "CHE 430" });
+    render(
+      <SectionItem
+        section={reg}
+        course={csc}
+        chosen={false}
+        ratings={null}
+        sectionHref="/x"
+        regForTitle="Advanced Biochemistry"
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Advanced Biochemistry (CHE 430)" })).toHaveAttribute(
+      "href",
+      "/courses/202602/CHE-430",
+    );
   });
 });
 

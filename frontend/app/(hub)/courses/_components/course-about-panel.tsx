@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Flag, LoaderCircle, RotateCcw, Sparkles } from "lucide-react";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
+import { WRAP_CHIP } from "./wrap";
 import { Chip } from "@/components/ui/chip";
 import { SourceTag } from "@/components/ui/source-tag";
 import { aiApi, type CourseAboutResultSchema } from "@/lib/api/ai";
@@ -151,7 +152,9 @@ function OkView({ result, timeZone }: { result: Ok; timeZone?: string }) {
           <ul className="flex flex-wrap gap-1.5">
             {about.topics.map((topic) => (
               <li key={topic}>
-                <Chip variant="neutral">{topic}</Chip>
+                <Chip variant="neutral" className={WRAP_CHIP}>
+                  {topic}
+                </Chip>
               </li>
             ))}
           </ul>

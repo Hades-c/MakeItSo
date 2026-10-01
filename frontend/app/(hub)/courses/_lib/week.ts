@@ -29,7 +29,24 @@ export interface WeekView {
   chosenConflicts: ScheduleConflict[];
 }
 
-function blocksOf(section: Section, flags: { tentative: boolean; conflict: Set<string> }) {
+/** Conflict windows per "crn|day" (minutes since midnight). */
+type ConflictWindows = Map<string, { start: number; end: number }[]>;
+
+/** A meeting is marked only when one of its CRN's conflict windows that day overlaps its own time. */
+function overlapsConflict(
+  windows: ConflictWindows,
+  crn: string,
+  day: string,
+  start: string,
+  end: string,
+): boolean {
+  const s = parseClock(start);
+  const e = parseClock(end);
+  if (s === null || e === null) return false;
+  return (windows.get(`${crn}|${day}`) ?? []).some((w) => w.start < e && s < w.end);
+}
+
+function blocksOf(section: Section, flags: { tentative: boolean; conflict: ConflictWindows }) {
   const out: WeekGridBlock[] = [];
   const label = sectionLabel(section);
   section.meetings.forEach((meeting, index) => {
@@ -54,7 +71,7 @@ function blocksOf(section: Section, flags: { tentative: boolean; conflict: Set<s
         end: meeting.end,
         ...(room ? { room } : {}),
         tentative: flags.tentative,
-        conflict: flags.conflict.has(`${section.crn}|${day}`),
+        conflict: overlapsConflict(flags.conflict, section.crn, day, meeting.start, meeting.end),
       });
     }
   });
@@ -88,10 +105,15 @@ export function hoursFor(blocks: readonly WeekGridBlock[]): { startHour: number;
 }
 
 export function weekView({ planned, chosen, conflicts }: WeekInput): WeekView {
-  const marked = new Set<string>();
+  const marked: ConflictWindows = new Map();
   for (const conflict of conflicts) {
-    marked.add(`${conflict.a.crn}|${conflict.day}`);
-    marked.add(`${conflict.b.crn}|${conflict.day}`);
+    const start = parseClock(conflict.start);
+    const end = parseClock(conflict.end);
+    if (start === null || end === null) continue;
+    for (const crn of [conflict.a.crn, conflict.b.crn]) {
+      const key = `${crn}|${conflict.day}`;
+      marked.set(key, [...(marked.get(key) ?? []), { start, end }]);
+    }
   }
   const plannedCrns = new Set(planned.map((section) => section.crn));
   const chosenTentative = chosen !== null && !plannedCrns.has(chosen.crn);

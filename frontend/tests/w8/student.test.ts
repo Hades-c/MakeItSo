@@ -6,6 +6,7 @@ import {
   planPresence,
   previewWarnings,
   sectionConflicts,
+  warningsByTerm,
   type PlannedSection,
   type StudentPlan,
 } from "@/app/(hub)/courses/_lib/student";
@@ -238,5 +239,92 @@ describe("programsForCodes", () => {
     ]);
     expect(result.matches[1]!.url).toMatch(/^https:\/\/catalog\.davidson\.edu\/.*poid=1$/);
     expect(result).toMatchObject({ pagesRead: 2, pagesTotal: 4 });
+  });
+});
+
+describe("previewWarnings: the plan service's copy warning", () => {
+  it("warns that a course planned in another term counts once, as addItem does", () => {
+    const plan = student([
+      planItem({ courseCode: "CSC 221", termCode: "202701", title: "Data Structures" }),
+    ]);
+    expect(
+      messages(
+        previewWarnings(plan, course("202602", "CSC 221"), [], { term: "202602", terms: TERMS }),
+      ),
+    ).toEqual([
+      "CSC 221 is also in your Fall 2027 plan — a course counts once toward the degree unless it may be repeated for credit.",
+    ]);
+  });
+
+  it("prefers the retake warning when the course was completed", () => {
+    const plan = student([
+      planItem({
+        courseCode: "CSC 221",
+        termCode: "202501",
+        status: "completed",
+        title: "Data Structures",
+      }),
+      planItem({ courseCode: "CSC 221", termCode: "202701", title: "Data Structures" }),
+    ]);
+    expect(
+      messages(
+        previewWarnings(plan, course("202602", "CSC 221"), [], { term: "202602", terms: TERMS }),
+      ),
+    ).toEqual(["Already completed in Fall 2025 — plan a retake?"]);
+  });
+
+  it("does not call a topics course with another title a copy", () => {
+    const wri = course("202602", "WRI 101");
+    const plan = student([
+      planItem({ courseCode: "WRI 101", termCode: "202601", title: "Bad Art" }),
+    ]);
+    const other = wri.sections.find((s) => s.title !== "Bad Art")!;
+    expect(
+      previewWarnings(plan, wri, [], { term: "202602", terms: TERMS, section: other }),
+    ).toEqual([]);
+  });
+});
+
+describe("warningsByTerm", () => {
+  it("keys the warnings by every offered term: a retake everywhere, conflicts only where offered", async () => {
+    const csc = course("202602", "CSC 221");
+    const plan = student([
+      planItem({
+        courseCode: "CSC 221",
+        termCode: "202501",
+        status: "completed",
+        title: "Data Structures",
+      }),
+    ]);
+    const bio = section("202602", "BIO 201", "A");
+    const result = await warningsByTerm(plan, {
+      terms: ["202601", "202602", "202701"],
+      reference: csc,
+      courseIn: async (term) =>
+        term === "202602" ? csc : term === "202601" ? course("202601", "CSC 221") : null,
+      planned: async (term) => (term === "202602" ? planned(bio) : []),
+      resolved: TERMS,
+      sectionIn: (term) =>
+        term === "202602" ? csc.sections.find((s) => s.section === "A")! : null,
+    });
+    const retake = "Already completed in Fall 2025 — plan a retake?";
+    expect(result["202601"]).toEqual([retake]);
+    expect(result["202701"]).toEqual([retake]);
+    expect(result["202602"]).toEqual([
+      retake,
+      expect.stringMatching(/^CSC 221 A overlaps BIO 201 A/),
+    ]);
+  });
+
+  it("leaves out terms without warnings and survives an unreadable plan term", async () => {
+    const csc = course("202602", "CSC 221");
+    const result = await warningsByTerm(student([]), {
+      terms: ["202601", "202602"],
+      reference: csc,
+      courseIn: async () => null,
+      planned: async () => null,
+      resolved: TERMS,
+    });
+    expect(result).toEqual({});
   });
 });

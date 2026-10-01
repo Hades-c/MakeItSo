@@ -18,8 +18,9 @@ import { getSection } from "@/server/catalog";
 import { ApiError } from "@/server/http/errors";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { detectConflicts, getPlan } from "@/server/plan";
+import { factsFromCourse, factsFromSection } from "@/server/plan/catalog";
 import { loadPlanContext } from "@/server/plan/context";
-import { isCompMet } from "@/server/plan/requirements";
+import { isCompMet, isSameDegreeCourse } from "@/server/plan/requirements";
 import { courseRestrictionWarnings, sectionRestrictionWarnings } from "@/server/plan/restrictions";
 import { classesBegun } from "@/server/plan/schedule";
 import { standingForTerm, type PlanContext } from "@/server/plan/terms";
@@ -204,12 +205,25 @@ export function previewWarnings(
     )
     .sort((a, b) => (a.termCode ?? "").localeCompare(b.termCode ?? ""));
   const last = completed.at(-1);
+  // The same course planned or taken in another term counts once (server/plan/items.ts itemWarnings "copy").
+  const adding = options.section
+    ? factsFromSection(options.section)
+    : factsFromCourse(course, course.termCode === term);
+  const copy = active
+    .filter((item) => item.termCode !== term && isSameDegreeCourse(item, adding))
+    .sort((a, b) => (a.termCode ?? "").localeCompare(b.termCode ?? ""))[0];
   if (last) {
     out.push({
       code: "already-completed",
       message: last.termCode
         ? `Already completed in ${termLabel(last.termCode)} — plan a retake?`
         : "Already counted as AP/transfer credit — plan a retake?",
+      termCode: term,
+    });
+  } else if (copy) {
+    out.push({
+      code: "already-completed",
+      message: `${course.code} is also ${copy.termCode ? `in your ${termLabel(copy.termCode)} plan` : "listed as AP/transfer credit"} — a course counts once toward the degree unless it may be repeated for credit.`,
       termCode: term,
     });
   }
@@ -258,4 +272,60 @@ export function previewWarnings(
     }
   }
   return out;
+}
+
+/** The planned sections of a term, read once per term (shared by every row of a results page). */
+export function plannedSectionsCache(
+  plan: StudentPlan,
+): (term: TermCode) => Promise<PlannedSection[] | null> {
+  const cache = new Map<TermCode, Promise<PlannedSection[] | null>>();
+  return (term) => {
+    let entry = cache.get(term);
+    if (!entry) {
+      entry = plannedSections(plan, term).catch((error: unknown) => {
+        unstable_rethrow(error);
+        if (error instanceof MissingFixtureError) throw error;
+        console.error("[courses] could not read the plan's sections:", error);
+        return null;
+      });
+      cache.set(term, entry);
+    }
+    return entry;
+  };
+}
+
+export interface TermWarningsInput {
+  /** Every term the Add to plan control offers. */
+  terms: readonly TermCode[];
+  /** The course as the page knows it (any term): retakes and copies need no schedule. */
+  reference: Course;
+  /** The course on a term's schedule (null when it is not offered there, or the read failed). */
+  courseIn: (term: TermCode) => Promise<Course | null>;
+  planned: (term: TermCode) => Promise<PlannedSection[] | null>;
+  resolved: ResolvedTerms | null;
+  /** The section the student is looking at in a term (the course page's chosen section, its own term only). */
+  sectionIn?: (term: TermCode) => Section | null;
+}
+
+/**
+ * previewWarnings for every term the control offers, keyed by term (what AddCourse shows for the selected term).
+ * A retake or a copy in another term is warned about in every term; restrictions and conflicts only where the
+ * course is on that term's schedule.
+ */
+export async function warningsByTerm(
+  plan: StudentPlan,
+  input: TermWarningsInput,
+): Promise<Record<TermCode, string[]>> {
+  const entries = await Promise.all(
+    input.terms.map(async (term) => {
+      const [offered, planned] = await Promise.all([input.courseIn(term), input.planned(term)]);
+      const list = previewWarnings(plan, offered ?? input.reference, planned ?? [], {
+        term,
+        terms: input.resolved,
+        section: offered ? (input.sectionIn?.(term) ?? null) : null,
+      });
+      return [term, list.map((warning) => warning.message)] as const;
+    }),
+  );
+  return Object.fromEntries(entries.filter(([, list]) => list.length > 0));
 }

@@ -96,6 +96,24 @@ describe("weekView", () => {
     expect(view.chosenConflicts.length).toBeGreaterThan(0);
   });
 
+  it("marks only the meetings that overlap, not every meeting on a conflicting day", () => {
+    // BIO 201 A: lecture MWF 10:30–11:20 plus a second meeting M 13:30–16:20.
+    const other = withSection(csc, {
+      crn: "29990",
+      meetings: [{ days: ["M"], start: "14:00", end: "15:00", kind: "class", tba: false }],
+    });
+    const view = weekView({
+      planned: [other],
+      chosen: bio,
+      conflicts: detectConflicts([other, bio]),
+    });
+    const marked = view.blocks
+      .filter((b) => b.conflict)
+      .map((b) => `${b.code} ${b.day} ${b.start}`);
+    expect(marked.sort()).toEqual(["BIO 201 A M 13:30", "CSC 221 A M 14:00"]);
+    expect(view.chosenConflicts).toHaveLength(1);
+  });
+
   it("draws a planned chosen section solid", () => {
     const view = weekView({ planned: [csc], chosen: csc, conflicts: [] });
     expect(view.chosenTentative).toBe(false);

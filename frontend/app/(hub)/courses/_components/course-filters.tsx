@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { LoaderCircle, Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { controlClass, Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -115,7 +115,8 @@ export function CourseFilters({
   const advanced = active.filter((filter) => filter.key !== "q").length;
   const [dept, ...extraDepts] = query.dept;
   const [req, ...extraReqs] = query.req;
-  // Keyed on the URL: after a client-side navigation the form shows the URL's state, not stale typing.
+  // Keyed on the URL: after a client-side navigation the form shows the URL's state, not stale typing. The remount
+  // drops focus, so a submitted search moves it to the results heading (ResultsHeading).
   const formKey = coursesHref(query, term);
 
   return (
@@ -157,7 +158,11 @@ export function CourseFilters({
             </select>
           </div>
           <Button type="submit">
-            <Search aria-hidden />
+            <Search aria-hidden className="group-data-[pending]/search:hidden" />
+            <LoaderCircle
+              aria-hidden
+              className="hidden animate-spin group-data-[pending]/search:inline motion-reduce:animate-none"
+            />
             Search
           </Button>
         </div>
@@ -298,7 +303,13 @@ export function CourseFilters({
             </fieldset>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button type="submit">Apply filters</Button>
+            <Button type="submit">
+              <LoaderCircle
+                aria-hidden
+                className="hidden animate-spin group-data-[pending]/search:inline motion-reduce:animate-none"
+              />
+              Apply filters
+            </Button>
           </div>
         </details>
       </CleanGetForm>

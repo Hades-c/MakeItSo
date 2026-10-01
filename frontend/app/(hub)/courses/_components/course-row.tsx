@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { creditsLabel, openSeatsLabel, sectionsLabel } from "../_lib/format";
 import type { CourseRow as Row } from "../_lib/search";
 import { AddCourse } from "./add-course";
+import { BREAK_TEXT, WRAP_CHIP } from "./wrap";
 
 /**
  * One /courses result (PLAN §3): code, title (a topics course says "topics vary by section" and lists each
@@ -50,7 +51,7 @@ export function CourseRow({
             {openSeatsLabel(summary.openSeats)}
           </span>
         </div>
-        <h3 id={titleId} className="text-lg font-strong tracking-title text-fg">
+        <h3 id={titleId} className={cn("text-lg font-strong tracking-title text-fg", BREAK_TEXT)}>
           <Link
             href={row.href}
             className="inline-flex min-h-11 items-center rounded-sm hover:underline md:inline md:min-h-0"
@@ -69,10 +70,11 @@ export function CourseRow({
         {row.reqs.length > 0 ? (
           <ul aria-label="Requirements" className="flex flex-wrap gap-1.5">
             {row.reqs.map((req) => (
-              <li key={req.code}>
-                <Chip variant="neutral" title={req.code}>
-                  {req.name}
-                  <span className="font-mono text-fg-3">{req.code}</span>
+              <li key={req.code} className="max-w-full min-w-0">
+                <Chip variant="neutral" title={req.code} className={WRAP_CHIP}>
+                  <span>
+                    {req.name} <span className="font-mono text-fg-3">{req.code}</span>
+                  </span>
                 </Chip>
               </li>
             ))}
@@ -89,7 +91,7 @@ export function CourseRow({
               >
                 <span className="font-mono text-xs font-semibold text-fg">{section.section}</span>
                 {summary.topics ? (
-                  <span className="font-semibold text-fg">{section.title}</span>
+                  <span className={cn("font-semibold text-fg", BREAK_TEXT)}>{section.title}</span>
                 ) : null}
                 <span className="inline-flex items-baseline gap-1 font-mono text-xs text-fg-2">
                   <Clock aria-hidden className="size-3.5 shrink-0 self-center" />
@@ -100,7 +102,16 @@ export function CourseRow({
                   <span className="text-xs text-fg-2">{section.flags.join(" · ")}</span>
                 ) : null}
                 {section.registerAs ? (
-                  <span className="text-xs font-semibold text-fg-2">{section.registerAs}</span>
+                  <span className="text-xs font-semibold text-fg-2" data-testid="row-register-as">
+                    Register as{" "}
+                    <Link
+                      href={section.registerAs.href}
+                      className="text-primary underline underline-offset-2"
+                    >
+                      {section.registerAs.label}
+                    </Link>{" "}
+                    <span className="font-mono font-medium">(CRN {section.registerAs.crn})</span>
+                  </span>
                 ) : null}
               </li>
             ))}

@@ -17,10 +17,12 @@ import {
   browseTerm,
   getCatalogFilters,
   getCourse,
-  getCourseHistory,
   resolveTerms,
   searchCourses,
 } from "@/server/catalog";
+import { HISTORY_START } from "@/server/catalog/config";
+import { courseAvailability } from "@/server/catalog/history";
+import { inIngestWindow } from "@/server/catalog/terms";
 import { requirementName } from "@/server/content/requirements";
 import { ApiError } from "@/server/http/errors";
 import { MissingFixtureError } from "@/server/http/fixtures";
@@ -29,11 +31,18 @@ import {
   courseCodes,
   inPlanTerms,
   planPresence,
-  plannedSections,
-  previewWarnings,
+  plannedSectionsCache,
+  warningsByTerm,
   type StudentPlan,
 } from "./student";
-import { addToPlanTerms, defaultAddTerm, unpublishedNote, type PlanWindow } from "./terms";
+import { registerAsMap, type RegisterAs } from "./sections";
+import {
+  addToPlanTerms,
+  defaultAddTerm,
+  planWindowTerms,
+  unpublishedNote,
+  type PlanWindow,
+} from "./terms";
 
 /**
  * The /courses data (PLAN §3 /courses): the term list for the selector (default: server/catalog browseTerm), the
@@ -53,8 +62,8 @@ export interface RowSection {
   title: string;
   times: string[];
   instructors: string[];
-  /** "Register as PHY 214 A" for a max-0 cross-listed listing. */
-  registerAs: string | null;
+  /** The sibling a max-0 cross-listed listing registers under ("Register as PHY 214 A"). */
+  registerAs: RegisterAs | null;
   /** Restriction flags ("First-years and sophomores only"). */
   flags: string[];
 }
@@ -86,6 +95,11 @@ export interface SearchView {
   rows: CourseRow[];
   /** The search itself failed (catalog 503): what to say. */
   error: string | null;
+  /**
+   * A past term MakeItSo keeps no schedule for (before the history window): the first term it has. Null for
+   * every other term (a future term simply has no courses yet).
+   */
+  unavailableBefore: TermCode | null;
 }
 
 export const MAX_ROW_SECTIONS = 3;
@@ -122,19 +136,19 @@ export function courseRow(input: {
   term: TermCode;
   presence: ReadonlyMap<string, ReadonlySet<TermCode>> | null;
   warnings: Record<TermCode, string[]>;
+  /** registerAsMap of the course's sections (max-0 CRN → sibling). */
+  registerAs?: Readonly<Record<string, RegisterAs>>;
 }): CourseRow {
   const { summary, course, history, window, term } = input;
   const primary = course ? primarySections(course.sections) : [];
   const sections: RowSection[] = primary.slice(0, MAX_ROW_SECTIONS).map((section) => {
-    const sibling =
-      section.enrollment.max === 0 && section.crossListings[0] ? section.crossListings[0] : null;
     return {
       crn: section.crn,
       section: section.section,
       title: section.title,
       times: sectionTimes(section),
       instructors: section.instructors.map(instructorName),
-      registerAs: sibling ? `Register as ${sibling.courseCode} ${sibling.section}` : null,
+      registerAs: input.registerAs?.[section.crn] ?? null,
       flags: restrictionFlags(section),
     };
   });
@@ -199,21 +213,35 @@ export async function loadSearch(
 
   const items = searched.result?.items ?? [];
   const presence = plan ? planPresence(plan.items) : null;
-  const planned = plan
-    ? await safe("the plan's sections", () => plannedSections(plan, term))
-    : null;
+  const planned = plan ? plannedSectionsCache(plan) : null;
+  // Only the plan window's availability is shown on a row (contractRequest: a batch read in server/catalog).
+  const windowTerms = planWindowTerms(window);
   const rows = await Promise.all(
     items.map(async (summary) => {
       const [course, history] = await Promise.all([
         safe(`course ${summary.code}`, () => getCourse(term, summary.code)),
-        safe(`the history of ${summary.code}`, () => getCourseHistory(summary.code)),
+        safe(`the history of ${summary.code}`, () => courseAvailability(summary.code, windowTerms)),
       ]);
-      const warnings: Record<TermCode, string[]> = {};
-      if (plan && course && planned) {
-        const list = previewWarnings(plan, course, planned, { term, terms: resolved });
-        if (list.length > 0) warnings[term] = list.map((warning) => warning.message);
-      }
-      return courseRow({ summary, course, history, window, term, presence, warnings });
+      const shown = course ? primarySections(course.sections).slice(0, MAX_ROW_SECTIONS) : [];
+      const terms = history ? addToPlanTerms(history, window) : [];
+      const [registerAs, warnings] = await Promise.all([
+        registerAsMap(shown),
+        plan && planned && course && terms.length > 0
+          ? warningsByTerm(plan, {
+              terms: terms.map((t) => t.code),
+              reference: course,
+              courseIn: (t) =>
+                t === term
+                  ? Promise.resolve(course)
+                  : terms.find((entry) => entry.code === t)?.availability === "offered"
+                    ? safe(`${summary.code} in ${t}`, () => getCourse(t, summary.code))
+                    : Promise.resolve(null),
+              planned,
+              resolved,
+            })
+          : Promise.resolve({}),
+      ]);
+      return courseRow({ summary, course, history, window, term, presence, warnings, registerAs });
     }),
   );
 
@@ -225,5 +253,9 @@ export async function loadSearch(
     result: searched.result,
     rows,
     error: searched.error,
+    unavailableBefore:
+      compareTerms(term, resolved.registration) < 0 && !inIngestWindow(term, resolved)
+        ? HISTORY_START
+        : null,
   };
 }

@@ -13,8 +13,10 @@ import { now } from "@/server/clock";
 import { coursesHref, hasFilters, parseCoursesQuery, type CoursesSearchParams } from "./_lib/query";
 import { loadSearch } from "./_lib/search";
 import { loadStudentPlan } from "./_lib/student";
+import { RESULTS_HEADING_ID } from "./_components/clean-get-form";
 import { CourseFilters } from "./_components/course-filters";
 import { CourseRow } from "./_components/course-row";
+import { ResultsHeading } from "./_components/results-heading";
 
 export const metadata: Metadata = { title: "Courses" };
 
@@ -42,6 +44,15 @@ export default async function CoursesPage({
   const page = result?.page ?? 1;
   const first = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const last = Math.min(total, page * pageSize);
+  const showsResults = !view.error && total > 0 && view.rows.length > 0;
+  const status = view.error
+    ? "The course schedule is unavailable"
+    : showsResults
+      ? `${pages > 1 ? `${first}–${last} of ` : ""}${total} ${total === 1 ? "course" : "courses"} in ${termLabel(term)}`
+      : total > 0
+        ? `There is no page ${page} of these results`
+        : `No ${termLabel(term)} courses found`;
+  const navKey = coursesHref(query, term);
 
   return (
     <>
@@ -60,6 +71,29 @@ export default async function CoursesPage({
           Some search settings in the link were not valid and were ignored.
         </p>
       ) : null}
+
+      {/* Mounted in every state, so the live region announces each new search. */}
+      <div
+        className={
+          showsResults
+            ? "mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+            : undefined
+        }
+      >
+        <ResultsHeading
+          navKey={navKey}
+          visible={showsResults}
+          className="text-base font-semibold text-fg"
+        >
+          {status}
+        </ResultsHeading>
+        {showsResults ? (
+          <p className="flex items-center gap-2 text-xs text-fg-2">
+            Schedule data
+            <SourceTag source="course-schedule" asOf={result?.asOf ?? null} />
+          </p>
+        ) : null}
+      </div>
 
       {view.error ? (
         <ErrorState
@@ -85,19 +119,30 @@ export default async function CoursesPage({
         <EmptyState
           icon={SearchX}
           title={
-            hasFilters(query)
-              ? `No ${termLabel(term)} courses match${query.q ? ` “${query.q}”` : ""}`
-              : `No ${termLabel(term)} courses yet`
+            view.unavailableBefore
+              ? `No ${termLabel(term)} schedule in MakeItSo`
+              : hasFilters(query)
+                ? `No ${termLabel(term)} courses match${query.q ? ` “${query.q}”` : ""}`
+                : `No ${termLabel(term)} courses yet`
           }
           description={
-            hasFilters(query) ? (
+            view.unavailableBefore ? (
+              <p>
+                MakeItSo keeps Davidson’s schedules from {termLabel(view.unavailableBefore)} on.
+                Choose a later term.
+              </p>
+            ) : hasFilters(query) ? (
               <p>Try fewer filters, another term, or a different word.</p>
             ) : (
               <p>The {termLabel(term)} schedule has no courses in it yet.</p>
             )
           }
           action={
-            hasFilters(query) ? (
+            view.unavailableBefore ? (
+              <Button asChild variant="secondary">
+                <Link href={routes.courses()}>Search the latest schedule</Link>
+              </Button>
+            ) : hasFilters(query) ? (
               <Button asChild variant="secondary">
                 <Link href={routes.courses({ term })}>Clear filters</Link>
               </Button>
@@ -105,21 +150,7 @@ export default async function CoursesPage({
           }
         />
       ) : (
-        <section aria-labelledby="results-title">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <h2
-              id="results-title"
-              className="text-base font-semibold text-fg"
-              data-testid="results-count"
-            >
-              {pages > 1 ? `${first}–${last} of ` : null}
-              {total} {total === 1 ? "course" : "courses"} in {termLabel(term)}
-            </h2>
-            <p className="flex items-center gap-2 text-xs text-fg-2">
-              Schedule data
-              <SourceTag source="course-schedule" asOf={result?.asOf ?? null} />
-            </p>
-          </div>
+        <section aria-labelledby={RESULTS_HEADING_ID}>
           <ol className="flex flex-col gap-3" data-testid="course-results">
             {view.rows.map((row) => (
               <li key={row.summary.code}>

@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
+import { routes } from "@/lib/routes";
 import { cache } from "react";
 import { termLabel } from "@/lib/term";
 import { requireUser } from "@/server/auth/session";
 import { now } from "@/server/clock";
 import { readEnv } from "@/server/env";
-import { loadCoursePage, parseCourseParams, resolveCoursePage } from "../../_lib/course";
+import {
+  canonicalSlugDiffers,
+  loadCoursePage,
+  parseCourseParams,
+  resolveCoursePage,
+} from "../../_lib/course";
 import { loadStudentPlan } from "../../_lib/student";
 import { CourseView } from "../../_components/course-view";
 
@@ -33,6 +39,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   return {
     title: `${page.params.code} · ${termLabel(page.params.term)}`,
     description: page.reference.title,
+    alternates: { canonical: routes.course(page.params.term, page.params.code) },
   };
 }
 
@@ -53,6 +60,11 @@ export default async function CoursePage({
   const resolved = await resolvePage(term, code);
   if (!resolved) notFound();
   const crn = firstParam((await searchParams).crn);
+  // One URL per course page: /courses/202602/csc%20221, /CSC221 and /csc-221 redirect to /CSC-221.
+  const canonical = routes.course(resolved.params.term, resolved.params.code);
+  if (canonicalSlugDiffers(term, code, canonical)) {
+    permanentRedirect(crn ? `${canonical}?crn=${crn}` : canonical);
+  }
   const plan = await loadStudentPlan(user.id, now());
   const data = await loadCoursePage(resolved, { userId: user.id, requestedCrn: crn, plan });
   return <CourseView data={data} timeZone={readEnv("APP_TIMEZONE")} />;
