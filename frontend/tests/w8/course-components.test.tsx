@@ -21,7 +21,7 @@ import { course, planItem, section, withSection } from "./helpers";
 /** The app wraps every page in a TooltipProvider (SourceTag with an "as of" uses a tooltip). */
 const render = (ui: React.ReactElement) => rtlRender(<TooltipProvider>{ui}</TooltipProvider>);
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 
 /** The course pages' server-rendered parts, on real fixture sections (PLAN §5 "Sections" rules). */
 
@@ -434,7 +434,7 @@ describe("/courses parts", () => {
         }}
       />,
     );
-    const form = screen.getByRole("search", { name: "Course search" });
+    const form = screen.getByRole("form", { name: "Course search" });
     expect(form).toHaveAttribute("method", "get");
     expect(form).toHaveAttribute("action", "/courses");
     expect(screen.getByLabelText("Search the schedule")).toHaveValue("data");

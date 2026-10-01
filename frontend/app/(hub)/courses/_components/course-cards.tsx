@@ -291,7 +291,7 @@ export function CourseAboutCard({
                     href={match.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-fg underline decoration-line-strong underline-offset-2 hover:text-primary"
+                    className="inline-flex min-h-11 items-center text-fg underline decoration-line-strong underline-offset-2 hover:text-primary md:inline md:min-h-0"
                   >
                     {match.name}
                     <span className="sr-only"> (catalog page, opens in a new tab)</span>

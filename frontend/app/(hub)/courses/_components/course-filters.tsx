@@ -16,6 +16,7 @@ import {
   timeLabel,
 } from "../_lib/query";
 import type { TermOption } from "../_lib/search";
+import { CleanGetForm } from "./clean-get-form";
 
 /**
  * /courses search and filters (PLAN §3, §7 "State"): one GET form, so every choice lands in the URL and back,
@@ -119,12 +120,10 @@ export function CourseFilters({
 
   return (
     <div className="mb-5 flex flex-col gap-3">
-      <form
+      <CleanGetForm
         key={formKey}
-        method="get"
         action={routes.courses()}
         autoComplete="off"
-        role="search"
         aria-label="Course search"
         className="rounded-xl border border-line bg-surface p-4 shadow-card"
       >
@@ -302,7 +301,7 @@ export function CourseFilters({
             <Button type="submit">Apply filters</Button>
           </div>
         </details>
-      </form>
+      </CleanGetForm>
 
       {active.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2" data-testid="active-filters">
