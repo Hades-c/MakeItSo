@@ -266,3 +266,27 @@ describe("initials", () => {
     expect(initials(name, email)).toBe(expected);
   });
 });
+
+describe("UserMenu", () => {
+  it("opens without aria-hiding the rest of the app (not modal: no aria-hidden-focus)", async () => {
+    const { UserMenu } = await import("@/components/app/user-menu");
+    const user = userEvent.setup();
+    render(
+      <div>
+        <main>
+          <a href="/today">Page link</a>
+        </main>
+        <UserMenu name="Casey Wildcat" email="casey@davidson.edu" />
+      </div>,
+    );
+    const trigger = screen.getByRole("button", { name: "Account menu for Casey Wildcat" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    expect(document.querySelector("[aria-hidden=true] a, [data-aria-hidden] a")).toBeNull();
+    expect(screen.getByRole("main").closest("[aria-hidden]")).toBeNull();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(trigger).toHaveFocus();
+  });
+});

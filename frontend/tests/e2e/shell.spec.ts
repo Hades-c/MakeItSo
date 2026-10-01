@@ -361,3 +361,19 @@ test("keyboard focus is never hidden under the bottom tabs or the sticky top bar
     });
   }
 });
+
+test("the open account menu leaves the page accessible (no aria-hidden focusable content)", async ({
+  page,
+  request,
+}) => {
+  const email = uniqueEmail("e2e-menu-axe");
+  await registerViaApi(request, { name: "Menu Tester", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+  await page.getByRole("button", { name: /Account menu/ }).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  expect(await page.locator("[aria-hidden=true]:has(a[href], button)").count()).toBe(0);
+  expect(await seriousViolations(page)).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Account menu/ })).toBeFocused();
+});

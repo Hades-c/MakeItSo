@@ -41,7 +41,9 @@ export interface UserMenuProps {
 export function UserMenu({ name, email }: UserMenuProps) {
   const { preference, setPreference } = useTheme();
   return (
-    <DropdownMenu>
+    // Not modal: a modal menu aria-hides the whole app while its own items stay focusable (axe aria-hidden-focus,
+    // serious). Esc and the trigger still close it and return focus.
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         aria-label={`Account menu for ${name || email}`}
         className="grid size-11 shrink-0 place-items-center rounded-full border border-line-2 bg-sand text-sm font-strong text-fg transition-colors hover:border-line-strong md:size-9.5"
