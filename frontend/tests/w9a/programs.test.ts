@@ -18,6 +18,10 @@ vi.mock("@/server/programs/service", async (importOriginal) => {
       if (rows.failure) throw rows.failure;
       return real.catalogRows();
     },
+    catalogRowsForRequest: async () => {
+      if (rows.failure) throw rows.failure;
+      return real.catalogRows();
+    },
   };
 });
 

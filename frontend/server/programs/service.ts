@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import {
   type AcademicProgram,
   AcademicProgramSchema,
@@ -108,6 +109,12 @@ function offeringNames(doc: ProgramLean | null, snapshot: SnapshotProgram | null
   }
   return snapshot?.offerings.map((offering) => ({ ...offering })) ?? [];
 }
+
+/**
+ * catalogRows() once per page render (React cache): read paths (names, lists, "Also counts for") share one read;
+ * outside a render, and in the sync and page loads that write, every call reads.
+ */
+export const catalogRowsForRequest = cache(() => catalogRows());
 
 /** Every program of the catalog, sorted by name (see the module comment for where each part comes from). */
 export async function catalogRows(): Promise<CatalogRow[]> {

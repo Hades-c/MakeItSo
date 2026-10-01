@@ -7,7 +7,7 @@ import type {
 } from "@/lib/types/catalog";
 import { ACALOG_CATALOG } from "@/server/programs/catalog-info";
 import {
-  catalogRows,
+  catalogRowsForRequest,
   findIn,
   getProgramWith,
   listProgramsFrom,
@@ -45,7 +45,7 @@ export type { ProgramFilter, ProgramMatch };
 
 /** Every program page of the catalog, sorted by name, with its offering names (filtered by kind when asked). */
 export async function listPrograms(filter: ProgramFilter = {}): Promise<AcademicProgramSummary[]> {
-  return listProgramsFrom(await catalogRows(), filter);
+  return listProgramsFrom(await catalogRowsForRequest(), filter);
 }
 
 /**
@@ -61,7 +61,7 @@ export async function getProgram(acalogId: number): Promise<AcademicProgram | nu
  * onboarding, the profile and the AI career plan.
  */
 export async function officialProgramNames(kind: ProgramOfferingKind): Promise<string[]> {
-  return namesOf(await catalogRows(), [kind]);
+  return namesOf(await catalogRowsForRequest(), [kind]);
 }
 
 export interface ProgramNames {
@@ -79,7 +79,7 @@ export interface ProgramNames {
  * `z.enum(names.majors as [string, ...string[]])` (each list is non-empty for the 2026-2027 catalog).
  */
 export async function programNames(): Promise<ProgramNames> {
-  const rows = await catalogRows();
+  const rows = await catalogRowsForRequest();
   return {
     catalogYear: ACALOG_CATALOG.year,
     majors: namesOf(rows, ["major"]),
@@ -100,7 +100,7 @@ export async function findProgramByName(
   name: string,
   options: { kinds?: readonly ProgramOfferingKind[] } = {},
 ): Promise<ProgramMatch | null> {
-  return findIn(await catalogRows(), name, options.kinds);
+  return findIn(await catalogRowsForRequest(), name, options.kinds);
 }
 
 /** Weekly refresh; records the run with recordSync("catalog", ...). */

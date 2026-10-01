@@ -1,5 +1,6 @@
 import "server-only";
 import mongoose from "mongoose";
+import { cache } from "react";
 import { CLASS_STANDINGS, isTermCode, type ClassStanding } from "@/lib/term";
 import User from "@/models/User";
 import { defaultGraduationYear } from "@/server/auth/profile";
@@ -24,13 +25,18 @@ function isStanding(value: unknown): value is ClassStanding {
   return typeof value === "string" && (CLASS_STANDINGS as readonly string[]).includes(value);
 }
 
-export async function loadPlanContext(userId: string, at: Date): Promise<PlanContext> {
+/** The profile fields, read once per page render (React cache; every call outside a render reads). */
+const profileFields = cache(async (userId: string) => {
   const _id = userObjectId(userId);
   await getDb();
-  const doc = await User.collection.findOne(
+  return User.collection.findOne(
     { _id },
     { projection: { graduationYear: 1, firstTerm: 1, standingOverride: 1 } },
   );
+});
+
+export async function loadPlanContext(userId: string, at: Date): Promise<PlanContext> {
+  const doc = await profileFields(userId);
   const graduationYear =
     typeof doc?.graduationYear === "number" && Number.isInteger(doc.graduationYear)
       ? doc.graduationYear

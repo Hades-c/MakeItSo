@@ -4,7 +4,7 @@ import type { ProgramOfferingKind } from "@/lib/types/catalog";
 import { normalizeCourseCode } from "@/lib/types/common";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { programPublicUrl } from "@/server/programs/catalog-info";
-import { catalogRows, type CatalogRow } from "@/server/programs/service";
+import { catalogRowsForRequest, type CatalogRow } from "@/server/programs/service";
 
 /**
  * "Also counts for" (PLAN §3 /courses/[term]/[code]): the official Acalog offerings whose requirement text names
@@ -62,7 +62,7 @@ export function programsForCodes(rows: readonly Row[], codes: readonly string[])
 /** The programs a course counts for; null when the program store cannot be read. */
 export async function loadCoursePrograms(codes: readonly string[]): Promise<CoursePrograms | null> {
   try {
-    return programsForCodes(await catalogRows(), codes);
+    return programsForCodes(await catalogRowsForRequest(), codes);
   } catch (error) {
     unstable_rethrow(error);
     if (error instanceof MissingFixtureError) throw error;

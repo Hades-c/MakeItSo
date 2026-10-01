@@ -5,7 +5,7 @@ import type { Career } from "@/lib/types/content";
 import { foldText } from "@/server/content/define";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { programPublicUrl } from "@/server/programs/catalog-info";
-import { catalogRows, type CatalogRow } from "@/server/programs/service";
+import { catalogRowsForRequest, type CatalogRow } from "@/server/programs/service";
 
 /**
  * A career's related programs under their official Acalog names ("Major in Computer Science (B.S. Degree)"), each
@@ -157,7 +157,7 @@ function uniqueByName(items: RelatedProgramView[]): RelatedProgramView[] {
 export async function loadRelatedPrograms(career: Career): Promise<RelatedProgramView[]> {
   let rows: CatalogRow[] = [];
   try {
-    rows = await catalogRows();
+    rows = await catalogRowsForRequest();
   } catch (error) {
     unstable_rethrow(error);
     if (error instanceof MissingFixtureError) throw error;

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import "server-only";
 import mongoose from "mongoose";
 import type { AddPlanItemInput, UpdatePlanItemInput } from "@/lib/api/plan";
@@ -80,8 +81,19 @@ export type {
   WebTreeSectionDetail,
 } from "@/server/plan/webtree";
 
+/**
+ * One plan read per page render: React cache() memoises it for the request while a server component tree renders
+ * (Today asked for the same plan 8 times through getPlan, getProgress and each getDaySchedule). Outside a render
+ * (route handlers, scripts, tests) it reads every time, so a mutation is always followed by a fresh read.
+ */
+const planForRequest = cache(readPlan);
+
 /** The plan (v2, or the in-memory conversion of a v1 plan with `legacy: true`, or an empty plan). */
 export async function getPlan(userId: string): Promise<PlanView> {
+  return planForRequest(userId);
+}
+
+async function readPlan(userId: string): Promise<PlanView> {
   const doc = await readPlanDoc(userObjectId(userId), { drafts: 0, webtree: 0 });
   if (doc) return viewFromDoc(doc);
   const legacy = await readLegacyPlanImpl(userId);
