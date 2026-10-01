@@ -1,6 +1,5 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { collectErrors } from "./helpers";
+import { collectErrors, isMobile, seriousViolations } from "./helpers";
 
 /**
  * The dev-only component gallery (app/design). Production builds (the normal e2e run) must answer 404. Against a
@@ -10,25 +9,6 @@ import { collectErrors } from "./helpers";
  *   E2E_PORT=3202 E2E_REUSE_SERVER=1 E2E_DEV_SERVER=1 npx playwright test design-gallery
  */
 const DEV_SERVER = !!process.env.E2E_DEV_SERVER;
-
-async function seriousViolations(page: Page, include?: string) {
-  let builder = new AxeBuilder({ page }).withTags([
-    "wcag2a",
-    "wcag2aa",
-    "wcag21a",
-    "wcag21aa",
-    "wcag22aa",
-  ]);
-  if (include) builder = builder.include(include);
-  const results = await builder.analyze();
-  return results.violations
-    .filter((v) => v.impact === "serious" || v.impact === "critical")
-    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-}
-
-function isMobile(page: Page) {
-  return (page.viewportSize()?.width ?? 1440) < 720;
-}
 
 test("the design gallery is not served by production builds", async ({ page }) => {
   test.skip(DEV_SERVER, "dev server: the gallery is served");

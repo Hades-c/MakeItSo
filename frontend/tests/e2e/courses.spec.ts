@@ -1,14 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectErrors, SAME_ORIGIN } from "./helpers";
 import {
+  collectErrors,
   expectAllTagged,
   horizontalOverflow,
   isMobile,
   newSignedInAccount,
   newVerifiedAccount,
+  SAME_ORIGIN,
   seriousViolations,
   smallTapTargets,
-} from "../w9a/e2e";
+} from "./helpers";
 
 /**
  * /courses and /courses/[term]/[code] (W8) against the production build in fixtures mode (server "now"

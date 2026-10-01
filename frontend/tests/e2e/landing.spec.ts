@@ -1,20 +1,10 @@
-import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
-import { collectErrors, registerViaApi, signIn, uniqueEmail } from "./helpers";
+import { expect, test } from "@playwright/test";
+import { collectErrors, registerViaApi, seriousViolations, signIn, uniqueEmail } from "./helpers";
 
 /**
  * "/" (W9b): the truthful landing for visitors, with facts computed at request time (never at build) from the
  * catalog fixtures, and Go to Today for signed-in students.
  */
-
-async function seriousViolations(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  return results.violations
-    .filter((v) => v.impact === "serious" || v.impact === "critical")
-    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-}
 
 test("landing: live facts for visitors, computed from the catalog", async ({ page, request }) => {
   test.setTimeout(90_000);

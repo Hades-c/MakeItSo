@@ -1,8 +1,14 @@
-import AxeBuilder from "@axe-core/playwright";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { collectErrors, registerViaApi, signIn, uniqueEmail } from "./helpers";
+import {
+  collectErrors,
+  horizontalOverflow,
+  registerViaApi,
+  seriousViolations,
+  signIn,
+  uniqueEmail,
+} from "./helpers";
 
 /**
  * /onboarding (W9b-2) end to end against the real profile (W3), catalog (W1, fixtures) and plan (W5s) routes, at
@@ -18,21 +24,6 @@ interface PlanItemBody {
   crn?: string;
   status: string;
   source: string;
-}
-
-async function seriousViolations(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  return results.violations
-    .filter((v) => v.impact === "serious" || v.impact === "critical")
-    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-}
-
-async function horizontalOverflow(page: Page) {
-  return page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
 }
 
 /** The step renders, is accessible in light and dark, and never scrolls sideways. */
@@ -54,8 +45,13 @@ async function expectStepFocus(page: Page, title: RegExp) {
 
 async function newStudent(page: Page, request: APIRequestContext, prefix: string) {
   const email = uniqueEmail(prefix);
-  await registerViaApi(request, { name: "Casey Wildcat", email, password: PASSWORD });
-  await signIn(page, email, PASSWORD);
+  // A first-run account: the helpers would otherwise finish onboarding for it.
+  await registerViaApi(
+    request,
+    { name: "Casey Wildcat", email, password: PASSWORD },
+    { onboarded: false },
+  );
+  await signIn(page, email, PASSWORD, { onboarded: false });
   return email;
 }
 
@@ -295,7 +291,7 @@ test("a legacy account sees its v1 plan in the steps and updates it without dupl
     await conn.close();
   }
 
-  await signIn(page, email, PASSWORD);
+  await signIn(page, email, PASSWORD, { onboarded: false });
   // Classes are already there (from v1), nothing completed yet: resume at the completed-courses step.
   await page.goto("/onboarding");
   await expect(page).toHaveURL(/\/onboarding\?step=completed$/);

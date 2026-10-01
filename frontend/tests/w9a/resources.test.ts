@@ -10,7 +10,7 @@ import {
 import { programSourceForOffice, type Office, type Program } from "@/lib/types/content";
 import { CAREERS } from "@/server/content/careers";
 import { OFFICES, PROGRAMS } from "@/server/content/offices";
-import { E2E_UNTAGGED_EXEMPTIONS } from "./untagged";
+import { E2E_UNTAGGED_EXEMPTIONS } from "../e2e/untagged";
 
 const BASE = "https://www.davidson.edu/offices-and-services";
 

@@ -30,7 +30,7 @@ import { foldText } from "@/server/content/define";
  * Pure: the offices and programs come in as arguments.
  */
 
-/** Why a resource may carry no SourceTag. Only these are allowed (tests; tests/w9a/e2e.ts expectAllTagged). */
+/** Why a resource may carry no SourceTag. Only these are allowed (tests; tests/e2e/helpers.ts expectAllTagged). */
 export const UNTAGGED_EXEMPTIONS = ["davidson-web"] as const;
 export type UntaggedExemption = (typeof UNTAGGED_EXEMPTIONS)[number];
 

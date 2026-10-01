@@ -1,16 +1,17 @@
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { expect, test } from "@playwright/test";
-import { collectErrors, signIn } from "./helpers";
 import {
+  collectErrors,
   horizontalOverflow,
   isMobile,
   newSignedInAccount,
   newVerifiedAccount,
   PASSWORD,
   seriousViolations,
+  signIn,
   smallTapTargets,
-} from "../w9a/e2e";
+} from "./helpers";
 
 /**
  * /alumni (W9a): the verified directory for verified @davidson.edu accounts only (PLAN §1). Three kinds of viewer:

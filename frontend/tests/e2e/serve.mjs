@@ -1,5 +1,8 @@
-// Starts the production server for Playwright: an in-memory MongoDB (unless E2E_MONGODB_URI is set) and
-// `next start -p $E2E_PORT` pointed at it. Stops both when either exits or when Playwright sends SIGTERM.
+// Starts the production server for Playwright: an in-memory MongoDB and `next start -p $E2E_PORT` pointed at it.
+// playwright.config.ts picks the database: with E2E_START_MONGO=<port> it has set E2E_MONGODB_URI to
+// mongodb://127.0.0.1:<port>/… for the server and the test workers alike, and the in-memory server is started on
+// that port here; otherwise E2E_MONGODB_URI is an outside MongoDB (used as is), and without either (serve.mjs run
+// by hand) an in-memory one on a free port. Stops both when either exits or when Playwright sends SIGTERM.
 // With EXTERNAL_MODE=fixtures (always, from playwright.config.ts) the server process preloads fetch-guard.mjs, so
 // an outbound fetch to anything but localhost fails instead of reaching a real upstream.
 import { spawn } from "node:child_process";
@@ -11,9 +14,13 @@ const port = process.env.E2E_PORT ?? "3210";
 
 let mongo;
 let mongoUri = process.env.E2E_MONGODB_URI;
-if (!mongoUri) {
+const mongoPort = Number(process.env.E2E_START_MONGO);
+if (mongoUri && Number.isInteger(mongoPort) && mongoPort > 0) {
+  mongo = await MongoMemoryServer.create({ instance: { ip: "127.0.0.1", port: mongoPort } });
+  console.log(`[e2e] in-memory MongoDB at ${mongoUri}`);
+} else if (!mongoUri) {
   mongo = await MongoMemoryServer.create();
-  mongoUri = mongo.getUri("wave0-e2e");
+  mongoUri = mongo.getUri("makeitso-e2e");
   console.log(`[e2e] in-memory MongoDB at ${mongoUri}`);
 }
 

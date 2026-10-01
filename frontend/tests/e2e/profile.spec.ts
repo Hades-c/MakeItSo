@@ -1,7 +1,15 @@
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { collectErrors, formError, registerViaApi, signIn, uniqueEmail } from "./helpers";
+import {
+  collectErrors,
+  formError,
+  horizontalOverflow,
+  registerViaApi,
+  seriousViolations,
+  signIn,
+  uniqueEmail,
+} from "./helpers";
 
 /**
  * /profile (W9b) end to end, against W3's real profile, consent and account routes: edit and clear, interests,
@@ -10,21 +18,6 @@ import { collectErrors, formError, registerViaApi, signIn, uniqueEmail } from ".
  */
 
 const PASSWORD = "profile e2e password";
-
-async function seriousViolations(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  return results.violations
-    .filter((v) => v.impact === "serious" || v.impact === "critical")
-    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-}
-
-async function horizontalOverflow(page: Page) {
-  return page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-}
 
 async function newStudent(page: Page, request: APIRequestContext, prefix: string) {
   const email = uniqueEmail(prefix);

@@ -1,6 +1,13 @@
-import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
-import { collectErrors, registerViaApi, signIn, uniqueEmail } from "./helpers";
+import { expect, test } from "@playwright/test";
+import {
+  collectErrors,
+  horizontalOverflow,
+  isMobile,
+  registerViaApi,
+  seriousViolations,
+  signIn,
+  uniqueEmail,
+} from "./helpers";
 
 /** Every hub route (stubs until waves 1-3 fill them in). */
 const HUB_ROUTES = [
@@ -18,25 +25,6 @@ const HUB_ROUTES = [
 const PUBLIC_ROUTES = ["/", "/login", "/register"] as const;
 
 const PASSWORD = "shell e2e password";
-
-async function seriousViolations(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  return results.violations
-    .filter((v) => v.impact === "serious" || v.impact === "critical")
-    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-}
-
-async function horizontalOverflow(page: Page) {
-  return page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-}
-
-function isMobile(page: Page) {
-  return (page.viewportSize()?.width ?? 1440) < 720;
-}
 
 for (const colorScheme of ["light", "dark"] as const) {
   test(`every hub route renders the shell, accessibly (${colorScheme})`, async ({

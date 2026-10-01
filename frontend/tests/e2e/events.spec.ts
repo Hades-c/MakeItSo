@@ -1,7 +1,13 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { SOURCES, type SourceId } from "../../lib/sources";
-import { collectErrors, registerViaApi, signIn, uniqueEmail } from "./helpers";
+import {
+  collectErrors,
+  horizontalOverflow,
+  registerViaApi,
+  seriousViolations,
+  signIn,
+  uniqueEmail,
+} from "./helpers";
 
 /**
  * /events (W9b): the synced campus feeds from the fixtures, grouped by America/New_York day with the server's
@@ -13,7 +19,8 @@ const PASSWORD = "events e2e password";
 
 /**
  * Every aggregated item on the page (data-testid="event-item") names its stored source in data-source and renders
- * that source's tag (SourceTag: data-source + the registry label). contractRequest: move to tests/e2e/helpers.ts.
+ * that source's tag (SourceTag: data-source + the registry label). Stricter than helpers.ts expectAllTagged for
+ * this page: it requires items and checks the exact label of each feed item's tag.
  */
 async function expectAllTagged(page: Page, selector = "[data-testid=event-item]") {
   const items = page.locator(selector);
@@ -31,21 +38,6 @@ async function expectAllTagged(page: Page, selector = "[data-testid=event-item]"
     return tag === `Source: ${label}` ? [] : [`item ${index}: tag "${tag}" is not "${label}"`];
   });
   expect(problems).toEqual([]);
-}
-
-async function seriousViolations(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  return results.violations
-    .filter((v) => v.impact === "serious" || v.impact === "critical")
-    .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-}
-
-async function horizontalOverflow(page: Page) {
-  return page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
 }
 
 const EVENT_SOURCES = ["wildcatsync", "hurt-hub", "library", "events-digest"];

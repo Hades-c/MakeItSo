@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { collectErrors } from "./helpers";
 import {
+  collectErrors,
   expectAllTagged,
   horizontalOverflow,
   isMobile,
@@ -8,7 +8,7 @@ import {
   newVerifiedAccount,
   seriousViolations,
   smallTapTargets,
-} from "../w9a/e2e";
+} from "./helpers";
 
 /**
  * /careers and /careers/[slug] (W9a) against the production build in fixtures mode (server "now" 2026-09-30:

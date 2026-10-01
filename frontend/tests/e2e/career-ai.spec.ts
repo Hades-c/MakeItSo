@@ -1,13 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectErrors, registerViaApi, SAME_ORIGIN, signIn, uniqueEmail } from "./helpers";
 import {
+  aiStudent,
+  collectErrors,
   expectAllTagged,
   horizontalOverflow,
   isMobile,
   seriousViolations,
   smallTapTargets,
-  verifyMailbox,
-} from "../w9a/e2e";
+} from "./helpers";
 
 /**
  * The AI panels on /careers/[slug] (W9a-ai) against the production build with AI_PROVIDER=mock and fixtures
@@ -48,24 +48,13 @@ async function expectFocusWithin(region: ReturnType<Page["getByRole"]>) {
     .toBe(true);
 }
 
-async function newStudent(
+function newStudent(
   page: Page,
   prefix: string,
   name: string,
   opts: { verified: boolean; consent: boolean },
 ) {
-  const email = uniqueEmail(prefix);
-  await registerViaApi(page.request, { name, email, password: PASSWORD });
-  await signIn(page, email, PASSWORD);
-  if (opts.verified) await verifyMailbox(page, email);
-  if (opts.consent) {
-    const res = await page.request.put("/api/profile/ai-consent", {
-      data: { adultAttested: true },
-      headers: SAME_ORIGIN,
-    });
-    expect(res.status()).toBe(200);
-  }
-  return email;
+  return aiStudent(page, prefix, name, { ...opts, password: PASSWORD });
 }
 
 test("an unverified account sees why AI is closed, with the verify step, and no alumni", async ({

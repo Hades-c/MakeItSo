@@ -1,12 +1,16 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { collectErrors, registerViaApi, SAME_ORIGIN, signIn, uniqueEmail } from "./helpers";
 import {
+  collectErrors,
   expectAllTagged,
   horizontalOverflow,
   isMobile,
+  registerViaApi,
+  SAME_ORIGIN,
   seriousViolations,
+  signIn,
   smallTapTargets,
-} from "../w9a/e2e";
+  uniqueEmail,
+} from "./helpers";
 
 /**
  * /today (W7) against the production build in fixtures mode: server "now" is Wed 2026-09-30 12:00 ET (current
@@ -24,10 +28,15 @@ function strip(page: Page) {
   return page.getByRole("navigation", { name: "This school week" });
 }
 
-async function newStudent(page: Page, request: APIRequestContext, prefix: string) {
+async function newStudent(
+  page: Page,
+  request: APIRequestContext,
+  prefix: string,
+  { onboarded = true } = {},
+) {
   const email = uniqueEmail(prefix);
-  await registerViaApi(request, { name: "Taylor Today", email, password: PASSWORD });
-  await signIn(page, email, PASSWORD);
+  await registerViaApi(request, { name: "Taylor Today", email, password: PASSWORD }, { onboarded });
+  await signIn(page, email, PASSWORD, { onboarded });
   return page.request;
 }
 
@@ -193,7 +202,8 @@ test("today: the day summary, timeline, strip and panels for a student with sect
 test("today: a new student is asked to finish setting up", async ({ page, request }) => {
   test.setTimeout(60_000);
   const errors = collectErrors(page);
-  await newStudent(page, request, "e2e-today-new");
+  // Not onboarded: Today stays open to it (the hub sends only other pages to /onboarding).
+  await newStudent(page, request, "e2e-today-new", { onboarded: false });
 
   const response = await page.goto("/today");
   expect(response?.status()).toBe(200);
