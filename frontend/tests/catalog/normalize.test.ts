@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   FIXTURE_TERMS,
   fixtureItems,
@@ -51,6 +51,35 @@ describe("every recorded section normalises to the Section contract", () => {
       expect(section.termCode).toBe(term);
       expect(section.reqCodes).not.toEqual([]);
     }
+  });
+});
+
+describe("upstream quirks", () => {
+  it("keeps a section whose enrollment comes as numeric strings (PSY 303, Fall 2023), and logs a dropped item", () => {
+    const term = FIXTURE_TERMS[0]!;
+    const original = fixtureItems(term)[0] as RawItem;
+    const stringy = {
+      ...original,
+      crn: 99001,
+      enrollment: { current: "4", max: "16", remaining: "12" },
+    };
+    const garbled = {
+      ...original,
+      crn: 99002,
+      enrollment: { current: "four", max: 16, remaining: 12 },
+    };
+    const broken = { ...original, crn: 99003, course_number: 303 };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { sections, invalid } = normaliseItems([stringy, garbled, broken], term);
+    expect(sections.map((s) => s.crn)).toEqual(["99001", "99002"]);
+    expect(sections[0]!.enrollment).toEqual({ current: 4, max: 16, remaining: 12 });
+    // A count that is not a number reads as no data, never drops the section.
+    expect(sections[1]!.enrollment.current).toBe(0);
+    expect(invalid).toBe(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(/dropped section 99003 \(upstream shape\)/),
+    );
+    warn.mockRestore();
   });
 });
 

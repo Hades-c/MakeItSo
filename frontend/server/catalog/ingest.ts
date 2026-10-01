@@ -105,6 +105,12 @@ export function normaliseItems(items: readonly unknown[], term: TermCode): Norma
     const raw = UpstreamSectionSchema.safeParse(item);
     if (!raw.success) {
       invalid += 1;
+      const crn = item && typeof item === "object" && "crn" in item ? String(item.crn) : "(no CRN)";
+      const where = raw.error.issues
+        .slice(0, 3)
+        .map((issue) => `${issue.path.join(".") || "item"}: ${issue.message}`)
+        .join("; ");
+      console.warn(`[catalog] ${term}: dropped section ${crn} (upstream shape): ${where}`);
       continue;
     }
     const itemTerm = raw.data.term?.code;

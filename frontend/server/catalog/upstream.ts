@@ -64,6 +64,17 @@ const ListingRefSchema = z.looseObject({
   title: text,
 });
 
+/**
+ * A seat count: a number, or a numeric string (202301 and 202302 publish a few sections with
+ * `{"current":"4","max":"16","remaining":"12"}`); anything else reads as no data (null) rather than dropping the
+ * section, which would show the course as not offered.
+ */
+const count = z.union([z.number(), z.string()]).transform((value) => {
+  if (typeof value === "number") return value;
+  const trimmed = value.trim();
+  return /^-?\d+(\.\d+)?$/.test(trimmed) ? Number(trimmed) : null;
+});
+
 export const UpstreamSectionSchema = z.looseObject({
   crn: idLike,
   subject: z.looseObject({ code: z.string(), description: text }),
@@ -76,9 +87,9 @@ export const UpstreamSectionSchema = z.looseObject({
   meetings: z.array(MeetingSchema).nullish(),
   enrollment: z
     .looseObject({
-      current: z.number().nullish(),
-      max: z.number().nullish(),
-      remaining: z.number().nullish(),
+      current: count.nullish(),
+      max: count.nullish(),
+      remaining: count.nullish(),
     })
     .nullish(),
   grad_requirements: z.array(z.looseObject({ code: z.string(), description: text })).nullish(),
