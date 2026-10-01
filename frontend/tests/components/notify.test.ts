@@ -4,7 +4,7 @@ const sonner = vi.hoisted(() => ({ toast: { success: vi.fn(), warning: vi.fn() }
 vi.mock("sonner", () => sonner);
 
 describe("notify (sonner on demand)", () => {
-  it("loads sonner with the first toast and shows the message", async () => {
+  it("loads sonner with the first toast and shows every message", async () => {
     const { notify } = await import("@/components/ui/notify");
     notify.success("Removed CSC 221 from your plan.");
     notify.warning("Already completed in Fall 2025.");

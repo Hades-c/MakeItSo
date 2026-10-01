@@ -1,9 +1,15 @@
+import type * as Sonner from "sonner";
+
 /**
  * Toasts without sonner in the page's first-load JavaScript (PLAN §6.2 perf budget): sonner loads with the first
  * toast (the Toaster itself loads lazily in app/providers.tsx). Same messages as `toast.success` / `toast.warning`.
  */
+let sonner: Promise<typeof Sonner> | null = null;
+
 function show(kind: "success" | "warning", message: string): void {
-  void import("sonner").then(({ toast }) => toast[kind](message));
+  // One load shared by every toast (and toasts keep their order).
+  sonner ??= import("sonner");
+  void sonner.then(({ toast }) => toast[kind](message));
 }
 
 export const notify = {
