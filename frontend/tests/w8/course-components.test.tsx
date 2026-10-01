@@ -213,6 +213,25 @@ describe("course cards", () => {
     );
   });
 
+  it("header: a course already planned for this term jumps to the plan state instead of offering Add to plan", () => {
+    render(
+      <CourseHeader
+        course={csc}
+        term="202602"
+        chosen={csc.sections[0]!}
+        departmentName="Computer Science"
+        asOf={null}
+        offered
+        inPlan
+      />,
+    );
+    expect(screen.queryByRole("link", { name: "Add to plan" })).toBeNull();
+    expect(screen.getByRole("link", { name: "In your plan · Spring 2027" })).toHaveAttribute(
+      "href",
+      "#add-to-plan",
+    );
+  });
+
   it("header: says when the course is not on this term's schedule", () => {
     render(
       <CourseHeader

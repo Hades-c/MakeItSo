@@ -67,6 +67,7 @@ export function CourseView({ data, timeZone }: { data: CoursePageData; timeZone?
         departmentName={data.departmentName}
         asOf={asOf}
         offered={course !== null}
+        inPlan={add.inPlanTerms.includes(params.term)}
       />
 
       <div className="flex flex-col gap-5">

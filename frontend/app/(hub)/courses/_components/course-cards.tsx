@@ -80,6 +80,7 @@ export function CourseHeader({
   departmentName,
   asOf,
   offered,
+  inPlan = false,
 }: {
   /** The course in this term, or the latest offering when it is not on this term's schedule. */
   course: Course;
@@ -89,6 +90,8 @@ export function CourseHeader({
   asOf: string | null;
   /** The course is on this term's schedule. */
   offered: boolean;
+  /** The student already has the course in their plan for this page's term (the Add to plan panel says so too). */
+  inPlan?: boolean;
 }) {
   const section = chosen;
   const title = course.topics && section ? section.title : course.title;
@@ -194,12 +197,21 @@ export function CourseHeader({
                 : `Not on the ${termLabel(term)} schedule. Shown from ${termLabel(course.termCode)}.`}
             </p>
           )}
-          <Button asChild size="lg" className="w-full">
-            <a href="#add-to-plan">
-              <Plus aria-hidden />
-              Add to plan
-            </a>
-          </Button>
+          {inPlan ? (
+            <Button asChild size="lg" variant="secondary" className="w-full">
+              <a href="#add-to-plan" data-testid="header-in-plan">
+                <CircleCheck aria-hidden />
+                In your plan · {termLabel(term)}
+              </a>
+            </Button>
+          ) : (
+            <Button asChild size="lg" className="w-full">
+              <a href="#add-to-plan">
+                <Plus aria-hidden />
+                Add to plan
+              </a>
+            </Button>
+          )}
         </div>
       </div>
     </header>
