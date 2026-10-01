@@ -11,7 +11,6 @@ import {
   PayCard,
   WhatYouDoCard,
 } from "@/app/(hub)/careers/_components/career-sections";
-import { CareerAiPanelsSlot } from "@/app/(hub)/careers/_components/ai-slot";
 import type { ResolvedResource } from "@/app/(hub)/careers/_lib/resources";
 import { getCareer } from "@/server/content/careers";
 
@@ -418,10 +417,5 @@ describe("career page sections", () => {
       "Program names from the career guide; see the 2026–2027 Davidson catalog for the official names and requirements.",
     );
     expect(note).not.toHaveTextContent(/^Official names/);
-  });
-
-  it("keeps the AI panels' slot empty on this branch", () => {
-    const { container } = render(<CareerAiPanelsSlot career={SE} />);
-    expect(container).toBeEmptyDOMElement();
   });
 });

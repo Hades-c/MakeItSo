@@ -169,7 +169,7 @@ test("a career page: live availability per term, Add to plan, sourced sections",
   // An unverified account sees why there are no alumni, not the alumni.
   await expect(page.getByTestId("alumni-gate")).toContainText("Verify your Davidson email");
   await expect(page.locator("[data-alumnus]")).toHaveCount(0);
-  // Nothing AI on this branch.
+  // An unverified account gets no AI output: the AI panels show their verify gate, never a generated result.
   await expect(page.getByText(/AI · verify with your advisor/)).toHaveCount(0);
 
   // The Davidson resources: every item tagged or exempt; a program's facts where the resource names it.
