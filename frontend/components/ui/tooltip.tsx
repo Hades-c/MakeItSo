@@ -4,7 +4,10 @@ import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from "@/lib/utils";
 
-/** Mounted once in app/providers.tsx. */
+/**
+ * Not mounted app-wide (no page uses a tooltip today, and the provider put Radix tooltip on every page's first
+ * load): <Tooltip> brings its own provider, so it works anywhere.
+ */
 const TooltipProvider = ({
   delayDuration = 250,
   ...props
@@ -42,10 +45,12 @@ interface TooltipProps {
 /** Convenience wrapper: <Tooltip content="…"><button …/></Tooltip>. The child must be focusable. */
 function Tooltip({ content, children, side }: TooltipProps) {
   return (
-    <TooltipRoot>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side={side}>{content}</TooltipContent>
-    </TooltipRoot>
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side}>{content}</TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
   );
 }
 
