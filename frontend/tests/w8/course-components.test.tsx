@@ -282,6 +282,37 @@ describe("course cards", () => {
     expect(programs).toHaveTextContent("Based on 3 of 52 program pages");
   });
 
+  it("about: makes no negative 'Also counts for' claim until every program page has been read", () => {
+    const his = course("202601", "HIS 357");
+    const { rerender } = render(
+      <CourseAboutCard
+        course={his}
+        requirements={[]}
+        programs={{ matches: [], pagesRead: 1, pagesTotal: 51 }}
+        disclaimer="d"
+        asOf={null}
+      />,
+    );
+    const programs = screen.getByTestId("also-counts-for");
+    expect(screen.getByTestId("programs-incomplete")).toHaveTextContent(
+      "Not every program page in the catalog has been read yet.",
+    );
+    expect(programs).not.toHaveTextContent(/names this course/);
+    expect(programs).toHaveTextContent("Based on 1 of 51 program pages");
+    rerender(
+      <CourseAboutCard
+        course={his}
+        requirements={[]}
+        programs={{ matches: [], pagesRead: 51, pagesTotal: 51 }}
+        disclaimer="d"
+        asOf={null}
+      />,
+    );
+    expect(screen.getByTestId("also-counts-for")).toHaveTextContent(
+      "No major or minor in the catalog names this course.",
+    );
+  });
+
   it("about: no prerequisites, no requirement data, no programs", () => {
     const his = course("202601", "HIS 357");
     render(

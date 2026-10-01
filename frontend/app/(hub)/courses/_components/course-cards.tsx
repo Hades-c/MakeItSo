@@ -338,10 +338,13 @@ export function CourseAboutCard({
             <span className="text-fg-2" data-testid="programs-not-read">
               The catalog’s program pages haven’t been read yet.
             </span>
-          ) : programs.matches.length === 0 ? (
-            <span className="text-fg-2">
-              No major or minor in the catalog pages read so far names this course.
+          ) : programs.matches.length === 0 && programs.pagesRead < programs.pagesTotal ? (
+            // No negative claim from part of the catalog: the unread pages may well name the course.
+            <span className="text-fg-2" data-testid="programs-incomplete">
+              Not every program page in the catalog has been read yet.
             </span>
+          ) : programs.matches.length === 0 ? (
+            <span className="text-fg-2">No major or minor in the catalog names this course.</span>
           ) : (
             <ul className="flex flex-col gap-1">
               {programs.matches.map((match) => (

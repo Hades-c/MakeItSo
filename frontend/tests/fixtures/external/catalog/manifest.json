@@ -1,6 +1,6 @@
 {
   "source": "catalog",
-  "description": "Acalog widget API for the 2026-2027 catalog (catalog id 4), captured 2026-09-30: the program list (52 programs; default pages of 20 and one page-size=100 page) and three program pages (172 Computer Science, 174 Economics, 188 Mathematics and Computer Science).",
+  "description": "Acalog widget API for the 2026-2027 catalog (catalog id 4), captured 2026-09-30: the program list (52 programs; default pages of 20 and one page-size=100 page) and three program pages (172 Computer Science, 174 Economics, 188 Mathematics and Computer Science). Every other program page answers 404 (not recorded), so a sync that reads every unread page counts them as failed reads instead of reaching the network.",
   "capturedAt": "2026-09-30",
   "routes": [
     {
@@ -35,6 +35,251 @@
     {
       "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/188",
       "file": "program-188.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/162",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/163",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/164",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/165",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/166",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/167",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/168",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/169",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/170",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/171",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/173",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/175",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/176",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/177",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/178",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/179",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/180",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/181",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/182",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/183",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/184",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/186",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/187",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/189",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/190",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/191",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/192",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/193",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/194",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/195",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/196",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/197",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/198",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/199",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/200",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/201",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/202",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/203",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/204",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/205",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/206",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/207",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/208",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/210",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/211",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/212",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/213",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/214",
+      "status": 404,
+      "file": "program-not-recorded.json"
+    },
+    {
+      "url": "https://catalog.davidson.edu/widget-api/catalog/4/program/216",
+      "status": 404,
+      "file": "program-not-recorded.json"
     }
   ]
 }

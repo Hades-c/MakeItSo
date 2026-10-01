@@ -179,7 +179,8 @@ describe("GET /api/cron/programs", () => {
     expect(ProgramSyncResultSchema.parse(await res.json())).toEqual({
       ok: true,
       count: 51,
-      pages: { updated: 0, failed: 0, deferred: 0 },
+      // Every page not stored yet is read: the three recorded pages, and 48 the fixtures answer 404.
+      pages: { updated: 3, failed: 48, deferred: 0 },
     });
   });
 

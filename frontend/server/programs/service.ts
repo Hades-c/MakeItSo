@@ -601,12 +601,13 @@ async function syncOnce(deps: ProgramsDeps, startedMs: number): Promise<ProgramS
 
   const rows = await catalogRows();
   const names = rows.map((row) => row.name);
+  // A page we have never read is always read: the checked-in snapshot holds offering names only, not the course
+  // codes "Also counts for" needs, so comparing against the snapshot's stamp left every page that had not changed
+  // upstream since the snapshot unread for good. A stored page is re-read when Acalog's stamp moved.
   const changed = rows.filter((row) => {
-    const listModified = row.doc?.listModified ?? null;
-    const known = row.doc?.detailFetchedAt
-      ? (row.doc.detailModified ?? null)
-      : (row.snapshot?.modified ?? null);
-    return listModified !== null && listModified !== known;
+    if (!row.doc?.detailFetchedAt) return true;
+    const listModified = row.doc.listModified ?? null;
+    return listModified !== null && listModified !== (row.doc.detailModified ?? null);
   });
 
   const pages = { updated: 0, failed: 0, deferred: 0 };
@@ -640,9 +641,9 @@ async function syncOnce(deps: ProgramsDeps, startedMs: number): Promise<ProgramS
 
 /**
  * The weekly refresh (PLAN §6.1 W1b): read the program list; on any failure keep everything as it is and record
- * the error. Otherwise store the list (programs that left it stop being listed) and re-read the pages whose
- * `modified` stamp differs from the copy we have (the stored page, else the snapshot), a few at a time within a
- * time budget. Exactly one recordSync("catalog", …) per run, also when something unexpected throws.
+ * the error. Otherwise store the list (programs that left it stop being listed) and read every page we have not
+ * stored yet plus the stored pages whose `modified` stamp moved, a few at a time within a time budget (51 pages at
+ * 4 in parallel fit the 40 s budget; the rest are read on the next run). Exactly one recordSync("catalog", …) per run, also when something unexpected throws.
  */
 export async function runProgramSync(deps: ProgramsDeps): Promise<ProgramSyncResult> {
   const startedMs = performance.now();

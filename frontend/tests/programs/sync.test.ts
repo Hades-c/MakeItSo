@@ -8,7 +8,7 @@ import { now } from "@/server/clock";
 import { getDb, trusted } from "@/server/db";
 import { z } from "zod";
 import { ExternalFetchError, MissingFixtureError } from "@/server/http";
-import { getProgram, listPrograms, programNames, syncPrograms } from "@/server/programs";
+import { getProgram, listPrograms, programNames } from "@/server/programs";
 import { MAX_LIST_DROP_SHARE, programListUrl } from "@/server/programs/catalog-info";
 import { getProgramWith, type ProgramsDeps, runProgramSync } from "@/server/programs/service";
 import { type CatalogFetcher, fetchCatalog, type RawResponse } from "@/server/programs/upstream";
@@ -59,6 +59,12 @@ function upstream(
   return { fetcher, pageReads };
 }
 
+/** The program pages the fixtures record; every other page answers 404 ("not recorded"). */
+const RECORDED_PAGES = [172, 174, 188];
+/** Public programs whose page the fixtures do not record (51 public, 3 recorded). */
+const UNRECORDED = 48;
+const pageUrl = (id: number) => `https://catalog.davidson.edu/widget-api/catalog/4/program/${id}`;
+
 function hidden(item: ListItem): ListItem {
   return { ...item, status: { ...(item.status as object), visible: false } };
 }
@@ -72,9 +78,15 @@ async function catalogStatus() {
 }
 
 describe("syncPrograms (weekly list refresh)", () => {
-  it("stores the recorded list: 51 public programs, no page reads when nothing changed", async () => {
-    const result = await syncPrograms();
-    expect(result).toEqual({ ok: true, count: 51, pages: { updated: 0, failed: 0, deferred: 0 } });
+  it("stores the recorded list (51 public programs) and reads every page it has not stored yet", async () => {
+    const { fetcher, pageReads } = upstream(json(LIST));
+    const result = await runProgramSync(deps(fetcher));
+    expect(result).toEqual({
+      ok: true,
+      count: 51,
+      pages: { updated: RECORDED_PAGES.length, failed: UNRECORDED, deferred: 0 },
+    });
+    expect(pageReads).toHaveLength(51);
     expect(await Program.countDocuments({ listed: true })).toBe(51);
     expect(await Program.countDocuments({ acalogId: 178 })).toBe(0);
     const doc = await Program.findOne({ acalogId: 172 }).lean();
@@ -87,14 +99,28 @@ describe("syncPrograms (weekly list refresh)", () => {
       url: "https://catalog.davidson.edu/preview_program.php?catoid=28&poid=1799",
       listed: true,
       listModified: "2026-09-15 15:03:36",
-      detailFetchedAt: null,
-      offerings: [],
     });
+    // The page was read although its stamp matches the snapshot's: the snapshot has no course codes.
+    expect(doc?.detailFetchedAt).not.toBeNull();
+    expect(doc?.offerings).toHaveLength(2);
+    expect(doc?.offerings.some((o) => (o.courseCodes ?? []).includes("CSC 221"))).toBe(true);
+    // A page that could not be read keeps no offerings of its own...
+    const anthropology = await Program.findOne({ acalogId: 162 }).lean();
+    expect(anthropology).toMatchObject({ detailFetchedAt: null, offerings: [] });
+    expect(anthropology?.lastDetailError).toMatch(/404/);
     expect(await catalogStatus()).toMatchObject({ status: "ok", count: 51, error: null });
-    // Offerings still come from the snapshot until a page is read.
+    // ...and offerings still come from the snapshot until it is read.
     const list = await listPrograms();
     expect(list).toHaveLength(51);
-    expect(list.find((p) => p.acalogId === 172)?.offerings).toHaveLength(2);
+    expect(list.find((p) => p.acalogId === 162)?.offerings).toHaveLength(2);
+  });
+
+  it("on the next run reads only the pages still unread, not the stored ones whose stamp did not move", async () => {
+    await runProgramSync(deps(upstream(json(LIST)).fetcher));
+    const { fetcher, pageReads } = upstream(json(LIST));
+    const result = await runProgramSync(deps(fetcher));
+    expect(result.pages).toEqual({ updated: 0, failed: UNRECORDED, deferred: 0 });
+    for (const id of RECORDED_PAGES) expect(pageReads).not.toContain(pageUrl(id));
   });
 
   it.each([
@@ -251,7 +277,12 @@ describe("syncPrograms (weekly list refresh)", () => {
       return fetchCatalog(url);
     };
     const result = await runProgramSync(deps(fetcher));
-    expect(result).toEqual({ ok: true, count: 51, pages: { updated: 0, failed: 2, deferred: 0 } });
+    // 188 is read; 172 and 174 fail, as do the pages the fixtures do not record.
+    expect(result).toEqual({
+      ok: true,
+      count: 51,
+      pages: { updated: 1, failed: 2 + UNRECORDED, deferred: 0 },
+    });
     expect((await Program.findOne({ acalogId: 172 }).lean())?.lastDetailError).toMatch(
       /nested deeper/,
     );
@@ -278,14 +309,21 @@ describe("syncPrograms (weekly list refresh)", () => {
     expect(await getProgram(204)).toBeNull();
   });
 
-  it("re-reads the pages whose modified stamp changed, and only those", async () => {
+  it("re-reads the stored pages whose modified stamp changed, and only those", async () => {
+    await runProgramSync(deps(upstream(json(LIST)).fetcher));
     const changed = LIST["program-list"].map((item) =>
       item.id === 174 ? { ...item, modified: "2026-10-05 09:00:00" } : item,
     );
     const { fetcher, pageReads } = upstream(listResponse(changed));
     const result = await runProgramSync(deps(fetcher));
-    expect(result).toEqual({ ok: true, count: 51, pages: { updated: 1, failed: 0, deferred: 0 } });
-    expect(pageReads).toEqual(["https://catalog.davidson.edu/widget-api/catalog/4/program/174"]);
+    expect(result).toEqual({
+      ok: true,
+      count: 51,
+      pages: { updated: 1, failed: UNRECORDED, deferred: 0 },
+    });
+    expect(pageReads).toContain(pageUrl(174));
+    expect(pageReads).not.toContain(pageUrl(172));
+    expect(pageReads).not.toContain(pageUrl(188));
     const doc = await Program.findOne({ acalogId: 174 }).lean();
     expect(doc?.detailFetchedAt).not.toBeNull();
     expect(doc?.listModified).toBe("2026-10-05 09:00:00");
@@ -324,8 +362,12 @@ describe("syncPrograms (weekly list refresh)", () => {
       "5000": json(page),
     });
     const result = await runProgramSync(deps(fetcher));
-    expect(result).toMatchObject({ ok: true, count: 52, pages: { updated: 1 } });
-    expect(pageReads).toHaveLength(1);
+    expect(result).toMatchObject({
+      ok: true,
+      count: 52,
+      pages: { updated: RECORDED_PAGES.length + 1 },
+    });
+    expect(pageReads).toContain(pageUrl(5000));
     expect((await listPrograms({ kinds: ["minor"] })).find((p) => p.acalogId === 5000)).toEqual({
       acalogId: 5000,
       name: "Quantum Studies",
@@ -343,7 +385,11 @@ describe("syncPrograms (weekly list refresh)", () => {
       "172": { status: 202, text: "", headers: new Headers() },
     });
     const result = await runProgramSync(deps(fetcher));
-    expect(result).toEqual({ ok: true, count: 51, pages: { updated: 0, failed: 1, deferred: 0 } });
+    expect(result).toEqual({
+      ok: true,
+      count: 51,
+      pages: { updated: 2, failed: 1 + UNRECORDED, deferred: 0 },
+    });
     const doc = await Program.findOne({ acalogId: 172 }).lean();
     expect(doc?.offerings).toHaveLength(2);
     expect(doc?.lastDetailError).toMatch(/bot challenge/);
@@ -357,7 +403,8 @@ describe("syncPrograms (weekly list refresh)", () => {
     // The run starts at 0 ms; every later reading is past the 40 s budget.
     vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValue(60_000);
     const result = await runProgramSync(deps(fetcher));
-    expect(result.pages).toEqual({ deferred: 3, updated: 0, failed: 0 });
+    // Nothing is stored yet, so all 51 pages were due.
+    expect(result.pages).toEqual({ deferred: 51, updated: 0, failed: 0 });
     expect(pageReads).toEqual([]);
   });
 });
