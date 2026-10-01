@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import {
   FieldErrorSummary,
@@ -19,10 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { callApi } from "@/lib/api/client";
-import { profileApi, type Profile } from "@/lib/api/profile";
+import { profileApi } from "@/lib/api/profile";
 import { termLabel, type ClassStanding } from "@/lib/term";
 import { describeFailure } from "../_lib/errors";
 import {
+  changedAcademics,
   cleanNames,
   defaultFirstTermFor,
   derivedStanding,
@@ -33,16 +34,42 @@ import {
   STANDING_CHOICES,
   STANDING_LABELS,
   standingSummary,
+  type AcademicsValues,
 } from "../_lib/options";
 
 /**
  * Majors, minors (official Acalog names, up to three each), graduation year, first term at Davidson and the class
  * standing (derived from the graduation year with lib/term classStanding, or set by the student). One Save sends
- * every field; clearing is explicit ("Not set", "From my graduation year", removing every major). Server field
- * errors land on their fields, are summarised in a role=alert box and focus moves to the first one.
+ * the fields that changed (./_lib/options changedAcademics); clearing is explicit ("Not set", "From my graduation
+ * year", removing every major). Server field errors land on their fields, are summarised in a role=alert box and
+ * focus moves to the first one.
+ *
+ * Keyboard focus never falls back to the page: adding a row focuses its select, removing one focuses the next
+ * row (or the previous one, or "Add a …"), and Save stays focusable while it has nothing to do (aria-disabled).
  */
 
 type AcademicsField = "majors" | "minors" | "graduationYear" | "firstTerm" | "standingOverride";
+
+/**
+ * One major or minor row. The key keeps each row's Select mounted with its own value when another row is removed:
+ * with index keys, removing a middle row handed the next row's value to the removed row's Select, whose hidden
+ * native <select> then reported an empty choice and blanked the row.
+ */
+interface ProgramRow {
+  key: number;
+  /** "" while a newly added row has no choice yet. */
+  name: string;
+}
+
+let nextRowKey = 0;
+
+function toRows(names: readonly string[]): ProgramRow[] {
+  return names.map((name) => ({ key: nextRowKey++, name }));
+}
+
+function rowNames(rows: readonly ProgramRow[]): string[] {
+  return cleanNames(rows.map((row) => row.name));
+}
 
 const FIELDS: FieldSpecs<AcademicsField> = {
   majors: { id: "profile-majors", label: "Majors" },
@@ -56,11 +83,6 @@ const FIELD_NAMES = Object.keys(FIELDS) as AcademicsField[];
 const MAX_PROGRAMS = 3;
 const NOT_SET = "not-set";
 const AUTO = "auto";
-
-type AcademicsValues = Pick<
-  Profile,
-  "majors" | "minors" | "graduationYear" | "firstTerm" | "standingOverride"
->;
 
 export interface AcademicsFormProps {
   initial: AcademicsValues;
@@ -77,9 +99,8 @@ function sameValues(a: AcademicsValues, b: AcademicsValues): boolean {
 
 export function AcademicsForm({ initial, majorNames, minorNames, now }: AcademicsFormProps) {
   const [saved, setSaved] = useState<AcademicsValues>(initial);
-  // Rows may be "" while a newly added row has no choice yet.
-  const [majors, setMajors] = useState<string[]>(initial.majors);
-  const [minors, setMinors] = useState<string[]>(initial.minors);
+  const [majors, setMajors] = useState<ProgramRow[]>(() => toRows(initial.majors));
+  const [minors, setMinors] = useState<ProgramRow[]>(() => toRows(initial.minors));
   const [graduationYear, setGraduationYear] = useState(initial.graduationYear);
   const [firstTerm, setFirstTerm] = useState(initial.firstTerm);
   const [standingOverride, setStandingOverride] = useState<ClassStanding | null>(
@@ -92,8 +113,8 @@ export function AcademicsForm({ initial, majorNames, minorNames, now }: Academic
   useFocusFirstInvalid(fieldErrors, FIELDS);
 
   const values: AcademicsValues = {
-    majors: cleanNames(majors),
-    minors: cleanNames(minors),
+    majors: rowNames(majors),
+    minors: rowNames(minors),
     graduationYear,
     firstTerm,
     standingOverride,
@@ -113,6 +134,7 @@ export function AcademicsForm({ initial, majorNames, minorNames, now }: Academic
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (saving || !dirty) return;
     setError(null);
     setStatus("");
     if (firstTerm && !firstTermFits(firstTerm, graduationYear)) {
@@ -122,7 +144,9 @@ export function AcademicsForm({ initial, majorNames, minorNames, now }: Academic
     setFieldErrors({});
     setSaving(true);
     try {
-      const { profile } = await callApi(profileApi.update, { body: values });
+      const { profile } = await callApi(profileApi.update, {
+        body: changedAcademics(values, saved),
+      });
       const next: AcademicsValues = {
         majors: profile.majors,
         minors: profile.minors,
@@ -131,8 +155,8 @@ export function AcademicsForm({ initial, majorNames, minorNames, now }: Academic
         standingOverride: profile.standingOverride,
       };
       setSaved(next);
-      setMajors(next.majors);
-      setMinors(next.minors);
+      setMajors(toRows(next.majors));
+      setMinors(toRows(next.minors));
       setGraduationYear(next.graduationYear);
       setFirstTerm(next.firstTerm);
       setStandingOverride(next.standingOverride);
@@ -242,7 +266,11 @@ export function AcademicsForm({ initial, majorNames, minorNames, now }: Academic
         <p role="status" className="text-sm font-medium text-success">
           {status}
         </p>
-        <Button type="submit" disabled={saving || !dirty} className="md:ml-auto">
+        <Button
+          type="submit"
+          aria-disabled={saving || !dirty ? true : undefined}
+          className="md:ml-auto"
+        >
           {saving ? "Saving…" : "Save academics"}
         </Button>
       </div>
@@ -299,14 +327,38 @@ function ProgramRows({
 }: {
   field: "majors" | "minors";
   noun: string;
-  rows: readonly string[];
+  rows: readonly ProgramRow[];
   options: readonly string[];
   error?: string;
-  onChange: (rows: string[]) => void;
+  onChange: (rows: ProgramRow[]) => void;
 }) {
   const id = FIELDS[field].id;
   const label = FIELDS[field].label;
   const errorId = error ? `${id}-error` : undefined;
+  const addButton = useRef<HTMLButtonElement>(null);
+  // Where focus goes once the rows have re-rendered: a row's select (by index) or the Add button.
+  const pendingFocus = useRef<number | "add" | null>(null);
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target === null) return;
+    pendingFocus.current = null;
+    const element =
+      target === "add" ? addButton.current : document.getElementById(`${id}-${target}`);
+    element?.focus();
+  }, [rows, id]);
+
+  function add() {
+    pendingFocus.current = rows.length;
+    onChange([...rows, { key: nextRowKey++, name: "" }]);
+  }
+
+  function remove(index: number) {
+    const remaining = rows.length - 1;
+    pendingFocus.current = index < remaining ? index : index > 0 ? index - 1 : "add";
+    onChange(rows.filter((_, i) => i !== index));
+  }
+
   // min-w-0: a fieldset is at least as wide as its content by default, which let a long official name push the
   // row off the side of a phone screen.
   return (
@@ -320,47 +372,62 @@ function ProgramRows({
       {rows.length === 0 ? (
         <p className="text-sm text-fg-3">No {noun} chosen.</p>
       ) : (
-        rows.map((row, index) => {
-          const taken = rows.filter((other, i) => i !== index && other);
-          // A stored name the catalog no longer lists stays selectable for its own row.
+        rows.map(({ key, name: row }, index) => {
+          const taken = rows.filter((other, i) => i !== index && other.name).map((r) => r.name);
+          // A stored name the catalog no longer lists (a program renamed between catalog years) stays in its row,
+          // marked, until the student picks its current name; Save leaves it alone while the list is unchanged.
+          const stale = row !== "" && !options.includes(row);
           const choices = [
-            ...(row && !options.includes(row) ? [row] : []),
+            ...(stale ? [row] : []),
             ...options.filter((name) => !taken.includes(name)),
           ];
           const rowId = `${id}-${index}`;
+          const staleId = stale ? `${rowId}-stale` : undefined;
           const rowLabel = `${noun[0]?.toUpperCase()}${noun.slice(1)} ${index + 1}`;
           return (
-            <div key={index} className="flex items-center gap-2">
-              <Label htmlFor={rowId} className="sr-only">
-                {rowLabel}
-              </Label>
-              <div className="min-w-0 flex-1">
-                <SelectTriggerFor
-                  id={rowId}
-                  aria-invalid={error ? true : undefined}
-                  value={row}
-                  placeholder={`Choose a ${noun}`}
-                  onValueChange={(value) =>
-                    onChange(rows.map((current, i) => (i === index ? value : current)))
-                  }
-                  items={choices.map((name) => ({ value: name, label: name }))}
-                />
+            <div key={key} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <Label htmlFor={rowId} className="sr-only">
+                  {rowLabel}
+                </Label>
+                <div className="min-w-0 flex-1">
+                  <SelectTriggerFor
+                    id={rowId}
+                    aria-invalid={error || stale ? true : undefined}
+                    aria-describedby={staleId}
+                    value={row}
+                    placeholder={`Choose a ${noun}`}
+                    onValueChange={(value) =>
+                      onChange(
+                        rows.map((current, i) =>
+                          i === index ? { ...current, name: value } : current,
+                        ),
+                      )
+                    }
+                    items={choices.map((name) => ({ value: name, label: name }))}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Remove ${row || rowLabel.toLowerCase()}`}
+                  onClick={() => remove(index)}
+                >
+                  <X aria-hidden />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Remove ${row || rowLabel.toLowerCase()}`}
-                onClick={() => onChange(rows.filter((_, i) => i !== index))}
-              >
-                <X aria-hidden />
-              </Button>
+              {stale ? (
+                <p id={staleId} className="text-xs font-semibold text-fg-2">
+                  No longer in the Davidson catalog: choose its current name.
+                </p>
+              ) : null}
             </div>
           );
         })
       )}
       {rows.length < MAX_PROGRAMS ? (
         <div>
-          <Button variant="secondary" size="sm" onClick={() => onChange([...rows, ""])}>
+          <Button ref={addButton} variant="secondary" size="sm" onClick={add}>
             <Plus aria-hidden />
             Add a {noun}
           </Button>

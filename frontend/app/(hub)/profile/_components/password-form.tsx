@@ -64,6 +64,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (saving) return;
     setError(null);
     setStatus("");
     const errors = validate();
@@ -145,7 +146,13 @@ export function PasswordForm({ email }: PasswordFormProps) {
         <p role="status" className="text-sm font-medium text-success">
           {status}
         </p>
-        <Button type="submit" variant="secondary" disabled={saving} className="md:ml-auto">
+        {/* aria-disabled, not disabled: focus stays on the button while the change is in flight. */}
+        <Button
+          type="submit"
+          variant="secondary"
+          aria-disabled={saving ? true : undefined}
+          className="md:ml-auto"
+        >
           {saving ? "Changing…" : "Change password"}
         </Button>
       </div>

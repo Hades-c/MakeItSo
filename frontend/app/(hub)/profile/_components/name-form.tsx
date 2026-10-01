@@ -21,7 +21,10 @@ export interface NameFormProps {
   initialName: string;
 }
 
-/** Your name as MakeItSo shows it (top bar, greetings). Never sent to the AI features. */
+/**
+ * Your name as MakeItSo shows it (top bar, greetings). Never sent to the AI features. Save stays focusable while
+ * there is nothing to save (aria-disabled), so focus does not fall back to the page after a save.
+ */
 export function NameForm({ initialName }: NameFormProps) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -32,8 +35,11 @@ export function NameForm({ initialName }: NameFormProps) {
   const [saving, setSaving] = useState(false);
   useFocusFirstInvalid(fieldErrors, FIELDS);
 
+  const unchanged = name.trim() === saved;
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (saving || unchanged) return;
     setError(null);
     setStatus("");
     if (!ProfilePatchBodySchema.safeParse({ name }).success) {
@@ -74,7 +80,11 @@ export function NameForm({ initialName }: NameFormProps) {
             }}
           />
         </Field>
-        <Button type="submit" variant="secondary" disabled={saving || name.trim() === saved}>
+        <Button
+          type="submit"
+          variant="secondary"
+          aria-disabled={saving || unchanged ? true : undefined}
+        >
           {saving ? "Saving…" : "Save name"}
         </Button>
       </div>

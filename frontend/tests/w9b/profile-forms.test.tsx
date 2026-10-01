@@ -15,7 +15,10 @@ const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.
 const nextAuth = vi.hoisted(() => ({ signIn: vi.fn() }));
 const nav = vi.hoisted(() => ({ hardNavigate: vi.fn() }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
 vi.mock("next-auth/react", () => ({ signIn: nextAuth.signIn }));
 vi.mock("@/app/(hub)/profile/_lib/navigate", () => nav);
 
@@ -93,6 +96,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.history.replaceState(null, "", "/");
 });
 
 const alertWith = (text: string | RegExp) =>
@@ -112,7 +116,9 @@ describe("NameForm", () => {
     stubFetch(profileAnswer({ name: "Casey Q. Wildcat" }));
     render(<NameForm initialName="Casey Wildcat" />);
     const save = screen.getByRole("button", { name: "Save name" });
-    expect(save).toBeDisabled();
+    // Nothing to save yet: marked disabled, but still focusable.
+    expect(save).toHaveAttribute("aria-disabled", "true");
+    expect(save).toBeEnabled();
     const input = screen.getByLabelText("Name");
     await userEvent.clear(input);
     await userEvent.type(input, "Casey Q. Wildcat");
@@ -122,7 +128,23 @@ describe("NameForm", () => {
     ]);
     expect(await screen.findByText("Name saved.")).toHaveAttribute("role", "status");
     expect(router.refresh).toHaveBeenCalled();
-    expect(save).toBeDisabled();
+    expect(save).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("keeps focus on Save after saving with Enter, and ignores a second Enter", async () => {
+    stubFetch(profileAnswer({ name: "Casey Q" }));
+    render(<NameForm initialName="Casey" />);
+    const input = screen.getByLabelText("Name");
+    await userEvent.type(input, " Q");
+    await userEvent.tab();
+    const save = screen.getByRole("button", { name: "Save name" });
+    expect(save).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByText("Name saved.")).toBeInTheDocument();
+    expect(save).toHaveFocus();
+    expect(save).toHaveAttribute("aria-disabled", "true");
+    await userEvent.keyboard("{Enter}");
+    expect(calls).toHaveLength(1);
   });
 
   it("announces a blank name and focuses the field, without a request", async () => {
@@ -185,7 +207,7 @@ describe("AcademicsForm", () => {
     );
     academics();
     const save = screen.getByRole("button", { name: "Save academics" });
-    expect(save).toBeDisabled();
+    expect(save).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("No major chosen.")).toBeInTheDocument();
     expect(screen.getByLabelText("Class standing")).toHaveAccessibleDescription(
       /Now: Sophomore \(from your graduation year\)/,
@@ -228,7 +250,9 @@ describe("AcademicsForm", () => {
       },
     ]);
     expect(await screen.findByText("Academics saved.")).toHaveAttribute("role", "status");
-    expect(save).toBeDisabled();
+    expect(save).toHaveAttribute("aria-disabled", "true");
+    // Focus stays on Save (it is not natively disabled, so it does not drop focus to the page).
+    expect(save).toHaveFocus();
   });
 
   it("clears: removing every major, Not set and From my graduation year send [] and null", async () => {
@@ -249,10 +273,9 @@ describe("AcademicsForm", () => {
     );
     await choose(screen.getByLabelText("Class standing"), "From my graduation year (Sophomore)");
     await userEvent.click(screen.getByRole("button", { name: "Save academics" }));
+    // Only what changed: the minors and the graduation year were not touched.
     expect(calls[0]?.body).toEqual({
       majors: [],
-      minors: [],
-      graduationYear: 2029,
       firstTerm: null,
       standingOverride: null,
     });
@@ -285,6 +308,63 @@ describe("AcademicsForm", () => {
     const majors = screen.getByRole("group", { name: "Majors" });
     expect(majors).toHaveFocus();
     expect(majors).toHaveAccessibleDescription("Pick a name from the list of programs.");
+  });
+
+  it("sends only what changed, so a stored name the catalog dropped never blocks a save", async () => {
+    stubFetch(
+      profileAnswer({ majors: ["Major in Old Studies (B.A. Degree)"], graduationYear: 2030 }),
+    );
+    academics({ majors: ["Major in Old Studies (B.A. Degree)"] });
+    const row = screen.getByLabelText("Major 1");
+    expect(row).toHaveTextContent("Major in Old Studies (B.A. Degree)");
+    expect(row).toHaveAttribute("aria-invalid", "true");
+    expect(row).toHaveAccessibleDescription(
+      "No longer in the Davidson catalog: choose its current name.",
+    );
+    await choose(screen.getByLabelText("Graduation year"), "Class of 2030");
+    await userEvent.click(screen.getByRole("button", { name: "Save academics" }));
+    expect(calls).toEqual([
+      { url: "/api/profile", method: "PATCH", body: { graduationYear: 2030 } },
+    ]);
+    expect(await screen.findByText("Academics saved.")).toBeInTheDocument();
+  });
+
+  it("replaces a dropped name with its current one", async () => {
+    stubFetch(profileAnswer({ majors: ["Major in Biology (B.S. Degree)"] }));
+    academics({ majors: ["Major in Old Studies (B.A. Degree)"] });
+    await choose(screen.getByLabelText("Major 1"), "Major in Biology (B.S. Degree)");
+    expect(
+      screen.queryByText("No longer in the Davidson catalog: choose its current name."),
+    ).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Save academics" }));
+    expect(calls[0]?.body).toEqual({ majors: ["Major in Biology (B.S. Degree)"] });
+  });
+
+  it("moves focus to each new row's select, and to the last row once Add is gone", async () => {
+    academics();
+    await userEvent.click(screen.getByRole("button", { name: "Add a major" }));
+    expect(screen.getByLabelText("Major 1")).toHaveFocus();
+    await userEvent.click(screen.getByRole("button", { name: "Add a major" }));
+    expect(screen.getByLabelText("Major 2")).toHaveFocus();
+    await userEvent.click(screen.getByRole("button", { name: "Add a major" }));
+    expect(screen.queryByRole("button", { name: "Add a major" })).toBeNull();
+    expect(screen.getByText("Up to 3.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Major 3")).toHaveFocus();
+  });
+
+  it("after Remove, focuses the next row, else the previous one, else Add", async () => {
+    academics({ majors: [MAJORS[0]!, MAJORS[1]!, MAJORS[2]!] });
+    // The middle row: the next one moves up into its place.
+    await userEvent.click(screen.getByRole("button", { name: `Remove ${MAJORS[1]}` }));
+    expect(screen.getByLabelText("Major 2")).toHaveFocus();
+    expect(screen.getByLabelText("Major 2")).toHaveTextContent(MAJORS[2]!);
+    // The last row: the previous one.
+    await userEvent.click(screen.getByRole("button", { name: `Remove ${MAJORS[2]}` }));
+    expect(screen.getByLabelText("Major 1")).toHaveFocus();
+    // The only row: the Add button.
+    await userEvent.click(screen.getByRole("button", { name: `Remove ${MAJORS[0]}` }));
+    expect(screen.getByText("No major chosen.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add a major" })).toHaveFocus();
   });
 
   it("says when the network fails", async () => {
@@ -381,6 +461,7 @@ function consent(patch: Partial<Parameters<typeof AiConsentPanel>[0]> = {}) {
       aiEnabled
       verifiedDavidson
       davidson
+      mailAvailable
       timeZone={TZ}
       {...patch}
     />,
@@ -449,6 +530,29 @@ describe("AiConsentPanel", () => {
     unmount();
     consent({ verifiedDavidson: false, davidson: false });
     expect(screen.queryByRole("link", { name: "Verify your email" })).toBeNull();
+  });
+
+  it("moves focus to the button that replaces the one pressed", async () => {
+    stubFetch(
+      profileAnswer({ aiConsentAt: NOW, adultAttestedAt: NOW }),
+      profileAnswer({ aiConsentAt: null, adultAttestedAt: NOW }),
+    );
+    consent({ adultAttestedAt: NOW });
+    const on = screen.getByRole("button", { name: "Turn on AI features" });
+    on.focus();
+    await userEvent.keyboard("{Enter}");
+    const off = await screen.findByRole("button", { name: "Turn off AI features" });
+    expect(off).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByRole("button", { name: "Turn on AI features" })).toHaveFocus();
+  });
+
+  it("offers no verify link while no mail provider can send the code", () => {
+    consent({ verifiedDavidson: false, mailAvailable: false });
+    expect(screen.queryByRole("link", { name: "Verify your email" })).toBeNull();
+    expect(
+      screen.getByText(/limited to verified @davidson.edu accounts/, { selector: "div" }),
+    ).toHaveTextContent("Email verification is not available yet.");
   });
 
   it("shows the server's refusal", async () => {
@@ -553,6 +657,22 @@ describe("SignOutEverywhere", () => {
     await waitFor(() => expect(nav.hardNavigate).toHaveBeenCalledWith("/login"));
   });
 
+  it("keeps the open dialog in the URL", async () => {
+    stubFetch();
+    window.history.replaceState(null, "", "/profile#security");
+    render(<SignOutEverywhere />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign out everywhere" }));
+    expect(`${window.location.pathname}${window.location.search}${window.location.hash}`).toBe(
+      "/profile?dialog=sign-out-everywhere#security",
+    );
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(`${window.location.pathname}${window.location.search}${window.location.hash}`).toBe(
+      "/profile#security",
+    );
+    expect(calls).toEqual([]);
+  });
+
   it("keeps the dialog open with the reason when it fails", async () => {
     stubFetch([503, { error: { code: "unavailable", message: "Try again in a moment." } }]);
     render(<SignOutEverywhere />);
@@ -604,6 +724,40 @@ describe("DownloadData", () => {
     click.mockRestore();
   });
 
+  it("keeps focus on the button while the file is prepared", async () => {
+    let release!: (answer: [number, unknown]) => void;
+    stubFetch(
+      new Promise<[number, unknown]>((resolve) => {
+        release = resolve;
+      }),
+    );
+    render(<DownloadData />);
+    const button = screen.getByRole("button", { name: "Download my data" });
+    button.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: "Preparing…" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Preparing…" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await userEvent.keyboard("{Enter}");
+    expect(calls).toHaveLength(1);
+    await act(async () =>
+      release([429, { error: { code: "rate_limited", message: "5 times a day." } }]),
+    );
+    await waitFor(() => expect(alertWith("5 times a day")).toBeDefined());
+    expect(screen.getByRole("button", { name: "Download my data" })).toHaveFocus();
+  });
+
+  it("points to Privacy for what the download leaves out", () => {
+    render(<DownloadData />);
+    expect(screen.getByRole("link", { name: "see Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy#your-data",
+    );
+    expect(document.body.textContent).not.toMatch(/everything else MakeItSo stores/);
+  });
+
   it("says why when the export is refused", async () => {
     stubFetch([
       429,
@@ -640,6 +794,63 @@ describe("DeleteAccount", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     dialog = await open();
     expect(within(dialog).getByLabelText("Password")).toHaveValue("");
+  });
+
+  it("promises no more than the account-data registry covers, and points to Privacy", async () => {
+    render(<DeleteAccount />);
+    expect(document.body).toHaveTextContent(
+      "Deletes your account and everything tied to it that MakeItSo can find",
+    );
+    expect(document.body.textContent).not.toMatch(/saved AI results|Everything MakeItSo stores/);
+    expect(screen.getByRole("link", { name: "see Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy#your-data",
+    );
+    const dialog = await open();
+    expect(dialog.textContent).not.toMatch(/Everything MakeItSo stores/);
+    expect(within(dialog).getByRole("link", { name: "see Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy#your-data",
+    );
+  });
+
+  it("keeps the open dialog in the URL, and opens from it", async () => {
+    stubFetch();
+    window.history.replaceState(null, "", "/profile");
+    const { unmount } = render(<DeleteAccount />);
+    await open();
+    expect(window.location.search).toBe("?dialog=delete-account");
+    await userEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }),
+    );
+    expect(window.location.search).toBe("");
+    unmount();
+
+    // A reload (or a shared link) with the dialog in the URL shows it, and sends nothing by itself.
+    window.history.replaceState(null, "", "/profile?dialog=delete-account");
+    render(<DeleteAccount />);
+    expect(await screen.findByRole("dialog", { name: "Delete your account?" })).toBeVisible();
+    expect(calls).toEqual([]);
+  });
+
+  it("keeps focus on the confirm button while the deletion runs", async () => {
+    let release!: (answer: [number, unknown]) => void;
+    stubFetch(
+      new Promise<[number, unknown]>((resolve) => {
+        release = resolve;
+      }),
+    );
+    render(<DeleteAccount />);
+    const dialog = await open();
+    await userEvent.type(within(dialog).getByLabelText("Password"), "my real password{Enter}");
+    const confirm = within(dialog).getByRole("button", { name: "Deleting…" });
+    expect(confirm).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    // Still open: the dialog cannot be closed mid-deletion.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await act(async () => release([401, { error: { code: "unauthorized", message: "x" } }]));
+    await waitFor(() => expect(confirm).not.toHaveAttribute("aria-disabled"));
+    expect(calls).toHaveLength(1);
   });
 
   it("deletes the account and leaves for the home page", async () => {

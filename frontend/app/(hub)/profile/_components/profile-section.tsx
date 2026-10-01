@@ -10,7 +10,10 @@ export interface ProfileSectionProps {
   children: React.ReactNode;
 }
 
-/** One card per profile area: a labelled <section> with the Lakeside card look (server-compatible). */
+/**
+ * One card per profile area: a labelled <section> with the Lakeside card look (server-compatible). Its in-page
+ * link lands 1.5rem below the sticky top bar (the page's html scroll-padding, ./focus-clearance.tsx, clears the bar).
+ */
 export function ProfileSection({
   id,
   title,
@@ -24,7 +27,7 @@ export function ProfileSection({
       id={id}
       aria-labelledby={headingId}
       className={cn(
-        "min-w-0 scroll-mt-24 rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5",
+        "min-w-0 scroll-mt-6 rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5",
         className,
       )}
     >

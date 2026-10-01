@@ -165,6 +165,24 @@ describe("ProfilePage", () => {
     expect(html).toContain("Delete account");
   });
 
+  it("offers no verify link while no mail provider can send a code", async () => {
+    vi.stubEnv("MAIL_PROVIDER", "none");
+    await signIn();
+    const html = await renderPage();
+    expect(html).toContain("Not verified");
+    expect(html).not.toContain('href="/verify');
+    expect(html).not.toContain("Verify your email");
+    expect(html.match(/Email verification is not available yet\./g)).toHaveLength(2);
+  });
+
+  it("promises no more deletion than the registry covers, and links to Privacy", async () => {
+    await signIn();
+    const html = await renderPage();
+    expect(html).not.toContain("saved AI results");
+    expect(html).toContain("everything tied to it that MakeItSo can find");
+    expect(html.match(/href="\/privacy#your-data"/g)).toHaveLength(2);
+  });
+
   it("shows what a verified student already chose", async () => {
     await signIn({
       emailVerifiedAt: new Date("2026-09-29T15:00:00Z"),

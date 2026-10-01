@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
@@ -21,7 +21,9 @@ import { describeFailure } from "../_lib/errors";
  * to Anthropic, what is never sent), the 18+ attestation (until the owner decides on minors) and the on/off switch,
  * through W3's dedicated endpoint (PUT/DELETE /api/profile/ai-consent). Nothing is optimistic here: the state
  * shown is the server's answer. Consent alone does not open AI: the feature must be on for MakeItSo and the
- * account a verified @davidson.edu one, and the panel says which is missing.
+ * account a verified @davidson.edu one, and the panel says which is missing (with a link to /verify only while a
+ * mail provider can send the code). After turning AI on or off, focus moves to the button that replaced the one
+ * pressed.
  */
 
 const ATTEST_ID = "ai-adult-attest";
@@ -34,6 +36,8 @@ export interface AiConsentPanelProps {
   aiEnabled: boolean;
   verifiedDavidson: boolean;
   davidson: boolean;
+  /** A mail provider is configured, so /verify can send a code. */
+  mailAvailable: boolean;
   timeZone: string;
 }
 
@@ -45,9 +49,19 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const attestBox = useRef<HTMLButtonElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const focusToggle = useRef(false);
   const on = consentAt !== null;
 
+  // "Turn on" and "Turn off" are different buttons: after a switch, focus the one now shown.
+  useEffect(() => {
+    if (!focusToggle.current) return;
+    focusToggle.current = false;
+    toggle.current?.focus();
+  }, [on]);
+
   async function turnOn() {
+    if (busy) return;
     setError(null);
     setStatus("");
     if (!attested) {
@@ -61,6 +75,7 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
       const { profile } = await callApi(authExtraApi.grantAiConsent, {
         body: { adultAttested: true },
       });
+      focusToggle.current = profile.aiConsentAt !== null;
       setConsentAt(profile.aiConsentAt);
       setStatus("AI features are on.");
     } catch (caught) {
@@ -71,11 +86,13 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
   }
 
   async function turnOff() {
+    if (busy) return;
     setError(null);
     setStatus("");
     setBusy(true);
     try {
       const { profile } = await callApi(authExtraApi.revokeAiConsent);
+      focusToggle.current = profile.aiConsentAt === null;
       setConsentAt(profile.aiConsentAt);
       setAttested(profile.adultAttestedAt !== null);
       setStatus("AI features are off.");
@@ -112,14 +129,16 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
       {!props.verifiedDavidson ? (
         <FormAlert tone="info">
           {UNVERIFIED_MESSAGE}{" "}
-          {props.davidson ? (
+          {!props.davidson ? null : props.mailAvailable ? (
             <Link
               href={`${routes.verify()}${queryString({ next: routes.profile() })}`}
               className="font-semibold text-primary underline"
             >
               Verify your email
             </Link>
-          ) : null}
+          ) : (
+            "Email verification is not available yet."
+          )}
         </FormAlert>
       ) : null}
 
@@ -158,7 +177,12 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
 
       {on ? (
         <div>
-          <Button variant="secondary" disabled={busy} onClick={turnOff}>
+          <Button
+            ref={toggle}
+            variant="secondary"
+            aria-disabled={busy ? true : undefined}
+            onClick={turnOff}
+          >
             {busy ? "Turning off…" : "Turn off AI features"}
           </Button>
         </div>
@@ -193,7 +217,7 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
             ) : null}
           </div>
           <div>
-            <Button disabled={busy} onClick={turnOn}>
+            <Button ref={toggle} aria-disabled={busy ? true : undefined} onClick={turnOn}>
               {busy ? "Turning on…" : "Turn on AI features"}
             </Button>
           </div>

@@ -1,4 +1,5 @@
 import type { ApiIssue } from "@/lib/api/errors";
+import type { Profile } from "@/lib/api/profile";
 import { dayKey } from "@/lib/format";
 import {
   CLASS_STANDINGS,
@@ -106,6 +107,35 @@ export function fieldErrorsFromIssues<K extends string>(
     if (field && !errors[field]) errors[field] = issue.message;
   }
   return errors;
+}
+
+export type AcademicsValues = Pick<
+  Profile,
+  "majors" | "minors" | "graduationYear" | "firstTerm" | "standingOverride"
+>;
+
+/**
+ * The PATCH body for an Academics save: only the fields that differ from what is saved. The server re-checks
+ * every name it is sent, so an untouched stored major the catalog no longer lists (a program renamed between
+ * catalog years) is never re-sent and never blocks a change to the graduation year, first term or standing.
+ */
+export function changedAcademics(
+  values: AcademicsValues,
+  saved: AcademicsValues,
+): Partial<AcademicsValues> {
+  const body: Partial<AcademicsValues> = {};
+  if (!sameList(values.majors, saved.majors)) body.majors = values.majors;
+  if (!sameList(values.minors, saved.minors)) body.minors = values.minors;
+  if (values.graduationYear !== saved.graduationYear) body.graduationYear = values.graduationYear;
+  if (values.firstTerm !== saved.firstTerm) body.firstTerm = values.firstTerm;
+  if (values.standingOverride !== saved.standingOverride) {
+    body.standingOverride = values.standingOverride;
+  }
+  return body;
+}
+
+function sameList(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
 /** Drop blanks and repeats, keep the order (a student picking the same major twice saves it once). */

@@ -11,6 +11,7 @@ import { readEnv } from "@/server/env";
 import { AcademicsForm } from "./_components/academics-form";
 import { AiConsentPanel } from "./_components/ai-consent-panel";
 import { DeleteAccount, DownloadData } from "./_components/data-controls";
+import { FocusClearance } from "./_components/focus-clearance";
 import { InterestsPicker } from "./_components/interests-picker";
 import { NameForm } from "./_components/name-form";
 import { PasswordForm } from "./_components/password-form";
@@ -43,6 +44,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="max-w-3xl">
+      <FocusClearance />
       <PageHeader
         title="Profile"
         subtitle="Your account, your academics and what MakeItSo keeps about you."
@@ -113,6 +115,7 @@ export default async function ProfilePage() {
             aiEnabled={data.flags.ai}
             verifiedDavidson={data.verifiedDavidson}
             davidson={profile.davidson}
+            mailAvailable={data.mailAvailable}
             timeZone={timeZone}
           />
         </ProfileSection>
@@ -167,12 +170,15 @@ function Verification({ data, timeZone }: { data: ProfilePageData; timeZone: str
           <MailWarning aria-hidden />
           Not verified
         </Badge>
-        <Link
-          href={`${routes.verify()}${queryString({ next: routes.profile() })}`}
-          className="-my-2 inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0"
-        >
-          Verify your email
-        </Link>
+        {/* Only while a code can actually be sent: /verify is a dead end without a mail provider. */}
+        {data.mailAvailable ? (
+          <Link
+            href={`${routes.verify()}${queryString({ next: routes.profile() })}`}
+            className="-my-2 inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0"
+          >
+            Verify your email
+          </Link>
+        ) : null}
       </span>
       <span className="text-fg-2">
         {profile.davidson

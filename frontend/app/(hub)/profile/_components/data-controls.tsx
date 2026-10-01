@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Download, Trash2 } from "lucide-react";
 import {
   FieldErrorSummary,
@@ -27,13 +28,28 @@ import { routes } from "@/lib/routes";
 import { downloadJson, exportFilename } from "../_lib/download";
 import { describeFailure } from "../_lib/errors";
 import { hardNavigate } from "../_lib/navigate";
+import { useUrlDialog } from "../_lib/use-url-dialog";
 
 /**
- * "Your data" (PLAN §3 /profile; W3's account data routes): download everything MakeItSo stores about you
+ * "Your data" (PLAN §3 /profile; W3's account data routes): download what MakeItSo stores about you
  * (GET /api/me/export, 5 a day) as a JSON file, and delete the account (DELETE /api/me with the password
- * re-entered, in an in-page dialog). Deletion signs the browser out and lands on the home page with a full page
- * load, so no client state survives it.
+ * re-entered, in an in-page dialog kept in the URL as ?dialog=delete-account). Deletion signs the browser out and
+ * lands on the home page with a full page load, so no client state survives it.
+ *
+ * The copy promises no more than the account-data registry (server/account/erasers.ts) covers: a few rows from
+ * the hackathon-era version cannot be matched to an account reliably and are deleted on request, as the privacy
+ * notice explains (/privacy#your-data), so both texts link there.
  */
+
+const PRIVACY_YOUR_DATA = "/privacy#your-data";
+
+function PrivacyLink({ children }: { children: React.ReactNode }) {
+  return (
+    <Link href={PRIVACY_YOUR_DATA} className="font-semibold text-primary underline">
+      {children}
+    </Link>
+  );
+}
 
 export function DownloadData() {
   const [busy, setBusy] = useState(false);
@@ -41,6 +57,7 @@ export function DownloadData() {
   const [status, setStatus] = useState("");
 
   async function download() {
+    if (busy) return;
     setBusy(true);
     setError(null);
     setStatus("");
@@ -57,12 +74,14 @@ export function DownloadData() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-fg-2">
-        A JSON file with your profile, your plan and everything else MakeItSo stores about you (up
-        to 5 downloads a day).
+        A JSON file with your profile, your plan and the other data MakeItSo keeps for your account
+        (up to 5 downloads a day). A few items from the earlier version of MakeItSo are not in it:{" "}
+        <PrivacyLink>see Privacy</PrivacyLink>.
       </p>
       {error ? <FormAlert>{error}</FormAlert> : null}
       <div>
-        <Button variant="secondary" onClick={download} disabled={busy}>
+        {/* aria-disabled, not disabled: focus stays on the button while the file is prepared. */}
+        <Button variant="secondary" onClick={download} aria-disabled={busy ? true : undefined}>
           <Download aria-hidden />
           {busy ? "Preparing…" : "Download my data"}
         </Button>
@@ -79,7 +98,7 @@ const DELETE_FIELDS: FieldSpecs<"password"> = {
 };
 
 export function DeleteAccount() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useUrlDialog("delete-account");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ password?: string }>({});
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +113,7 @@ export function DeleteAccount() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (busy) return;
     setError(null);
     if (!password) {
       setFieldErrors({ password: "Enter your password to confirm." });
@@ -125,8 +145,10 @@ export function DeleteAccount() {
     >
       <div className="flex flex-col gap-3">
         <p className="text-sm text-fg-2">
-          Deletes your account, profile, plan and saved AI results right away. This cannot be
-          undone: download your data first if you want a copy.
+          Deletes your account and everything tied to it that MakeItSo can find (profile, plan,
+          verification codes and counters, and your plan from the earlier version) right away. This
+          cannot be undone: download your data first if you want a copy. A few items from the
+          earlier version can only be deleted on request: <PrivacyLink>see Privacy</PrivacyLink>.
         </p>
         <div>
           <DialogTrigger asChild>
@@ -141,9 +163,13 @@ export function DeleteAccount() {
         <DialogHeader>
           <DialogTitle>Delete your account?</DialogTitle>
           <DialogDescription>
-            Everything MakeItSo stores about you is deleted immediately and cannot be recovered.
-            Enter your password to confirm.
+            Your account and everything tied to it that MakeItSo can find are deleted immediately
+            and cannot be recovered. Enter your password to confirm.
           </DialogDescription>
+          <p className="text-sm text-fg-2">
+            A few items from the earlier version of MakeItSo can only be deleted on request:{" "}
+            <PrivacyLink>see Privacy</PrivacyLink>.
+          </p>
         </DialogHeader>
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <FieldErrorSummary errors={fieldErrors} fields={DELETE_FIELDS} />
@@ -158,11 +184,12 @@ export function DeleteAccount() {
           </Field>
           <DialogFooter className="mt-2">
             <DialogClose asChild>
-              <Button variant="secondary" disabled={busy}>
+              <Button variant="secondary" aria-disabled={busy ? true : undefined}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" variant="danger" disabled={busy}>
+            {/* aria-disabled, not disabled: focus stays in place while the deletion runs. */}
+            <Button type="submit" variant="danger" aria-disabled={busy ? true : undefined}>
               <Trash2 aria-hidden />
               {busy ? "Deleting…" : "Delete my account"}
             </Button>

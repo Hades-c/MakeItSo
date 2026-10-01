@@ -19,17 +19,20 @@ import { callApi } from "@/lib/api/client";
 import { routes } from "@/lib/routes";
 import { describeFailure } from "../_lib/errors";
 import { hardNavigate } from "../_lib/navigate";
+import { useUrlDialog } from "../_lib/use-url-dialog";
 
 /**
  * "Sign out everywhere" (W3: DELETE /api/account/sessions bumps the session version and clears this browser's
- * cookie). Confirmed in a dialog; afterwards a full page load to /login, which also drops every client cache.
+ * cookie). Confirmed in a dialog (kept in the URL as ?dialog=sign-out-everywhere); afterwards a full page load to
+ * /login, which also drops every client cache.
  */
 export function SignOutEverywhere() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useUrlDialog("sign-out-everywhere");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function confirm() {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -71,11 +74,11 @@ export function SignOutEverywhere() {
         {error ? <FormAlert>{error}</FormAlert> : null}
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="secondary" disabled={busy}>
+            <Button variant="secondary" aria-disabled={busy ? true : undefined}>
               Cancel
             </Button>
           </DialogClose>
-          <Button onClick={confirm} disabled={busy}>
+          <Button onClick={confirm} aria-disabled={busy ? true : undefined}>
             {busy ? "Signing out…" : "Sign out everywhere"}
           </Button>
         </DialogFooter>
