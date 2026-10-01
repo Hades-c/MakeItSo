@@ -339,6 +339,18 @@ describe("POST /api/auth/register validation", () => {
     expect(await User.countDocuments()).toBe(0);
   });
 
+  it("refuses a +tag alias of a Davidson mailbox (one mailbox, one account)", async () => {
+    for (const email of ["casey+1@davidson.edu", "Casey+AI@Davidson.edu"]) {
+      await RateLimit.deleteMany({});
+      const res = await post({ ...casey, email });
+      expect(res.status).toBe(400);
+      const issue = (await errorOf(res)).issues?.find((i) => i.path === "email");
+      expect(issue?.message).toBe("Use your Davidson address without a +tag");
+    }
+    expect(await User.countDocuments()).toBe(0);
+    expect(consoleOutbox()).toHaveLength(0);
+  });
+
   it("enforces the password policy: 10–72 bytes, not blank, not common, not the address", async () => {
     const cases: [string, RegExp][] = [
       ["short", /at least 10/],

@@ -219,6 +219,11 @@ describe("quotas (server/http consumeRateLimit)", () => {
     expect(key).toBe(`ai-generations-20260930:${subject}`);
     expect(key).not.toMatch(new RegExp(`^[a-z0-9-]+:user:${student.id}$`));
     expect(key).not.toMatch(/^[a-z0-9-]+:email:/);
+    // "+tag" aliases deliver to the same inbox, so they share its quota.
+    expect(mailboxKey("Quota.Student+2@davidson.edu")).toBe(
+      mailboxKey("quota.student@davidson.edu"),
+    );
+    expect(mailboxKey("quota+x@gmail.com")).not.toBe(mailboxKey("quota@gmail.com"));
     // Without a stored address (never the case for a verified student) the account id is the subject.
     expect(await quotaSubject(USER)).toBe(`user:${USER}`);
   });

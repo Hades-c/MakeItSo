@@ -23,6 +23,20 @@ export function isDavidsonEmail(email: string): boolean {
 }
 
 /**
+ * The mailbox an address delivers to: Davidson mail (Microsoft 365) accepts plus-addressing, so "sam+1@davidson.edu"
+ * reaches sam@davidson.edu. Per-student limits (AI quotas, distinct reporters) key on this, not on the account, and
+ * new Davidson sign-ups may not use a +tag at all (DavidsonEmailSchema).
+ */
+export function canonicalMailbox(email: string): string {
+  const normalized = normalizeEmail(email);
+  const at = normalized.lastIndexOf("@");
+  if (at < 0 || normalized.slice(at + 1) !== "davidson.edu") return normalized;
+  return `${normalized.slice(0, at).split("+")[0]}@davidson.edu`;
+}
+
+export const PLUS_ADDRESS_MESSAGE = "Use your Davidson address without a +tag";
+
+/**
  * What a signed-in account without a verified @davidson.edu mailbox is told (PLAN §1; owner to confirm, §8). Used by
  * defineRoute's "verified" 403 and by the AI routes' `unverified` result.
  */
@@ -33,7 +47,13 @@ export const DavidsonEmailSchema = z
   .string()
   .max(254)
   .transform(normalizeEmail)
-  .pipe(z.string().regex(DAVIDSON_EMAIL_PATTERN, "Use your @davidson.edu email address"));
+  .pipe(
+    z
+      .string()
+      .regex(DAVIDSON_EMAIL_PATTERN, "Use your @davidson.edu email address")
+      // One mailbox, one account: a +tag alias would get its own AI quota and count as another reporter.
+      .refine((email) => !email.split("@")[0]!.includes("+"), PLUS_ADDRESS_MESSAGE),
+  );
 
 /** Any e-mail (sign-in: legacy non-Davidson accounts keep working). */
 export const EmailSchema = z

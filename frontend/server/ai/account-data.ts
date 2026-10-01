@@ -4,6 +4,7 @@ import AiCache from "@/models/AiCache";
 import AiUsage from "@/models/AiUsage";
 import RateLimit from "@/models/RateLimit";
 import { registerAccountData } from "@/server/account/erasers";
+import { REPORTER_COUNT } from "@/server/ai/reports";
 import { eraseUsage, quotaSubject, usageSubject } from "@/server/ai/usage";
 import { getDb } from "@/server/db";
 
@@ -91,7 +92,7 @@ registerAccountData("ai", {
             },
           },
         },
-        { $set: { "reports.count": { $size: "$reports.userIds" } } },
+        { $set: { "reports.count": REPORTER_COUNT } },
       ],
     );
     const usage = await eraseUsage(userId);

@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash, createHmac } from "node:crypto";
 import mongoose from "mongoose";
-import { normalizeEmail } from "@/lib/api/account";
+import { canonicalMailbox } from "@/lib/api/account";
 import { dayKey } from "@/lib/format";
 import { TERM_TIME_ZONE } from "@/lib/term";
 import { aiFailure, type AiFailure, type AiFeature } from "@/lib/types/ai";
@@ -174,10 +174,13 @@ export async function budgetFailure(): Promise<AiFailure | null> {
 
 export type QuotaRule = "ai-generations" | "ai-regenerations";
 
-/** The keyed hash of a mailbox in quota keys (not reversible without the server secret). */
+/**
+ * The keyed hash of a mailbox in quota keys (not reversible without the server secret). Keyed on the canonical
+ * mailbox, so "+tag" aliases of one Davidson inbox share one quota.
+ */
 export function mailboxKey(email: string): string {
   return createHmac("sha256", readEnv("NEXTAUTH_SECRET"))
-    .update(`makeitso:ai-quota:${normalizeEmail(email)}`, "utf8")
+    .update(`makeitso:ai-quota:${canonicalMailbox(email)}`, "utf8")
     .digest("hex")
     .slice(0, 32);
 }

@@ -43,7 +43,7 @@ const AiCacheSchema = new Schema(
       generatedAt: { type: Date, required: true },
     },
     fallbackUsed: { type: Boolean, default: false },
-    /** "Report this" on shared entries: distinct reporters (the count is their number). */
+    /** "Report this" on shared entries: reporters (the count is the number of distinct reporting mailboxes). */
     reports: {
       count: { type: Number, default: 0 },
       userIds: { type: [Schema.Types.ObjectId], default: [] },
@@ -52,6 +52,8 @@ const AiCacheSchema = new Schema(
           new Schema(
             {
               userId: { type: Schema.Types.ObjectId, required: true },
+              /** The reporter's mailbox (server/ai/usage.ts quotaSubject): distinct mailboxes are counted. */
+              reporter: { type: String, default: null },
               reason: { type: String, default: null },
               at: { type: Date, required: true },
             },

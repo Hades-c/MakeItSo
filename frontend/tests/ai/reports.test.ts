@@ -176,6 +176,21 @@ describe("POST /api/ai/report", () => {
     expect(doc!.reports!.entries).toHaveLength(1);
     expect((await about()).status).toBe(200);
   });
+
+  it("counts one mailbox once: +tag aliases of one Davidson inbox are one reporter", async () => {
+    await signIn({ email: "alias.owner@davidson.edu" });
+    const key = await entryKey();
+    expect((await reportIt({ feature: "course-about", key })).status).toBe(204);
+    // Accounts made before +tags were refused at sign-up.
+    for (const email of ["alias.owner+1@davidson.edu", "Alias.Owner+two@davidson.edu"]) {
+      await signIn({ email });
+      expect((await reportIt({ feature: "course-about", key })).status).toBe(204);
+    }
+    const doc = await AiCache.findOne({ key }).lean();
+    expect(doc).toMatchObject({ hidden: false, reports: { count: 1 } });
+    expect(doc!.reports!.entries).toHaveLength(3);
+    expect((await about()).status).toBe(200);
+  });
 });
 
 describe("POST /api/ai/admin/purge", () => {

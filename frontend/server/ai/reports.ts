@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import type { AiFeature } from "@/lib/types/ai";
 import AiCache from "@/models/AiCache";
 import { REPORTS_TO_HIDE, TTL_MS } from "@/server/ai/config";
+import { quotaSubject } from "@/server/ai/usage";
 import { now } from "@/server/clock";
 import { getDb } from "@/server/db";
 import { ApiError } from "@/server/http/errors";
@@ -10,8 +11,9 @@ import { ApiError } from "@/server/http/errors";
 /**
  * "Report this" on shared entries and the admin purge (PLAN §6.1 W6 "Shared entries").
  *
- *   - A report adds the student to the entry's reporters (a set: reporting twice counts once). With 3 distinct
- *     reporters the entry is hidden pending review, in the same atomic update: its purge time (expiresAt) moves a
+ *   - A report adds the student to the entry's reporters (a set: reporting twice counts once). Reporters are
+ *     counted by MAILBOX (the quota subject: the canonical address, so "+tag" aliases of one inbox are one
+ *     reporter), not by account. With 3 distinct reporting mailboxes the entry is hidden pending review, in the same atomic update: its purge time (expiresAt) moves a
  *     year ahead so the TTL monitor cannot delete it, reads return it as hidden whatever its validUntil
  *     (server/ai/cache.ts), and writes never overwrite it, so neither a student's view nor the pre-generation or
  *     weekly job regenerates it. Nobody sees an answer for it until an admin purges it (it is then regenerated on
@@ -20,6 +22,25 @@ import { ApiError } from "@/server/http/errors";
  *     also the cache key; a professor summary is stored under "rmp:<legacyId>", which the client never sees).
  *   - Purge (admin): delete one entry or every entry of a feature (personal entries included).
  */
+
+/**
+ * The number of distinct reporters of an entry: the distinct `reporter` (mailbox subject) of its report entries;
+ * an entry written before reporters were recorded counts by its userId. (An aggregation expression, shared with
+ * the account eraser, which recomputes it after removing a student's reports.)
+ */
+export const REPORTER_COUNT = {
+  $size: {
+    $setUnion: [
+      {
+        $map: {
+          input: { $ifNull: ["$reports.entries", []] },
+          as: "entry",
+          in: { $ifNull: ["$$entry.reporter", { $toString: "$$entry.userId" }] },
+        },
+      },
+    ],
+  },
+} as const;
 
 export interface ReportOutcome {
   reports: number;
@@ -34,6 +55,7 @@ export async function reportEntry(
     throw new ApiError(401, "unauthorized", "Sign in to continue.");
   await getDb();
   const reporter = new mongoose.Types.ObjectId(userId);
+  const mailbox = await quotaSubject(userId);
   const at = now();
   const reason = input.reason?.trim() ? input.reason.trim().slice(0, 500) : null;
   // Kept for the admin: never before the real clock plus a year (FIXTURES_NOW may be pinned in the past).
@@ -51,7 +73,7 @@ export async function reportEntry(
               {
                 $concatArrays: [
                   { $ifNull: ["$reports.entries", []] },
-                  [{ userId: reporter, reason, at }],
+                  [{ userId: reporter, reporter: mailbox, reason, at }],
                 ],
               },
             ],
@@ -59,7 +81,7 @@ export async function reportEntry(
           "reports.userIds": { $setUnion: [userIds, [reporter]] },
         },
       },
-      { $set: { "reports.count": { $size: "$reports.userIds" } } },
+      { $set: { "reports.count": REPORTER_COUNT } },
       {
         $set: {
           hidden: {
