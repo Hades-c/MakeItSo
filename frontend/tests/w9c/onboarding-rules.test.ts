@@ -36,6 +36,8 @@ import {
 import {
   nextStep,
   ONBOARDING_STEPS,
+  onboardingNext,
+  afterSetupHref,
   parseStep,
   prevStep,
   resumeStep,
@@ -106,6 +108,32 @@ describe("steps", () => {
     expect(parseStep("nope")).toBeNull();
     expect(parseStep(undefined)).toBeNull();
     expect(parseStep("")).toBeNull();
+  });
+
+  it("keeps a first-run deep link (?next=) on the step links, same-origin app paths only", () => {
+    expect(stepHref("classes", "/plan?tab=four-year")).toBe(
+      "/onboarding?step=classes&next=%2Fplan%3Ftab%3Dfour-year",
+    );
+    expect(stepHref("classes", null)).toBe("/onboarding?step=classes");
+    expect(onboardingNext("/courses/202602/CSC-221")).toBe("/courses/202602/CSC-221");
+    expect(onboardingNext(["/plan?tab=next", "/careers"])).toBe("/plan?tab=next");
+    for (const unsafe of [
+      "//evil.example/x",
+      "/\\evil.example",
+      "/.//evil.example",
+      "https://evil.example/x",
+      "javascript:alert(1)",
+      "plan",
+      "/login?callbackUrl=%2Fplan",
+      "/today",
+      "/onboarding?step=about",
+      "",
+      undefined,
+    ]) {
+      expect([unsafe, onboardingNext(unsafe)]).toEqual([unsafe, null]);
+    }
+    expect(afterSetupHref(null)).toBe("/today");
+    expect(afterSetupHref("/plan")).toBe("/plan");
   });
 
   it("moves forward and back, stopping at the ends", () => {

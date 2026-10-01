@@ -1,4 +1,10 @@
-import { queryString, routes } from "@/lib/routes";
+import {
+  ONBOARDING_STEPS,
+  parseOnboardingStep,
+  routes,
+  safeCallbackPath,
+  type OnboardingStep,
+} from "@/lib/routes";
 
 /**
  * The first-run steps (PLAN §3 /onboarding). The step lives in the URL (`/onboarding?step=classes`), every step can
@@ -6,8 +12,7 @@ import { queryString, routes } from "@/lib/routes";
  * the furthest step that already holds saved data (resumeStep). Pure and isomorphic.
  */
 
-export const ONBOARDING_STEPS = ["about", "classes", "completed", "interests"] as const;
-export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+export { ONBOARDING_STEPS, type OnboardingStep };
 
 /** Short labels for the step list. The classes label names the current term. */
 export function stepLabel(step: OnboardingStep, currentTermLabel: string): string {
@@ -29,16 +34,44 @@ export function stepTitle(step: OnboardingStep, currentTermLabel: string): strin
 }
 
 /** The step a `?step=` search param names, or null (missing, repeated or unknown). */
-export function parseStep(value: string | string[] | null | undefined): OnboardingStep | null {
-  const first = Array.isArray(value) ? value[0] : value;
-  return (ONBOARDING_STEPS as readonly string[]).includes(first ?? "")
-    ? (first as OnboardingStep)
-    : null;
+export const parseStep = parseOnboardingStep;
+
+/**
+ * `/onboarding?step=<step>`, keeping `next` (the page the student asked for before the hub sent them here, already
+ * checked with safeAppPath) so finishing or skipping setup still continues there.
+ */
+export function stepHref(step: OnboardingStep, next?: string | null): string {
+  return routes.onboarding(step, { next: next ?? undefined });
 }
 
-/** `/onboarding?step=<step>`. Built here until lib/routes.ts `routes.onboarding()` takes a step (contract request). */
-export function stepHref(step: OnboardingStep): string {
-  return `${routes.onboarding()}${queryString({ step })}`;
+/** Any origin: safeCallbackPath only needs one to resolve relative paths and to refuse other hosts. */
+const PATH_BASE = "http://onboarding.invalid";
+
+/**
+ * The `?next=` page to continue to once setup is finished or skipped, or null for the default (Today). The hub
+ * layout sends a first-run deep link here with it (/onboarding?next=%2Fplan%3Ftab%3Dfour-year); it is untrusted
+ * input, so only a same-origin app path passes (lib/routes.ts safeCallbackPath: never "//host", never /login or
+ * /register), and /today and /onboarding itself are dropped (Today is the default; onboarding would loop).
+ */
+export function onboardingNext(value: string | string[] | null | undefined): string | null {
+  const first = Array.isArray(value) ? value[0] : value;
+  if (!first || !first.startsWith("/")) return null;
+  const path = safeCallbackPath(first, PATH_BASE, "");
+  if (!path) return null;
+  const pathname = path.split(/[?#]/)[0] ?? "";
+  if (
+    pathname === routes.today() ||
+    pathname === "/onboarding" ||
+    pathname.startsWith("/onboarding/")
+  ) {
+    return null;
+  }
+  return path;
+}
+
+/** Where finishing or skipping setup goes: `next` when there is one, else Today. */
+export function afterSetupHref(next: string | null | undefined): string {
+  return next ?? routes.today();
 }
 
 export function stepIndex(step: OnboardingStep): number {

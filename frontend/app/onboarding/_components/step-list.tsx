@@ -17,10 +17,13 @@ export function StepList({
   step,
   progress,
   currentTermLabel,
+  next = null,
 }: {
   step: OnboardingStep;
   progress: StepProgress;
   currentTermLabel: string;
+  /** The page to continue to after setup (`?next=`, already checked), kept on every step link. */
+  next?: string | null;
 }) {
   return (
     <nav aria-label="Setup steps" className="mb-6">
@@ -31,7 +34,7 @@ export function StepList({
           return (
             <li key={item}>
               <Link
-                href={stepHref(item)}
+                href={stepHref(item, next)}
                 prefetch={false}
                 aria-current={current ? "step" : undefined}
                 className={cn(

@@ -862,4 +862,16 @@ describe("SkipSetup", () => {
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/today"));
     expect(calls).toEqual([{ url: "/api/profile", method: "PATCH", body: { onboarded: true } }]);
   });
+
+  it("continues to the deep link the hub sent the student here from (?next=)", async () => {
+    window.history.replaceState(null, "", "/onboarding?step=about&next=%2Fplan%3Ftab%3Dfour-year");
+    try {
+      stubFetch([200, { profile: { ...PROFILE, onboardedAt: NOW } }]);
+      render(<SkipSetup />);
+      await userEvent.click(screen.getByRole("button", { name: "Skip setup" }));
+      await waitFor(() => expect(router.push).toHaveBeenCalledWith("/plan?tab=four-year"));
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
 });

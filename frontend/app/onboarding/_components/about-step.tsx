@@ -23,7 +23,7 @@ import {
 } from "../_lib/academics";
 import { describeFailure, issueFor } from "../_lib/errors";
 import { nextStep, stepHref } from "../_lib/steps";
-import { NativeSelect, StepActions, useFocusRequest } from "./parts";
+import { NativeSelect, StepActions, useFocusRequest, useSetupNext } from "./parts";
 
 /**
  * Step 1: graduation year, first term at Davidson (default Fall of graduationYear − 4, following the year until
@@ -83,6 +83,7 @@ function rows(values: readonly string[], fallback: string[]): Row[] {
 
 export function AboutStep({ initial, majorNames, minorNames, now }: AboutStepProps) {
   const router = useRouter();
+  const after = useSetupNext();
   const [graduationYear, setGraduationYear] = useState(initial.graduationYear);
   const [firstTerm, setFirstTerm] = useState<TermCode>(
     initial.firstTerm ?? defaultFirstTerm(initial.graduationYear),
@@ -124,7 +125,7 @@ export function AboutStep({ initial, majorNames, minorNames, now }: AboutStepPro
     setSaving(true);
     try {
       await callApi(profileApi.update, { body: aboutPatch(values) });
-      router.push(stepHref(nextStep("about") ?? "classes"));
+      router.push(stepHref(nextStep("about") ?? "classes", after));
     } catch (caught) {
       const failure = describeFailure(caught);
       const errors = {

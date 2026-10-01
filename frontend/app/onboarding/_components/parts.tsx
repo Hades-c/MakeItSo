@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CourseCode } from "@/components/ui/course-code";
@@ -10,7 +11,7 @@ import { SourceTag } from "@/components/ui/source-tag";
 import { termLabel } from "@/lib/term";
 import type { PlanItem, PlanWarning } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
-import { nextStep, prevStep, stepHref, type OnboardingStep } from "../_lib/steps";
+import { nextStep, onboardingNext, prevStep, stepHref, type OnboardingStep } from "../_lib/steps";
 
 /**
  * Small building blocks shared by the steps: a native <select> in the Lakeside control style (long official-name
@@ -41,6 +42,16 @@ export const NativeSelect = React.forwardRef<
 ));
 NativeSelect.displayName = "NativeSelect";
 
+/**
+ * The page to continue to after setup (`?next=`, checked with onboardingNext), or null for Today. Step links keep
+ * it, so a first-run deep link survives moving between steps.
+ */
+export function useSetupNext(): string | null {
+  // Null outside the App Router (component tests render the steps on their own).
+  const params = useSearchParams() as ReturnType<typeof useSearchParams> | null;
+  return onboardingNext(params?.get("next"));
+}
+
 export interface StepActionsProps {
   step: OnboardingStep;
   /** The primary action: a submit button (step 1, 4) or a link to the next step (steps 2, 3). */
@@ -52,19 +63,20 @@ export interface StepActionsProps {
 export function StepActions({ step, primary, hideSkip }: StepActionsProps) {
   const back = prevStep(step);
   const next = nextStep(step);
+  const after = useSetupNext();
   return (
     <div className="mt-6 flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-wrap gap-2">
         {back ? (
           <Button asChild variant="ghost">
-            <Link href={stepHref(back)} prefetch={false}>
+            <Link href={stepHref(back, after)} prefetch={false}>
               Back
             </Link>
           </Button>
         ) : null}
         {next && !hideSkip ? (
           <Button asChild variant="secondary">
-            <Link href={stepHref(next)} prefetch={false} data-testid="skip-step">
+            <Link href={stepHref(next, after)} prefetch={false} data-testid="skip-step">
               Skip this step
             </Link>
           </Button>
@@ -112,10 +124,11 @@ export function focusAfterRemove(
 /** Next-step link styled as the primary button. */
 export function ContinueLink({ step, children }: { step: OnboardingStep; children?: string }) {
   const next = nextStep(step);
+  const after = useSetupNext();
   if (!next) return null;
   return (
     <Button asChild>
-      <Link href={stepHref(next)} prefetch={false}>
+      <Link href={stepHref(next, after)} prefetch={false}>
         {children ?? "Continue"}
       </Link>
     </Button>

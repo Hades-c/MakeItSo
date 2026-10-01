@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { routes } from "@/lib/routes";
 import { requireUser } from "@/server/auth";
 import { AboutStep } from "./_components/about-step";
 import { ClassesStep } from "./_components/classes-step";
@@ -11,6 +12,7 @@ import { StepList } from "./_components/step-list";
 import { currentTermLabel, loadOnboarding, type OnboardingData } from "./_lib/load";
 import {
   ONBOARDING_STEPS,
+  onboardingNext,
   parseStep,
   resumeStep,
   stepHref,
@@ -22,7 +24,8 @@ import {
 
 /**
  * /onboarding (PLAN §3; R1): the first run, in four skippable steps with the step in the URL. Without a step it
- * resumes where the student stopped (./_lib/steps resumeStep). A server component that reads the profile, the
+ * resumes where the student stopped (./_lib/steps resumeStep). `?next=` (a first-run deep link the hub sent
+ * here) is kept on every step link and is where Skip setup and Finish go instead of Today. A server component that reads the profile, the
  * official program names, the terms and the plan (a legacy v1 plan in memory included) once per request
  * (./_lib/load.ts) and renders one client island per step; every change goes through the lib/api specs (W3
  * profile, W5s plan, W1 catalog).
@@ -58,11 +61,17 @@ const INTROS: Readonly<Record<OnboardingStep, (data: OnboardingData) => string>>
 export default async function OnboardingPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const requested = parseStep(params.step);
+  // The page to continue to after setup: the hub sends a first-run deep link here with ?next= (app/(hub)/layout).
+  const next = onboardingNext(params.next);
   const user = await requireUser({
-    returnTo: requested ? stepHref(requested) : "/onboarding",
+    returnTo: requested
+      ? stepHref(requested, next)
+      : routes.onboarding(undefined, { next: next ?? undefined }),
   });
   const data = await loadOnboarding(user.id);
-  if (!requested) redirect(stepHref(resumeStep(data.progress, data.profile.onboardedAt !== null)));
+  if (!requested) {
+    redirect(stepHref(resumeStep(data.progress, data.profile.onboardedAt !== null), next));
+  }
   const step = requested;
   const firstName = data.profile.name.trim().split(/\s+/)[0];
 
@@ -80,7 +89,12 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
         {data.profile.onboardedAt === null ? <SkipSetup /> : null}
       </header>
 
-      <StepList step={step} progress={data.progress} currentTermLabel={data.terms.currentLabel} />
+      <StepList
+        step={step}
+        progress={data.progress}
+        currentTermLabel={data.terms.currentLabel}
+        next={next}
+      />
 
       {data.legacyPlan && (step === "classes" || step === "completed") ? (
         <p className="mb-4 rounded-md border border-line bg-surface-2 px-3.5 py-2.5 text-sm text-fg-2">

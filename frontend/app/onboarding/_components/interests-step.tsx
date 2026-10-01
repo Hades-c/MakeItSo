@@ -7,15 +7,15 @@ import { Button } from "@/components/ui/button";
 import { ToggleChip } from "@/components/ui/chip";
 import { callApi } from "@/lib/api/client";
 import { profileApi } from "@/lib/api/profile";
-import { routes } from "@/lib/routes";
 import { describeFailure } from "../_lib/errors";
 import type { CareerOption } from "../_lib/load";
-import { StepActions } from "./parts";
+import { afterSetupHref } from "../_lib/steps";
+import { StepActions, useSetupNext } from "./parts";
 
 /**
  * Step 4, interests (one taxonomy: the career-path slugs from server/content). "Finish" saves the chosen slugs
  * and marks onboarding done (PATCH /api/profile { interests, onboarded: true }; the server sets onboardedAt once,
- * so a re-run keeps the first date), then opens Today.
+ * so a re-run keeps the first date), then opens Today (or the page the student first asked for: `?next=`).
  */
 
 export interface InterestsStepProps {
@@ -25,6 +25,7 @@ export interface InterestsStepProps {
 
 export function InterestsStep({ initial, careers }: InterestsStepProps) {
   const router = useRouter();
+  const after = useSetupNext();
   const known = new Set(careers.map((career) => career.slug));
   const [chosen, setChosen] = useState<string[]>(() => initial.filter((slug) => known.has(slug)));
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export function InterestsStep({ initial, careers }: InterestsStepProps) {
     setError(null);
     try {
       await callApi(profileApi.update, { body: { interests: chosen, onboarded: true } });
-      router.push(routes.today());
+      router.push(afterSetupHref(after));
       router.refresh();
     } catch (caught) {
       setError(describeFailure(caught).message);

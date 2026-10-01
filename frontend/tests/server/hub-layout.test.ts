@@ -10,6 +10,9 @@ const stubs = vi.hoisted(() => ({
   browseTerm: vi.fn(async () => "202602"),
   countCourses: vi.fn(async () => 612),
   verifyBannerFor: vi.fn(async (): Promise<unknown> => null),
+  getPlanCredits: vi.fn(async () => ({ done: 12, planned: 16, required: 32 as const })),
+  onboardedAt: undefined as string | null | undefined,
+  returnPath: "/courses" as string | null,
 }));
 
 vi.mock("@/server/auth/session", () => ({
@@ -17,8 +20,15 @@ vi.mock("@/server/auth/session", () => ({
     id: "0123456789abcdef01234567",
     email: "sam@davidson.edu",
     name: "Sam",
+    ...(stubs.onboardedAt === undefined ? {} : { onboardedAt: stubs.onboardedAt }),
   }),
+  isOnboarded: (user: { onboardedAt?: string | null }) => user.onboardedAt !== null,
 }));
+vi.mock("next/headers", () => ({
+  headers: async () =>
+    new Headers(stubs.returnPath === null ? {} : { "x-mis-return-path": stubs.returnPath }),
+}));
+vi.mock("@/server/plan", () => ({ getPlanCredits: stubs.getPlanCredits }));
 vi.mock("@/server/sync", () => ({ getSourceStatuses: async () => [] }));
 vi.mock("@/server/catalog", () => ({
   browseTerm: stubs.browseTerm,
@@ -30,7 +40,22 @@ afterEach(() => {
   stubs.browseTerm.mockReset().mockResolvedValue("202602");
   stubs.countCourses.mockReset().mockResolvedValue(612);
   stubs.verifyBannerFor.mockReset().mockResolvedValue(null);
+  stubs.getPlanCredits.mockReset().mockResolvedValue({ done: 12, planned: 16, required: 32 });
+  stubs.onboardedAt = undefined;
+  stubs.returnPath = "/courses";
 });
+
+/** The path a Next.js redirect() inside `run` goes to, or null when it renders. */
+async function redirectOf(run: () => Promise<unknown>): Promise<string | null> {
+  try {
+    await run();
+    return null;
+  } catch (error) {
+    const digest = (error as { digest?: string }).digest ?? "";
+    if (!digest.startsWith("NEXT_REDIRECT")) throw error;
+    return digest.split(";")[2] ?? null;
+  }
+}
 
 async function shell(): Promise<ReactElement<AppShellProps>> {
   const element: unknown = await HubLayout({ children: createElement("p", null, "page") });
@@ -79,9 +104,53 @@ describe("hub layout: flagged sections", () => {
   });
 });
 
-describe("hub layout: sidebar count", () => {
-  it("counts the courses of the term browsing defaults to", async () => {
+describe("hub layout: first run", () => {
+  const layout = () => HubLayout({ children: null });
+
+  it("sends an account that has not finished onboarding there, keeping the page it asked for", async () => {
+    stubs.onboardedAt = null;
+    stubs.returnPath = "/plan?tab=four-year";
+    expect(await redirectOf(layout)).toBe("/onboarding?next=%2Fplan%3Ftab%3Dfour-year");
+    stubs.returnPath = "/courses/202602/CSC-221";
+    expect(await redirectOf(layout)).toBe("/onboarding?next=%2Fcourses%2F202602%2FCSC-221");
+  });
+
+  it("keeps Today and Profile open before onboarding (Today's nudge is for these accounts)", async () => {
+    stubs.onboardedAt = null;
+    for (const path of ["/today", "/today?day=2026-10-01", "/profile"]) {
+      stubs.returnPath = path;
+      expect([path, await redirectOf(layout)]).toEqual([path, null]);
+    }
+  });
+
+  it("never redirects onboarded accounts, accounts without the field, or an unknown or unsafe path", async () => {
+    stubs.onboardedAt = "2026-09-30T16:00:00.000Z";
+    expect(await redirectOf(layout)).toBeNull();
+    stubs.onboardedAt = undefined;
+    expect(await redirectOf(layout)).toBeNull();
+    stubs.onboardedAt = null;
+    stubs.returnPath = null;
+    expect(await redirectOf(layout)).toBeNull();
+    stubs.returnPath = "//evil.example/x";
+    expect(await redirectOf(layout)).toBeNull();
+  });
+});
+
+describe("hub layout: sidebar counts", () => {
+  it("counts the plan's credits out of 32", async () => {
+    expect((await shellProps()).counts?.plan).toEqual({ done: 12, total: 32 });
+    expect(stubs.getPlanCredits).toHaveBeenCalledWith("0123456789abcdef01234567");
+  });
+
+  it("shows no plan count when the plan cannot be read, and never fails the shell", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    stubs.getPlanCredits.mockRejectedValue(new Error("db down"));
     expect((await shellProps()).counts).toEqual({ courses: 612 });
+    expect(log).toHaveBeenCalledWith(expect.stringMatching(/plan credits/), expect.any(Error));
+  });
+
+  it("counts the courses of the term browsing defaults to", async () => {
+    expect((await shellProps()).counts).toEqual({ courses: 612, plan: { done: 12, total: 32 } });
     expect(stubs.browseTerm).toHaveBeenCalledWith({ now: expect.any(Date) });
     expect(stubs.countCourses).toHaveBeenCalledWith("202602");
   });
@@ -89,9 +158,10 @@ describe("hub layout: sidebar count", () => {
   it("shows no count when the catalog cannot answer, and never fails the shell", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     stubs.countCourses.mockRejectedValue(new Error("Schedule data is temporarily unavailable."));
-    expect((await shellProps()).counts).toEqual({});
+    const plan = { done: 12, total: 32 };
+    expect((await shellProps()).counts).toEqual({ plan });
     stubs.browseTerm.mockRejectedValue(new Error("db down"));
-    expect((await shellProps()).counts).toEqual({});
+    expect((await shellProps()).counts).toEqual({ plan });
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/course count/), expect.any(Error));
   });
 
