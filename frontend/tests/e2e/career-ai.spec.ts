@@ -51,7 +51,7 @@ test("an unverified account sees why AI is closed, with the verify step, and no 
     "/verify?reason=davidson&next=%2Fcareers%2Fmedicine",
   );
   await expect(page.getByRole("button", { name: "Draft my career plan" })).toHaveCount(0);
-  await expect(page.getByRole("radio")).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Who would you like to write to?" })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

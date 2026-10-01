@@ -1,5 +1,4 @@
 import { unstable_rethrow } from "next/navigation";
-import { AiChip } from "@/components/ui/ai-chip";
 import { SectionCard } from "@/components/ui/section-card";
 import { isDavidsonEmail } from "@/lib/api/account";
 import type { Flags } from "@/lib/flags";
@@ -36,6 +35,9 @@ import { AiNotice, aiFailureCopy, type AiStepLinks } from "./ai-result";
  *     still handles every AiResult kind the route may answer later (quota, budget, refused, ...);
  *   - the alumni list reaches the browser only for a verified @davidson.edu account while the Alumni section is on,
  *     and only CONTACTABLE alumni (contactable=false: public figures, trustees, college officers — never offered).
+ *
+ * The AI chip ("AI · verify with your advisor") marks AI output only, so it sits on each answer, not on the panel
+ * headings or the gate notices.
  *
  * The student's own name is passed to the cold e-mail island to fill {{studentName}} in the browser; the AI route
  * never sends it to the model (server/ai/payloads.ts).
@@ -120,15 +122,6 @@ async function loadTermCodes(): Promise<TermCode[]> {
 
 const GRID = "grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]";
 
-function Title({ children }: { children: string }) {
-  return (
-    <>
-      {children}
-      <AiChip label="verify with your advisor" className="font-medium" />
-    </>
-  );
-}
-
 export async function CareerAiPanels({ career }: { career: Career }) {
   const user = await getSessionUser();
   if (!user) return null;
@@ -161,7 +154,7 @@ export async function CareerAiPanels({ career }: { career: Career }) {
 
   if (view.sharedGate) {
     return (
-      <SectionCard id="career-ai" title={<Title>AI for this path</Title>}>
+      <SectionCard id="career-ai" title="AI for this path">
         <AiNotice
           copy={aiFailureCopy(view.sharedGate, view.links)}
           live={false}
@@ -174,7 +167,7 @@ export async function CareerAiPanels({ career }: { career: Career }) {
   return (
     <div className={GRID} data-testid="career-ai">
       {view.plan ? (
-        <SectionCard id="ai-career-plan" title={<Title>Your AI career plan</Title>}>
+        <SectionCard id="ai-career-plan" title="Your AI career plan">
           <AiCareerPlanPanel
             careerSlug={career.slug}
             careerName={career.name}
@@ -186,7 +179,7 @@ export async function CareerAiPanels({ career }: { career: Career }) {
         </SectionCard>
       ) : null}
       {view.email ? (
-        <SectionCard id="ai-cold-email" title={<Title>Email an alumnus</Title>}>
+        <SectionCard id="ai-cold-email" title="Email an alumnus">
           <AiColdEmailPanel
             careerSlug={career.slug}
             alumni={view.email.alumni}
