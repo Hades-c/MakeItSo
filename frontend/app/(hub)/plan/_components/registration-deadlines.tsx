@@ -2,7 +2,7 @@ import { CalendarClock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SourceTag } from "@/components/ui/source-tag";
 import { cn } from "@/lib/utils";
-import { describeDeadline, type DeadlineInput } from "../_lib/deadlines";
+import { describeDeadlines, type DeadlineInput } from "../_lib/deadlines";
 
 /**
  * Registration windows and deadlines for the WebTree term, from the academic calendar (server/content, tag
@@ -21,7 +21,7 @@ export function RegistrationDeadlines({
   timeZone: string;
   className?: string;
 }) {
-  const rows = deadlines.map((deadline) => describeDeadline(deadline, now, timeZone));
+  const rows = describeDeadlines(deadlines, now, timeZone);
   return (
     <section
       aria-labelledby="registration-deadlines-title"

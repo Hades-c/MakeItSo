@@ -71,29 +71,36 @@ function relativeDays(days: number): string {
   return `In ${days} days`;
 }
 
-/** One row worded for `now`. A window is open from its first day's time through the end of its last day. */
+/**
+ * One row worded for `now`. A window is open from its first day's time until `endTime` on its last day (the
+ * closing deadline's published time, see describeDeadlines), or through the end of that day when none is known.
+ */
 export function describeDeadline(
   deadline: DeadlineInput,
   now: Date,
   timeZone = DEFAULT_TIME_ZONE,
+  endTime: string | null = null,
 ): DeadlineView {
   const today: [string, number] = [dayKey(now, timeZone), wallClockMinutes(now, timeZone)];
   const start: [string, number] = [deadline.date, minutesOf(deadline.time, 0)];
   const end: [string, number] = deadline.endDate
-    ? [deadline.endDate, 24 * 60]
+    ? [deadline.endDate, minutesOf(endTime, 24 * 60)]
     : [deadline.date, minutesOf(deadline.time, 24 * 60)];
   const startText = `${dayText(deadline.date)}${deadline.time ? `, ${clockText(deadline.time)}` : ""}`;
-  const when = deadline.endDate ? `${startText} – ${dayText(deadline.endDate)}` : startText;
+  const endText = deadline.endDate
+    ? `${dayText(deadline.endDate)}${endTime ? `, ${clockText(endTime)}` : ""}`
+    : "";
+  const when = deadline.endDate ? `${startText} – ${endText}` : startText;
 
   let state: DeadlineState;
   let relative: string;
   if (compare(today, start) < 0) {
     state = "upcoming";
     relative = relativeDays(daysFrom(today[0], deadline.date));
-  } else if (compare(today, end) <= 0 && deadline.endDate) {
+  } else if (compare(today, end) < 0 && deadline.endDate) {
     state = "open";
     relative = "Open now";
-  } else if (compare(today, end) <= 0) {
+  } else if (compare(today, end) < 0) {
     state = "upcoming";
     relative = "Today";
   } else {
@@ -110,4 +117,29 @@ export function describeDeadline(
     source: deadline.source,
     url: deadline.url,
   };
+}
+
+/**
+ * Every row worded for `now`, each window ending at the time of the single deadline that closes it: a timed row
+ * from the same source on the window's last day (WebTree Oct 12 – Nov 3 closes with "WebTree Closes", 5:00p;
+ * November add/drop with "Add/Drop Ends", 5:00p). The calendar gives a window no end time of its own.
+ */
+export function describeDeadlines(
+  deadlines: readonly DeadlineInput[],
+  now: Date,
+  timeZone = DEFAULT_TIME_ZONE,
+): DeadlineView[] {
+  return deadlines.map((deadline) => {
+    const closing = deadline.endDate
+      ? deadlines.find(
+          (other) =>
+            other.id !== deadline.id &&
+            other.endDate === null &&
+            other.date === deadline.endDate &&
+            other.time !== null &&
+            other.source === deadline.source,
+        )
+      : undefined;
+    return describeDeadline(deadline, now, timeZone, closing?.time ?? null);
+  });
 }

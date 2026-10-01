@@ -280,6 +280,17 @@ describe("choice notes", () => {
     ).toBe("Science in progress (BIO 115)");
   });
 
+  it("never says 'Would fill' for a slot met without a course (exemption, PE checklist)", () => {
+    const choice = { courseCode: "SPA 101", termCode: "202602" };
+    expect(slotNote("FRLG", "done", "Foreign Language", undefined, choice)).toEqual({
+      slot: "FRLG",
+      text: "Foreign Language already met",
+      tone: "already",
+    });
+    expect(slotNote("PE", "planned", "PE", undefined, choice).tone).toBe("already");
+    expect(slotNote("PE", "this-term", "PE", undefined, choice).text).toBe("PE in progress");
+  });
+
   it("rates seat pressure", () => {
     const seats = (current: number, max: number, remaining = max - current) => ({
       current,

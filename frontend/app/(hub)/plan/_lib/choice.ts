@@ -40,7 +40,17 @@ export function slotNote(
   filler: SlotFiller | undefined,
   choice: { courseCode: string; termCode: string },
 ): SlotNote {
-  if (status === "open" || !filler) return { slot, text: `Would fill ${label}`, tone: "open" };
+  if (status === "open") return { slot, text: `Would fill ${label}`, tone: "open" };
+  if (!filler) {
+    // Met without a course in the plan (the language exemption, the PE checklist).
+    const state =
+      status === "done"
+        ? "already met"
+        : status === "this-term"
+          ? "in progress"
+          : "already planned";
+    return { slot, text: `${label} ${state}`, tone: "already" };
+  }
   if (
     normalizeCourseCode(filler.courseCode) === normalizeCourseCode(choice.courseCode) &&
     filler.termCode === choice.termCode

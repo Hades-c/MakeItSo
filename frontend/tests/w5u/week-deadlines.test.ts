@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Meeting } from "@/lib/types/catalog";
 import type { ScheduleConflict, WebTreeList } from "@/lib/types/plan";
-import { describeDeadline, dayText } from "@/app/(hub)/plan/_lib/deadlines";
+import { describeDeadline, describeDeadlines, dayText } from "@/app/(hub)/plan/_lib/deadlines";
 import {
   clockText,
   conflictLines,
@@ -176,5 +176,33 @@ describe("registration deadlines", () => {
       when: "Tue, Nov 3, 5:00p",
     });
     expect(describeDeadline(CLOSES, new Date("2026-11-03T22:01:00Z")).state).toBe("past");
+  });
+
+  it("a window ends at the time of the deadline that closes it (WebTree closes Nov 3 at 5:00p)", () => {
+    const other = {
+      ...CLOSES,
+      id: "other-source",
+      source: "course-schedule" as const,
+      time: "09:00",
+    };
+    const rows = (at: string) =>
+      describeDeadlines([OPEN, CLOSES], new Date(at), "America/New_York");
+    // 4:30 p.m. ET on Nov 3: still open, and the text shows the 5:00p close.
+    expect(rows("2026-11-03T21:30:00Z")[0]).toMatchObject({
+      when: "Mon, Oct 12, 7:00a – Tue, Nov 3, 5:00p",
+      state: "open",
+      relative: "Open now",
+    });
+    // 5:30 p.m. ET: both rows agree WebTree has closed.
+    const after = rows("2026-11-03T22:30:00Z");
+    expect(after.map((row) => row.state)).toEqual(["past", "past"]);
+    expect(after[0]!.relative).toBe("Passed");
+    // Exactly 5:00 p.m.: closed on both rows.
+    expect(rows("2026-11-03T22:00:00Z").map((row) => row.state)).toEqual(["past", "past"]);
+    // A timed row from another source on that day does not close the window.
+    expect(describeDeadlines([OPEN, other], new Date("2026-11-03T22:30:00Z"))[0]).toMatchObject({
+      when: "Mon, Oct 12, 7:00a – Tue, Nov 3",
+      state: "open",
+    });
   });
 });
