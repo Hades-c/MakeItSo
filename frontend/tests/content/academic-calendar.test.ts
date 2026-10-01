@@ -254,6 +254,7 @@ describe("calendar queries", () => {
     expect(due[1]).toEqual({
       id: "calendar:f26-webtree-spring27",
       kind: "calendar",
+      category: "registration",
       title: "WebTree Open: Submit Spring 2027 Course Preferences",
       label: null,
       date: "2026-10-12",

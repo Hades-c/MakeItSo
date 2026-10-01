@@ -2868,6 +2868,7 @@ export function programDeadlinesBetween(from: DayInput, to: DayInput): ContentDe
       items.push({
         id: `program:${program.slug}:${deadline.date}`,
         kind: "program",
+        category: null,
         title: program.name,
         label: deadline.label,
         date: deadline.date,

@@ -1403,6 +1403,8 @@ export interface ContentDeadline {
   /** "calendar:<event id>" or "program:<program slug>:<date>". */
   id: string;
   kind: "calendar" | "program";
+  /** The calendar row's category ("deadline" or "registration"), copied from it; null for a program deadline. */
+  category: CalendarCategory | null;
   title: string;
   /** The program deadline's label ("Priority deadline"); null for calendar rows (the title says it). */
   label: string | null;
@@ -1426,6 +1428,7 @@ export function calendarDeadline(event: CalendarEvent): ContentDeadline {
   return {
     id: `calendar:${event.id}`,
     kind: "calendar",
+    category: event.category,
     title: event.title,
     label: null,
     date: event.start,

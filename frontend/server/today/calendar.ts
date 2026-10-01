@@ -141,15 +141,12 @@ export function audienceIncludes(audience: string | null, standing: ClassStandin
 
 /**
  * The calendar category of a curated deadline ("deadline" or "registration" for a calendar row; null for an office
- * program's deadline), from the row it was made from.
+ * program's deadline): ContentDeadline.category, copied from the row it was made from.
  */
 export function calendarCategoryOf(
-  deadline: Pick<ContentDeadline, "id" | "kind">,
-  calendar: readonly CalendarEvent[] = ACADEMIC_CALENDAR,
+  deadline: Pick<ContentDeadline, "kind" | "category">,
 ): CalendarEvent["category"] | null {
-  if (deadline.kind !== "calendar") return null;
-  const id = deadline.id.replace(/^calendar:/, "");
-  return calendar.find((row) => row.id === id)?.category ?? null;
+  return deadline.kind === "calendar" ? deadline.category : null;
 }
 
 /** Student-facing deadline rows (category "deadline") on the Davidson days from..to, for the day summary. */
