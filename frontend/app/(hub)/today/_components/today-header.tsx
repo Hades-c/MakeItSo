@@ -11,6 +11,8 @@ import {
   loadProfile,
   loadSchedule,
   loadTerms,
+  ownDeadlineCount,
+  safely,
   scheduleTermLabel,
   standingOf,
   STRIP_NOUN,
@@ -68,31 +70,40 @@ export async function TodayHeader({
   const standing = standingOf(profile);
   const termLabel = scheduleTermLabel(schedule, terms);
   const studentDeadlines = plan.ok ? plan.value.deadlines : [];
-  const summary = todaySummary({
-    now,
-    onboarded: profile.ok ? profile.value.onboardedAt !== null : true,
-    standing,
-    schedule: schedule.ok ? schedule.value : null,
-    termLabel,
-    studentDeadlines,
-    feedItems: feeds.ok ? feeds.value : [],
-  });
+  const summary = safely("the day summary", () =>
+    todaySummary({
+      now,
+      onboarded: profile.ok ? profile.value.onboardedAt !== null : true,
+      standing,
+      schedule: schedule.ok ? schedule.value : null,
+      termLabel,
+      studentDeadlines,
+      feedItems: feeds.ok ? feeds.value : [],
+    }),
+  );
   const { from, to } = dueSoonRange(now);
-  const dueForYou = buildDueSoon({
-    now,
-    standing,
-    contentDeadlines: contentDeadlines(from, to),
-    studentDeadlines,
-  }).filter((item) => item.forYou).length;
+  const dueForYou = safely("the deadline count", () =>
+    ownDeadlineCount(
+      buildDueSoon({
+        now,
+        standing,
+        contentDeadlines: contentDeadlines(from, to),
+        studentDeadlines,
+      }),
+    ),
+  );
 
-  const days = stripDays.map((day, i) => {
-    const loaded = week[i];
-    const input = { day, schedule: loaded?.ok ? loaded.value : null };
-    return stripDay(input, {
-      today,
-      selected,
-      count: stripCount(input, studentDeadlines, standing),
-      href: (d) => todayHref(d, today),
+  const days = safely("the week strip", () => {
+    const curated = contentDeadlines(stripDays[0] ?? today, stripDays.at(-1) ?? today);
+    return stripDays.map((day, i) => {
+      const loaded = week[i];
+      const input = { day, schedule: loaded?.ok ? loaded.value : null };
+      return stripDay(input, {
+        today,
+        selected,
+        count: stripCount(input, studentDeadlines, curated, standing),
+        href: (d) => todayHref(d, today),
+      });
     });
   });
 
@@ -104,21 +115,37 @@ export async function TodayHeader({
           {termLabel ? ` · ${termLabel}` : null}
         </>
       }
-      title={<span data-testid="day-summary">{summary.sentence}</span>}
+      title={
+        <span data-testid="day-summary">
+          {/* Only if the summary itself throws: a plain title, never a made-up sentence. */}
+          {summary?.sentence ?? "Your day at Davidson"}
+        </span>
+      }
       subtitle={
         <span data-testid="day-counts">
           {firstName ? <span className="mr-1">Welcome, {firstName}.</span> : null}
-          <b>{plural(summary.classesToday, "class", "classes")}</b> today ·{" "}
-          <b>{plural(dueForYou, "deadline", "deadlines")}</b> in the next two weeks
+          {summary ? (
+            <>
+              <b>{plural(summary.classesToday, "class", "classes")}</b> today
+            </>
+          ) : null}
+          {summary && dueForYou !== null ? " · " : null}
+          {dueForYou === null ? null : (
+            <>
+              <b>{plural(dueForYou, "deadline", "deadlines")}</b> in the next two weeks
+            </>
+          )}
         </span>
       }
       actions={
-        <FiveDayStrip
-          days={days}
-          label="This school week"
-          noun={STRIP_NOUN}
-          className="w-full md:w-auto"
-        />
+        days ? (
+          <FiveDayStrip
+            days={days}
+            label="This school week"
+            noun={STRIP_NOUN}
+            className="w-full md:w-auto"
+          />
+        ) : undefined
       }
     />
   );

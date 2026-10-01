@@ -12,8 +12,8 @@ import {
  * /today (W7) against the production build in fixtures mode: server "now" is Wed 2026-09-30 12:00 ET (current
  * Fall 2026, registration Spring 2027, WebTree opens Oct 12). A first-year with three Fall 2026 sections (CSC 221 A
  * MWF 10:30, ECO 232 A MWF 11:30, ENV 237 A MW 14:30) and one deadline sees the deterministic day summary, the
- * timeline with the now-line, the five-day strip, Due soon, degree progress, the Plan Spring 2027 call to action,
- * this week on campus, opportunities and quick links, every aggregated item tagged with its source. Runs at
+ * timeline with the now-line, the five-day strip, Due soon, degree progress (no Plan Spring 2027 yet: WebTree is
+ * not open), this week on campus, opportunities and quick links, every aggregated item tagged with its source. Runs at
  * desktop 1440 and phone 390, light and dark, with axe.
  */
 
@@ -96,7 +96,10 @@ test("today: the day summary, timeline, strip and panels for a student with sect
     );
     const main = page.getByRole("main");
     await expect(main.getByText("Wednesday, September 30", { exact: true })).toBeVisible();
-    await expect(page.getByTestId("day-counts")).toContainText("3 classes today");
+    // Only the student's own deadlines count: not the WebTree window or optional program applications.
+    await expect(page.getByTestId("day-counts")).toContainText(
+      "3 classes today · 1 deadline in the next two weeks",
+    );
 
     // The strip: Monday to Friday, today shown.
     const week = strip(page);
@@ -110,23 +113,56 @@ test("today: the day summary, timeline, strip and panels for a student with sect
     await expect(timeline.locator('[data-kind="free"]').first()).toBeVisible();
     await expect(main.getByText(/^Fri 10:30 AM$/)).toBeVisible();
 
-    // The call to action and the panels.
-    await expect(page.getByRole("link", { name: "Plan Spring 2027" })).toHaveAttribute(
-      "href",
-      "/plan?tab=next",
-    );
-    await expect(page.getByTestId("webtree-window")).toContainText(
-      "WebTree opens Mon, Oct 12 at 7:00 AM",
-    );
+    // No "Plan Spring 2027" before WebTree opens (PLAN §3: during the window); Due soon lists the window.
+    await expect(page.getByTestId("plan-next-cta")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Browse courses" })).toBeVisible();
     const due = page.getByTestId("due-soon-item");
     expect(await due.count()).toBeGreaterThan(2);
     await expect(due.filter({ hasText: "Problem set" })).toContainText("Tomorrow 11:59p");
-    await expect(due.filter({ hasText: "WebTree Open" })).toContainText("Oct 12 – Nov 3");
+    const webtree = due.filter({ hasText: "WebTree Open" });
+    await expect(webtree).toContainText("Oct 12 – Nov 3");
+    await expect(webtree).toHaveAttribute("data-kind", "registration");
     await expect(page.getByTestId("degree-progress")).toContainText("of 32 credits done");
     expect(await page.getByTestId("campus-item").count()).toBeGreaterThan(0);
     expect(await page.getByTestId("opportunity-item").count()).toBeGreaterThan(1);
     await expect(page.getByTestId("panel-error")).toHaveCount(0);
     await expect(page.getByTestId("onboarding-nudge")).toHaveCount(0);
+
+    // Titles keep a readable width: no letter-by-letter wrapping beside a date or a tag.
+    const narrow = await page.evaluate(() => {
+      const out: string[] = [];
+      for (const a of document.querySelectorAll<HTMLElement>(
+        '[data-testid="opportunity-item"] a',
+      )) {
+        if (a.getBoundingClientRect().width < 120) out.push(`opportunity: ${a.textContent}`);
+      }
+      for (const name of document.querySelectorAll<HTMLElement>(
+        "section[aria-labelledby='quick-links-title'] a > span.flex-col > span:first-child",
+      )) {
+        const line = parseFloat(getComputedStyle(name).lineHeight) || 20;
+        if (name.getBoundingClientRect().height > line * 2.5)
+          out.push(`quick link: ${name.textContent}`);
+      }
+      return out;
+    });
+    expect(narrow, "squeezed titles").toEqual([]);
+    await expect(
+      page.locator("section[aria-labelledby='quick-links-title'] a > span.flex-col"),
+    ).toHaveCount(8);
+    if (isMobile(page)) {
+      // Phone order (Lakeside home-390): Today, Due soon, This week on campus, then Degree progress.
+      const top = async (name: RegExp) =>
+        (await page.getByRole("region", { name }).first().boundingBox())?.y ?? 0;
+      const [timelineTop, dueTop, campusTop, degreeTop] = [
+        await top(/^Today/),
+        await top(/^Due soon/),
+        await top(/^This week on campus/),
+        await top(/^Degree progress/),
+      ];
+      expect(timelineTop).toBeLessThan(dueTop);
+      expect(dueTop).toBeLessThan(campusTop);
+      expect(campusTop).toBeLessThan(degreeTop);
+    }
 
     expect(await expectAllTagged(page)).toBeGreaterThan(8);
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
@@ -143,6 +179,9 @@ test("today: the day summary, timeline, strip and panels for a student with sect
   await expect(thursday).toBeVisible();
   await expect(thursday.getByTestId("now-pill")).toHaveCount(0);
   await expect(thursday.getByText("Problem set").first()).toBeVisible();
+  // Next up is said from the real today (Wednesday): Friday is not "Tomorrow".
+  await expect(thursday.getByText(/^Fri 10:30 AM$/)).toBeVisible();
+  await expect(thursday.getByText(/^Tomorrow/)).toHaveCount(0);
   // The headline still sums up today.
   await expect(page.getByRole("heading", { level: 1 })).toContainText("You're in ECO 232");
   await thursday.getByRole("link", { name: "Back to today" }).click();

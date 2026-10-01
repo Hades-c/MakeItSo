@@ -4,8 +4,17 @@ import { SourceTag } from "@/components/ui/source-tag";
 import { formatShortDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
-import { dueSoonRange, etDay, handshakeLink, upcomingOpportunities } from "@/server/today";
+import {
+  dueSoonRange,
+  etDay,
+  handshakeLink,
+  loadProfile,
+  safely,
+  standingOf,
+  upcomingOpportunities,
+} from "@/server/today";
 import { STRETCHED_LINK } from "../_lib/styles";
+import { PanelError } from "./panel-states";
 
 function shortDay(day: string): string {
   return formatShortDate(new Date(`${day}T12:00:00Z`), "UTC");
@@ -13,13 +22,26 @@ function shortDay(day: string): string {
 
 /**
  * Opportunities (PLAN §3): curated office programs (fellowships, grants, funded internships) whose next published
- * deadline comes after the Due soon window, with the office that runs them and that deadline, plus the Davidson
+ * deadline comes after the Due soon window, with the office that runs them, that deadline and, when the published
+ * audience does not certainly include the student, who it is for; plus the Davidson
  * Handshake entry point for jobs and internships. Curated content only: no postings or employers of our own.
  */
-export function OpportunitiesPanel({ now, careersOn }: { now: Date; careersOn: boolean }) {
-  const today = etDay(now);
-  const programs = upcomingOpportunities(dueSoonRange(now).to, today);
-  const handshake = handshakeLink();
+export async function OpportunitiesPanel({
+  userId,
+  now,
+  careersOn,
+}: {
+  userId: string;
+  now: Date;
+  careersOn: boolean;
+}) {
+  const profile = await loadProfile(userId);
+  const built = safely("opportunities", () => ({
+    programs: upcomingOpportunities(dueSoonRange(now).to, etDay(now), standingOf(profile)),
+    handshake: handshakeLink(),
+  }));
+  if (!built) return <PanelError id="opportunities" title="Opportunities" what="Opportunities" />;
+  const { programs, handshake } = built;
   return (
     <SectionCard
       id="opportunities"
@@ -49,14 +71,18 @@ export function OpportunitiesPanel({ now, careersOn }: { now: Date; careersOn: b
                   />
                 </a>
               </p>
+              <p className="mt-1 text-xs text-fg-2 md:text-sm">{program.deadline.label}</p>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-2 md:text-sm">
                 <SourceTag source={program.source} />
                 {program.office ? <span>{program.office}</span> : null}
+                {program.audience && !program.forYou ? (
+                  <span data-testid="opportunity-audience">For: {program.audience}</span>
+                ) : null}
               </p>
             </div>
-            <p className="shrink-0 text-right font-mono text-xs leading-5 text-fg-2">
+            {/* Only the short date here: a long label in a column that cannot shrink squeezes the title. */}
+            <p className="shrink-0 text-right font-mono text-xs leading-5 whitespace-nowrap text-fg-2">
               {shortDay(program.deadline.date)}
-              <span className="block font-sans">{program.deadline.label}</span>
             </p>
           </li>
         ))}

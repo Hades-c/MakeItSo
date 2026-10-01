@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SourceTag } from "@/components/ui/source-tag";
 import { formatTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
-import { loadProfile, loadTerms, webTreeWindow, type WebTreeWindow } from "@/server/today";
+import { loadProfile, loadTerms, safely, webTreeWindow, type WebTreeWindow } from "@/server/today";
 
 function windowText(window: WebTreeWindow, timeZone: string): string {
   const day = (at: Date) =>
@@ -14,14 +14,12 @@ function windowText(window: WebTreeWindow, timeZone: string): string {
       day: "numeric",
       timeZone,
     }).format(at);
-  return window.state === "upcoming"
-    ? `WebTree opens ${day(window.opensAt)} at ${formatTime(window.opensAt, timeZone)} for ${window.termLabel} course preferences.`
-    : `WebTree is open for ${window.termLabel} course preferences until ${day(window.closesAt)} at ${formatTime(window.closesAt, timeZone)}.`;
+  return `WebTree is open for ${window.termLabel} course preferences until ${day(window.closesAt)} at ${formatTime(window.closesAt, timeZone)}.`;
 }
 
 /**
- * The action row under the headline: "Plan Spring 2027" (→ /plan?tab=next, the WebTree list) from two weeks
- * before WebTree opens until it closes, with the window's dates from the Registrar calendar; "Browse courses"
+ * The action row under the headline: "Plan Spring 2027" (→ /plan?tab=next, the WebTree list) while WebTree
+ * is open (PLAN §3: during the WebTree window only; before it opens Due soon lists the window), with the window's dates from the Registrar calendar; "Browse courses"
  * always; and, while the student has not finished first-run setup, a nudge to /onboarding.
  */
 export async function TodayActions({
@@ -34,7 +32,10 @@ export async function TodayActions({
   timeZone: string;
 }) {
   const [terms, profile] = await Promise.all([loadTerms(), loadProfile(userId)]);
-  const window = terms.ok ? webTreeWindow(terms.value.registration, now) : null;
+  const window = terms.ok
+    ? safely("the WebTree window", () => webTreeWindow(terms.value.registration, now))
+    : null;
+  const text = window ? safely("the WebTree window", () => windowText(window, timeZone)) : null;
   const needsSetup = profile.ok && profile.value.onboardedAt === null;
 
   return (
@@ -81,13 +82,13 @@ export async function TodayActions({
           </Link>
         </Button>
       </div>
-      {window ? (
+      {window && text ? (
         <p
           data-testid="webtree-window"
           data-aggregated={window.source}
           className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-2"
         >
-          <span>{windowText(window, timeZone)}</span>
+          <span>{text}</span>
           <SourceTag source={window.source} />
         </p>
       ) : null}

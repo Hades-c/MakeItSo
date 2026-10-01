@@ -1,7 +1,8 @@
 import { ExternalLink } from "lucide-react";
 import { SectionCard } from "@/components/ui/section-card";
 import { SourceTag } from "@/components/ui/source-tag";
-import { quickLinks } from "@/server/today";
+import { quickLinks, safely } from "@/server/today";
+import { PanelError } from "./panel-states";
 
 /**
  * Quick links (PLAN §3): the Davidson portals and tools students open most, from the curated links
@@ -9,7 +10,8 @@ import { quickLinks } from "@/server/today";
  * plain links to davidson.edu services.
  */
 export function QuickLinks() {
-  const links = quickLinks();
+  const links = safely("the quick links", () => quickLinks());
+  if (!links) return <PanelError id="quick-links" title="Quick links" what="Quick links" />;
   return (
     <SectionCard id="quick-links" title="Quick links">
       <div className="@container">
@@ -20,15 +22,16 @@ export function QuickLinks() {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-line bg-surface px-3 py-2 text-sm font-semibold text-fg hover:bg-surface-2"
+                className="flex min-h-11 items-start justify-between gap-2 rounded-md border border-line bg-surface px-3 py-2 text-sm font-semibold text-fg hover:bg-surface-2"
               >
-                <span className="min-w-0 break-words">
-                  {link.name} <span className="sr-only">(opens in a new tab)</span>
-                </span>
-                <span className="flex shrink-0 items-center gap-1.5">
+                {/* The tag goes under the name, so a two-column card never squeezes the name mid-word. */}
+                <span className="flex min-w-0 flex-col items-start gap-1">
+                  <span className="break-normal">
+                    {link.name} <span className="sr-only">(opens in a new tab)</span>
+                  </span>
                   {link.source ? <SourceTag source={link.source} /> : null}
-                  <ExternalLink aria-hidden className="size-3.5 text-fg-3" />
                 </span>
+                <ExternalLink aria-hidden className="mt-0.5 size-3.5 shrink-0 text-fg-3" />
               </a>
             </li>
           ))}

@@ -5,12 +5,14 @@ import { formatLongDate, formatTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { FeedItem } from "@/lib/types/feeds";
 import { cn } from "@/lib/utils";
-import { etDay, loadCampusEvents } from "@/server/today";
+import { etDay, loadCampusEvents, pickCampusEvents, safely } from "@/server/today";
 import { STRETCHED_LINK } from "../_lib/styles";
 import { PanelError } from "./panel-states";
 
 export const CAMPUS_DAYS = 7;
 export const CAMPUS_SHOWN = 5;
+/** Read more than are shown: long-running items under way are left out (pickCampusEvents). */
+export const CAMPUS_FETCHED = 40;
 
 const WEEKDAY = (timeZone: string) =>
   new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone });
@@ -20,10 +22,14 @@ const DAY_NUMBER = (timeZone: string) =>
 /**
  * This week on campus (PLAN §3; R2, rendered only while FEATURE_EVENTS is on): the next campus events from the
  * synced feeds (server/feeds listEvents), each linking to its source page with the tag of its stored source.
+ * Long-running items already under way (an application season, an eight-week course) are left out.
  */
 export async function CampusPanel({ now, timeZone }: { now: Date; timeZone: string }) {
-  const loaded = await loadCampusEvents(now.toISOString(), CAMPUS_DAYS, CAMPUS_SHOWN);
-  if (!loaded.ok) {
+  const loaded = await loadCampusEvents(now.toISOString(), CAMPUS_DAYS, CAMPUS_FETCHED);
+  const events = loaded.ok
+    ? safely("this week on campus", () => pickCampusEvents(loaded.value, now, CAMPUS_SHOWN))
+    : null;
+  if (!events) {
     return <PanelError id="campus" title="This week on campus" what="Campus events" />;
   }
   return (
@@ -32,11 +38,11 @@ export async function CampusPanel({ now, timeZone }: { now: Date; timeZone: stri
       title="This week on campus"
       link={{ href: routes.events(), label: "Events" }}
     >
-      {loaded.value.length === 0 ? (
+      {events.length === 0 ? (
         <p className="text-sm text-fg-2">Nothing on the campus calendars in the next seven days.</p>
       ) : (
         <ol className="-mt-1 divide-y divide-line">
-          {loaded.value.map((item) => (
+          {events.map((item) => (
             <CampusRow key={item.id} item={item} now={now} timeZone={timeZone} />
           ))}
         </ol>

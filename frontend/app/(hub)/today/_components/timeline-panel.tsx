@@ -2,12 +2,12 @@ import Link from "next/link";
 import { DayTimeline, type TimelineNextUp } from "@/components/domain/day-timeline";
 import { windowLabel } from "@/components/domain/time-geometry";
 import { SectionCard } from "@/components/ui/section-card";
-import { formatLongDate, formatTime } from "@/lib/format";
+import { ExternalLink } from "lucide-react";
+import { SourceTag } from "@/components/ui/source-tag";
+import { formatLongDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { DaySchedule } from "@/lib/types/plan";
 import {
-  addDaysToKey,
-  audienceIncludes,
   breakOn,
   buildAgenda,
   contentDeadlines,
@@ -16,14 +16,18 @@ import {
   loadPlan,
   loadProfile,
   loadSchedule,
+  loadTerms,
   meetingLocation,
   nextClassDay,
+  nextUpLabel,
+  safely,
   scheduleTermLabel,
   standingOf,
-  loadTerms,
+  type AllDayDeadline,
 } from "@/server/today";
 import { feedRange } from "../_lib/params";
-import { TEXT_LINK } from "../_lib/styles";
+import { cn } from "@/lib/utils";
+import { STRETCHED_LINK, TEXT_LINK } from "../_lib/styles";
 import { PanelError } from "./panel-states";
 
 export interface TimelinePanelProps {
@@ -33,17 +37,6 @@ export interface TimelinePanelProps {
   day: string;
   stripDays: readonly string[];
   eventsOn: boolean;
-}
-
-/** "Tomorrow 9:40 AM", "Thu 9:40 AM", "Mon, Oct 5 9:40 AM". */
-function nextUpWhen(day: string, from: string, startsAt: string, timeZone: string): string {
-  const time = formatTime(startsAt, timeZone);
-  if (day === addDaysToKey(from, 1)) return `Tomorrow ${time}`;
-  const date = new Date(`${day}T12:00:00Z`);
-  const weekday = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" }).format(
-    date,
-  );
-  return `${weekday} ${time}`;
 }
 
 function emptyMessage(schedule: DaySchedule, isToday: boolean, termLabel: string | null): string {
@@ -69,7 +62,8 @@ function emptyMessage(schedule: DaySchedule, isToday: boolean, termLabel: string
 /**
  * The day timeline card (PLAN §3): classes, the student's and the calendar's timed deadlines and a few campus
  * events for the day shown (today unless ?day= picks another strip day), with the now-line in ET and free gaps,
- * then the first class of the next class day. Sections without a meeting time are listed under it.
+ * then the first class of the next class day (from today or a later day; said from the real today). The day's
+ * all-day deadlines are listed above it and sections without a meeting time under it.
  */
 export async function TimelinePanel({
   userId,
@@ -93,23 +87,31 @@ export async function TimelinePanel({
   if (!schedule.ok) return <PanelError id="timeline" title={title} what="Your schedule" />;
 
   const standing = standingOf(profile);
-  const agenda = buildAgenda({
-    day,
-    schedule: schedule.value,
-    studentDeadlines: plan.ok ? plan.value.deadlines : [],
-    contentDeadlines: contentDeadlines(day, day).filter((d) =>
-      audienceIncludes(d.audience, standing),
-    ),
-    feedItems: feeds?.ok ? feeds.value : [],
-    ...(isToday ? { now } : {}),
-  });
-  const next = await nextClassDay(day, (d) => loadSchedule(userId, d));
+  const loadedSchedule = schedule.value;
+  const agenda = safely("the timeline", () =>
+    buildAgenda({
+      day,
+      schedule: loadedSchedule,
+      studentDeadlines: plan.ok ? plan.value.deadlines : [],
+      contentDeadlines: contentDeadlines(day, day),
+      standing,
+      feedItems: feeds?.ok ? feeds.value : [],
+      ...(isToday ? { now } : {}),
+    }),
+  );
+  if (!agenda) return <PanelError id="timeline" title={title} what="Your schedule" />;
+  // "Next up" only looks ahead from today or a later strip day, and is said from the real today.
+  const next = day >= today ? await nextClassDay(day, (d) => loadSchedule(userId, d)) : null;
   const first = next?.schedule.entries[0];
-  const nextUp: TimelineNextUp | undefined =
+  const when =
     next && first
+      ? safely("the next class", () => nextUpLabel(next.day, today, first.startsAt, timeZone))
+      : null;
+  const nextUp: TimelineNextUp | undefined =
+    first && when
       ? {
           code: first.courseCode,
-          when: nextUpWhen(next.day, day, first.startsAt, timeZone),
+          when,
           title: first.title,
           ...(meetingLocation(first) ? { location: meetingLocation(first) } : {}),
         }
@@ -133,6 +135,7 @@ export async function TimelinePanel({
           </Link>
         </p>
       ) : null}
+      {agenda.allDay.length > 0 ? <AllDayList items={agenda.allDay} isToday={isToday} /> : null}
       {agenda.items.length > 0 ? (
         <DayTimeline
           {...(isToday ? { now } : {})}
@@ -178,5 +181,38 @@ export async function TimelinePanel({
         </p>
       ) : null}
     </SectionCard>
+  );
+}
+
+/** The day's deadlines without a published time ("Due all day"), each tagged and linked to its source page. */
+function AllDayList({ items, isToday }: { items: readonly AllDayDeadline[]; isToday: boolean }) {
+  return (
+    <ul
+      data-testid="timeline-all-day"
+      aria-label={isToday ? "Due today, no set time" : "Due that day, no set time"}
+      className="mb-3 flex flex-col gap-1.5"
+    >
+      {items.map((item) => (
+        <li
+          key={item.id}
+          data-aggregated={item.source}
+          className="relative flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-line px-3 py-2 text-sm"
+        >
+          <span className="font-mono text-xs font-medium text-urgent">
+            Due {isToday ? "today" : "that day"}
+          </span>
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(STRETCHED_LINK, "font-semibold text-fg hover:text-primary")}
+          >
+            {item.title} <span className="sr-only">(opens in a new tab)</span>
+            <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
+          </a>
+          <SourceTag source={item.source} />
+        </li>
+      ))}
+    </ul>
   );
 }

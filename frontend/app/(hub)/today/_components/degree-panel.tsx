@@ -4,7 +4,14 @@ import { SourceTag } from "@/components/ui/source-tag";
 import { StatNumber } from "@/components/ui/stat-number";
 import { routes } from "@/lib/routes";
 import { isTermCode, termCodeFor } from "@/lib/term";
-import { degreeMapTerms, loadPlan, loadProfile, loadProgress, loadTerms } from "@/server/today";
+import {
+  degreeMapTerms,
+  loadPlan,
+  loadProfile,
+  loadProgress,
+  loadTerms,
+  safely,
+} from "@/server/today";
 import { PanelError } from "./panel-states";
 
 export const DEGREE_DISCLAIMER = "Unofficial — verify in Degree Works";
@@ -29,12 +36,18 @@ export async function DegreePanel({ userId }: { userId: string }) {
     profile.value.firstTerm && isTermCode(profile.value.firstTerm)
       ? profile.value.firstTerm
       : termCodeFor("Fall", graduationYear - 4);
-  const mapTerms = degreeMapTerms({
-    items: plan.value.items,
-    firstTerm,
-    graduationYear,
-    currentTerm: terms.ok ? terms.value.current : null,
-  });
+  const items = plan.value.items;
+  const mapTerms = safely("the degree map", () =>
+    degreeMapTerms({
+      items,
+      firstTerm,
+      graduationYear,
+      currentTerm: terms.ok ? terms.value.current : null,
+    }),
+  );
+  if (!mapTerms) {
+    return <PanelError id="degree" title="Degree progress" what="Your degree progress" />;
+  }
   const { creditsDone, creditsPlanned, required } = progress.value;
   const ahead = Math.max(0, creditsPlanned - creditsDone);
 

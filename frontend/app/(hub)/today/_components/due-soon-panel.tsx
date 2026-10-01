@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, TriangleAlert } from "lucide-react";
 import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
 import { SourceTag } from "@/components/ui/source-tag";
@@ -11,6 +11,7 @@ import {
   loadPlan,
   loadProfile,
   pickShown,
+  safely,
   standingOf,
   type DueSoonItem,
 } from "@/server/today";
@@ -23,29 +24,48 @@ export const DUE_SOON_SHOWN = 8;
 /**
  * Due soon (PLAN §3): the academic calendar's deadlines and registration windows, the curated office programs'
  * deadlines and the student's own, for the next two weeks, each with the tag of its stored source and a link to
- * the page that publishes it. Rows for other class years or a conditional audience say who they are for.
+ * the page that publishes it. Rows for other class years or a conditional audience say who they are for. When
+ * the plan cannot load, the curated rows are still listed, with a one-line note that the student's own are missing.
  */
 export async function DueSoonPanel({ userId, now }: { userId: string; now: Date }) {
   const [plan, profile] = await Promise.all([loadPlan(userId), loadProfile(userId)]);
-  if (!plan.ok) return <PanelError id="due-soon" title="Due soon" what="Your deadlines" />;
   const { from, to } = dueSoonRange(now);
-  const items = buildDueSoon({
-    now,
-    standing: standingOf(profile),
-    contentDeadlines: contentDeadlines(from, to),
-    studentDeadlines: plan.value.deadlines,
+  // The curated rows never depend on the plan: without it, they are still listed, with a note.
+  const built = safely("Due soon", () => {
+    const items = buildDueSoon({
+      now,
+      standing: standingOf(profile),
+      contentDeadlines: contentDeadlines(from, to),
+      studentDeadlines: plan.ok ? plan.value.deadlines : [],
+    });
+    const shown = pickShown(items, DUE_SOON_SHOWN).map((item) => ({
+      item,
+      label: dueLabel(item, now),
+    }));
+    return { items, shown };
   });
-  const shown = pickShown(items, DUE_SOON_SHOWN);
+  if (!built) return <PanelError id="due-soon" title="Due soon" what="Due soon" />;
+  const { items, shown } = built;
   const more = items.length - shown.length;
 
   return (
     <SectionCard id="due-soon" title="Due soon" count={items.length}>
+      {plan.ok ? null : (
+        <p
+          role="status"
+          data-testid="due-soon-own-error"
+          className="mb-2 flex items-start gap-2 rounded-md bg-surface-2 px-3 py-2 text-sm text-fg-2"
+        >
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-danger" />
+          <span>Your own deadlines could not load right now.</span>
+        </p>
+      )}
       {items.length === 0 ? (
         <p className="text-sm text-fg-2">Nothing due in the next two weeks.</p>
       ) : (
         <ol className="-mt-1 divide-y divide-line" aria-label="Due in the next two weeks">
-          {shown.map((item) => (
-            <DueSoonRow key={item.id} item={item} now={now} />
+          {shown.map(({ item, label }) => (
+            <DueSoonRow key={item.id} item={item} label={label} />
           ))}
         </ol>
       )}
@@ -56,8 +76,7 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
   );
 }
 
-function DueSoonRow({ item, now }: { item: DueSoonItem; now: Date }) {
-  const label = dueLabel(item, now);
+function DueSoonRow({ item, label }: { item: DueSoonItem; label: string }) {
   const urgent = !item.endDay && label.startsWith("Today");
   const title = item.label ? `${item.title}: ${item.label}` : item.title;
   return (
