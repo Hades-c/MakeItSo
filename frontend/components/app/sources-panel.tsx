@@ -42,6 +42,8 @@ function validDate(value: Date | string | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
 const DOT: Record<SourceStatus | "never" | "curated", string> = {
   ok: "bg-success",
   stale: "bg-warning",
@@ -93,6 +95,12 @@ export function SourcesPanel({
             const label = source.label ?? SOURCES[source.id].label;
             if (isCurated(source)) {
               const verified = validDate(source.verifiedAt);
+              // A date-only value ("2026-09-30") parses as UTC midnight: format it in UTC, or the Davidson zone
+              // shows the day before (PLAN §5: date stamps are UTC). A full timestamp uses the campus zone.
+              const verifiedZone =
+                typeof source.verifiedAt === "string" && DATE_ONLY.test(source.verifiedAt)
+                  ? "UTC"
+                  : timeZone;
               return (
                 <li key={`${source.id}-${label}`} className="flex items-center gap-2">
                   <span
@@ -105,10 +113,14 @@ export function SourcesPanel({
                       <span className="sr-only">, verified</span>{" "}
                       <time
                         className="ml-auto shrink-0 font-mono text-fg-3"
-                        dateTime={verified.toISOString()}
-                        title={`Verified ${formatShortDate(verified, timeZone)}`}
+                        dateTime={
+                          verifiedZone === "UTC"
+                            ? verified.toISOString().slice(0, 10)
+                            : verified.toISOString()
+                        }
+                        title={`Verified ${formatShortDate(verified, verifiedZone)}`}
                       >
-                        {formatShortDate(verified, timeZone)}
+                        {formatShortDate(verified, verifiedZone)}
                       </time>
                     </>
                   ) : null}

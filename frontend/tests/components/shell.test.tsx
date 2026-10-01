@@ -219,6 +219,21 @@ describe("SourcesPanel", () => {
     expect(link).toHaveTextContent("(opens in a new tab)");
   });
 
+  it("shows a date-only verified date as that day, not the day before in the Davidson zone", () => {
+    render(
+      <SourcesPanel
+        now={now}
+        timeZone="America/New_York"
+        sources={[{ id: "registrar", label: "Registrar", verifiedAt: "2026-09-30" }]}
+      />,
+    );
+    const item = within(screen.getByRole("region", { name: "Sources" })).getAllByRole(
+      "listitem",
+    )[0]!;
+    expect(item).toHaveTextContent("Registrar, verified Sep 30");
+    expect(item.querySelector("time")).toHaveAttribute("datetime", "2026-09-30");
+  });
+
   it("says when nothing has synced", () => {
     render(<SourcesPanel now={now} sources={[]} />);
     expect(screen.getByText("No sources synced yet.")).toBeInTheDocument();
