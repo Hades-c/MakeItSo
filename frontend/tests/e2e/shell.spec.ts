@@ -6,6 +6,7 @@ import {
   registerViaApi,
   seriousViolations,
   signIn,
+  smallTapTargets,
   uniqueEmail,
 } from "./helpers";
 
@@ -397,4 +398,16 @@ test("pages reflow at 320px without sideways scrolling (WCAG 1.4.10)", async ({
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
     expect(await horizontalOverflow(page), `${route} scrolls sideways`).toBeLessThanOrEqual(0);
   }
+});
+
+test("auth pages and the privacy header have 44px tap targets on phones", async ({ page }) => {
+  test.skip(!isMobile(page), "phones only");
+  for (const route of ["/login", "/register"]) {
+    await page.goto(route);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(await smallTapTargets(page), `${route} tap targets under 44px`).toEqual([]);
+  }
+  await page.goto("/privacy");
+  const home = page.getByRole("banner").getByRole("link", { name: "MakeItSo home" });
+  expect((await home.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });

@@ -126,7 +126,10 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
         footer={
           <>
             Already have an account?{" "}
-            <Link href={routes.login()} className="font-semibold text-primary hover:underline">
+            <Link
+              href={routes.login()}
+              className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
+            >
               Sign in
             </Link>
           </>
@@ -167,7 +170,10 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
         footer={
           <>
             Already have an account?{" "}
-            <Link href={routes.login()} className="font-semibold text-primary hover:underline">
+            <Link
+              href={routes.login()}
+              className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
+            >
               Sign in
             </Link>
           </>
@@ -196,7 +202,10 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
       footer={
         <>
           Already have an account?{" "}
-          <Link href={routes.login()} className="font-semibold text-primary hover:underline">
+          <Link
+            href={routes.login()}
+            className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
+          >
             Sign in
           </Link>
         </>

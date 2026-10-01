@@ -54,7 +54,10 @@ export function LoginForm({ callbackPath, initialError = null }: LoginFormProps)
       footer={
         <>
           New to MakeItSo?{" "}
-          <Link href={routes.register()} className="font-semibold text-primary hover:underline">
+          <Link
+            href={routes.register()}
+            className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
+          >
             Create an account
           </Link>
         </>

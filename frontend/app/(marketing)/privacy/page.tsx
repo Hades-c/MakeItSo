@@ -60,7 +60,11 @@ export default function PrivacyPage() {
     <div className="min-h-dvh bg-bg">
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-3 px-4 md:px-6">
-          <Link href={routes.home()} aria-label="MakeItSo home" className="-m-1 rounded-md p-1">
+          <Link
+            href={routes.home()}
+            aria-label="MakeItSo home"
+            className="-m-1 inline-flex min-h-11 items-center rounded-md p-1"
+          >
             <Wordmark />
           </Link>
           <Button asChild variant="ghost">

@@ -10,7 +10,11 @@ export const metadata: Metadata = { title: "Page not found" };
 export default function NotFound() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-8 px-4 py-10">
-      <Link href="/" aria-label="MakeItSo home" className="rounded-md">
+      <Link
+        href="/"
+        aria-label="MakeItSo home"
+        className="inline-flex min-h-11 items-center rounded-md"
+      >
         <Wordmark subline="always" />
       </Link>
       <main className="w-full max-w-lg">
