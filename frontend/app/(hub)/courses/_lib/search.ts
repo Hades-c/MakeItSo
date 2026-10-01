@@ -21,7 +21,7 @@ import {
   searchCourses,
 } from "@/server/catalog";
 import { HISTORY_START } from "@/server/catalog/config";
-import { courseAvailability } from "@/server/catalog/history";
+import { coursesAvailability } from "@/server/catalog/history";
 import { inIngestWindow } from "@/server/catalog/terms";
 import { requirementName } from "@/server/content/requirements";
 import { ApiError } from "@/server/http/errors";
@@ -233,14 +233,18 @@ export async function loadSearch(
   const items = searched.result?.items ?? [];
   const presence = plan ? planPresence(plan.items) : null;
   const planned = plan ? plannedSectionsCache(plan) : null;
-  // Only the plan window's availability is shown on a row (contractRequest: a batch read in server/catalog).
+  // Only the plan window's availability is shown on a row: one batch read for every row of the page.
   const windowTerms = planWindowTerms(window);
+  const histories = await safe("the results' availability", () =>
+    coursesAvailability(
+      items.map((summary) => summary.code),
+      windowTerms,
+    ),
+  );
   const rows = await Promise.all(
     items.map(async (summary) => {
-      const [course, history] = await Promise.all([
-        safe(`course ${summary.code}`, () => getCourse(term, summary.code)),
-        safe(`the history of ${summary.code}`, () => courseAvailability(summary.code, windowTerms)),
-      ]);
+      const course = await safe(`course ${summary.code}`, () => getCourse(term, summary.code));
+      const history = histories?.get(summary.code) ?? null;
       const shown = course ? primarySections(course.sections).slice(0, MAX_ROW_SECTIONS) : [];
       const terms = history ? addToPlanTerms(history, window) : [];
       const [registerAs, warnings] = await Promise.all([

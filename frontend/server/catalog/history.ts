@@ -10,16 +10,29 @@ import {
 import { listTermMetas } from "@/server/catalog/meta";
 import { ensureTermData, isRefreshDue, scheduleBackfill } from "@/server/catalog/refresh";
 import { ingestWindow, resolveTermsImpl } from "@/server/catalog/terms";
-import { getDb } from "@/server/db";
+import { getDb, trusted } from "@/server/db";
+
+/** Sections per term of each code, over every ingested term: one aggregate for all the codes. */
+async function sectionCountsByCodeAndTerm(
+  codes: readonly string[],
+): Promise<Map<string, Map<TermCode, number>>> {
+  const out = new Map<string, Map<TermCode, number>>(codes.map((code) => [code, new Map()]));
+  if (codes.length === 0) return out;
+  await getDb();
+  const rows = await CatalogSection.aggregate<{
+    _id: { code: string; term: string };
+    count: number;
+  }>([
+    { $match: { courseCode: trusted({ $in: [...new Set(codes)] }) } },
+    { $group: { _id: { code: "$courseCode", term: "$termCode" }, count: { $sum: 1 } } },
+  ]);
+  for (const row of rows) out.get(row._id.code)?.set(row._id.term, row.count);
+  return out;
+}
 
 /** Sections of a code per term, over every ingested term. */
 async function sectionCountsByTerm(code: string): Promise<Map<TermCode, number>> {
-  await getDb();
-  const rows = await CatalogSection.aggregate<{ _id: string; count: number }>([
-    { $match: { courseCode: code } },
-    { $group: { _id: "$termCode", count: { $sum: 1 } } },
-  ]);
-  return new Map(rows.map((row) => [row._id, row.count]));
+  return (await sectionCountsByCodeAndTerm([code])).get(code) ?? new Map();
 }
 
 export interface AvailabilityReport {
@@ -77,4 +90,38 @@ export async function courseAvailability(
   terms?: readonly TermCode[],
 ): Promise<Availability[]> {
   return (await courseAvailabilityReport(code, terms)).availability;
+}
+
+/**
+ * Availability of many (normalised) codes in the same `terms`, with one term resolution and one aggregate for all
+ * of them (the /courses results: one read per page instead of one per row). Same answers as courseAvailability.
+ */
+export async function coursesAvailability(
+  codes: readonly string[],
+  terms: readonly TermCode[],
+): Promise<Map<string, Availability[]>> {
+  const resolved = await resolveTermsImpl();
+  await Promise.all([
+    ensureTermData(resolved.current, resolved),
+    ensureTermData(resolved.registration, resolved),
+  ]);
+  const [metas, counts] = await Promise.all([listTermMetas(), sectionCountsByCodeAndTerm(codes)]);
+  scheduleBackfill(
+    resolved,
+    ingestWindow(resolved).filter((term) => {
+      const meta = metas.get(term) ?? null;
+      return !meta?.lastSuccessAt && isRefreshDue(meta, false);
+    }),
+  );
+  return new Map(
+    codes.map((code) => [
+      code,
+      computeAvailability({
+        terms,
+        resolved,
+        metas,
+        sectionCounts: counts.get(code) ?? new Map(),
+      }),
+    ]),
+  );
 }
