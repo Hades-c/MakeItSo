@@ -53,12 +53,21 @@ describe("check-built-js", () => {
     const today = sizes.find((entry) => entry.route === "/today")!;
     expect(today.gzipBytes).toBeGreaterThan(150 * 1024);
     expect(today.gzipBytes).toBeLessThan(152 * 1024);
-    const { errors } = checkBuild(buildDir);
+    const { errors } = checkBuild(buildDir, KEY_ROUTES, {});
     expect(MAX_FIRST_LOAD_GZIP_BYTES).toBe(200 * 1024);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatch(
       /^\/plan: first-load JS 2\d\d\.\d KB gzipped, over the 200 KB budget$/,
     );
+    // A temporary ceiling turns it into a warning while the page stays under the ceiling...
+    const under = checkBuild(buildDir, KEY_ROUTES, { "/plan": 230 });
+    expect(under.errors).toEqual([]);
+    expect(under.warnings[0]).toMatch(
+      /^\/plan: .* over the 200 KB budget \(temporary ceiling 230 KB\)$/,
+    );
+    // ...and an error once it grows past it.
+    const over = checkBuild(buildDir, KEY_ROUTES, { "/plan": 210 });
+    expect(over.errors[0]).toMatch(/^\/plan: .* over its temporary 210 KB ceiling$/);
   });
 
   it("reports a key route missing from the stats, and a build that has not run", () => {

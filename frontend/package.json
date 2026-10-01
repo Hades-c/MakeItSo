@@ -9,6 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "check:css": "node scripts/check-built-css.mjs",
+    "check:js": "node scripts/check-built-js.mjs",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint .",

@@ -60,6 +60,9 @@ jobs:
       # Type floor (no font size below 12px) and CSS budget (< 80 KB gzipped) on the built stylesheets.
       - run: npm run check:css
 
+      # First-load JS budget (< 200 KB gzipped) on the key pages, with temporary ceilings for the ones still over.
+      - run: npm run check:js
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
