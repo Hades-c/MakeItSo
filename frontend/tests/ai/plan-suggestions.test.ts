@@ -20,12 +20,19 @@ import * as route from "@/app/api/ai/plan-suggestions/route";
 import { PlanSuggestionsResultSchema } from "@/lib/api/ai";
 import type { PlanProgress, PlanView } from "@/lib/types/plan";
 import AiCache from "@/models/AiCache";
+import CatalogSection from "@/models/CatalogSection";
+import RateLimit from "@/models/RateLimit";
 import { readDataBlocks } from "@/server/ai/blocks";
 import { GROUNDING_FAILED_MESSAGE, GROUNDING_RETRY_NOTE } from "@/server/ai/features/common";
-import { NO_CANDIDATES_MESSAGE } from "@/server/ai/features/plan-suggestions";
+import {
+  FLAG_NOTES,
+  NO_CANDIDATES_MESSAGE,
+  withFlagNotes,
+} from "@/server/ai/features/plan-suggestions";
 import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
 import { SYSTEM } from "@/server/ai/prompts/plan-suggestions";
 import { REGENERATION_QUOTA_MESSAGE } from "@/server/ai/usage";
+import { invalidateTermIndex } from "@/server/catalog/store";
 import { isDefinedRoute } from "@/server/http";
 import { getPlan, getProgress, listDrafts, saveDraft } from "@/server/plan";
 
@@ -324,5 +331,71 @@ describe("personal cache and regenerations", () => {
     expect(b.cached).toBe(false);
     expect(store.of(a.id)).toHaveLength(1);
     expect(await AiCache.countDocuments({ feature: "plan-suggestions", scope: "user" })).toBe(2);
+  });
+
+  it("stays cached when only seats change (the catalog refreshes every 15 minutes)", async () => {
+    await signIn();
+    const first = (await okDraft(await post({}))).data.draft;
+    const sections = await CatalogSection.find({ termCode: "202602" }).select("_id").lean();
+    expect(sections.length).toBeGreaterThan(10);
+    await CatalogSection.bulkWrite(
+      sections.map((section, index) => ({
+        updateOne: {
+          filter: { _id: section._id },
+          update: { $set: { "enrollment.remaining": (index * 7919) % 41 } },
+        },
+      })),
+    );
+    // A catalog refresh rebuilds the in-memory term index.
+    invalidateTermIndex("202602");
+    const second = await okDraft(await post({}));
+    expect(second.cached).toBe(true);
+    expect(second.data.draft.id).toBe(first.id);
+    expect(mockAiRequests()).toHaveLength(1);
+    expect(saveDraft).toHaveBeenCalledTimes(1);
+    // Seats are never part of the prompt.
+    expect(JSON.stringify(mockAiRequests()[0]!.params)).not.toMatch(/openSeats|remaining/);
+  });
+
+  it("is a miss when a suggested course is no longer offered in the term", async () => {
+    await signIn();
+    const first = (await okDraft(await post({}))).data.draft;
+    const gone = first.items[0]!.courseCode;
+    await CatalogSection.deleteMany({ termCode: "202602", courseCode: gone });
+    invalidateTermIndex("202602");
+    const second = await okDraft(await post({}));
+    expect(second.cached).toBe(false);
+    expect(second.data.draft.items.map((i) => i.courseCode)).not.toContain(gone);
+  });
+
+  it("a regenerate after the plan changed is a plain generation (no regeneration is spent)", async () => {
+    await signIn();
+    await okDraft(await post({}));
+    state.view = planView([
+      ...state.view.items,
+      planItem({ termCode: "202602", courseCode: "ART 101", status: "planned" }),
+    ]);
+    expect((await okDraft(await post({ regenerate: true }))).cached).toBe(false);
+    expect(await RateLimit.countDocuments({ key: /^ai-regenerations-/ })).toBe(0);
+    // A regenerate of the current answer does spend one.
+    await okDraft(await post({ regenerate: true }));
+    const [counter] = await RateLimit.find({ key: /^ai-regenerations-/ }).lean();
+    expect(counter?.count).toBe(1);
+  });
+});
+
+describe("restriction flags (flag, never block)", () => {
+  it("appends a server-written note per flag, within the draft's 400 characters", () => {
+    expect(withFlagNotes("Counts toward SSRQ.", [])).toBe("Counts toward SSRQ.");
+    expect(withFlagNotes("Counts toward SSRQ.", ["permission-required"])).toBe(
+      `Counts toward SSRQ. ${FLAG_NOTES["permission-required"]}`,
+    );
+    const long = withFlagNotes("x ".repeat(200).trim(), [
+      "restricted-standing",
+      "comp-met-w-section",
+      "permission-required",
+    ]);
+    expect(long.length).toBeLessThanOrEqual(400);
+    expect(long.endsWith(FLAG_NOTES["permission-required"])).toBe(true);
   });
 });

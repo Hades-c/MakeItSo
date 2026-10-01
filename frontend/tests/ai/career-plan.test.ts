@@ -17,9 +17,11 @@ import {
 import * as route from "@/app/api/ai/career-plan/route";
 import { CareerPlanResultSchema } from "@/lib/api/ai";
 import type { PlanView } from "@/lib/types/plan";
+import CatalogSection from "@/models/CatalogSection";
 import { readDataBlocks } from "@/server/ai/blocks";
 import { groundCareerPlan, officialOnly } from "@/server/ai/features/career-plan";
 import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
+import { invalidateTermIndex } from "@/server/catalog/store";
 import { isDefinedRoute } from "@/server/http";
 import { getPlan, listDrafts, saveDraft } from "@/server/plan";
 import { programNames } from "@/server/programs";
@@ -150,6 +152,29 @@ describe("POST /api/ai/career-plan", () => {
     expect((await bodyOf(res)).kind).toBe("invalid");
     expect(mockAiRequests()).toHaveLength(2);
     expect(saveDraft).not.toHaveBeenCalled();
+  });
+});
+
+describe("career-plan cache", () => {
+  it("stays cached when only seats change", async () => {
+    await signIn();
+    expect((await post({ careerSlug: "software-engineering" })).status).toBe(200);
+    const sections = await CatalogSection.find({ termCode: "202602" }).select("_id").lean();
+    await CatalogSection.bulkWrite(
+      sections.map((section, index) => ({
+        updateOne: {
+          filter: { _id: section._id },
+          update: { $set: { "enrollment.remaining": (index * 7919) % 41 } },
+        },
+      })),
+    );
+    invalidateTermIndex("202602");
+    const again = CareerPlanResultSchema.parse(
+      await bodyOf(await post({ careerSlug: "software-engineering" })),
+    );
+    expect(again).toMatchObject({ kind: "ok", cached: true });
+    expect(mockAiRequests()).toHaveLength(1);
+    expect(saveDraft).toHaveBeenCalledTimes(1);
   });
 });
 
