@@ -1,7 +1,15 @@
 import mongoose from "mongoose";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
-import { DB_CONNECT_OPTIONS, disconnectDb, getDb, trusted } from "@/server/db";
+import {
+  DB_CONNECT_OPTIONS,
+  DbUnavailableError,
+  disconnectDb,
+  getDb,
+  noteTopology,
+  trusted,
+} from "@/server/db";
+import { toErrorResponse } from "@/server/http/errors";
 import { EnvError, resetEnvCache } from "@/server/env";
 
 let testDb: TestDb;
@@ -49,9 +57,21 @@ describe("getDb", () => {
     expect(await Probe.countDocuments({ email: trusted({ $ne: null }) })).toBe(1);
   });
 
-  it("uses a 5 s server selection timeout and no command buffering", () => {
-    expect(DB_CONNECT_OPTIONS.serverSelectionTimeoutMS).toBe(5_000);
+  it("bounds every wait (selection 3 s, connect 5 s, a silent socket 10 s) and buffers no commands", () => {
+    expect(DB_CONNECT_OPTIONS.serverSelectionTimeoutMS).toBe(3_000);
+    expect(DB_CONNECT_OPTIONS.connectTimeoutMS).toBe(5_000);
+    expect(DB_CONNECT_OPTIONS.socketTimeoutMS).toBe(10_000);
     expect(DB_CONNECT_OPTIONS.bufferCommands).toBe(false);
+  });
+
+  it("fails fast while the driver sees no reachable server, and recovers when one answers", async () => {
+    await getDb();
+    noteTopology({ servers: new Map([["127.0.0.1:1", { type: "Unknown" }]]) });
+    const started = performance.now();
+    await expect(getDb()).rejects.toBeInstanceOf(DbUnavailableError);
+    expect(performance.now() - started).toBeLessThan(100);
+    noteTopology({ servers: new Map([["127.0.0.1:1", { type: "Standalone" }]]) });
+    await expect(getDb()).resolves.toBe(mongoose);
   });
 
   it("rejects with a clear EnvError when MONGODB_URI is missing, then recovers once it is set", async () => {
@@ -71,10 +91,30 @@ describe("getDb", () => {
     // Fails after ~serverSelectionTimeoutMS instead of the driver's 30 s default.
     expect(elapsed).toBeLessThan(15_000);
 
-    // The failure must not be replayed: pointing at a live server makes the very next call succeed.
+    // The same unreachable URI fails fast for a while instead of waiting out another timeout...
+    const again = Date.now();
+    await expect(getDb()).rejects.toBeInstanceOf(DbUnavailableError);
+    expect(Date.now() - again).toBeLessThan(100);
+
+    // ...but the failure is not replayed: pointing at a live server makes the very next call succeed.
     process.env.MONGODB_URI = testDb.uri;
     const db = await getDb();
     expect(db.connection.readyState).toBe(mongoose.ConnectionStates.connected);
     expect(db.connection.name).toBe(new URL(testDb.uri).pathname.slice(1));
   });
+});
+
+describe("toErrorResponse: database outages", () => {
+  it.each(["DbUnavailableError", "MongoServerSelectionError", "MongoNetworkTimeoutError"])(
+    "answers %s with 503 unavailable and Retry-After",
+    async (name) => {
+      const error = Object.assign(new Error("db down"), { name });
+      const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const res = toErrorResponse(error);
+      spy.mockRestore();
+      expect(res.status).toBe(503);
+      expect(res.headers.get("retry-after")).toBe("10");
+      expect((await res.json()).error.code).toBe("unavailable");
+    },
+  );
 });

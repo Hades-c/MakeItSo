@@ -55,6 +55,29 @@ function hasName(error: unknown, name: string): boolean {
   return typeof error === "object" && error !== null && (error as { name?: unknown }).name === name;
 }
 
+/** Retry-After while the database is unavailable (server/db.ts fails fast for about this long). */
+const DB_RETRY_AFTER_SEC = 10;
+
+const DB_UNAVAILABLE_ERRORS = new Set([
+  "DbUnavailableError",
+  "MongoServerSelectionError",
+  "MongooseServerSelectionError",
+  "MongoNetworkError",
+  "MongoNetworkTimeoutError",
+  "MongoTopologyClosedError",
+  "MongoNotConnectedError",
+  "MongoPoolClearedError",
+]);
+
+/** The database could not be reached (selection timed out, network failure, breaker open): a 503, not a 500. */
+export function isDbUnavailable(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    DB_UNAVAILABLE_ERRORS.has(String((error as { name?: unknown }).name))
+  );
+}
+
 /** MongoDB duplicate key (E11000), from the driver or a mongoose bulk write. */
 export function isDuplicateKeyError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
@@ -92,6 +115,16 @@ export function toErrorResponse(error: unknown): NextResponse<ApiErrorBody> {
   }
   if (isDuplicateKeyError(error)) {
     return jsonError(409, "conflict", "That already exists.");
+  }
+  if (isDbUnavailable(error)) {
+    console.error("[api] database unavailable:", error instanceof Error ? error.message : error);
+    return jsonError(
+      503,
+      "unavailable",
+      "MakeItSo's database is not responding. Try again in a moment.",
+      undefined,
+      { "Retry-After": String(DB_RETRY_AFTER_SEC) },
+    );
   }
   if (hasName(error, "ExternalFetchError")) {
     console.error("[api] upstream failure:", error);
