@@ -312,3 +312,52 @@ test("keyboard focus shows a Lake Blue ring straight away, never red", async ({
     expect(ring).toEqual({ style: "solid", width: "2px", color: focusToken });
   }
 });
+
+test("keyboard focus is never hidden under the bottom tabs or the sticky top bar (WCAG 2.4.11)", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  const email = uniqueEmail("e2e-focus");
+  await registerViaApi(request, { name: "Focus Tester", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+
+  for (const route of ["/today", "/courses", "/plan?tab=four-year", "/careers"]) {
+    await test.step(route, async () => {
+      await page.goto(route);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      // Forward through the page, then back up: each newly focused control must be clear of every fixed or sticky
+      // bar (the bottom tabs on phones, the top bar everywhere) unless it is inside that bar.
+      for (const key of [
+        ...Array<string>(30).fill("Tab"),
+        ...Array<string>(30).fill("Shift+Tab"),
+      ]) {
+        await page.keyboard.press(key);
+        const hidden = await page.evaluate(() => {
+          const el = document.activeElement as HTMLElement | null;
+          if (!el || el === document.body) return null;
+          // The skip link is itself a fixed overlay above the top bar while focused.
+          if (getComputedStyle(el).position === "fixed") return null;
+          const bars = [
+            document.querySelector<HTMLElement>("[data-testid=bottom-tabs]"),
+            document.querySelector<HTMLElement>("header"),
+          ].filter((bar): bar is HTMLElement => {
+            if (!bar || bar.contains(el)) return false;
+            const s = getComputedStyle(bar);
+            return s.display !== "none" && (s.position === "fixed" || s.position === "sticky");
+          });
+          const r = el.getBoundingClientRect();
+          if (r.height === 0) return null;
+          for (const bar of bars) {
+            const b = bar.getBoundingClientRect();
+            const overlap = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top);
+            if (overlap > 1)
+              return `${el.outerHTML.slice(0, 100)} under ${bar.tagName} by ${overlap}px`;
+          }
+          return null;
+        });
+        expect(hidden, `${route} ${key}`).toBeNull();
+      }
+    });
+  }
+});

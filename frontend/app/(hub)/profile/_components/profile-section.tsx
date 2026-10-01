@@ -12,7 +12,7 @@ export interface ProfileSectionProps {
 
 /**
  * One card per profile area: a labelled <section> with the Lakeside card look (server-compatible). Its in-page
- * link lands 1.5rem below the sticky top bar (the page's html scroll-padding, ./focus-clearance.tsx, clears the bar).
+ * link lands 1.5rem below the sticky top bar (html scroll-padding in app/globals.css clears the bar).
  */
 export function ProfileSection({
   id,

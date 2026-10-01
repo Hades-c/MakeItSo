@@ -356,11 +356,20 @@
     outline-color: var(--focus);
   }
 
+  /* Keyboard focus stays clear of the fixed bars (WCAG 2.2 SC 2.4.11 Focus Not Obscured): browsers scroll a newly
+   * focused control into view only when it is outside the scrollport, not when it is under a fixed or sticky bar,
+   * unless the root scroller has scroll-padding (scroll-margin on the control is ignored for focus in Chromium).
+   * Top: the sticky top bar (58-64px) at every width. Bottom: the fixed bottom tabs (about 63px plus the
+   * home-indicator inset) below the md breakpoint (720px), where they show. */
   html {
     background-color: var(--bg);
     color: var(--fg);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    scroll-padding-top: 4.5rem;
+    @media (width < 45rem) {
+      scroll-padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
   }
 
   body {

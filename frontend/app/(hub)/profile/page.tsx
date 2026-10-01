@@ -11,7 +11,6 @@ import { readEnv } from "@/server/env";
 import { AcademicsForm } from "./_components/academics-form";
 import { AiConsentPanel } from "./_components/ai-consent-panel";
 import { DeleteAccount, DownloadData } from "./_components/data-controls";
-import { FocusClearance } from "./_components/focus-clearance";
 import { InterestsPicker } from "./_components/interests-picker";
 import { NameForm } from "./_components/name-form";
 import { PasswordForm } from "./_components/password-form";
@@ -44,7 +43,6 @@ export default async function ProfilePage() {
 
   return (
     <div className="max-w-3xl">
-      <FocusClearance />
       <PageHeader
         title="Profile"
         subtitle="Your account, your academics and what MakeItSo keeps about you."

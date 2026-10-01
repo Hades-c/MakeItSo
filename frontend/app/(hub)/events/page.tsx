@@ -5,7 +5,6 @@ import { formatLongDate } from "@/lib/format";
 import { now } from "@/server/clock";
 import { readEnv } from "@/server/env";
 import { featureMetadata, requireFeature } from "@/server/features";
-import { FocusClearance } from "../profile/_components/focus-clearance";
 import { EventSourcesCard } from "./_components/event-sources";
 import { EventsFilters } from "./_components/events-filters";
 import { EventsResults } from "./_components/events-results";
@@ -22,7 +21,6 @@ import { rangeWindow } from "./_lib/range";
  * - generateMetadata is featureMetadata() and requireFeature() is the first line (404 while the flag is off; no
  *   static `metadata`, no loading.tsx).
  * - "Today" and every date boundary come from the server's now() in APP_TIMEZONE, rendered on the server.
- * - Focus is kept clear of the fixed bars (FocusClearance, until globals.css has the scroll-padding).
  * - The page itself reads nothing: each data block is an async server component in its own Suspense boundary, so
  *   a slow read (LibCal's inline refresh waits up to 5 s) never holds up the rest, and each block has its own
  *   loading, empty and error state.
@@ -42,7 +40,6 @@ export default async function EventsPage({
 
   return (
     <>
-      <FocusClearance />
       <PageHeader
         kicker={formatLongDate(at, timeZone)}
         title="Events"

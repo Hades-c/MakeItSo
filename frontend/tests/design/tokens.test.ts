@@ -155,4 +155,14 @@ describe("Lakeside tokens", () => {
     expect(sizes.length).toBe(7);
     expect(Math.min(...sizes)).toBe(12);
   });
+
+  it("keeps keyboard focus clear of the sticky top bar and the phone bottom tabs on every page (WCAG 2.4.11)", () => {
+    const html = css.match(/\n  html \{[\s\S]*?\n  \}\n/)?.[0] ?? "";
+    expect(html).toMatch(/scroll-padding-top:\s*4\.5rem/);
+    // Same breakpoint as the bottom tabs (md:hidden, md = 45rem = 720px), cleared by more than the tab height.
+    expect(css).toMatch(/--breakpoint-md:\s*45rem/);
+    expect(html).toMatch(
+      /@media \(width < 45rem\) \{\s*scroll-padding-bottom:\s*calc\(4\.5rem \+ env\(safe-area-inset-bottom\)\)/,
+    );
+  });
 });
