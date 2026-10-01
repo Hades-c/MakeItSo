@@ -45,6 +45,7 @@ export interface AccountDataHandler {
 const ACCOUNT_DATA_MODULES: ReadonlyArray<() => Promise<unknown>> = [
   () => import("@/server/auth"),
   () => import("@/server/plan"),
+  () => import("@/server/ai"),
 ];
 
 const registry = new Map<string, AccountDataHandler>();
