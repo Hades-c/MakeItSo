@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input, controlClass } from "@/components/ui/input";
@@ -119,8 +119,8 @@ export function ManualEntryForm({ terms }: { terms: readonly string[] }) {
       fallback: "Could not add that course. Please try again.",
     });
     if (result.ok) {
-      toast.success(`Added ${result.value.item.courseCode} to your plan.`);
-      for (const warning of result.value.warnings) toast.warning(warning.message);
+      notify.success(`Added ${result.value.item.courseCode} to your plan.`);
+      for (const warning of result.value.warnings) notify.warning(warning.message);
       setCourseCode("");
       setTitle("");
       setCredits("1");

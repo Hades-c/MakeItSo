@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ChevronDown, RotateCcw, Trash2, TriangleAlert } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CourseCode } from "@/components/ui/course-code";
@@ -120,7 +120,7 @@ export function PlanItemRow({
     // The row leaves the page with the refresh: say it in a toast (announced, outside the row), and move focus
     // to the term's heading so the keyboard user keeps their place.
     if (result.ok) {
-      toast.success(`Removed ${label} from your plan.`);
+      notify.success(`Removed ${label} from your plan.`);
       document.getElementById(focusAfterRemove)?.focus();
     }
   };

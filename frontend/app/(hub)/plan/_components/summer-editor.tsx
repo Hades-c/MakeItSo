@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Pencil, Plus, Sun, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -286,7 +286,7 @@ function ActivityRow({
                 { fallback: "Could not remove that. Please try again." },
               );
               if (result.ok) {
-                toast.success(`Removed ${activity.title}.`);
+                notify.success(`Removed ${activity.title}.`);
                 // The row leaves with the refresh: focus the "Add a summer plan" heading, which stays.
                 document.getElementById("summer-add-title")?.focus();
               }
@@ -359,7 +359,7 @@ export function SummerEditor({
                 const result = await action.run(() => callApi(planApi.addSummer, { body }), {
                   fallback: "Could not add that. Please try again.",
                 });
-                if (result.ok) toast.success(`Added ${result.value.activity.title}.`);
+                if (result.ok) notify.success(`Added ${result.value.activity.title}.`);
                 return result.ok;
               }}
             />

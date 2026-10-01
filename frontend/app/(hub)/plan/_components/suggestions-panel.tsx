@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, LoaderCircle, Plus, Sparkles, Undo2, X } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/notify";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
 import { CourseCode } from "@/components/ui/course-code";
@@ -110,8 +110,8 @@ function DraftCard({
     if (result.ok) {
       focusRow.current = row.key;
       setAdded((previous) => new Set(previous).add(row.key));
-      toast.success(`Added ${row.courseCode} to ${termLabel(row.termCode)}.`);
-      for (const warning of result.value.warnings) toast.warning(warning.message);
+      notify.success(`Added ${row.courseCode} to ${termLabel(row.termCode)}.`);
+      for (const warning of result.value.warnings) notify.warning(warning.message);
     }
   };
 
@@ -121,7 +121,7 @@ function DraftCard({
       { fallback: "Could not close these suggestions. Please try again." },
     );
     if (result.ok) {
-      toast.success(status === "accepted" ? "Suggestions closed." : "Suggestions dismissed.");
+      notify.success(status === "accepted" ? "Suggestions closed." : "Suggestions dismissed.");
       onClosed();
     }
   };

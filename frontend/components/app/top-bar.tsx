@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { CommandPalette, CommandPaletteTrigger } from "./command-palette";
+import { CommandPaletteTrigger } from "./command-palette-trigger";
+import { LazyCommandPalette } from "./lazy-command-palette";
 import type { NavKey } from "./nav-items";
 import { SearchForm } from "./search-form";
 import { ThemeToggle } from "./theme-toggle";
@@ -32,7 +33,7 @@ export function TopBar({ user, nav }: TopBarProps) {
         <ThemeToggle />
         <UserMenu name={user.name} email={user.email} />
       </div>
-      <CommandPalette nav={nav} />
+      <LazyCommandPalette nav={nav} />
     </header>
   );
 }

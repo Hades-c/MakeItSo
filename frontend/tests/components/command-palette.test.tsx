@@ -448,3 +448,15 @@ describe("CommandPalette", () => {
     );
   });
 });
+
+describe("LazyCommandPalette (loads on first open)", () => {
+  afterEach(() => act(() => closeCommandPalette()));
+
+  it("renders nothing until opened, then opens the palette from ⌘K", async () => {
+    const { LazyCommandPalette } = await import("@/components/app/lazy-command-palette");
+    render(<LazyCommandPalette />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.keyDown(window, { key: "k", metaKey: true });
+    expect(await screen.findByRole("dialog", { name: "Search MakeItSo" })).toBeVisible();
+  });
+});

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { signOut } from "next-auth/react";
 import { LogOut, UserRound } from "lucide-react";
 import {
   DropdownMenu,
@@ -77,7 +76,12 @@ export function UserMenu({ name, email }: UserMenuProps) {
           ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => void signOut({ callbackUrl: "/login" })}>
+        {/* next-auth/react loads on use: it is not needed for anything else on a hub page's first load. */}
+        <DropdownMenuItem
+          onSelect={() =>
+            void import("next-auth/react").then(({ signOut }) => signOut({ callbackUrl: "/login" }))
+          }
+        >
           <LogOut aria-hidden />
           Sign out
         </DropdownMenuItem>
