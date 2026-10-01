@@ -16,6 +16,9 @@ import { nextStep, prevStep, stepHref, type OnboardingStep } from "../_lib/steps
  * Small building blocks shared by the steps: a native <select> in the Lakeside control style (long official-name
  * lists stay usable on phones and with assistive tech), the Back / Skip / Continue row, a polite status line and a
  * plan item row.
+ *
+ * Step links never prefetch: the steps differ only in `?step=`, and with prefetching Next 16 applied the prefetched
+ * step's document title (generateMetadata) to the page being shown, so the route announcer read the wrong step.
  */
 
 export const NativeSelect = React.forwardRef<
@@ -54,12 +57,14 @@ export function StepActions({ step, primary, hideSkip }: StepActionsProps) {
       <div className="flex flex-wrap gap-2">
         {back ? (
           <Button asChild variant="ghost">
-            <Link href={stepHref(back)}>Back</Link>
+            <Link href={stepHref(back)} prefetch={false}>
+              Back
+            </Link>
           </Button>
         ) : null}
         {next && !hideSkip ? (
           <Button asChild variant="secondary">
-            <Link href={stepHref(next)} data-testid="skip-step">
+            <Link href={stepHref(next)} prefetch={false} data-testid="skip-step">
               Skip this step
             </Link>
           </Button>
@@ -110,7 +115,9 @@ export function ContinueLink({ step, children }: { step: OnboardingStep; childre
   if (!next) return null;
   return (
     <Button asChild>
-      <Link href={stepHref(next)}>{children ?? "Continue"}</Link>
+      <Link href={stepHref(next)} prefetch={false}>
+        {children ?? "Continue"}
+      </Link>
     </Button>
   );
 }

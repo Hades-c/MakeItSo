@@ -183,7 +183,9 @@ test("a new student completes every step, accessibly, and lands on Today", async
   await expect(page.getByTestId("search-result").first()).toContainText("Completed in Spring 2026");
   await page.getByLabel("Davidson course code").fill("MAT 113");
   await page.getByRole("button", { name: "Add credit" }).click();
-  await expect(page.getByText("MAT 113 is already listed for that term.")).toBeVisible();
+  await expect(
+    page.getByText("MAT 113 is already listed for that term.", { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("form", { name: "Add AP, IB or transfer credit" }).getByRole("alert"),
   ).toContainText("Check the highlighted field");

@@ -32,6 +32,7 @@ export function StepList({
             <li key={item}>
               <Link
                 href={stepHref(item)}
+                prefetch={false}
                 aria-current={current ? "step" : undefined}
                 className={cn(
                   "flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-sm",
