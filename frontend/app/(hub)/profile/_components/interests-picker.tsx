@@ -59,8 +59,9 @@ export function InterestsPicker({ initial, careers }: InterestsPickerProps) {
               {careers
                 .filter((career) => career.cluster === cluster)
                 .map((career) => (
-                  <li key={career.slug}>
+                  <li key={career.slug} className="max-w-full min-w-0">
                     <ToggleChip
+                      wrap
                       pressed={chosen.includes(career.slug)}
                       onClick={() => toggle(career.slug)}
                     >

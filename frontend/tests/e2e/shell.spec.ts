@@ -377,3 +377,24 @@ test("the open account menu leaves the page accessible (no aria-hidden focusable
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Account menu/ })).toBeFocused();
 });
+
+test("pages reflow at 320px without sideways scrolling (WCAG 1.4.10)", async ({
+  page,
+  request,
+}) => {
+  test.skip(!isMobile(page), "phones only");
+  await page.setViewportSize({ width: 320, height: 640 });
+  for (const route of PUBLIC_ROUTES) {
+    await page.goto(route);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(await horizontalOverflow(page), `${route} scrolls sideways`).toBeLessThanOrEqual(0);
+  }
+  const email = uniqueEmail("e2e-reflow");
+  await registerViaApi(request, { name: "Reflow Tester", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+  for (const route of ["/profile", "/onboarding?step=interests", "/today", "/courses"]) {
+    await page.goto(route);
+    await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+    expect(await horizontalOverflow(page), `${route} scrolls sideways`).toBeLessThanOrEqual(0);
+  }
+});

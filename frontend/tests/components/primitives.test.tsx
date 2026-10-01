@@ -128,6 +128,23 @@ describe("interactive primitives", () => {
     expect(chip).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("ToggleChip wraps a long label only when asked to, keeping a 44px minimum height", () => {
+    render(
+      <>
+        <ToggleChip pressed={false}>Short</ToggleChip>
+        <ToggleChip pressed wrap>
+          Financial Planning &amp; Wealth Management
+        </ToggleChip>
+      </>,
+    );
+    const short = screen.getByRole("button", { name: "Short" });
+    expect(short).toHaveClass("h-11", "whitespace-nowrap");
+    const long = screen.getByRole("button", { name: /Wealth Management/ });
+    expect(long).toHaveClass("whitespace-normal", "max-w-full", "min-h-11");
+    expect(long).not.toHaveClass("whitespace-nowrap");
+    expect(long).not.toHaveClass("h-11");
+  });
+
   it("Checkbox and Switch toggle with their labels", async () => {
     render(
       <>

@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Chip: a static pill for requirement codes, tags and facts ("VPRQ", "LTRQ · now"); `wrap` lets long text wrap.
- * ToggleChip: a pressable filter pill (aria-pressed), 44px tall on touch layouts.
+ * ToggleChip: a pressable filter pill (aria-pressed), 44px tall on touch layouts; `wrap` lets a long label (an
+ * interest name at 320px) wrap onto a second line instead of pushing the page sideways (WCAG 1.4.10 reflow).
  */
 const chipVariants = cva(
   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap [&_svg]:size-3 [&_svg]:shrink-0",
@@ -46,16 +47,21 @@ export interface ToggleChipProps extends Omit<
   "aria-pressed"
 > {
   pressed: boolean;
+  /** Long labels wrap inside the chip (at least 44px / 34px tall) instead of overflowing a narrow phone. */
+  wrap?: boolean;
 }
 
 const ToggleChip = React.forwardRef<HTMLButtonElement, ToggleChipProps>(
-  ({ className, pressed, type, ...props }, ref) => (
+  ({ className, pressed, wrap = false, type, ...props }, ref) => (
     <button
       ref={ref}
       type={type ?? "button"}
       aria-pressed={pressed}
       className={cn(
-        "inline-flex h-11 items-center gap-1.5 rounded-full border border-line-strong bg-surface px-3.5 text-sm font-medium whitespace-nowrap text-fg-2 transition-colors md:h-8.5 md:px-3",
+        "inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-surface px-3.5 text-sm font-medium text-fg-2 transition-colors md:px-3",
+        wrap
+          ? "min-h-11 max-w-full min-w-0 py-1.5 text-left [overflow-wrap:anywhere] whitespace-normal md:min-h-8.5 md:py-1"
+          : "h-11 whitespace-nowrap md:h-8.5",
         "hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:opacity-50",
         "aria-pressed:border-primary aria-pressed:bg-primary-wash aria-pressed:text-primary",
         "[&_svg]:size-3.5 [&_svg]:shrink-0",
