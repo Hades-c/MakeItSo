@@ -63,6 +63,29 @@ async function choose(page: Page, label: string, option: string) {
   await expect(page.getByRole("combobox", { name: label })).toContainText(option);
 }
 
+/**
+ * Tabs through the page and lists every focused control whose box lies entirely under the fixed bottom tabs
+ * (WCAG 2.2 SC 2.4.11 Focus Not Obscured), which axe cannot detect. Phones only (the tabs are hidden from md).
+ */
+async function obscuredByBottomTabs(page: Page, presses: number) {
+  const hidden: string[] = [];
+  for (let i = 0; i < presses; i++) {
+    await page.keyboard.press("Tab");
+    const offender = await page.evaluate(() => {
+      const bar = document.querySelector('[data-testid="bottom-tabs"]');
+      const active = document.activeElement;
+      if (!bar || !(active instanceof HTMLElement) || bar.contains(active)) return null;
+      const box = active.getBoundingClientRect();
+      if (box.height === 0) return null;
+      return box.top >= bar.getBoundingClientRect().top
+        ? `${active.tagName} "${(active.textContent ?? "").trim().slice(0, 40)}" at y=${Math.round(box.top)}`
+        : null;
+    });
+    if (offender) hidden.push(offender);
+  }
+  return hidden;
+}
+
 test("profile: every area renders, accessibly, without sideways scrolling", async ({
   page,
   request,
@@ -90,8 +113,27 @@ test("profile: every area renders, accessibly, without sideways scrolling", asyn
   await page.getByRole("button", { name: "Delete account" }).click();
   await expect(page.getByRole("dialog", { name: "Delete your account?" })).toBeVisible();
   expect(await seriousViolations(page), "axe dialog").toEqual([]);
+  // The open dialog lives in the URL, and a reload shows it again (without submitting anything).
+  await expect(page).toHaveURL(/\/profile\?dialog=delete-account$/);
+  await page.reload();
+  await expect(page.getByRole("dialog", { name: "Delete your account?" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page).toHaveURL(/\/profile$/);
+  // With a select open. Radix Select sets aria-hidden on the shell root, which still holds focusable links, so
+  // axe reports aria-hidden-focus there: a shared components/ui/select.tsx / AppShell matter (contractRequest
+  // filed with W0b). Tab cannot leave the open listbox, so that one rule is set aside for this state only.
+  await page.getByRole("combobox", { name: "Graduation year" }).click();
+  await expect(page.getByRole("listbox")).toBeVisible();
+  const withSelectOpen = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .disableRules(["aria-hidden-focus"])
+    .analyze();
+  expect(
+    withSelectOpen.violations.filter((v) => v.impact === "serious" || v.impact === "critical"),
+    "axe select open",
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
   expect(errors).toEqual([]);
 });
 
@@ -365,4 +407,15 @@ test("profile: delete the account after re-entering the password", async ({ page
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(formError(page)).toHaveText("Invalid email or password");
+});
+
+test("profile: no focused control hides under the phone's bottom tabs", async ({
+  page,
+  request,
+  isMobile,
+}) => {
+  test.skip(!isMobile, "The bottom tabs exist on phones only.");
+  await newStudent(page, request, "e2e-profile-obscured");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await obscuredByBottomTabs(page, 60)).toEqual([]);
 });

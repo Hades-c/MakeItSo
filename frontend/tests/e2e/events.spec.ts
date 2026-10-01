@@ -76,6 +76,29 @@ const chip = (page: Page, name: string) =>
     .locator("label")
     .filter({ hasText: new RegExp(`^${name}$`) });
 
+/**
+ * Tabs through the page and lists every focused control whose box lies entirely under the fixed bottom tabs
+ * (WCAG 2.2 SC 2.4.11 Focus Not Obscured), which axe cannot detect. Phones only (the tabs are hidden from md).
+ */
+async function obscuredByBottomTabs(page: Page, presses: number) {
+  const hidden: string[] = [];
+  for (let i = 0; i < presses; i++) {
+    await page.keyboard.press("Tab");
+    const offender = await page.evaluate(() => {
+      const bar = document.querySelector('[data-testid="bottom-tabs"]');
+      const active = document.activeElement;
+      if (!bar || !(active instanceof HTMLElement) || bar.contains(active)) return null;
+      const box = active.getBoundingClientRect();
+      if (box.height === 0) return null;
+      return box.top >= bar.getBoundingClientRect().top
+        ? `${active.tagName} "${(active.textContent ?? "").trim().slice(0, 40)}" at y=${Math.round(box.top)}`
+        : null;
+    });
+    if (offender) hidden.push(offender);
+  }
+  return hidden;
+}
+
 test("events: grouped by campus day, every item tagged and linked out, accessibly", async ({
   page,
   request,
@@ -150,9 +173,10 @@ test("events: filters live in the URL, and Show more pages through", async ({ pa
   await expect(items(page).first()).toContainText("Watson Fellowship");
   await expect(page.getByRole("checkbox", { name: "Deadlines" })).toBeChecked();
 
-  // Clear, then today only.
-  await page.getByRole("link", { name: "Clear filters" }).click();
+  // Clear (from the keyboard: the link goes away, focus moves to the search box), then today only.
+  await page.getByRole("link", { name: "Clear filters" }).first().press("Enter");
   await expect(page).toHaveURL(/\/events$/);
+  await expect(page.getByRole("searchbox", { name: "Search events" })).toBeFocused();
   await expect(items(page)).toHaveCount(all);
   await chip(page, "Today").click();
   await expect(page).toHaveURL(/\/events\?range=today$/);
@@ -185,10 +209,12 @@ test("events: filters live in the URL, and Show more pages through", async ({ pa
   await page.goto("/events?limit=5");
   await expect(items(page)).toHaveCount(5);
   await expect(page.getByTestId("events-summary")).toContainText("At least 5 items");
-  await page.getByRole("link", { name: "Show more" }).click();
+  await page.getByRole("link", { name: "Show more" }).press("Enter");
   await expect(page).toHaveURL(/\/events\?limit=55$/);
   await expect(items(page)).toHaveCount(all);
   await expect(page.getByRole("link", { name: "Show more" })).toHaveCount(0);
+  // Focus lands on the first newly loaded item, not on <body>.
+  await expect(page.locator('[data-event-index="5"] a[data-event-link]')).toBeFocused();
 });
 
 test("events: the filter form works before JavaScript runs", async ({ browser, request }) => {
@@ -213,4 +239,17 @@ test("events: the filter form works before JavaScript runs", async ({ browser, r
   } finally {
     await context.close();
   }
+});
+
+test("events: no focused control hides under the phone's bottom tabs", async ({
+  page,
+  request,
+  isMobile,
+}) => {
+  test.skip(!isMobile, "The bottom tabs exist on phones only.");
+  await signedInWithFeeds(page, request);
+  await page.goto("/events");
+  await expect(items(page).first()).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(await obscuredByBottomTabs(page, 60)).toEqual([]);
 });
