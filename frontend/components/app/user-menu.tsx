@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { THEME_PREFERENCES, type ThemePreference } from "@/lib/theme";
+import { initials, USER_MENU_TRIGGER_CLASS } from "./user-initials";
 import { useTheme } from "./use-theme";
 
 const THEME_LABELS: Record<ThemePreference, string> = {
@@ -21,31 +22,25 @@ const THEME_LABELS: Record<ThemePreference, string> = {
   dark: "Dark",
 };
 
-/** "Casey Wildcat" → "CW"; falls back to the email's first letter. */
-export function initials(name: string, email: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const letters =
-    words.length >= 2
-      ? `${words[0]?.[0] ?? ""}${words[words.length - 1]?.[0] ?? ""}`
-      : (words[0]?.slice(0, 2) ?? "");
-  return (letters || email.slice(0, 1) || "?").toUpperCase();
-}
+export { initials } from "./user-initials";
 
 export interface UserMenuProps {
   name: string;
   email: string;
+  /** Open on mount (LazyUserMenu mounts the menu when its placeholder button is pressed). */
+  defaultOpen?: boolean;
 }
 
 /** Avatar button with Profile, theme choice and Sign out. */
-export function UserMenu({ name, email }: UserMenuProps) {
+export function UserMenu({ name, email, defaultOpen = false }: UserMenuProps) {
   const { preference, setPreference } = useTheme();
   return (
     // Not modal: a modal menu aria-hides the whole app while its own items stay focusable (axe aria-hidden-focus,
     // serious). Esc and the trigger still close it and return focus.
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} defaultOpen={defaultOpen}>
       <DropdownMenuTrigger
         aria-label={`Account menu for ${name || email}`}
-        className="grid size-11 shrink-0 place-items-center rounded-full border border-line-2 bg-sand text-sm font-strong text-fg transition-colors hover:border-line-strong md:size-9.5"
+        className={USER_MENU_TRIGGER_CLASS}
       >
         <span aria-hidden>{initials(name, email)}</span>
       </DropdownMenuTrigger>

@@ -305,3 +305,21 @@ describe("UserMenu", () => {
     expect(trigger).toHaveFocus();
   });
 });
+
+describe("LazyUserMenu", () => {
+  it("is a plain avatar button until pressed, then the open account menu", async () => {
+    const { LazyUserMenu } = await import("@/components/app/lazy-user-menu");
+    const user = userEvent.setup();
+    render(<LazyUserMenu name="Casey Wildcat" email="casey@davidson.edu" />);
+    const placeholder = screen.getByRole("button", { name: "Account menu for Casey Wildcat" });
+    expect(placeholder).toHaveTextContent("CW");
+    expect(screen.queryByRole("menu")).toBeNull();
+    await user.click(placeholder);
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: /Sign out/ })).toBeInTheDocument();
+    expect(screen.getByTestId("hub-user-email")).toHaveTextContent("casey@davidson.edu");
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByRole("button", { name: "Account menu for Casey Wildcat" })).toHaveFocus();
+  });
+});

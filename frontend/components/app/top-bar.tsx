@@ -4,7 +4,7 @@ import { LazyCommandPalette } from "./lazy-command-palette";
 import type { NavKey } from "./nav-items";
 import { SearchForm } from "./search-form";
 import { ThemeToggle } from "./theme-toggle";
-import { UserMenu } from "./user-menu";
+import { LazyUserMenu } from "./lazy-user-menu";
 import { Wordmark } from "./wordmark";
 
 export interface TopBarProps {
@@ -31,7 +31,7 @@ export function TopBar({ user, nav }: TopBarProps) {
       <div className="ml-auto flex items-center gap-2.5">
         <CommandPaletteTrigger className="md:hidden" />
         <ThemeToggle />
-        <UserMenu name={user.name} email={user.email} />
+        <LazyUserMenu name={user.name} email={user.email} />
       </div>
       <LazyCommandPalette nav={nav} />
     </header>
