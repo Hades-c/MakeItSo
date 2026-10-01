@@ -1,0 +1,26 @@
+/*
+ * The WebTree print view (/plan?tab=next&view=print). Loaded only by that view, and every rule is scoped to a page
+ * that contains [data-plan-print], so nothing here reaches another page even after client navigation. On paper
+ * only the list is printed: the app shell's top bar, sidebar and bottom tabs are left out and the main column
+ * takes the full width. (A shell-wide print stylesheet would be better: contract request for components/app.)
+ */
+@media print {
+  body:has([data-plan-print]) header,
+  body:has([data-plan-print]) aside,
+  body:has([data-plan-print]) nav,
+  body:has([data-plan-print]) [data-print-hide] {
+    display: none !important;
+  }
+  body:has([data-plan-print]) div:has(> main) {
+    display: block !important;
+  }
+  body:has([data-plan-print]) main {
+    padding: 0 !important;
+  }
+  [data-plan-print] table {
+    break-inside: auto;
+  }
+  [data-plan-print] tr {
+    break-inside: avoid;
+  }
+}
