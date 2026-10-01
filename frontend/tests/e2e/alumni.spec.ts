@@ -9,6 +9,7 @@ import {
   newVerifiedAccount,
   PASSWORD,
   seriousViolations,
+  smallTapTargets,
 } from "../w9a/e2e";
 
 /**
@@ -35,9 +36,10 @@ test("a verified @davidson.edu account gets the directory, with provenance and U
   await expect(provenance).toContainText(
     /Compiled from public sources · checked \w{3} \d{1,2}, \d{4} · Request removal\/correction/,
   );
+  // To the privacy notice's alumni section (how to ask privately), not a public code repository.
   await expect(
     provenance.getByRole("link", { name: "Request removal/correction" }),
-  ).toHaveAttribute("href", /^https:\/\//);
+  ).toHaveAttribute("href", "/privacy#alumni");
   const cards = page.locator("[data-alumnus]");
   const total = await cards.count();
   expect(total).toBeGreaterThan(10);
@@ -55,8 +57,13 @@ test("a verified @davidson.edu account gets the directory, with provenance and U
   ).toBeVisible();
   await expect(page.getByText("see LinkedIn").first()).toBeVisible();
 
+  // The sources disclosure shows that it opens.
+  const firstSources = cards.first().locator("summary");
+  await expect(firstSources.locator("svg")).toBeVisible();
+
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   expect(await seriousViolations(page)).toEqual([]);
+  if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
 
   // Filters are a GET form: the URL holds them.
   await page.getByLabel("Career path").selectOption("medicine");
@@ -71,6 +78,21 @@ test("a verified @davidson.edu account gets the directory, with provenance and U
     `Showing ${medicine} of ${total} verified alumni`,
   );
   await expect(page.getByLabel("Career path")).toHaveValue("medicine");
+
+  // Back: the list and the controls both follow the URL (the browser does not restore the old choice).
+  await page.goBack();
+  await expect(page).toHaveURL(/\/alumni$/);
+  await expect(page.getByTestId("alumni-count")).toHaveText(`${total} verified alumni`);
+  await expect(page.getByLabel("Career path")).toHaveValue("");
+  const year = page.getByLabel("Class year");
+  const firstYear = await year.locator("option").nth(1).getAttribute("value");
+  await year.selectOption(firstYear!);
+  if (isMobile(page)) await apply.tap();
+  else await apply.click();
+  await expect(page).toHaveURL(new RegExp(`/alumni\\?.*year=${firstYear}`));
+  await page.goBack();
+  await expect(page).toHaveURL(/\/alumni$/);
+  await expect(page.getByLabel("Class year")).toHaveValue("");
 
   // Nobody matches: an empty state with a way back.
   await page.goto("/alumni?q=zzzz%20nobody");

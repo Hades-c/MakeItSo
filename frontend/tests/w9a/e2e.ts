@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import { registerViaApi, signIn, uniqueEmail } from "../e2e/helpers";
+import { E2E_UNTAGGED_EXEMPTIONS } from "./untagged";
 
 /**
  * Shared helpers for the W9a Playwright specs (tests/e2e/careers.spec.ts, tests/e2e/alumni.spec.ts).
@@ -80,17 +81,20 @@ export function isMobile(page: Page): boolean {
 /**
  * Every aggregated item on the page carries its source tag (PLAN §7): each visible element marked
  * `data-aggregated="<source id>"` contains a visible <SourceTag> of that same source ("Source: …" for screen
- * readers). Returns how many items were checked, so a spec can also require that there were some.
+ * readers). An item marked `data-aggregated="untagged"` passes only with a `data-untagged` reason from
+ * E2E_UNTAGGED_EXEMPTIONS, so a new kind of untagged item fails here instead of passing unmarked. Returns how
+ * many items were checked, so a spec can also require that there were some.
  * (contractRequest: move this into tests/e2e/helpers.ts for the W7/W8/W9 specs.)
  */
 export async function expectAllTagged(page: Page): Promise<number> {
-  const report = await page.evaluate(() => {
+  const report = await page.evaluate((exempt) => {
     const items = [...document.querySelectorAll<HTMLElement>("[data-aggregated]")].filter((el) =>
       el.checkVisibility(),
     );
     const untagged = items
       .filter((item) => {
         const source = item.dataset.aggregated ?? "";
+        if (source === "untagged") return !exempt.includes(item.dataset.untagged ?? "");
         const tags = [...item.querySelectorAll<HTMLElement>("[data-source]")].filter(
           (tag) =>
             tag.dataset.source === source &&
@@ -102,7 +106,44 @@ export async function expectAllTagged(page: Page): Promise<number> {
       })
       .map((item) => `${item.dataset.aggregated}: ${(item.textContent ?? "").trim().slice(0, 60)}`);
     return { count: items.length, untagged };
-  });
+  }, E2E_UNTAGGED_EXEMPTIONS);
   expect(report.untagged, "aggregated items without their source tag").toEqual([]);
   return report.count;
+}
+
+/**
+ * Tap targets in <main> under 44px tall (PLAN §7: tap targets ≥44px on mobile), as readable lines. Checks every
+ * visible link, button and <summary>. Exempt, as WCAG 2.5.8 exempts them: a link inside a sentence (a <p> with
+ * other text around it). A link stretched over its card (an absolutely positioned ::after) is measured by that
+ * card. Visually hidden elements (1px) are skipped.
+ */
+export async function smallTapTargets(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const main = document.querySelector("main");
+    if (!main) return ["no <main>"];
+    const out: string[] = [];
+    for (const el of main.querySelectorAll<HTMLElement>("a[href], button, summary")) {
+      if (!el.checkVisibility()) continue;
+      let rect = el.getBoundingClientRect();
+      if (rect.width <= 1 || rect.height <= 1) continue;
+      const sentence = el.closest("p");
+      if (sentence && sentence !== el) {
+        const own = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+        const around = (sentence.textContent ?? "").replace(/\s+/g, " ").trim();
+        if (around.length > own.length) continue;
+      }
+      const after = getComputedStyle(el, "::after");
+      if (after.position === "absolute" && after.content !== "none") {
+        const card = el.offsetParent;
+        if (card) rect = card.getBoundingClientRect();
+      }
+      if (rect.height < 43.5) {
+        const label = (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 50);
+        out.push(
+          `${el.tagName.toLowerCase()} "${label}": ${Math.round(rect.width)}x${Math.round(rect.height)}`,
+        );
+      }
+    }
+    return out;
+  });
 }
