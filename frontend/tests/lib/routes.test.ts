@@ -39,6 +39,9 @@ describe("href builders (lib/routes.ts)", () => {
     expect(routes.forgotPassword()).toBe("/forgot-password");
     expect(routes.alumnus("stephen-curry")).toBe("/alumni#stephen-curry");
     expect(routes.alumni({ career: "law" })).toBe("/alumni?career=law");
+    expect(routes.plan("next", { term: "202602", view: "print" })).toBe(
+      "/plan?tab=next&term=202602&view=print",
+    );
     expect(routes.today({ day: "2026-10-01" })).toBe("/today?day=2026-10-01");
     expect(routes.today({ day: "" })).toBe("/today");
     expect(routes.onboarding("classes")).toBe("/onboarding?step=classes");

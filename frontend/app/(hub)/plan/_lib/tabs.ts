@@ -1,4 +1,4 @@
-import { PLAN_TABS, parsePlanTab, parseTermParam, queryString, type PlanTab } from "@/lib/routes";
+import { PLAN_TABS, parsePlanTab, parseTermParam, routes, type PlanTab } from "@/lib/routes";
 import type { TermCode } from "@/lib/term";
 
 /**
@@ -27,9 +27,9 @@ export function parsePlanParams(params: SearchParamsRecord): PlanParams {
   };
 }
 
-/** routes.plan plus `view=print` (lib/routes.ts has no view param yet: contract request). */
+/** routes.plan with the print view as a flag. */
 export function planHref(tab: PlanTab, options: { term?: TermCode; print?: boolean } = {}): string {
-  return `/plan${queryString({ tab, term: options.term, view: options.print ? "print" : undefined })}`;
+  return routes.plan(tab, { term: options.term, view: options.print ? "print" : undefined });
 }
 
 export { PLAN_TABS };

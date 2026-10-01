@@ -178,8 +178,9 @@ export const routes = {
       page: params.page && params.page > 1 ? params.page : undefined,
     })}`,
   course: (term: TermCode, code: string) => `/courses/${term}/${courseSlug(code)}`,
-  plan: (tab?: PlanTab, params: { term?: TermCode } = {}) =>
-    `/plan${queryString({ tab, term: params.term })}`,
+  /** /plan at `tab`; `term` = a later WebTree term; `view: "print"` = the WebTree print view (Next semester tab). */
+  plan: (tab?: PlanTab, params: { term?: TermCode; view?: "print" } = {}) =>
+    `/plan${queryString({ tab, term: params.term, view: params.view })}`,
   careers: () => "/careers",
   career: (slug: string) => `/careers/${encodeURIComponent(slug)}`,
   events: (params: EventsParams = {}) =>
