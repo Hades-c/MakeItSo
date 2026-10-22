@@ -138,7 +138,7 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `NEXTAUTH_URL`          | yes\*        | Public URL of the app, e.g. `http://localhost:3000`. \*Optional on Vercel                                 |
 | `APP_ORIGIN`            | production   | Public origin checked against the `Origin` of every POST/PUT/PATCH/DELETE (not needed on Vercel previews) |
 | `ANTHROPIC_API_KEY`     | for AI       | Anthropic API key, used by AI features when `AI_PROVIDER=anthropic`                                       |
-| `AI_PROVIDER`           | no           | `anthropic` (default) or `mock` (tests and e2e; rejected on the Vercel production environment)            |
+| `AI_PROVIDER`           | no           | `anthropic` (default) or `mock` (tests and e2e, answers as model `mock`; rejected on Vercel production)   |
 | `AI_ENABLED`            | no           | All AI features on/off. Default `true` (AI also needs a verified @davidson.edu account and consent)       |
 | `AI_DAILY_TOKEN_BUDGET` | no           | Tokens per day across all users before AI pauses. Default `2000000`                                       |
 | `MAIL_PROVIDER`         | no           | `none`, `console` (codes in the server log; dev/test default) or `resend`. Default `none` in production   |

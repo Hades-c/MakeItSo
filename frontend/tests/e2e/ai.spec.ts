@@ -72,7 +72,8 @@ test("the course-about route walks the gate, then answers and caches", async ({
     servedModel: string;
     data: { about: { summary: string }; provenance: { inputHash: string; promptVersion: string } };
   };
-  expect(body).toMatchObject({ kind: "ok", servedModel: "claude-sonnet-5-5" });
+  // The e2e server runs AI_PROVIDER=mock, whose answers say so (never a Claude model id).
+  expect(body).toMatchObject({ kind: "ok", servedModel: "mock" });
   expect(body.data.about.summary).toMatch(/abstract data types/);
   expect(body.data.provenance.promptVersion).toBe("course-about/1");
 
