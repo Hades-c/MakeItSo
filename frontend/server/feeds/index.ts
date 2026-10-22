@@ -6,7 +6,8 @@ import "server-only";
  *   listEvents({ from, to, sources, kinds, q, limit })  stored items overlapping [from, to) (default now → +14 d),
  *                                                       events + deadlines unless `kinds` says otherwise, soonest
  *                                                       first; an event without an end (Events Digest) counts as
- *                                                       lasting 2 h for the overlap
+ *                                                       lasting 2 h for the overlap; one event listed by several
+ *                                                       sources is one item, its host office's listing (./merge.ts)
  *   listNews({ sources, q, limit })                     latest news, newest first (stale sticky items skipped)
  *   getLibraryHours(date)                               LibCal hours for an America/New_York date
  *   syncFeeds({ sources?, onlyStale? })                 refresh feeds (cron); one FeedSyncResult per source run,

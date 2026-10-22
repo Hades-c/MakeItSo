@@ -7,8 +7,9 @@ import type { ClassStanding } from "@/lib/term";
 import type { FeedItem } from "@/lib/types/feeds";
 import type { DaySchedule, DayScheduleEntry, StudentDeadline } from "@/lib/types/plan";
 import type { ContentDeadline } from "@/server/content/academic-calendar";
+import { mergeListings } from "@/server/feeds/merge";
 import { audienceIncludes, calendarCategoryOf } from "@/server/today/calendar";
-import { etClock, etDay } from "@/server/today/time";
+import { etClock, etDay, TODAY_TIME_ZONE } from "@/server/today/time";
 
 /**
  * One day of the Today timeline (PLAN §3: classes, feed events, deadlines, a now-line in ET, free gaps), as the
@@ -21,7 +22,8 @@ import { etClock, etDay } from "@/server/today/time";
  *   student (dayContentDeadlines: REGISTRAR, office tags): points on the line when they have a published time,
  *   else in `allDay` (listed with the timeline). Registration openings are never drawn as deadlines.
  * - Campus events: see pickTimelineEvents (at most MAX_TIMELINE_EVENTS, ≤ 4 h, open-ended = 2 h, never over one
- *   of the student's classes); the rest are counted in `moreEvents`. Feed deadlines are drawn as deadlines.
+ *   of the student's classes); the rest are counted in `moreEvents`. Feed deadlines are drawn as deadlines. One
+ *   event listed by several sources is one event (server/feeds/merge.ts mergeListings).
  * - The view: 9a–4p, stretched to every item, but never before 7a or past midnight (items outside are listed
  *   under the view by DayTimeline, never dropped).
  */
@@ -264,9 +266,12 @@ export function agendaWindow(items: readonly TimelineItem[]): {
 }
 
 export function buildAgenda(input: AgendaInput): Agenda {
+  // One event listed by several sources is drawn and counted once (listEvents already merges; this keeps the
+  // rule for any caller).
+  const feedItems = mergeListings(input.feedItems, TODAY_TIME_ZONE);
   const events = pickTimelineEvents(
     input.day,
-    input.feedItems,
+    feedItems,
     input.now,
     classSpans(input.schedule.entries),
   );
@@ -276,7 +281,7 @@ export function buildAgenda(input: AgendaInput): Agenda {
     ...studentDeadlineItems(input.day, input.studentDeadlines),
     ...contentDeadlineItems(curated),
     ...events.shown.map(feedItem),
-    ...feedDeadlinesOn(input.day, input.feedItems).map(feedItem),
+    ...feedDeadlinesOn(input.day, feedItems).map(feedItem),
   ];
   return {
     items,
