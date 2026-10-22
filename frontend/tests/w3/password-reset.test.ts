@@ -270,7 +270,7 @@ describe("a reset that verifies an unverified account is a change of owner (revi
         method: "PATCH",
         body: {
           name: "Not The Victim",
-          interests: ["finance"],
+          interests: ["financial-planning"],
           standingOverride: "senior",
           adultAttested: true,
           aiConsent: true,
@@ -359,7 +359,7 @@ describe("a reset that verifies an unverified account is a change of owner (revi
         emailVerifiedAt: verifiedAt,
         aiConsentAt: verifiedAt,
         adultAttestedAt: verifiedAt,
-        interests: ["finance"],
+        interests: ["financial-planning"],
       },
     });
     await postRequest(user.email);
@@ -372,7 +372,7 @@ describe("a reset that verifies an unverified account is a change of owner (revi
       emailVerifiedAt: verifiedAt,
       aiConsentAt: verifiedAt,
       adultAttestedAt: verifiedAt,
-      interests: ["finance"],
+      interests: ["financial-planning"],
     });
   });
 

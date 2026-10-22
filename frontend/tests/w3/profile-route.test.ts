@@ -242,6 +242,26 @@ describe("PATCH /api/profile (strict whitelist)", () => {
     expect((await patch({ interests: ["Software Engineering"] })).status).toBe(400);
   });
 
+  it("accepts only the career-path slugs from server/content (400 interests.N otherwise)", async () => {
+    const user = await signedIn({ interests: ["law"] });
+    const res = await patch({ interests: ["law", "astronaut", "medicine", "not-a-career"] });
+    expect(res.status).toBe(400);
+    expect(await errorOf(res)).toMatchObject({
+      code: "validation_failed",
+      issues: [
+        { path: "interests.1", message: "Pick a career path from the list." },
+        { path: "interests.3", message: "Pick a career path from the list." },
+      ],
+    });
+    // Nothing is written when any slug is unknown.
+    expect((await raw(user.id))?.interests).toEqual(["law"]);
+  });
+
+  it("drops stored interests that are not career-path slugs on read", async () => {
+    await signedIn({ interests: ["astronaut", "law", "Law", "law", "medicine", 7] });
+    expect((await profileOf(await get())).interests).toEqual(["law", "medicine"]);
+  });
+
   it("AI consent needs the 18+ attestation; turning either off clears the consent", async () => {
     const user = await signedIn();
     const refused = await patch({ aiConsent: true });

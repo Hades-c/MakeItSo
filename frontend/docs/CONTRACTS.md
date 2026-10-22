@@ -121,7 +121,8 @@ The frozen interfaces every workstream codes against. They change only through t
 - **Verify banner**: `verifyBannerFor(user, now())` → `{ email, replaceable, hoursLeft }` or null (only unverified
   @davidson.edu accounts, only while mail is available); the hub layout renders `<VerifyBanner {...state} />`.
 - **Profile**: `getProfile(userId)` / `updateProfile(userId, patch)` (strict whitelist, `null` → `$unset` for
-  firstTerm/standingOverride), `grantAiConsent` / `revokeAiConsent`, `defaultFirstTerm(gradYear)`,
+  firstTerm/standingOverride; `interests` are the 24 career-path slugs of server/content: 400 `interests.<i>`
+  otherwise, unknown stored slugs dropped on read), `grantAiConsent` / `revokeAiConsent`, `defaultFirstTerm(gradYear)`,
   `officialNames(kind)` (see "Catalog": official Acalog names only).
 - **Passwords and mail**: `passwordProblem(password, context)` is the new-password policy (10–72 UTF-8 bytes, not
   only spaces, not in the bundled common list, no site word with digits or symbols around it); `getMailer()` →
