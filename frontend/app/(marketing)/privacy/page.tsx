@@ -126,9 +126,9 @@ export default function PrivacyPage() {
                 enter, and plan suggestions you asked for. We never store grades.
               </li>
               <li>
-                <b>Security records:</b> one-time email codes (stored only as a hash), and
-                short-lived counters that limit sign-in and sign-up attempts. Those counters hold
-                your IP address or a hash of your email address.
+                <b>Security records:</b> one-time email codes and password-reset links (stored only
+                as a hash), and short-lived counters that limit sign-in and sign-up attempts. Those
+                counters hold your IP address or a hash of your email address.
               </li>
               <li>
                 <b>From the earlier version of MakeItSo:</b> if you used the hackathon version, the
@@ -161,7 +161,7 @@ export default function PrivacyPage() {
                 Resend
               </a>
               , an email delivery service, which receives your email address and the message
-              (including its one-time code). MakeItSo sends no other email.
+              (including its one-time code or reset link). MakeItSo sends no other email.
             </p>
             <p>
               MakeItSo is not an approved Davidson tool for Internal or Restricted college data.
@@ -237,8 +237,8 @@ export default function PrivacyPage() {
                 how="Saved for you for 30 days, then deleted. Shared course summaries contain no personal information."
               />
               <Retention
-                what="Email codes"
-                how="Work for 15 minutes. The record (only a hash of the code) is deleted automatically 24 hours after it was sent."
+                what="Email codes and reset links"
+                how="Work for 15 minutes (a reset link once). The record (only a hash of the code and link) is deleted automatically 24 hours after it was sent."
               />
               <Retention
                 what="Unverified sign-ups"

@@ -30,6 +30,7 @@ export const accountEndpoints: ApiEndpoints<typeof accountApi> = {
   signOutEverywhere: { method: "DELETE", path: "/api/account/sessions" },
   requestPasswordReset: { method: "POST", path: "/api/auth/password-reset" },
   confirmPasswordReset: { method: "POST", path: "/api/auth/password-reset/confirm" },
+  confirmPasswordResetLink: { method: "POST", path: "/api/auth/password-reset/link" },
   testMailbox: { method: "GET", path: "/api/auth/test-mailbox" },
 };
 

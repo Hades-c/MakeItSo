@@ -332,7 +332,7 @@ describe("ForgotPasswordForm", () => {
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
     render(<ForgotPasswordForm />);
     await userEvent.type(screen.getByLabelText("Email"), "Casey@Davidson.edu");
-    await userEvent.click(screen.getByRole("button", { name: "Send reset code" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send reset e-mail" }));
     expect(
       await screen.findByRole("heading", { name: "Choose a new password" }),
     ).toBeInTheDocument();
@@ -360,7 +360,7 @@ describe("ForgotPasswordForm", () => {
     );
     render(<ForgotPasswordForm />);
     await userEvent.type(screen.getByLabelText("Email"), "casey@davidson.edu");
-    await userEvent.click(screen.getByRole("button", { name: "Send reset code" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send reset e-mail" }));
     await userEvent.type(await screen.findByLabelText("Reset code"), "123456");
     await userEvent.type(screen.getByLabelText("New password"), "brand new passphrase");
     await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
@@ -368,6 +368,59 @@ describe("ForgotPasswordForm", () => {
       "Reset code: That code is not right",
     );
     await waitFor(() => expect(screen.getByLabelText("Reset code")).toHaveFocus());
+  });
+});
+
+describe("ForgotPasswordForm opened from the e-mailed link", () => {
+  const TOKEN = `${"a".repeat(24)}.${"b".repeat(22)}`;
+
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  it("asks only for the new password, drops the token from the address, resets and signs in", async () => {
+    window.history.replaceState(null, "", `/forgot-password#token=${TOKEN}`);
+    stubFetch([200, { email: "casey@davidson.edu" }]);
+    nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
+    render(<ForgotPasswordForm />);
+    expect(
+      await screen.findByRole("heading", { name: "Choose a new password" }),
+    ).toBeInTheDocument();
+    expect(window.location.hash).toBe("");
+    expect(window.location.pathname).toBe("/forgot-password");
+    expect(screen.queryByLabelText("Reset code")).toBeNull();
+    expect(screen.queryByLabelText("Email")).toBeNull();
+    await userEvent.type(screen.getByLabelText("New password"), "brand new passphrase");
+    await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/today"));
+    expect(calls[0]?.url).toBe("/api/auth/password-reset/link");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      token: TOKEN,
+      newPassword: "brand new passphrase",
+    });
+    expect(nextAuth.signIn).toHaveBeenCalledWith("credentials", {
+      email: "casey@davidson.edu",
+      password: "brand new passphrase",
+      redirect: false,
+    });
+  });
+
+  it("says when the link no longer works and offers a new one", async () => {
+    window.history.replaceState(null, "", `/forgot-password#token=${TOKEN}`);
+    stubFetch([
+      400,
+      {
+        error: {
+          code: "validation_failed",
+          message: "Some fields are invalid.",
+          issues: [{ path: "token", message: "This reset link has expired, was already used." }],
+        },
+      },
+    ]);
+    render(<ForgotPasswordForm />);
+    await userEvent.type(await screen.findByLabelText("New password"), "brand new passphrase");
+    await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("This reset link has expired");
+    await userEvent.click(screen.getByRole("button", { name: "Ask for a new link" }));
+    expect(screen.getByRole("button", { name: "Send reset e-mail" })).toBeInTheDocument();
   });
 });
 

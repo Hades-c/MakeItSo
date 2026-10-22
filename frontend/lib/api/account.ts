@@ -129,6 +129,22 @@ export const PasswordResetConfirmBodySchema = z
   .strict();
 
 /**
+ * POST /api/auth/password-reset/link: the token of the e-mailed reset link ("<userId>.<secret>", from the
+ * /forgot-password#token= fragment) + the new password → 200 with the account's address (so the page can sign the
+ * student in). The link works once, for 15 minutes, and no wrong-code budget locks it.
+ */
+export const ResetTokenSchema = z
+  .string()
+  .regex(
+    /^[a-f0-9]{24}\.[A-Za-z0-9_-]{22,64}$/,
+    "This reset link is not complete. Open it from the e-mail again.",
+  );
+export const PasswordResetLinkBodySchema = z
+  .object({ token: ResetTokenSchema, newPassword: PasswordSchema })
+  .strict();
+export const PasswordResetLinkResponseSchema = z.object({ email: EmailSchema });
+
+/**
  * GET /api/auth/test-mailbox?email= (FIXTURES ONLY: EXTERNAL_MODE=fixtures + MAIL_PROVIDER=console, never on
  * Vercel; 404 everywhere else): the console mailer's recent messages to one address, so e2e can read codes.
  */
@@ -232,6 +248,14 @@ export const accountApi = {
     auth: "public",
     body: PasswordResetConfirmBodySchema,
     response: null,
+  }),
+  /** POST /api/auth/password-reset/link: the e-mailed link's token + new password → 200 { email }. */
+  confirmPasswordResetLink: apiRoute({
+    method: "POST",
+    path: "/api/auth/password-reset/link",
+    auth: "public",
+    body: PasswordResetLinkBodySchema,
+    response: PasswordResetLinkResponseSchema,
   }),
   /** GET /api/auth/test-mailbox?email= — fixtures-only e2e hook (see TestMailboxQuerySchema); 404 elsewhere. */
   testMailbox: apiRoute({

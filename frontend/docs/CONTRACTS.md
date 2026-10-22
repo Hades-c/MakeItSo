@@ -142,10 +142,14 @@ The frozen interfaces every workstream codes against. They change only through t
   the owner's verification. `User.verificationSentAt`
   starts the 24 h window after which a later sign-up of the same address may replace an unverified one (never a
   legacy account, never before a code was sent), so turning on a mail provider does NOT need
-  `scripts/flag-legacy-accounts.ts` first.
+  `scripts/flag-legacy-accounts.ts` first. A password reset e-mails a **link** too
+  (`/forgot-password#token=<userId>.<secret>`, 128 random bits stored as an HMAC next to the code, same 15 minutes,
+  works once, replaced by the next send; `POST /api/auth/password-reset/link` → `{ email }`): no guess budget
+  applies to it, so wrong codes from someone else never block the owner's reset, and once the codes are locked the
+  e-mail carries the link alone.
 - **Pages and routes**: `/login`, `/register`, `/verify`, `/forgot-password` (`routes.forgotPassword()`),
   `/privacy`; contracts in `lib/api/account.ts` (`register` and `requestPasswordReset` answer 202
-  `{status: "check-inbox", message}`, `confirmPasswordReset` 204, and the fixtures-only `testMailbox`, which is a
+  `{status: "check-inbox", message}`, `confirmPasswordReset` 204, `confirmPasswordResetLink` 200, and the fixtures-only `testMailbox`, which is a
   404 unless `EXTERNAL_MODE=fixtures` + `MAIL_PROVIDER=console` off Vercel) and `lib/api/profile.ts`; the AI-consent
   endpoint's spec is still `app/(auth)/_lib/contracts.ts authExtraApi`.
 

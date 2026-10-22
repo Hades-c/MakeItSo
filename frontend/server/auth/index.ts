@@ -14,7 +14,7 @@ import "./account-data";
  *   profile        getProfile, updateProfile, grantAiConsent, revokeAiConsent, defaultFirstTerm, ...
  *   passwords      passwordProblem (the new-password policy), hashPassword, verifyPassword
  *   mail           getMailer, isMailAvailable (ConsoleMailer / ResendMailer; null = none)
- *   reset          requestPasswordReset, confirmPasswordReset
+ *   reset          requestPasswordReset, confirmPasswordReset (code), confirmPasswordResetLink (e-mailed link)
  */
 
 export {
@@ -71,6 +71,7 @@ export { isSafeAppPath, safeAppPath } from "./paths";
 export { getMailer, isMailAvailable, type Mailer, type MailMessage } from "./mailer";
 export {
   confirmPasswordReset,
+  confirmPasswordResetLink,
   requestPasswordReset,
   RESET_UNAVAILABLE_MESSAGE,
 } from "./password-reset";

@@ -86,20 +86,32 @@ export function signupPendingEmail(to: string): MailMessage {
   };
 }
 
+/**
+ * The reset e-mail: the link (always) and the 6-digit code, or no code while the account's wrong-code budget for
+ * today is used up (server/auth/codes.ts "Reset links": the link still works then).
+ */
 export function passwordResetEmail(
   to: string,
-  code: string,
+  { code, linkToken }: { code: string | null; linkToken: string },
   { pendingSignup = false }: { pendingSignup?: boolean } = {},
 ): MailMessage {
   return {
     kind: "reset-password",
     to,
-    code,
+    ...(code ? { code } : {}),
     subject: "Reset your MakeItSo password",
     text: [
-      `Your MakeItSo password reset code is ${code}.`,
+      "Choose a new MakeItSo password at this link within 15 minutes (it works once):",
+      link(routes.forgotPassword({ token: linkToken })),
       "",
-      `Enter it at ${link(routes.forgotPassword())} within 15 minutes, together with your new password.`,
+      ...(code
+        ? [
+            `Or enter the code ${code} at ${link(routes.forgotPassword())}, together with your new password.`,
+          ]
+        : [
+            "This e-mail has no code: too many wrong codes were entered for this account today, so codes are",
+            "paused until tomorrow. The link above still works.",
+          ]),
       ...(pendingSignup
         ? [
             "",
