@@ -8,6 +8,7 @@ import {
   type FieldSpecs,
 } from "@/app/(auth)/_components/field-errors";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
+import { UnlistedProgramNote } from "@/components/domain/unlisted-program-note";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
@@ -435,6 +436,7 @@ function ProgramRows({
       ) : (
         <p className="text-xs text-fg-3">Up to {MAX_PROGRAMS}.</p>
       )}
+      <UnlistedProgramNote kind={field === "majors" ? "major" : "minor"} />
       {error ? (
         <p id={errorId} className="text-xs font-semibold text-danger">
           {error}

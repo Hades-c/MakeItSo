@@ -19,6 +19,7 @@ import {
   defaultFirstTerm,
   matchOfficialName,
   officialNames,
+  profileProgramNames,
   programNameCore,
 } from "@/server/auth/profile";
 import { getDb } from "@/server/db";
@@ -255,6 +256,33 @@ describe("PATCH /api/profile (strict whitelist)", () => {
     });
     // Nothing is written when any slug is unknown.
     expect((await raw(user.id))?.interests).toEqual(["law"]);
+  });
+
+  it("records a CIS major and the Middle East Studies minor (no Acalog offering of their own)", async () => {
+    const user = await signedIn();
+    const cis = "Student-designed major (Center for Interdisciplinary Studies)";
+    const mes = "Interdisciplinary Minor in Middle East Studies";
+    const profile = await profileOf(
+      await patch({
+        majors: [cis, "Major in Economics (A.B. Degree)"],
+        minors: [mes],
+      }),
+    );
+    expect(profile).toMatchObject({
+      majors: [cis, "Major in Economics (A.B. Degree)"],
+      minors: [mes],
+    });
+    expect(await raw(user.id)).toMatchObject({ major: cis, minor: mes });
+    expect(await profileOf(await get())).toMatchObject({
+      majors: [cis, "Major in Economics (A.B. Degree)"],
+    });
+    // Listed after the official names wherever the pickers get theirs.
+    const majors = await profileProgramNames("major");
+    expect(majors.names.at(-1)).toBe(cis);
+    expect((await profileProgramNames("minor")).names.at(-1)).toBe(mes);
+    expect((await officialNames("major")).names).not.toContain(cis);
+    // Anything else that is not a program is still refused.
+    expect((await patch({ minors: ["Minor in Basket Weaving"] })).status).toBe(400);
   });
 
   it("drops stored interests that are not career-path slugs on read", async () => {

@@ -61,6 +61,7 @@ export {
   getProfile,
   grantAiConsent,
   officialNames,
+  profileProgramNames,
   revokeAiConsent,
   updateProfile,
   type ProfileView,

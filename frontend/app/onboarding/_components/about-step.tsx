@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
+import { UnlistedProgramNote } from "@/components/domain/unlisted-program-note";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { callApi } from "@/lib/api/client";
@@ -326,6 +327,7 @@ function ProgramRows({
           {error}
         </p>
       ) : null}
+      <UnlistedProgramNote kind={noun === "major" ? "major" : "minor"} />
       {canAdd ? (
         <div>
           <Button

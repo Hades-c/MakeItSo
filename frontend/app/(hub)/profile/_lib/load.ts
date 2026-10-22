@@ -3,7 +3,12 @@ import type { Profile } from "@/lib/api/profile";
 import type { Flags } from "@/lib/flags";
 import type { CareerCluster } from "@/server/content/careers";
 import { CAREERS } from "@/server/content/careers";
-import { getProfile, isMailAvailable, isVerifiedDavidsonUser, officialNames } from "@/server/auth";
+import {
+  getProfile,
+  isMailAvailable,
+  isVerifiedDavidsonUser,
+  profileProgramNames,
+} from "@/server/auth";
 import { now } from "@/server/clock";
 import { loadFlags } from "@/server/features";
 
@@ -13,7 +18,8 @@ import { loadFlags } from "@/server/features";
  *
  *   profile        getProfile (W3): the Profile contract; majors/minors already mapped to official names
  *   majors/minors  official Acalog offering names (server/programs through W3's officialNames(): the interim
- *                  list while the programs service is unavailable)
+ *                  list while the programs service is unavailable), then the unlisted programs a profile may also
+ *                  store (W3 profileProgramNames: a CIS major, the Middle East Studies minor)
  *   careers        the career-path taxonomy for interests (server/content: slug, name, cluster)
  *   now            the server's now() as ISO, so derived standing and year choices match on both sides
  */
@@ -40,8 +46,8 @@ export interface ProfilePageData {
 export async function loadProfilePage(userId: string): Promise<ProfilePageData> {
   const [view, majors, minors] = await Promise.all([
     getProfile(userId),
-    officialNames("major"),
-    officialNames("minor"),
+    profileProgramNames("major"),
+    profileProgramNames("minor"),
   ]);
   // ProfileView adds the derived `standing`; the islands derive it themselves from the editable fields.
   const { standing: _standing, ...profile } = view;

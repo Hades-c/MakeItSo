@@ -77,7 +77,10 @@ The frozen interfaces every workstream codes against. They change only through t
 - Majors and minors are official Acalog names everywhere (Profile.majors/minors, AI enums): pickers list
   `programNames().majors` / `.minors` plus, for majors, a UI-only "Undecided" that saves `majors: []`. The profile
   validates against the same names (server/auth `officialNames`, which falls back to the checked-in Acalog
-  snapshot, never to free text). There is no other majors list (lib/utils.ts `MAJORS` is gone).
+  snapshot, never to free text). There is no other majors list (lib/utils.ts `MAJORS` is gone). The one exception:
+  `lib/unlisted-programs.ts` (a CIS major, the Middle East Studies minor: no Acalog offering of their own, each
+  sourced to its catalog page). Pickers list them after the official names with a note, and the profile stores
+  them (server/auth `profileProgramNames`); AI payloads, requirements and program pages ignore them.
 - Cron routes are built from specs: `catalogApi.cronRefresh` (GET /api/cron/catalog, nightly) and
   `programsApi.cron` (GET /api/cron/programs, weekly), like `eventsApi.cronFeeds` and `ratingsApi.cronRoster`.
   `frontend/vercel.json` schedules each exactly once (a contract test checks it).

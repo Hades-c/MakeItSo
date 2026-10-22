@@ -16,6 +16,7 @@ import {
   type TermCode,
 } from "@/lib/term";
 import type { ProgramOfferingKind } from "@/lib/types/catalog";
+import { unlistedPrograms } from "@/lib/unlisted-programs";
 import User, { type IUser } from "@/models/User";
 import { now } from "@/server/clock";
 import { isCareerSlug } from "@/server/content/careers";
@@ -42,7 +43,8 @@ import { snapshotOfferingNames } from "@/server/programs/snapshot";
  *
  * Writing (updateProfile): the strict ProfilePatchBodySchema whitelist, then these rules:
  *   - null clears (`$unset`) the clearable fields firstTerm and standingOverride; [] clears a list;
- *   - majors/minors must be official names (max 3, de-duplicated); `major`/`minor` are mirrored for rollback;
+ *   - majors/minors must be official names or the unlisted programs (profileProgramNames: a CIS major, the Middle
+ *     East Studies minor; max 3, de-duplicated); `major`/`minor` are mirrored for rollback;
  *   - interests must be career-path slugs (400 with path `interests.<index>` otherwise), de-duplicated;
  *   - firstTerm is a Fall or Spring term between 8 academic years before graduation and the graduation spring;
  *   - aiConsent: true needs the 18+ attestation (stored, or adultAttested: true in the same request) and sets
@@ -116,6 +118,19 @@ export async function officialNames(kind: ProgramKind): Promise<OfficialNames> {
     }
   }
   return { names: snapshotOfferingNames(KINDS_OF[kind]), source: "snapshot" };
+}
+
+/**
+ * The names a profile may store: the official names (officialNames) followed by the programs that have no Acalog
+ * offering of their own (lib/unlisted-programs.ts: a CIS major, the Middle East Studies minor). The onboarding and
+ * profile pickers list these; updateProfile accepts exactly these.
+ */
+export async function profileProgramNames(kind: ProgramKind): Promise<OfficialNames> {
+  const official = await officialNames(kind);
+  const unlisted = unlistedPrograms(kind)
+    .map((program) => program.name)
+    .filter((name) => !official.names.includes(name));
+  return { names: [...official.names, ...unlisted], source: official.source };
 }
 
 /** "Major in Computer Science (B.S. Degree)" → "computer science"; "French & Francophone Studies" → "french and …". */
@@ -237,7 +252,10 @@ const PROFILE_FIELDS =
   "name email emailVerifiedAt majors minors major minor graduationYear firstTerm standingOverride interests aiConsentAt adultAttestedAt onboardedAt createdAt";
 
 async function loadNames() {
-  const [majors, minors] = await Promise.all([officialNames("major"), officialNames("minor")]);
+  const [majors, minors] = await Promise.all([
+    profileProgramNames("major"),
+    profileProgramNames("minor"),
+  ]);
   return { majors: majors.names, minors: minors.names };
 }
 
