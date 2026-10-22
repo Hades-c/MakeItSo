@@ -1,4 +1,4 @@
-import { COURSE_CODE_PATTERN, normalizeCourseCode } from "@/lib/types/common";
+import { COURSE_CODE_PATTERN, normalizeCourseCode } from "@/lib/course-code";
 import { isTermCode, type TermCode } from "@/lib/term";
 
 /**

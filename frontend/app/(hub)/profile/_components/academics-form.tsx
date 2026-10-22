@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { callApi } from "@/lib/api/client";
-import { profileApi } from "@/lib/api/profile";
+import { profileEndpoints } from "@/lib/api/endpoints";
 import { termLabel, type ClassStanding } from "@/lib/term";
 import { describeFailure } from "../_lib/errors";
 import {
@@ -144,7 +144,7 @@ export function AcademicsForm({ initial, majorNames, minorNames, now }: Academic
     setFieldErrors({});
     setSaving(true);
     try {
-      const { profile } = await callApi(profileApi.update, {
+      const { profile } = await callApi(profileEndpoints.update, {
         body: changedAcademics(values, saved),
       });
       const next: AcademicsValues = {

@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { apiRoute } from "@/lib/api/spec";
+import { UNVERIFIED_MESSAGE } from "@/lib/types/ai-constants";
 import { IsoDateTimeSchema, ObjectIdSchema } from "@/lib/types/common";
 
 /**
@@ -36,12 +37,8 @@ export function canonicalMailbox(email: string): string {
 
 export const PLUS_ADDRESS_MESSAGE = "Use your Davidson address without a +tag";
 
-/**
- * What a signed-in account without a verified @davidson.edu mailbox is told (PLAN §1; owner to confirm, §8). Used by
- * defineRoute's "verified" 403 and by the AI routes' `unverified` result.
- */
-export const UNVERIFIED_MESSAGE =
-  "The alumni network and AI features are limited to verified @davidson.edu accounts.";
+/** What an account without a verified @davidson.edu mailbox is told (lib/types/ai-constants.ts, zod-free). */
+export { UNVERIFIED_MESSAGE };
 
 export const DavidsonEmailSchema = z
   .string()

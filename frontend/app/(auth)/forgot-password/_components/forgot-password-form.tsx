@@ -16,8 +16,9 @@ import { STANDALONE_LINK } from "@/app/(auth)/_lib/styles";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { accountApi, EmailSchema, PasswordSchema, VerificationCodeSchema } from "@/lib/api/account";
+import { EmailSchema, PasswordSchema, VerificationCodeSchema } from "@/lib/api/account";
 import { ApiClientError, callApi } from "@/lib/api/client";
+import { accountEndpoints } from "@/lib/api/endpoints";
 import { routes } from "@/lib/routes";
 
 type Errors = Partial<Record<"email" | "code" | "newPassword" | "form", string>>;
@@ -67,7 +68,7 @@ export function ForgotPasswordForm() {
     }
     setLoading(true);
     try {
-      const result = await callApi(accountApi.requestPasswordReset, {
+      const result = await callApi(accountEndpoints.requestPasswordReset, {
         body: { email: parsed.data },
       });
       setNotice(result.message);
@@ -89,7 +90,7 @@ export function ForgotPasswordForm() {
     if (!codeCheck.success || !passwordCheck.success) return;
     setLoading(true);
     try {
-      await callApi(accountApi.confirmPasswordReset, {
+      await callApi(accountEndpoints.confirmPasswordReset, {
         body: { email, code: codeCheck.data, newPassword },
       });
       const result = await signIn("credentials", { email, password: newPassword, redirect: false });

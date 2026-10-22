@@ -13,14 +13,14 @@ export const KEY_ROUTES = ["/today", "/courses", "/courses/[term]/[code]", "/pla
 
 /**
  * Temporary ceilings (KB gzipped) for key pages still over the budget, so they cannot grow while the remaining gap
- * is closed: their client islands call our API through the shared zod contracts (lib/api specs), which puts about
- * 33 KB of zod on these pages. Lower or delete an entry when its page shrinks; the target stays 200 KB.
+ * is closed. Client islands no longer carry zod (they call the API through lib/api/endpoints.ts), which took about
+ * 35 KB off /courses (now 175 KB), the course page (191 KB) and /plan. /plan (210 KB) still loads the islands of all
+ * four tabs at once; loading the other tabs' islands on demand is the next step. Lower or delete an entry when its
+ * page shrinks; the target stays 200 KB.
  */
 /** @type {Record<string, number>} */
 export const TEMPORARY_CEILINGS_KB = {
-  "/courses": 215,
-  "/courses/[term]/[code]": 235,
-  "/plan": 255,
+  "/plan": 215,
 };
 
 const gzipCache = new Map();

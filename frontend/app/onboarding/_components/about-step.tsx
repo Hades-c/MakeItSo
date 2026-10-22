@@ -7,7 +7,7 @@ import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { callApi } from "@/lib/api/client";
-import { profileApi } from "@/lib/api/profile";
+import { profileEndpoints } from "@/lib/api/endpoints";
 import { termLabel, type TermCode } from "@/lib/term";
 import {
   aboutPatch,
@@ -124,7 +124,7 @@ export function AboutStep({ initial, majorNames, minorNames, now }: AboutStepPro
     setError(null);
     setSaving(true);
     try {
-      await callApi(profileApi.update, { body: aboutPatch(values) });
+      await callApi(profileEndpoints.update, { body: aboutPatch(values) });
       router.push(stepHref(nextStep("about") ?? "classes", after));
     } catch (caught) {
       const failure = describeFailure(caught);

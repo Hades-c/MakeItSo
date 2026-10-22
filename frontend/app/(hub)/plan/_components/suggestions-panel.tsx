@@ -12,9 +12,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { controlClass } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SourceTag } from "@/components/ui/source-tag";
-import { aiApi } from "@/lib/api/ai";
 import { callApi } from "@/lib/api/client";
-import { planApi } from "@/lib/api/plan";
+import { aiEndpoints, planEndpoints } from "@/lib/api/endpoints";
 import { formatMediumDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { termLabel } from "@/lib/term";
@@ -92,7 +91,7 @@ function DraftCard({
     setBusyKey(row.key);
     const result = await action.run(
       () =>
-        callApi(planApi.addItem, {
+        callApi(planEndpoints.addItem, {
           body: { termCode: row.termCode, courseCode: row.courseCode, source: "ai-draft" },
         }),
       {
@@ -117,7 +116,7 @@ function DraftCard({
 
   const close = async (status: "accepted" | "dismissed") => {
     const result = await action.run(
-      () => callApi(planApi.updateDraft, { params: { id: draft.id }, body: { status } }),
+      () => callApi(planEndpoints.updateDraft, { params: { id: draft.id }, body: { status } }),
       { fallback: "Could not close these suggestions. Please try again." },
     );
     if (result.ok) {
@@ -307,7 +306,7 @@ export function SuggestionsPanel({
     event.preventDefault();
     setState({ kind: "loading" });
     try {
-      const result = await callApi(aiApi.planSuggestions, {
+      const result = await callApi(aiEndpoints.planSuggestions, {
         body: { termCode: term, regenerate: existing },
       });
       if (result.kind === "ok") {

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
-import { catalogApi } from "@/lib/api/catalog";
+import { catalogEndpoints } from "@/lib/api/endpoints";
 import { termLabel, type TermCode } from "@/lib/term";
 import type { CourseSummary } from "@/lib/types/catalog";
 import { describeFailure } from "../_lib/errors";
@@ -49,7 +49,7 @@ export function CourseSearch({ term, label, renderResult, testId }: CourseSearch
     setSearching(true);
     setError(null);
     try {
-      const result = await callApi(catalogApi.search, {
+      const result = await callApi(catalogEndpoints.search, {
         query: { term, q, pageSize: SEARCH_PAGE_SIZE },
       });
       setResults(result.items);

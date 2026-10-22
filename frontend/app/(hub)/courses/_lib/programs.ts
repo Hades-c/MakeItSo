@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import type { ProgramOfferingKind } from "@/lib/types/catalog";
-import { normalizeCourseCode } from "@/lib/types/common";
+import { normalizeCourseCode } from "@/lib/course-code";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { programPublicUrl } from "@/server/programs/catalog-info";
 import { catalogRowsForRequest, type CatalogRow } from "@/server/programs/service";

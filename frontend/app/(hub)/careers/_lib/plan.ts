@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import { ACTIVE_PLAN_STATUSES, type PlanItem } from "@/lib/types/plan";
-import { normalizeCourseCode } from "@/lib/types/common";
+import { normalizeCourseCode } from "@/lib/course-code";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { ApiError } from "@/server/http/errors";
 import { getPlan } from "@/server/plan";

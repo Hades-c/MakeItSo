@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { WRAP_CHIP } from "./wrap";
 import { Chip } from "@/components/ui/chip";
 import { SourceTag } from "@/components/ui/source-tag";
-import { aiApi, type CourseAboutResultSchema } from "@/lib/api/ai";
+import type { CourseAboutResultSchema } from "@/lib/api/ai";
 import { ApiClientError, callApi } from "@/lib/api/client";
-import type { AiFailureKind } from "@/lib/types/ai";
-import { AI_FAILURE_MESSAGES } from "@/lib/types/ai";
+import { aiEndpoints } from "@/lib/api/endpoints";
+import { AI_FAILURE_MESSAGES, type AiFailureKind } from "@/lib/types/ai-constants";
 import { formatMediumDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type * as z from "zod";
@@ -104,7 +104,7 @@ function ReportLink({ inputHash }: { inputHash: string }) {
   const report = async () => {
     setState("sending");
     try {
-      await callApi(aiApi.report, { body: { feature: "course-about", key: inputHash } });
+      await callApi(aiEndpoints.report, { body: { feature: "course-about", key: inputHash } });
       setState("sent");
     } catch {
       setState("failed");
@@ -192,7 +192,7 @@ export function CourseAboutPanel({
 
   const request = React.useCallback(async (): Promise<State> => {
     try {
-      const result = await callApi(aiApi.courseAbout, { body: { termCode, courseCode } });
+      const result = await callApi(aiEndpoints.courseAbout, { body: { termCode, courseCode } });
       return { status: "done", result };
     } catch (error) {
       return {

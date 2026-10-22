@@ -7,7 +7,7 @@ import { WeekGrid } from "@/components/domain/week-grid";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
-import { planApi } from "@/lib/api/plan";
+import { planEndpoints } from "@/lib/api/endpoints";
 import type { PlanWarning, RequirementSlot, ScheduleConflict, WebTreeList } from "@/lib/types/plan";
 import type { SlotFiller } from "../_lib/choice";
 import { errorMessage } from "../_lib/errors";
@@ -109,7 +109,7 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
       const next = queued.current;
       queued.current = null;
       try {
-        await callApi(planApi.saveWebTree, { body: next });
+        await callApi(planEndpoints.saveWebTree, { body: next });
       } catch (caught) {
         failed = true;
         queued.current = null;

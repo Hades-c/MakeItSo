@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { callApi } from "@/lib/api/client";
-import { planApi } from "@/lib/api/plan";
+import { planEndpoints } from "@/lib/api/endpoints";
 import type { PlanView } from "@/lib/types/plan";
 import { PE_LIFETIME_REQUIRED } from "../_lib/four-year";
 import { Notice } from "./notice";
@@ -31,7 +31,7 @@ export function ManualRequirements({ manual }: { manual: PlanView["manual"] }) {
   const save = async (patch: Partial<PlanView["manual"]>, next: PlanView["manual"]) => {
     const previous = state;
     setState(next);
-    const result = await action.run(() => callApi(planApi.updateManual, { body: patch }), {
+    const result = await action.run(() => callApi(planEndpoints.updateManual, { body: patch }), {
       fallback: "Could not save that. Please try again.",
     });
     if (!result.ok) setState(previous);

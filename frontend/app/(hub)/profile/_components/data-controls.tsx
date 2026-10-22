@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { accountApi } from "@/lib/api/account";
 import { callApi } from "@/lib/api/client";
+import { accountEndpoints } from "@/lib/api/endpoints";
 import { routes } from "@/lib/routes";
 import { downloadJson, exportFilename } from "../_lib/download";
 import { describeFailure } from "../_lib/errors";
@@ -62,7 +62,7 @@ export function DownloadData() {
     setError(null);
     setStatus("");
     try {
-      const data = await callApi(accountApi.export);
+      const data = await callApi(accountEndpoints.export);
       downloadJson(data, exportFilename(data.exportedAt));
       setStatus("Your download has started.");
     } catch (caught) {
@@ -122,7 +122,7 @@ export function DeleteAccount() {
     setFieldErrors({});
     setBusy(true);
     try {
-      await callApi(accountApi.delete, { body: { password } });
+      await callApi(accountEndpoints.delete, { body: { password } });
     } catch (caught) {
       const failure = describeFailure(caught);
       const issue = failure.issues.find((i) => i.path === "password");
