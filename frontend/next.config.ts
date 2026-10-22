@@ -42,6 +42,10 @@ const nextConfig: NextConfig = {
   // No component needs the image optimizer; leaving it on made /_next/image a public proxy
   // (audit devex/next-config-dead-and-image-proxy, security/vulnerable-dependencies).
   images: { unoptimized: true },
+  // frontend/proxy.ts answers 400 to an unparsable Next-Router-State-Tree header, which it can only see when Next.js
+  // does not strip the router headers off the proxy's request. The other effect, the proxy seeing the raw URL with
+  // `_rsc`, is handled there (returnPathOf drops it); there is no basePath or i18n to normalise.
+  skipProxyUrlNormalize: true,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

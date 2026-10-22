@@ -8,6 +8,10 @@ describe("next.config", () => {
     expect(nextConfig.poweredByHeader).toBe(false);
   });
 
+  it("hands the proxy the router headers (its Next-Router-State-Tree guard needs them)", () => {
+    expect(nextConfig.skipProxyUrlNormalize).toBe(true);
+  });
+
   it("sends security headers on every route", async () => {
     const rules = await nextConfig.headers!();
     expect(rules).toHaveLength(1);
