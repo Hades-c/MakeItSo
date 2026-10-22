@@ -201,7 +201,7 @@ describe("generation and the shared cache", () => {
     expect(usage!.inputTokens).toBeGreaterThan(0);
     expect(usage!.models).toEqual([MOCK_MODEL]);
     const stored = await AiCache.findOne({ feature: "course-about" }).lean();
-    expect(stored?.provenance.model).toBe(MOCK_MODEL);
+    expect(stored?.provenance?.model).toBe(MOCK_MODEL);
   });
 
   it("shares one entry across terms when the official text is the same", async () => {

@@ -13,7 +13,8 @@ import {
   type LibraryHours,
   type LibraryLocationHours,
 } from "@/lib/types/feeds";
-import FeedItem from "@/models/FeedItem";
+import type { QueryFilter } from "mongoose";
+import FeedItem, { type FeedItemDoc } from "@/models/FeedItem";
 import { now } from "@/server/clock";
 import { getDb, trusted } from "@/server/db";
 import { readEnv } from "@/server/env";
@@ -122,7 +123,7 @@ export async function listEventsPage(
     scheduleStaleRefresh(await staleSources(requestedSources, current));
 
   const tokens = textFilter(q);
-  const filter = {
+  const filter: QueryFilter<FeedItemDoc> = {
     source: trusted({ $in: requestedSources }),
     kind: trusted({ $in: kinds.length ? [...new Set(kinds)] : [...DEFAULT_EVENT_KINDS] }),
     startsAt: trusted({ $ne: null, $lt: to }),
