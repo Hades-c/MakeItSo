@@ -4,7 +4,7 @@ import { isDavidsonEmail } from "@/lib/api/account";
 import User from "@/models/User";
 import { isMailAvailable } from "@/server/auth/mailer";
 import { REPLACE_UNVERIFIED_AFTER_MS } from "@/server/auth/registration";
-import { isEmailVerified, type SessionUser } from "@/server/auth/session";
+import { isEmailVerified, verifiedOnlyRedirect, type SessionUser } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 
 /**
@@ -54,4 +54,18 @@ export async function verifyBannerFor(
     }
   }
   return { email: user.email, replaceable, hoursLeft };
+}
+
+/**
+ * The "verify your email" step an AI or alumni gate may offer: `/verify?reason=davidson&next=<next>` for an
+ * @davidson.edu address that is not verified yet while mail can send a code, else null. A legacy non-Davidson
+ * account (a gmail address) gets null: verifying it would not unlock anything, so the gate only explains why.
+ */
+export function verifyStepFor(
+  account: Pick<SessionUser, "email" | "emailVerifiedAt">,
+  next: string,
+): string | null {
+  return isDavidsonEmail(account.email) && !isEmailVerified(account) && isMailAvailable()
+    ? verifiedOnlyRedirect(next)
+    : null;
 }

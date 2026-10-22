@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { REQUIREMENT_SLOTS, type PlanDraft, type PlanProgress } from "@/lib/types/plan";
 import { FourYearTab } from "@/app/(hub)/plan/_components/four-year";
 import { NextSemesterTab } from "@/app/(hub)/plan/_components/next-semester";
@@ -564,6 +565,23 @@ describe("Suggestions tab", () => {
       />,
     );
     expect(screen.getByTestId("ai-gate")).toHaveTextContent("AI features are turned off.");
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("offers /verify only when the page passes a verify step (unverified @davidson.edu)", () => {
+    const unverified = suggestions({ kind: "unverified", message: UNVERIFIED_MESSAGE });
+    const href = "/verify?reason=davidson&next=%2Fplan%3Ftab%3Dsuggestions";
+    const { unmount } = render(
+      <SuggestionsTab loaded={unverified} timeZone={TZ} verifyHref={href} />,
+    );
+    expect(screen.getByRole("link", { name: "Verify your Davidson email" })).toHaveAttribute(
+      "href",
+      href,
+    );
+    unmount();
+    // A legacy non-Davidson account (a gmail address): verifying cannot unlock AI, so only the explanation.
+    render(<SuggestionsTab loaded={unverified} timeZone={TZ} verifyHref={null} />);
+    expect(screen.getByTestId("ai-gate")).toHaveTextContent(UNVERIFIED_MESSAGE);
     expect(screen.queryByRole("link")).toBeNull();
   });
 

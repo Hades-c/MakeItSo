@@ -44,7 +44,7 @@ export {
   verifyEmailCode,
   VERIFICATION_UNAVAILABLE_MESSAGE,
 } from "./verification";
-export { verifyBannerFor, type VerifyBannerState } from "./banner";
+export { verifyBannerFor, verifyStepFor, type VerifyBannerState } from "./banner";
 export {
   changePassword,
   clearSessionCookies,

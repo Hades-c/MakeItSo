@@ -19,6 +19,7 @@ const state = vi.hoisted(() => ({
   resolveCalls: [] as unknown[],
   page: null as unknown,
   loadCalls: [] as unknown[],
+  email: "s@davidson.edu",
 }));
 
 vi.mock("next/navigation", async (importOriginal) => ({
@@ -27,7 +28,7 @@ vi.mock("next/navigation", async (importOriginal) => ({
 }));
 vi.mock("@/server/auth/session", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  requireUser: async () => ({ id: "0123456789abcdef01234567", name: "S", email: "s@davidson.edu" }),
+  requireUser: async () => ({ id: "0123456789abcdef01234567", name: "S", email: state.email }),
 }));
 vi.mock("@/app/(hub)/courses/_lib/student", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -76,6 +77,7 @@ beforeEach(() => {
   state.searchCalls = [];
   state.resolveCalls = [];
   state.loadCalls = [];
+  state.email = "s@davidson.edu";
 });
 
 const search = (params: Record<string, string | string[]>) => ({
@@ -311,6 +313,23 @@ describe("/courses/[term]/[code]", () => {
         searchParams: Promise.resolve({}),
       }),
     );
-    expect(screen.getByTestId("course-about-ai")).toHaveTextContent("Verify your Davidson email");
+    expect(screen.getByRole("link", { name: "Verify your Davidson email" })).toHaveAttribute(
+      "href",
+      "/verify?reason=davidson&next=%2Fcourses%2F202602%2FCSC-221",
+    );
+  });
+
+  it("a legacy non-Davidson account gets the explanation without a /verify link", async () => {
+    state.email = "student@gmail.com";
+    state.resolved = resolved();
+    state.page = { ...pageData(), aboutGate: "unverified" };
+    render(
+      await coursePage.default({
+        ...params("202602", "CSC-221"),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    expect(screen.getByTestId("about-gate")).toHaveTextContent("verified @davidson.edu");
+    expect(screen.queryByRole("link", { name: "Verify your Davidson email" })).toBeNull();
   });
 });

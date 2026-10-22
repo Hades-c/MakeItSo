@@ -2,6 +2,8 @@ import type * as React from "react";
 import type { Metadata } from "next";
 import { ErrorState } from "@/components/ui/error-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { routes } from "@/lib/routes";
+import { verifyStepFor } from "@/server/auth/banner";
 import { requireUser } from "@/server/auth/session";
 import { now } from "@/server/clock";
 import { readEnv } from "@/server/env";
@@ -52,7 +54,13 @@ export default async function PlanPage({
       body = <FourYearTab loaded={await loadFourYear(user.id)} />;
       break;
     case "suggestions":
-      body = <SuggestionsTab loaded={await loadSuggestions(user.id)} timeZone={timeZone} />;
+      body = (
+        <SuggestionsTab
+          loaded={await loadSuggestions(user.id)}
+          timeZone={timeZone}
+          verifyHref={verifyStepFor(user, routes.plan("suggestions"))}
+        />
+      );
       break;
     case "summer": {
       const loaded = await loadSummer(user.id);
