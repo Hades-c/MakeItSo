@@ -1,0 +1,235 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Springshare//LibCal//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Library Event Calendar
+X-WR-CALDESC:
+X-WR-TIMEZONE:America/New_York
+X-PUBLISHED-TTL:PT15M
+BEGIN:VEVENT
+DTSTART:20260908T230000Z
+DTEND:20260909T000000Z
+DTSTAMP:20260908T000000Z
+SUMMARY:Silent Book Club
+DESCRIPTION:Join us for Silent Book Club! There's no assigned reading 
+ here—just bring whatever you’re reading right now. Free tea and hot 
+ cocoa provided. All reading formats are welcome. Whether you prefer 
+ traditional books\, magazines\, e-readers\, or audiobooks\, there's a place 
+ for you here.\n\nHow It Works\n\n\n	First 45 minutes: Quiet reading 
+ time\n	Last 15 minutes: Optional discussion about our reads and 
+ recommendations\n
+LOCATION:Baxter-Davidson Room
+CATEGORIES:Book Club
+UID:LibCal-7393-17302321
+URL:https://davidson.libcal.com/calendar/events/silent-book-club
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260910T220000Z
+DTEND:20260910T233000Z
+DTSTAMP:20260910T000000Z
+SUMMARY:Speed Friending
+DESCRIPTION:Looking for a low-key way to meet new people on campus? Join us 
+ for Speed Friending at the library! Come hang out at the library\, grab 
+ free bubble tea\, and rotate seats every few minutes to chat with everyone 
+ there.
+LOCATION:Lilly Family Gallery
+CATEGORIES:Special Event, Student Wellness
+UID:LibCal-7393-17496910
+URL:https://davidson.libcal.com/event/17496910
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260916T200000Z
+DTEND:20260916T210000Z
+DTSTAMP:20260916T000000Z
+SUMMARY:Library Book Bike Pop-Up
+DESCRIPTION:Browse and borrow from our curated collection of books. All 
+ titles are available to borrow on the spot.\n\nWe recommend downloading the 
+ Meescan mobile app before you drop by!
+CATEGORIES:Book Bike
+UID:LibCal-7393-17302420
+URL:https://davidson.libcal.com/event/17302420
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260923T230000Z
+DTEND:20260924T000000Z
+DTSTAMP:20260923T000000Z
+SUMMARY:Silent Book Club
+DESCRIPTION:Join us for Silent Book Club! There's no assigned reading 
+ here—just bring whatever you’re reading right now. Free tea and hot 
+ cocoa provided. All reading formats are welcome. Whether you prefer 
+ traditional books\, magazines\, e-readers\, or audiobooks\, there's a place 
+ for you here.\n\nHow It Works\n\n\n	First 45 minutes: Quiet reading 
+ time\n	Last 15 minutes: Optional discussion about our reads and 
+ recommendations\n
+LOCATION:Baxter-Davidson Room
+CATEGORIES:Book Club
+UID:LibCal-7393-17302322
+URL:https://davidson.libcal.com/calendar/events/silent-book-club
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260924T220000Z
+DTEND:20260925T000000Z
+DTSTAMP:20260924T000000Z
+SUMMARY:Fall Puzzle Competition
+DESCRIPTION:It's back—join us for our Fall Puzzle Competition! The first 
+ team to complete a 500-piece puzzle will win a Davidson College Library 
+ prize package. Team entries will be capped at 6 teams. Teams may consist of 
+ 1–4 people. For teams with multiple players\, please register all 
+ teammates at once. Your team will get to keep the puzzle once the 
+ competition has concluded. Entry is free!
+LOCATION:Lilly Family Gallery
+CATEGORIES:Special Event, Student Wellness
+UID:LibCal-7393-17302770
+URL:https://davidson.libcal.com/event/17302770
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260930T200000Z
+DTEND:20260930T210000Z
+DTSTAMP:20260930T000000Z
+SUMMARY:Library Book Bike Pop-Up
+DESCRIPTION:Browse and borrow from our curated collection of books. All 
+ titles are available to borrow on the spot.\n\nWe recommend downloading the 
+ Meescan mobile app before you drop by!
+CATEGORIES:Book Bike
+UID:LibCal-7393-17302421
+URL:https://davidson.libcal.com/event/17302421
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261001T150000Z
+DTEND:20261001T180000Z
+DTSTAMP:20261001T000000Z
+SUMMARY:Browsing Book Fair
+DESCRIPTION:Looking for your next read? Join us in the Lilly Family Gallery 
+ to see what our Browsing Collection has to offer and enjoy a Nothing Bundt 
+ Cake (while supplies last)! Check out a book for a FREE limited-edition 
+ mini tote bag and a chance to enter our prize drawing.
+LOCATION:Lilly Family Gallery
+CATEGORIES:Special Event
+UID:LibCal-7393-17693001
+URL:https://davidson.libcal.com/event/17693001
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261006T230000Z
+DTEND:20261007T000000Z
+DTSTAMP:20261006T000000Z
+SUMMARY:Silent Book Club
+DESCRIPTION:Join us for Silent Book Club! There's no assigned reading 
+ here—just bring whatever you’re reading right now. Free tea and hot 
+ cocoa provided. All reading formats are welcome. Whether you prefer 
+ traditional books\, magazines\, e-readers\, or audiobooks\, there's a place 
+ for you here.\n\nHow It Works\n\n\n	First 45 minutes: Quiet reading 
+ time\n	Last 15 minutes: Optional discussion about our reads and 
+ recommendations\n
+LOCATION:Baxter-Davidson Room
+CATEGORIES:Book Club
+UID:LibCal-7393-17302323
+URL:https://davidson.libcal.com/calendar/events/silent-book-club
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261008T230000Z
+DTEND:20261009T010000Z
+DTSTAMP:20261008T000000Z
+SUMMARY:Banned Together: A Banned Books Week Film Screening & Panel Discussion
+DESCRIPTION:Join us for a film screening of this 2025 award-winning 
+ documentary\, which "follows three students and their adult allies as they 
+ fight to reinstate 97 books suddenly pulled from their school libraries. As 
+ they evolve from local to national activists - meeting with bestselling 
+ authors\, politicians\, Constitutional experts\, and more\, the film 
+ reveals the dark forces behind the accelerating wave of book bans in the 
+ U.S." The film will be followed by a discussion with Dorothy Yaun '27 and 
+ Kate Selvitelli '30\, moderated by Dr. Shireen Campbell.
+LOCATION:Hance Auditorium
+CATEGORIES:Banned Books Week, Special Event
+UID:LibCal-7393-17709049
+URL:https://davidson.libcal.com/event/17709049
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261014T200000Z
+DTEND:20261014T210000Z
+DTSTAMP:20261014T000000Z
+SUMMARY:Library Book Bike Pop-Up
+DESCRIPTION:Browse and borrow from our curated collection of books. All 
+ titles are available to borrow on the spot.\n\nWe recommend downloading the 
+ Meescan mobile app before you drop by!
+CATEGORIES:Book Bike
+UID:LibCal-7393-17302422
+URL:https://davidson.libcal.com/event/17302422
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261020T230000Z
+DTEND:20261021T000000Z
+DTSTAMP:20261020T000000Z
+SUMMARY:Silent Book Club
+DESCRIPTION:Join us for Silent Book Club! There's no assigned reading 
+ here—just bring whatever you’re reading right now. Free tea and hot 
+ cocoa provided. All reading formats are welcome. Whether you prefer 
+ traditional books\, magazines\, e-readers\, or audiobooks\, there's a place 
+ for you here.\n\nHow It Works\n\n\n	First 45 minutes: Quiet reading 
+ time\n	Last 15 minutes: Optional discussion about our reads and 
+ recommendations\n
+LOCATION:Baxter-Davidson Room
+CATEGORIES:Book Club
+UID:LibCal-7393-17302324
+URL:https://davidson.libcal.com/calendar/events/silent-book-club
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261028T200000Z
+DTEND:20261028T210000Z
+DTSTAMP:20261028T000000Z
+SUMMARY:Library Book Bike Pop-Up
+DESCRIPTION:Browse and borrow from our curated collection of books. All 
+ titles are available to borrow on the spot.\n\nWe recommend downloading the 
+ Meescan mobile app before you drop by!
+CATEGORIES:Book Bike
+UID:LibCal-7393-17302423
+URL:https://davidson.libcal.com/event/17302423
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261104T000000Z
+DTEND:20261104T010000Z
+DTSTAMP:20261103T000000Z
+SUMMARY:Silent Book Club
+DESCRIPTION:Join us for Silent Book Club! There's no assigned reading 
+ here—just bring whatever you’re reading right now. Free tea and hot 
+ cocoa provided. All reading formats are welcome. Whether you prefer 
+ traditional books\, magazines\, e-readers\, or audiobooks\, there's a place 
+ for you here.\n\nHow It Works\n\n\n	First 45 minutes: Quiet reading 
+ time\n	Last 15 minutes: Optional discussion about our reads and 
+ recommendations\n
+LOCATION:Baxter-Davidson Room
+CATEGORIES:Book Club
+UID:LibCal-7393-17302325
+URL:https://davidson.libcal.com/calendar/events/silent-book-club
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261111T210000Z
+DTEND:20261111T220000Z
+DTSTAMP:20261111T000000Z
+SUMMARY:Library Book Bike Pop-Up
+DESCRIPTION:Browse and borrow from our curated collection of books. All 
+ titles are available to borrow on the spot.\n\nWe recommend downloading the 
+ Meescan mobile app before you drop by!
+CATEGORIES:Book Bike
+UID:LibCal-7393-17302424
+URL:https://davidson.libcal.com/event/17302424
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261118T000000Z
+DTEND:20261118T010000Z
+DTSTAMP:20261117T000000Z
+SUMMARY:Silent Book Club
+DESCRIPTION:Join us for Silent Book Club! There's no assigned reading 
+ here—just bring whatever you’re reading right now. Free tea and hot 
+ cocoa provided. All reading formats are welcome. Whether you prefer 
+ traditional books\, magazines\, e-readers\, or audiobooks\, there's a place 
+ for you here.\n\nHow It Works\n\n\n	First 45 minutes: Quiet reading 
+ time\n	Last 15 minutes: Optional discussion about our reads and 
+ recommendations\n
+LOCATION:Baxter-Davidson Room
+CATEGORIES:Book Club
+UID:LibCal-7393-17302326
+URL:https://davidson.libcal.com/calendar/events/silent-book-club
+END:VEVENT
+
+END:VCALENDAR

@@ -1,0 +1,2 @@
+# Real upstream samples: keep them byte-exact (CRLF in ICS files, minified JSON).
+* -text diff

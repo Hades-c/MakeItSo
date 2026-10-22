@@ -1,0 +1,953 @@
+{
+  "catalogId": 4,
+  "catalogYear": "2026-2027",
+  "capturedAt": "2026-09-30",
+  "source": "https://catalog.davidson.edu/widget-api/catalog/4/programs?page-size=100 and /widget-api/catalog/4/program/{id}",
+  "programs": [
+    {
+      "acalogId": 207,
+      "legacyId": 1834,
+      "name": "Africana Studies",
+      "code": "AFS",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-24 14:19:30",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Africana Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Africana Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 162,
+      "legacyId": 1789,
+      "name": "Anthropology",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-08-24 19:19:12",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Anthropology (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Anthropology",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 163,
+      "legacyId": 1790,
+      "name": "Applied Mathematics",
+      "code": "",
+      "programTypes": ["Interdisciplinary Minors"],
+      "modified": "2026-02-24 18:13:05",
+      "offerings": [
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Applied Mathematics",
+          "degree": null
+        }
+      ],
+      "restatedBy": [195]
+    },
+    {
+      "acalogId": 164,
+      "legacyId": 1791,
+      "name": "Arab Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-06-11 16:51:36",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Arab Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Arab Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 165,
+      "legacyId": 1792,
+      "name": "Art",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-07-17 13:27:48",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Art (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Art",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 166,
+      "legacyId": 1793,
+      "name": "Biology",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-08-31 19:32:09",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Biology (B.S. Degree)",
+          "degree": "B.S."
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 167,
+      "legacyId": 1794,
+      "name": "Center for Interdisciplinary Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-04-13 14:17:39",
+      "offerings": [],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 168,
+      "legacyId": 1795,
+      "name": "Chemistry",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-04-17 20:19:17",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Chemistry (B.S. Degree)",
+          "degree": "B.S."
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 169,
+      "legacyId": 1796,
+      "name": "Chinese Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-02-26 17:58:15",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Chinese Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Chinese Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 170,
+      "legacyId": 1797,
+      "name": "Classics",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-21 15:05:40",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Classical Languages and Literature (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "major",
+          "name": "Major in Classical Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Classical Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 171,
+      "legacyId": 1798,
+      "name": "Communication Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-18 17:04:39",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Communication Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Communication Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 172,
+      "legacyId": 1799,
+      "name": "Computer Science",
+      "code": "CS",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-15 15:03:36",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Computer Science (B.S. Degree)",
+          "degree": "B.S."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Computer Science",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 173,
+      "legacyId": 1800,
+      "name": "Dance",
+      "code": "DAN R",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-02-24 18:13:05",
+      "offerings": [
+        {
+          "kind": "minor",
+          "name": "Minor in Dance",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 212,
+      "legacyId": 1839,
+      "name": "Data Science",
+      "code": "",
+      "programTypes": ["Interdisciplinary Minors"],
+      "modified": "2026-04-17 18:07:56",
+      "offerings": [
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Data Science",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 211,
+      "legacyId": 1838,
+      "name": "Digital Studies",
+      "code": "DIG",
+      "programTypes": ["Interdisciplinary Minors"],
+      "modified": "2026-06-08 16:48:19",
+      "offerings": [
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Digital Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": [213]
+    },
+    {
+      "acalogId": 210,
+      "legacyId": 1837,
+      "name": "East Asian Studies",
+      "code": "EAS",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-18 17:01:39",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in East Asian Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in East Asian Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 174,
+      "legacyId": 1801,
+      "name": "Economics",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-23 15:27:03",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Economics (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Economics",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 175,
+      "legacyId": 1802,
+      "name": "Educational Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-07-16 19:53:19",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Educational Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Educational Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 176,
+      "legacyId": 1803,
+      "name": "English",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-23 17:07:47",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in English (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in English",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 177,
+      "legacyId": 1804,
+      "name": "Environmental Studies",
+      "code": "ENV",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-22 19:17:45",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Interdisciplinary Major in Environmental Studies (B.A. or B.S. Degree)",
+          "degree": "B.A. or B.S."
+        },
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Environmental Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 213,
+      "legacyId": 1840,
+      "name": "Film, Media, and Digital Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-08-19 13:51:34",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Film, Media, and Digital Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Film and Media Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 179,
+      "legacyId": 1806,
+      "name": "French and Francophone Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-23 14:58:28",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in French and Francophone Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in French and Francophone Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 205,
+      "legacyId": 1832,
+      "name": "Gender and Sexuality Studies",
+      "code": "GEN",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-25 13:11:28",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Gender and Sexuality Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Gender and Sexuality Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 180,
+      "legacyId": 1807,
+      "name": "Genomics & Bioinformatics",
+      "code": "",
+      "programTypes": ["Interdisciplinary Minors"],
+      "modified": "2026-02-24 18:13:05",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Bioinformatics (B.S. Degree)",
+          "degree": "B.S."
+        },
+        {
+          "kind": "major",
+          "name": "Major in Genomics (B.S. Degree)",
+          "degree": "B.S."
+        },
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Genomics",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 181,
+      "legacyId": 1808,
+      "name": "German Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-03-23 14:30:22",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in German Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in German Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 208,
+      "legacyId": 1835,
+      "name": "Global Literary Theory",
+      "code": "LIT",
+      "programTypes": ["Interdisciplinary Minors"],
+      "modified": "2026-09-23 15:24:34",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Global Literary Theory (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Global Literary Theory",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 182,
+      "legacyId": 1809,
+      "name": "Greek",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-02-24 18:13:05",
+      "offerings": [
+        {
+          "kind": "minor",
+          "name": "Minor in Greek",
+          "degree": null
+        }
+      ],
+      "restatedBy": [170]
+    },
+    {
+      "acalogId": 202,
+      "legacyId": 1829,
+      "name": "Hispanic Studies",
+      "code": "SPA",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-01 14:46:54",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Hispanic Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Hispanic Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 183,
+      "legacyId": 1810,
+      "name": "History",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-06-05 16:34:47",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in History (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in History",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 184,
+      "legacyId": 1811,
+      "name": "Humanities",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-02-24 18:13:05",
+      "offerings": [],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 186,
+      "legacyId": 1813,
+      "name": "Latin",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-02-24 18:13:05",
+      "offerings": [
+        {
+          "kind": "minor",
+          "name": "Minor in Latin",
+          "degree": null
+        }
+      ],
+      "restatedBy": [170]
+    },
+    {
+      "acalogId": 187,
+      "legacyId": 1814,
+      "name": "Latin American, Latinx, and Caribbean Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-25 18:28:02",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Latin American, Latinx, and Caribbean Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Latin American Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 216,
+      "legacyId": 1852,
+      "name": "Linguistics",
+      "code": "LNG",
+      "programTypes": ["Interdisciplinary Minors"],
+      "modified": "2026-03-06 16:28:47",
+      "offerings": [
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Linguistics",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 188,
+      "legacyId": 1815,
+      "name": "Mathematics",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-16 18:40:27",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Mathematics (B.S. Degree)",
+          "degree": "B.S."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Mathematics",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 190,
+      "legacyId": 1817,
+      "name": "Military Science",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-02-24 18:13:05",
+      "offerings": [],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 191,
+      "legacyId": 1818,
+      "name": "Music",
+      "code": "",
+      "programTypes": [],
+      "modified": "2026-07-21 19:03:20",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Music (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Music",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 192,
+      "legacyId": 1819,
+      "name": "Neuroscience",
+      "code": "",
+      "programTypes": ["Interdisciplinary Minors"],
+      "modified": "2026-02-24 18:13:05",
+      "offerings": [
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Neuroscience",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 193,
+      "legacyId": 1820,
+      "name": "Philosophy",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-06-05 16:53:34",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Philosophy (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Philosophy",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 214,
+      "legacyId": 1841,
+      "name": "Philosophy, Politics, and Economics",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-17 20:31:11",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Philosophy, Politics, and Economics",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 194,
+      "legacyId": 1821,
+      "name": "Physical Education",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-08-19 13:34:44",
+      "offerings": [],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 195,
+      "legacyId": 1822,
+      "name": "Physics",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-04-17 17:56:33",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Physics (B.S. Degree)",
+          "degree": "B.S."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Applied Physics",
+          "degree": null
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Astrophysics",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 196,
+      "legacyId": 1823,
+      "name": "Political Science",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-23 13:36:50",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Political Science (A.B. Degree)",
+          "degree": "A.B."
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 197,
+      "legacyId": 1824,
+      "name": "Psychology",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-23 17:12:43",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Psychology (B.S. Degree)",
+          "degree": "B.S."
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 189,
+      "legacyId": 1816,
+      "name": "Public Health",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-23 16:04:43",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Public Health",
+          "degree": null
+        },
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in Public Health",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 198,
+      "legacyId": 1825,
+      "name": "Religious Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-09-23 16:50:54",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Religious Studies (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Religious Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 199,
+      "legacyId": 1826,
+      "name": "Russian Studies",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-03-23 15:12:25",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Russian Studies",
+          "degree": null
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Russian Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 201,
+      "legacyId": 1828,
+      "name": "Sociology",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-03-31 20:22:24",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Sociology (A.B. Degree)",
+          "degree": "A.B."
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 206,
+      "legacyId": 1833,
+      "name": "South Asian Studies",
+      "code": "SAS conc",
+      "programTypes": ["Interdisciplinary Minors"],
+      "modified": "2026-08-21 19:11:17",
+      "offerings": [
+        {
+          "kind": "interdisciplinary-minor",
+          "name": "Interdisciplinary Minor in South Asian Studies",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 200,
+      "legacyId": 1827,
+      "name": "Structured Independent Language Program",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-02-24 18:13:05",
+      "offerings": [],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 203,
+      "legacyId": 1830,
+      "name": "Theatre",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-05-28 19:25:40",
+      "offerings": [
+        {
+          "kind": "major",
+          "name": "Major in Theatre (A.B. Degree)",
+          "degree": "A.B."
+        },
+        {
+          "kind": "minor",
+          "name": "Minor in Theatre",
+          "degree": null
+        }
+      ],
+      "restatedBy": []
+    },
+    {
+      "acalogId": 204,
+      "legacyId": 1831,
+      "name": "Writing",
+      "code": "",
+      "programTypes": ["Academic Courses/Major and Minor Requirements"],
+      "modified": "2026-03-23 15:04:28",
+      "offerings": [],
+      "restatedBy": []
+    }
+  ]
+}

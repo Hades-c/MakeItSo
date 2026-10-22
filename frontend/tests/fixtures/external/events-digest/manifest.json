@@ -1,0 +1,11 @@
+{
+  "source": "events-digest",
+  "description": "Davidson Events Digest (Mailchimp campaign archive RSS), live sample from 2026-09-30 (10 issues); each issue's HTML is cut down to its event list, tracking links removed.",
+  "capturedAt": "2026-09-30",
+  "routes": [
+    {
+      "url": "https://us6.campaign-archive.com/feed?u=a06862fb4e666d96846f036ba&id=2ac4133186",
+      "file": "feed.rss"
+    }
+  ]
+}

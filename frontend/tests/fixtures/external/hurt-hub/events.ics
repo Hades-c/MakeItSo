@@ -1,0 +1,169 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//The Hurt Hub at Davidson College - ECPv6.17.3.1//NONSGML v1.0//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:The Hurt Hub at Davidson College
+X-ORIGINAL-URL:https://hurthub.davidson.edu
+X-WR-CALDESC:Events for The Hurt Hub at Davidson College
+REFRESH-INTERVAL;VALUE=DURATION:PT1H
+X-Robots-Tag:noindex
+X-PUBLISHED-TTL:PT1H
+BEGIN:VTIMEZONE
+TZID:America/New_York
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:EDT
+DTSTART:20250309T070000
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:EST
+DTSTART:20251102T060000
+END:STANDARD
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:EDT
+DTSTART:20260308T070000
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:EST
+DTSTART:20261101T060000
+END:STANDARD
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:EDT
+DTSTART:20270314T070000
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:EST
+DTSTART:20271107T060000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20260923T184500
+DTEND;TZID=America/New_York:20261111T201500
+DTSTAMP:20260930T024726Z
+CREATED:20260804T113201Z
+LAST-MODIFIED:20260930T024726Z
+UID:1862-1790189100-1794428100@hurthub.davidson.edu
+SUMMARY:Building a Lean Startup - Fall 2026
+DESCRIPTION:Learn how to jumpstart your business idea in this 7 session course using the Lean Startup methodology.\n\n\nBuilding a Lean StartupWednesdays\, Sept 23 – Nov 11 | 6:45–8:15 pm | Room 208 | No class on October 14 \nThe Hurt Hub at Davidson is excited to be offering another round of the Building a Lean Startup course for all interested students\, faculty\, staff\, and members of the general public. This course is an opportunity for individuals or small business teams to learn about the core principles of entrepreneurship and work on developing an idea through the Lean Startup methodology. No previous business experience required! \nThe Lean Startup methodology is an approach to building new businesses rooted in the belief that entrepreneurs must investigate\, experiment\, test\, and iterate as they develop new products and services. Unlike traditional startup approaches\, lean startups move quickly\, iterate often and continuously solicit feedback from their customers. \nTaught by Rebecca Weeks Watson*\, Building a Lean Startup is a 7-session course covering topics including how to come up with business ideas\, how to get users/customers and grow\, how to execute on sales and marketing\, how to hire\, how to raise money\, which key metrics to measure\, and more. All of these topic areas will rely on a build-measure-learn approach to make sure you find effective solutions quickly and inexpensively. \nLean Startup is a mindset and a methodology that is used across industries\, sectors\, and professions to solve problems and understand what your customers need most. We welcome people from all backgrounds and encourage an open and engaged mindset! \nCost: \nThanks to the Hurt Hub’s partnerships and with the support of Amplify Davidson\, this course is free to particpants. \nCourse Schedule: \nWednesday Evenings\, September 23 – November 11 | 7 Weeks\, 6:45–8:15 pm. No class on October 14. \n*Please email contact@example.edu for any accomodations needed related to missing class. \nAbout the Instructor: Rebecca Weeks Watson is a digital media entrepreneur with 17 years of experience in Silicon Valley and two U.S. patent awards. After starting her career in finance and then consulting for Match.com\, she decided to pursue her interest in the startup world. She was on the founding team and led Business Development for two different marketing technology companies\, one of which was acquired by Meredith Corporation. She has spoken at 50 conferences nationwide and enjoys lecturing at the University of Virginia’s undergrad business school. Most recently Rebecca founded a groundbreaking interview series called The Reveal that uncovers surprising personal stories of world-class leaders. \nThe Hurt Hub welcomes requests for reasonable accommodations related to disability and will strive to make this program accessible to participants. Please contact our team at the Hurt Hub at contact@example.edu to make such a request.
+URL:https://hurthub.davidson.edu/event/building-a-lean-startup-fall-2026/
+LOCATION:The Hurt Hub at Davidson College\, 210 Delburg Street\, Davidson\, NC 28036\, Davidson\, NC\, 28036\, US
+CATEGORIES:Class,Discussion
+ATTACH;FMTTYPE=image/jpeg:https://hurthub.davidson.edu/wp-content/uploads/2026/08/1862_image-scaled.jpg
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20261001T113000
+DTEND;TZID=America/New_York:20261001T130000
+DTSTAMP:20260930T024729Z
+CREATED:20260915T064511Z
+LAST-MODIFIED:20260930T024729Z
+UID:6189-1790854200-1790859600@hurthub.davidson.edu
+SUMMARY:AI\, Systems\, and the Future of Brand Building
+DESCRIPTION:Lunch and learn with Jennifer Kattula\, GM & CMO of Microsoft Advertising\, on real-world AI adoption and what leaders should know.\n\n\nAI transformation is not a technology problem. It is a people\, systems and workflow problem. That is the point of view Jennifer Kattula brings to the table as General Manager and Chief Marketing Officer of Microsoft Advertising\, where she leads global marketing for one of the world’s largest ad platforms. \nJennifer is joining the Hurt Hub for a lunch and learn on what it takes to build AI systems that hold up as models and solutions keep changing underneath them. Grab lunch and pull up a chair for a candid\, hour-long conversation. \nShe’ll cover: \n\nHer experience leading AI transformation from inside Microsoft\nWhat she’s hearing directly from CMOs and other C-suite leaders about real-world AI adoption\nHow organizations should build AI systems flexible enough to survive rapid change in models and tools\nThe questions every leader should be asking about governance\, data\, confidentiality\, enterprise versus personal accounts\, and first-party information\n\n \nAbout Jennifer \nAn engineer by training\, a builder by instinct\, and a connector at heart\, Jennifer brings a rare combination of technical mastery and brand craft to marketing’s most pivotal moment today\, when leaders forging brand endurance must be as fluent in systems as they are in stories. \nJennifer’s 20+ year career spans transformative roles at PwC\, Sapient\, American Express\, and 11 years at Meta\, where she was Global Head of Platforms Marketing. She also led marketing at Web3 startup Polygon Labs. \nJennifer is a recognized thought leader on generative AI in advertising. She speaks and writes about the future of brand-building in an AI-native world\, helping business leaders find the balance between technology and humanity\, and honor both. \nJennifer holds a B.S. in Chemical Engineering and an MBA from the University of Michigan. \n \nThis is a featured program of the Applied AI Lab at the Hurt Hub at Davidson College \nAccess and exposure to innovation for all is our vision\, and that includes access to the people shaping how AI is actually being adopted inside the world’s biggest companies. This conversation is sponsored by the Applied AI Lab and is open to students\, faculty\, staff\, alumni\, entrepreneurs\, and the Greater Charlotte community. \n——————————————————————- \nThe Hurt Hub welcomes requests for reasonable accommodations related to disability and will strive to make this program accessible to participants. Please contact our team at the Hurt Hub at contact@example.edu to make such a request.
+URL:https://hurthub.davidson.edu/event/ai-systems-and-the-future-of-brand-building/
+LOCATION:The Hurt Hub at Davidson College\, 210 Delburg Street\, Davidson\, NC 28036\, Davidson\, NC\, 28036\, US
+ATTACH;FMTTYPE=image/png:https://hurthub.davidson.edu/wp-content/uploads/2026/09/6189_image-1.png
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20261002T160000
+DTEND;TZID=America/New_York:20261004T200000
+DTSTAMP:20260930T024728Z
+CREATED:20260804T113208Z
+LAST-MODIFIED:20260930T024728Z
+UID:1872-1790956800-1791144000@hurthub.davidson.edu
+SUMMARY:Techstars Startup Weekend - Davidson\, NC
+DESCRIPTION:Experience the startup life in a fun and fast-paced environment. Meet other creatives. Learn from industry experts. Scholarships available!\n\n\nThe Davidson College Entrepreneurship Club is excited to host our second annual Techstars Startup Weekend in collaboration with The Hurt Hub at Davidson College. The weekend is open to all Davidson students\, entrepreneurs\, creators\, builders\, and interested parties from the general public. The startup weekend is a great opportunity to connect with passionate like-minded people eager to develop and build something different or new. \nFacilitated by the inspirational Sibi Murugesan\, the startup weekend is a multi-day event where participants will experience the startup life\, connect with founders and investors\, and learn from industry experts\, mentors\, and judges. \nFormat: Participants grouped into teams. Teams will look to develop an idea (selected by participants) into a viable product and/or solution. Teams will then pitch their product/solution to judges. \nIndustry Focus: This year we will focus on select industries – but stay tuned for the specifcs! \nCost: $10 per person. Scholarships available. Please email Event Contact at contact@example.edu to request a scholarship. In your email\, please answer one of the two following questions 1) How do you envision the Techstars weekend at Davidson contributing to your personal or professional growth?\, or 2) What do you hope to gain from the Techstars Weekend at Davidson? \nSchedule (more details to follow): \nFriday\, October 2– 17:30 – 22:00 \nSaturday\, October 3 — 09:00 – 21:00 \nSunday\, October 4 — 09:00 – 19:30 \nFAQ: \nQ: Is this event for me? \nA: Yes! If you are interested in learning about startups\, meeting founders\, building something new\, and solving interesting challenges…Techstars weekend is for you! We believe that great ideas can come from anywhere. \nThe event is intended to be a collaborative and inclusive forum for sharing\, learning\, building\, and having fun. We expect each member of the startup community to be inclusive of all people and their ideas and we welcome all\, regardless of experience\, industry\, or background. \nQ: Who is allowed to attend? \nA: This is an 18+ up event; we cannot accommodate minors this weekend. Beyond that we welcome people from all different backgrounds; you don’t need to be enrolled in college to attend. \nQ: Do I need a team? \nA: Everyone who attends the event as a participant is expected to come to the event without a team and then join and participate with a team at the event. This is important to preserve the Techstars Startup Weekend educational experience. The ideal team consists of members from diverse backgrounds and experiences. \nQ: Do I have to participate all three days? \nA: Yes\, participants are asked to attend all scheduled sessions as the weekend relies on team collaboration and engagement. Apart from the organizing team\, mentors\, speakers\, event volunteers and judges\, everyone who participates in the event is expected to participate in all three days. This is important not only to preserve your own learning experience\, but also to minimize distractions or disruptions for the team you choose to join. If you have specific conflicts\, please feel free to reach out to Event Contact (contact@example.edu) or Event Contact (contact@example.edu) to discuss. \nQ: I have an idea to tackle during the weekend. How do I pitch it? \nA: Our TechStars Facilitator for the weekend\, Sibi Murugesan\, will take us through a fun process on Friday night explaining how to pitch ideas. You don’t need to pitch an idea\, but we highly encourage you to. You can pitch an idea you’ve been thinking about for years\, or something you think of at the last minute during the event. Please don’t pitch an idea that you’ve already been developing or have been working on outside of Startup Weekend. The point of the event is to learn how to go from ideation to product. \nThese initial pitches are short (60 seconds) with just you and the mic. Generally\, they should cover: \n\nState who you are and what your background is\nMention what problem you’re trying to solve\nExplain the product idea and how it solves the problem\nWhat skill sets you need on the team like a developer\, marketer\, designer\, etc.\n\nQ: What lodging is available? \nA: Participants are responsible for providing their own transportation and accommodation. There are two nearby lodging options. The Davidson Village Inn is a small hotel in downtown Davidson about a 2 minute walk from the Hurt Hub (https://davidsoninn.com/). The Homewood Suites by Hilton is a 3-4 minute drive to the Hurt Hub (https://www.guestreservations.com/Homewood-Suites-By-Hilton-Davidson/booking?A=1) \n \nPlease note – participants are not allowed to sleep over in the building\, and must elave each night by 11:00pm. \nQ: Do I need to bring my own food? \nA: All meals will be provided during the weekend. Bring a waterbottle. If you have any specific dietary restrictions\, please put them down on the registration form. \nQ: Does Techstars have a website? \nA: Yes! Check out their website to learn more about what you can expect at the Davidson event. https://www.techstars.com/communities/startup-weekend \n \nSponsors and Supporters \nThis weekend was made possible from the generous support of multiple Sponsors and Suporters\, including: NC IDEA Engage\, the Robert E. And Sherry D. Guth Foundation\, The Hurt Hub at Davidson College\, and the Davidson Entrepreneurship Club.
+URL:https://hurthub.davidson.edu/event/techstars-startup-weekend-davidson-nc/
+LOCATION:The Hurt Hub at Davidson College\, 210 Delburg Street\, Davidson\, NC 28036\, Davidson\, NC\, 28036\, US
+ATTACH;FMTTYPE=image/png:https://hurthub.davidson.edu/wp-content/uploads/2026/08/1872_image.png
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20261006T103000
+DTEND;TZID=America/New_York:20261006T110000
+DTSTAMP:20260929T134831Z
+CREATED:20260817T132735Z
+LAST-MODIFIED:20260929T134831Z
+UID:4301-1791282600-1791284400@hurthub.davidson.edu
+SUMMARY:Keith Kleeman '97 Alumni Innovator-in-Residence Office Hours
+DESCRIPTION:Have an idea you can’t stop thinking about? A problem you want to solve? Drop in and talk it through with Keith Kleeman ’97\, the Hurt Hub’s Alumni Innovator-in-Residence. \nKeith is a serial biotech entrepreneur who has spent more than two decades building companies at the intersection of science\, writing and technology. He founded Medical Communication Consultants and grew it to 400 writers supporting the approval of more than 25 therapeutics\, created ClinGenuity\, one of the pharmaceutical industry’s earliest AI platforms\, and today leads Celvant and Optimvia. His path started at Davidson as a biology major writing a novel on the side\, and it has never fit neatly in one box. \nYou don’t need a business plan or a startup to stop by. Keith believes innovation is a mindset\, not a job title: seeing what could be better and asking\, “How do I fix this?” Bring a question\, an early idea\, a venture in progress or just your curiosity. \nOpen to Davidson students\, faculty\, staff and alums\, Hurt Hub coworking members and entrepreneurs across the Charlotte region. \nKeith will be hosting the office hours in the Innovation Lab at the Hurt Hub. You can also schedule virtual office hours with him but need to indicate that when you register. \nThis listing covers Keith’s October 6 time slots\, but he’s hosting office hours on several dates this month: October 6\, 7\, 15\, 16\, 21\, 23\, 27\, and 28. Use the registration link to sign up for any session that works for you.
+URL:https://hurthub.davidson.edu/event/keith-kleeman-97-final-innovator-in-residence-office-hours/
+CATEGORIES:Free for Students,Hybrid,Office Hours
+ATTACH;FMTTYPE=image/jpeg:https://hurthub.davidson.edu/wp-content/uploads/2026/09/keith-kleeman-headshot-scaled.jpeg
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20261008T120000
+DTEND;TZID=America/New_York:20261008T130000
+DTSTAMP:20260930T024730Z
+CREATED:20260924T024726Z
+LAST-MODIFIED:20260930T024730Z
+UID:6268-1791460800-1791464400@hurthub.davidson.edu
+SUMMARY:Process: Your GPS to Sales Repeatability
+DESCRIPTION:Learn a practical way to think about sales process design and a simple framework to begin applying immediately\n\n\nJoin us at the Hurt Hub for a Lunch & Learn on Sales Process! \nNewer firms sometimes neglect to define a formal sales process. Yet scaling requires a clear\, customer-aligned approach that helps teams operate with greater efficiency and effectiveness\, resulting in stronger win rates\, market share gains\, and more reliable sales outcomes. \nParticipants will leave with a practical way to think about sales process design and a simple framework they can begin applying immediately to their own customer journey. \nWho Should Attend: Founders of start-ups and early-stage firms who want to implement a repeatable\, revenue-producing sales process. A structured process helps the organization deliver consistent results and creates a foundation for scalable growth. \nLearning Objectives \n1. Recognize why a repeatable sales process is one of the most important growth assets an early-stage company can build — creating order\, consistency\, scalability\, forecast accuracy\, and revenue predictability. \n2. Learn how customers make buying decisions and how to position yourself as the guide they trust to reach their desired outcome. \n3. Apply a simple framework to begin mapping your own sales process — aligning marketing\, sales\, and customer success around the way your customers make buying decisions. \nAbout the Presenter: \nJohn W. Buckner brings a broad sales and growth background from a thirty-year corporate career\, including leadership roles as vice president of marketing and senior vice president of sales. His experience spans Fortune 500 companies\, strong middle-market national firms\, OEMs\, restaurant chains\, convenience retail\, and major retailers\, including organizations such as Dupont\, Georgia-Pacific\, Simpson Strong Tie\, Chick-fil-A\, Taco Bell\, Sonic\, 7-Eleven\, Walmart\, Target\, Home Depot\, and Lowe’s. \nHis firm\, Insightful Selling\, helps small businesses win through people\, process\, and technology. John holds degrees in education\, psychology\, counseling psychology\, and business administration\, including an executive MBA. \n \nThe Hurt Hub welcomes requests for reasonable accommodations related to disability and will strive to make this program accessible to participants. Please contact our team at the Hurt Hub at contact@example.edu to make such a request.
+URL:https://hurthub.davidson.edu/event/process-your-gps-to-sales-repeatability/
+LOCATION:The Hurt Hub at Davidson College\, 210 Delburg Street\, Davidson\, NC 28036\, Davidson\, NC\, 28036\, US
+ATTACH;FMTTYPE=image/png:https://hurthub.davidson.edu/wp-content/uploads/2026/09/6268_image.png
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20261021T111500
+DTEND;TZID=America/New_York:20261021T114500
+DTSTAMP:20260929T134746Z
+CREATED:20260824T133647Z
+LAST-MODIFIED:20260929T134746Z
+UID:5488-1792581300-1792583100@hurthub.davidson.edu
+SUMMARY:Hurt Hub 101
+DESCRIPTION:What is the Hurt Hub\, exactly? Great question. Come find out! \nHurt Hub 101 is a free\, no-pressure monthly info session for anyone who’s curious about what we do\, what our space looks like\, and how we support the community. \nOctober 21st from 11:15am-11:45am \nAfter the session\, attendees are welcome to stay for additional conversation by attending our Innovation Community of Practice from 12-1p.
+URL:https://hurthub.davidson.edu/event/hurt-hub-101/
+CATEGORIES:Discussion,Social
+ATTACH;FMTTYPE=image/jpeg:https://hurthub.davidson.edu/wp-content/uploads/2026/08/triggsphoto_JHH_12.jpg
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20261021T120000
+DTEND;TZID=America/New_York:20261021T130000
+DTSTAMP:20260929T131412Z
+CREATED:20260824T132556Z
+LAST-MODIFIED:20260929T131412Z
+UID:5485-1792584000-1792587600@hurthub.davidson.edu
+SUMMARY:Innovation Community of Practice
+DESCRIPTION:Join us for the Hurt Hub’s monthly Innovation Community of Practice! \nFAQ \nWhat is a Community of Practice? \nA community of practice (CoP) is a group of people who share a common interest\, profession\, or passion and come together to interact\, learn\, and collaborate. \nWhat do we mean by Innovation? \nWe like to explore innovation broadly. We’re curious about new ideas\, methods\, or services that bring positive change or improvement. We want to explore creative approaches to problem-solving\, processes\, idea generation\, or technology.  \nWho is this group for? \nInnovation is for everyone regardless of industry or professional status. We welcome curious individuals from all backgrounds. \nWhat will we do? \nThese are casual conversations that focus on a different topic month to month. Generally\, a volunteer facilitator will share briefly about a topic they’re interested in and then open up the floor for the group to discuss.  \nWhat Topics have your covered?  \nPatterns & Intersections\, Vibe Coding\, Art and AI\, Travel\, Circular Economies\, Ideation Techniques\, Mental Models\, Innovation & Spirituality\, Storytelling through collage. \nIs food served? \nSorry not at this one! Participants are welcome to bring their own lunch. \nFor questions or to RSVP please email Event Contact  \contact@example.edu \nThe Hurt Hub welcomes requests for reasonable accommodations related to disability and will strive to make this program accessible to participants. Please contact Event Contact at contact@example.edu to make such a request.
+URL:https://hurthub.davidson.edu/event/innovation-community-of-practice-2/
+CATEGORIES:Discussion,Social
+ATTACH;FMTTYPE=image/jpeg:https://hurthub.davidson.edu/wp-content/uploads/2026/08/IMG_1426.jpg
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20261022T090000
+DTEND;TZID=America/New_York:20261022T100000
+DTSTAMP:20260929T133158Z
+CREATED:20260901T064447Z
+LAST-MODIFIED:20260929T133158Z
+UID:6081-1792659600-1792663200@hurthub.davidson.edu
+SUMMARY:Solopreneur Circle
+DESCRIPTION:A monthly community gathering for entrepreneurs to celebrate wins\, work through challenges\, and discover resources.\n\n\nEach month we welcome entrepreneurs to join us at the Hurt Hub for a community gathering called the Solopreneur Circle. \nFacilitated by Michelle McKown-Campbell\, this intimate space brings together solo entrepreneurs to celebrate wins\, work through challenges\, and discover resources with people who are on similar paths. \nCoffee\, community\, and conversations that matter. Your seat at the table is waiting. \n  \nThe Hurt Hub welcomes requests for reasonable accommodations related to disability and will strive to make this program accessible to participants. Please contact our team at the Hurt Hub at contact@example.edu to make such a request.
+URL:https://hurthub.davidson.edu/event/solopreneur-circle-3/
+LOCATION:The Hurt Hub at Davidson College\, 210 Delburg Street\, Davidson\, NC 28036\, Davidson\, NC\, 28036\, US
+ATTACH;FMTTYPE=image/jpeg:https://hurthub.davidson.edu/wp-content/uploads/2026/08/1866_image-scaled.jpg
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20261022T090000
+DTEND;TZID=America/New_York:20261022T123000
+DTSTAMP:20260929T132620Z
+CREATED:20260824T131420Z
+LAST-MODIFIED:20260929T132620Z
+UID:5477-1792659600-1792672200@hurthub.davidson.edu
+SUMMARY:CPA Office Hours (SCHWINN CPA PLLC)
+DESCRIPTION:The Hurt Hub has partnered with Bob Schwinn of SCHWINN CPA PLLC to offer free 30 minute consultations for small businesses and entrepreneurs. The Schwinn CPA firm specializes in serving small businesses and will be hosting virtual office hours to answer your questions around topics such as: \n\nHow to Set up a New Business\nYear-end planning for a business\nBasic budgeting/forecasting concepts\nWhat kinds of financial reports a small business owner should review\nSetting up books for a business & types of accounting software\n\nTo set up a virtual appointment\, please use this calendly link. Once you click to confirm your appointment on calendly\, please share a little bit about what you are looking to discuss during the meeting and what stage you’re at in your business. \nThe Hurt Hub is pleased to connect our small business community with this free resource. All consultations are undertaken at the participant’s own risk and discretion; the Hurt Hub is not responsible for outcomes of individual sessions.
+URL:https://hurthub.davidson.edu/event/cpa-office-hours-schwinn-cpa-pllc-2/
+CATEGORIES:Amplify Davidson,Discussion,Free for Students,Office Hours,Virtual
+ATTACH;FMTTYPE=image/webp:https://hurthub.davidson.edu/wp-content/uploads/2026/08/Robert-Schwinn-CPA-MBA.webp
+END:VEVENT
+END:VCALENDAR

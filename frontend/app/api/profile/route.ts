@@ -1,59 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/models/User";
+import { profileApi } from "@/lib/api/profile";
+import { getProfile, updateProfile } from "@/server/auth";
+import { defineRoute } from "@/server/http";
 
-// GET /api/profile - get current user's profile
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+/** GET /api/profile (profileApi.get): the Profile (plus the derived `standing`). */
+export const GET = defineRoute(profileApi.get, async ({ user }) => ({
+  profile: await getProfile(user.id),
+}));
 
-    await connectToDatabase();
-
-    const userId = (session.user as { id: string }).id;
-    const user = await User.findById(userId).lean();
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ user });
-  } catch (error) {
-    console.error("GET /api/profile error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-// PATCH /api/profile - update profile
-export async function PATCH(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectToDatabase();
-
-    const userId = (session.user as { id: string }).id;
-    const updates = await req.json();
-
-    // Prevent email/password updates through this route
-    delete updates.email;
-    delete updates.password;
-
-    const user = await User.findByIdAndUpdate(userId, { $set: updates }, { new: true }).lean();
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ user });
-  } catch (error) {
-    console.error("PATCH /api/profile error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+/**
+ * PATCH /api/profile (profileApi.update): the strict whitelist in lib/api/profile.ts; null clears firstTerm and
+ * standingOverride; majors/minors must be official names (server/auth/profile.ts has every rule).
+ */
+export const PATCH = defineRoute(profileApi.update, async ({ user, body }) => ({
+  profile: await updateProfile(user.id, body),
+}));

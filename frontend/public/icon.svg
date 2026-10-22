@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <pattern id="s" width="6" height="9" patternUnits="userSpaceOnUse">
+      <rect width="3" height="9" fill="#fff" fill-opacity=".32"/>
+    </pattern>
+    <clipPath id="c"><rect width="32" height="32" rx="9"/></clipPath>
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="32" height="32" fill="#294878"/>
+    <rect y="23" width="32" height="9" fill="url(#s)"/>
+  </g>
+  <text x="16" y="19" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="#fff">M</text>
+</svg>

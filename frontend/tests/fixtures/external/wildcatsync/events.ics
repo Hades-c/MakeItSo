@@ -1,0 +1,347 @@
+BEGIN:VCALENDAR
+PRODID:-//github.com/rianjs/ical.net//NONSGML ical.net 4.0//EN
+VERSION:2.0
+BEGIN:VEVENT
+CATEGORIES:ThoughtfulLearning
+DESCRIPTION:The Watson Fellowship is a one-year $40\,000 grant for purpose
+ ful\, independent exploration outside the United States\, awarded to grad
+ uating seniors nominated by one of 41 partner colleges. \nProgram Informa
+ tion: https://fellowships.davidson.edu/Watson\nApplication Deadline: Sept
+ ember 30\, 2026 at 3 p.m. EDT\nGeneral Eligibility:\n- Graduating seniors
+  (Class of 2027)\n- No citizenship requirements\n- Must be nominated by D
+ avidson College.\nFor more information and to access the nomination appli
+ cation materials\, visit https://fellowships.davidson.edu/Watson and foll
+ ow the link to Davidson's Watson Fellowship application toolkit.\n\nHoste
+ d by: Catalyst\, Office of Fellowships\n\nOnline Location: http://fellows
+ hips.davidson.edu/Watson \n\nAdditional Information can be found at: http
+ s://wildcatsync.davidson.edu/event/12460064
+DTEND:20260930T190100Z
+DTSTAMP:20260930T143828Z
+DTSTART:20260930T190000Z
+LOCATION:Online
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Watson Fellowship Nomination Application Deadline: 9/30/2026
+UID:https://wildcatsync.davidson.edu/event/12460064
+URL:https://wildcatsync.davidson.edu/event/12460064
+X-HOSTS:Office of Fellowships
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:CommunityService
+DESCRIPTION:Are you registered to vote in North Carolina? Not sure? Come b
+ y the Union tables to check voter registration\, change address\, or regi
+ ster to vote!\nBe sure to know the last 4 digits of your Social Security 
+ Number\, or your NC Driver's License number! One of the two is required t
+ o fill out the form.\n\nHosted by: Center for Political Engagement\n\nAdd
+ itional Information can be found at: https://wildcatsync.davidson.edu/eve
+ nt/12784885
+DTEND:20260930T210000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20260930T190000Z
+GEO:35.500530;-80.842260
+LOCATION:Union Tables by the Fireplace
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Voter Registration Drive
+UID:https://wildcatsync.davidson.edu/event/12784885
+URL:https://wildcatsync.davidson.edu/event/12784885
+X-HOSTS:Center for Political Engagement
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Cultural
+DESCRIPTION:The sculpture\, With These Hands: A Memorial to the Enslaved a
+ nd Exploited\, serves as a reminder of a rarely spoken part of the colleg
+ e's history. It recognizes and bring those previously excluded members of
+  the community into the Davidson College story. We do that with narrative
+ s and with physical space.\n\nHosted by: The Crier\n\nAdditional Informat
+ ion can be found at: https://wildcatsync.davidson.edu/event/12575882
+DTEND:20260930T211500Z
+DTSTAMP:20260930T143828Z
+DTSTART:20260930T203000Z
+LOCATION:Oak Row
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:With These Hands: A Memorial to the Enslaved and Exploited
+UID:https://wildcatsync.davidson.edu/event/12575882
+URL:https://wildcatsync.davidson.edu/event/12575882
+X-HOSTS:The Crier
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Social
+DESCRIPTION:Please join your fellow students at NeuroNight Fall Edition!  
+ This event will be a great way to get to meet students and professors who
+  all are excited about neuroscience!  We will introduce Neuroscience Club
+  leaders and faculty members in the Neuroscience Program.  Neuroscience s
+ tudents will share their experiences as members of the Club and Program. 
+ Pizza and beverages will be available for dinner. Click HERE to RSVP!\n \
+ n \n \n\nHosted by: Davidson College Neuroscience Club\n\nAdditional Info
+ rmation can be found at: https://wildcatsync.davidson.edu/event/12696032
+DTEND:20260930T233000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20260930T213000Z
+GEO:35.498700;-80.844720
+LOCATION:Mauzé Family Terrace behind the Wall Academic Center (Cold Weathe
+ r or Rain Location: Third floor in the Atrium Lounge of  the Wall Academi
+ c Center)
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Fall 2026 Neuro Night
+UID:https://wildcatsync.davidson.edu/event/12696032
+URL:https://wildcatsync.davidson.edu/event/12696032
+X-HOSTS:Davidson College Neuroscience Club
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Spirituality
+DESCRIPTION:Interested in Meditation? In Zen or Buddhism? Or just a place 
+ to look a little more creatively and deeply into this process called life
+  or what being human is all about? Wednesday Night Zen is the place to be
+ ! Hosted by Buddhism at Davidson and led by Associate Chaplain for Buddhi
+ st Programs Iván Mayerhofer as well as student leaders\, the evening cons
+ ists of a period of meditation (with instructions)\, a brief reflection o
+ n practice\, and then a topic of discussion. Informed by Buddhist teachin
+ gs\, the evening doesn't require anyone to be Buddhist or have any experi
+ ence with meditation. Come and see what this is all about! \nRegular week
+ ly service is from 7pm - 8pm in the Oasis\, Chaplains' Office\, 4th Floor
+  of the Union.\nNew For this Year - Come Early at 6:30pm for an additiona
+ l period of non-guided silent meditation. Starts at 6:30pm and ends at 6:
+ 55pm with a brief chant of the refuges or Heart Sutra. Join at any time d
+ uring this additional period!\nAlso - stay after the 7pm-8pm service from
+  8pm - 8:30pm for tea and conversation! Many ways to engage that fit your
+  life. See you at Wednesday Night Zen!  \n\nHosted by: Buddhism at Davids
+ on\n\nAdditional Information can be found at: https://wildcatsync.davidso
+ n.edu/event/12565464
+DTEND:20261001T000000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20260930T230000Z
+LOCATION:Oasis
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Wednesday Night Zen
+UID:https://wildcatsync.davidson.edu/event/12565464
+URL:https://wildcatsync.davidson.edu/event/12565464
+X-HOSTS:Buddhism at Davidson
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Social
+DESCRIPTION:Join us\, the Pi Mu Chapter of Kappa Alpha Psi Fraternity\, In
+ c.\, the Upsilon Mu Chapter of Delta Sigma Theta Sorority\, Inc.\, and th
+ e Davidson College Mental Health Ambassadors\, on Wednesday\, September 3
+ 0th\, in Hance Auditorium for an evening focused on mental health\, suici
+ de awareness\, hazing prevention\, and building communities where we actu
+ ally look out for one another. Learn valuable insights from Mental Health
+  Ambassadors\, enjoy interactive activities\, and grab some free food whi
+ le you’re here! Don’t miss out on this important educational event! ❤️‍🩹
+ \n*This event counts as a Health and Wellness EDU credit!\n\nHosted by: C
+ enter for Student Health & Well-Being\, Delta Sigma Theta Sorority\, Inc 
+ .- Upsilon Mu\, Kappa Alpha Psi Fraternity\, Inc. - Pi Mu\n\nAdditional I
+ nformation can be found at: https://wildcatsync.davidson.edu/event/127508
+ 43
+DTEND:20261001T000000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20260930T230000Z
+GEO:35.500000;-80.845140
+LOCATION:Hance Auditorium
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Krimson Kares: Check In. Speak Up.
+UID:https://wildcatsync.davidson.edu/event/12750843
+URL:https://wildcatsync.davidson.edu/event/12750843
+X-HOSTS:Kappa Alpha Psi Fraternity\, Inc. - Pi Mu
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Spirituality
+DESCRIPTION:Dr. Patel (Visiting Assistant Professor in Religious Studies) 
+ will be sharing about his yatra (~pilgrimage) this last summer across the
+  Nepalese and Tibetan mountain ranges. Come for an evening of stories and
+  pictures from his journey! Light food will be served. Co-hosted by Hindu
+  Student Association and Buddhism at Davidson.\nWednesday\, September 30t
+ h\, 7pm - 8pm\, Sprinkle Room (4th Floor of the Union)!\n \n\nHosted by: 
+ Buddhism at Davidson\, Chaplains' Office\, Hindu Student Association\n\nA
+ dditional Information can be found at: https://wildcatsync.davidson.edu/e
+ vent/12821285
+DTEND:20261001T000000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20260930T230000Z
+LOCATION:Sprinkle Room
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Shared Religious Spaces Across the Tibetan and Nepalese Mountain R
+ anges w/ Dr. Patel
+UID:https://wildcatsync.davidson.edu/event/12821285
+URL:https://wildcatsync.davidson.edu/event/12821285
+X-HOSTS:Hindu Student Association
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Social
+DESCRIPTION:Rusk Crush\n\nHosted by: Rusk House\n\nAdditional Information 
+ can be found at: https://wildcatsync.davidson.edu/event/12772295
+DTEND:20261001T033000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20261001T020000Z
+GEO:35.502990;-80.842240
+LOCATION:Summit Outpost (Nummit)
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Rusk Crush
+UID:https://wildcatsync.davidson.edu/event/12772295
+URL:https://wildcatsync.davidson.edu/event/12772295
+X-HOSTS:Rusk House
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Athletics
+DESCRIPTION:Join us at 6:00 AM outside of the union to run/walk at your ow
+ n pace. All experiences welcome! There is no better way to start your day
+  than with a run and the sunrise! Join the GroupMe: https://groupme.com/j
+ oin_group/116476210/0YUlxmxG\n\nHosted by: Davidson College Running Club\
+ n\nAdditional Information can be found at: https://wildcatsync.davidson.e
+ du/event/12701577
+DTEND:20261001T110000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20261001T100000Z
+LOCATION:Davidson College Union Ampitheater
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Regular Morning Practice
+UID:https://wildcatsync.davidson.edu/event/12701577
+URL:https://wildcatsync.davidson.edu/event/12701577
+X-HOSTS:Davidson College Running Club
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:ThoughtfulLearning
+DESCRIPTION:Each year candidates from around the world are selected for th
+ e Rhodes Scholarship to support a minimum of two years of graduate study 
+ in any field at the University of Oxford. Rhodes Scholars are chosen not 
+ only for their outstanding scholarly achievements\, but for their charact
+ er\, commitment to others and to the common good\, and for their potentia
+ l for leadership in whatever domains their careers may lead. \nCandidates
+  who are not U.S. citizens\, permanent residents\, or DACA recipients may
+  be eligible to apply in certain Rhodes constituencies. Prospective candi
+ dates should review Davidson's Non-U.S. Rhodes Scholarship Application To
+ olkit (Davidson login through your browser required to access) for inform
+ ation.\n \nProgram Information: Check your constituency eligibility on th
+ e Rhodes Trust website and Davidson's toolkitApplication Deadline: Varies
+  by constituencyGeneral Eligibility: Varies by constituency\n*Candidates 
+ who are U.S. citizens\, permanent residents\, or DACA recipients must app
+ ly in the U.S. Rhodes constituency and must be endorsed by Davidson Colle
+ ge. U.S. candidates should visit fellowships.davidson.edu/Rhodes and foll
+ ow the link to the U.S. Rhodes application toolkit for details (Davidson 
+ login through your browser required to access).\n\nHosted by: Catalyst\, 
+ International Student Engagement\, Office of Fellowships\n\nOnline Locati
+ on: https://fellowships.davidson.edu/NonUSRhodes\n\nAdditional Informatio
+ n can be found at: https://wildcatsync.davidson.edu/event/12490505
+DTEND:20261001T160000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20260723T160000Z
+LOCATION:Online
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Rhodes Scholarship (Non-U.S. Constituency) Application Deadlines: 
+ Vary throughout summer/autumn 2026
+UID:https://wildcatsync.davidson.edu/event/12490505
+URL:https://wildcatsync.davidson.edu/event/12490505
+X-HOSTS:Office of Fellowships
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:ThoughtfulLearning
+DESCRIPTION:Come Join Davidson's chapter of Planned Parenthood Generation 
+ Action to learn what the Hyde Amendment is and who it affects\, as the Am
+ endment has its 50th birthday this year. \n\nHosted by: Planned Parenthoo
+ d Generation Action\n\nAdditional Information can be found at: https://wi
+ ldcatsync.davidson.edu/event/12709989
+DTEND:20261001T160000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20261001T150000Z
+LOCATION:Union Table C
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Hyde Amendment Tabling
+UID:https://wildcatsync.davidson.edu/event/12709989
+URL:https://wildcatsync.davidson.edu/event/12709989
+X-HOSTS:Planned Parenthood Generation Action
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Fundraising
+DESCRIPTION:Interested in learning a little more about our organizations a
+ t Davidson College? Ever wanted to give an “Oh So Fly” Pi Chi a little sp
+ lash? 💦 Or maybe you want to see just how chivalrous a Lambda can be?\nT
+ he Pi Chis & Lambdas invite you to Splash the MGC! 🎈💦 Come out to learn
+  more about our organizations\, launch some water balloons at our members
+ \, put the Pi Chis to the test\, and see if our chivalrous Lambdas can st
+ ay dry! Plus\, enjoy a FREE FROZEN TREAT as a thank-you for stopping by a
+ nd supporting our organizations!\nCome make a splash\, meet some new peop
+ le\, and have some fun with the Pi Chis & Lambdas!\n \n(Check out our acc
+ ount\, @/mgcdavidson\, on IG for more information 🤫)\n\nHosted by: The A
+ lpha Gamma Chapter of Latinas Promoviendo Comunidad/Lambda Pi Chi Sororit
+ y\, Inc.\, The Delta Omega Chapter of Lambda Theta Phi Latin Fraternity\,
+  Inc.\n\nAdditional Information can be found at: https://wildcatsync.davi
+ dson.edu/event/12785396
+DTEND:20261001T160000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20261001T150000Z
+LOCATION:Union Amphitheater
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Splash the MGC
+UID:https://wildcatsync.davidson.edu/event/12785396
+URL:https://wildcatsync.davidson.edu/event/12785396
+X-HOSTS:The Delta Omega Chapter of Lambda Theta Phi Latin Fraternity\, Inc.
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Cultural
+DESCRIPTION:Come join Rabbi Becca and JSU for Snacks in the Sukkah at the 
+ Union Amphitheater this Thursday at 11am!!.\n\nHosted by: Jewish Student 
+ Union\n\nAdditional Information can be found at: https://wildcatsync.davi
+ dson.edu/event/12829323
+DTEND:20261001T160000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20261001T150000Z
+GEO:35.498300;-80.843580
+LOCATION:Union Amphitheater
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Snacks in the Sukkah!
+UID:https://wildcatsync.davidson.edu/event/12829323
+URL:https://wildcatsync.davidson.edu/event/12829323
+X-HOSTS:Jewish Student Union
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:Spirituality
+DESCRIPTION:Take a moment to pause\, breathe\, and reset. 🌿 Join us for a
+  few quiet minutes of calm during our Mindfulness Drop-In Sessions every 
+ Thursday during Common Hour in the Oasis (Chaplains Office\, 4th Floor\, 
+ Union). 🧘‍♀️✨\nDrop in and join us! 💚\n\nHosted by: Chaplains' Office\,
+  Center for Student Health & Well-Being\n\nAdditional Information can be 
+ found at: https://wildcatsync.davidson.edu/event/12602736
+DTEND:20261001T160500Z
+DTSTAMP:20260930T143828Z
+DTSTART:20261001T150500Z
+LOCATION:Oasis
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Mindfulness Drop In Session
+UID:https://wildcatsync.davidson.edu/event/12602736
+URL:https://wildcatsync.davidson.edu/event/12602736
+X-HOSTS:Center for Student Health & Well-Being
+END:VEVENT
+BEGIN:VEVENT
+CATEGORIES:CommunityService
+DESCRIPTION:Are you registered to vote in North Carolina? Not sure? Come b
+ y the Union tables to check voter registration\, change address\, or regi
+ ster to vote!\nBe sure to know the last 4 digits of your Social Security 
+ Number\, or your NC Driver's License number! One of the two is required t
+ o fill out the form.\n\nHosted by: Center for Political Engagement\n\nAdd
+ itional Information can be found at: https://wildcatsync.davidson.edu/eve
+ nt/12784886
+DTEND:20261001T170000Z
+DTSTAMP:20260930T143828Z
+DTSTART:20261001T150000Z
+GEO:35.500530;-80.842260
+LOCATION:Union Tables by the Fireplace
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Voter Registration Drive
+UID:https://wildcatsync.davidson.edu/event/12784886
+URL:https://wildcatsync.davidson.edu/event/12784886
+X-HOSTS:Center for Political Engagement
+END:VEVENT
+END:VCALENDAR

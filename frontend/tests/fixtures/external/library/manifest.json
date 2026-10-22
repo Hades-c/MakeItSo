@@ -1,0 +1,15 @@
+{
+  "source": "library",
+  "description": "LibCal (davidson.libcal.com), live samples from 2026-09-30: today's hours (11 locations) and library events (15); organizer names and e-mail addresses removed.",
+  "capturedAt": "2026-09-30",
+  "routes": [
+    {
+      "url": "https://davidson.libcal.com/api_hours_today.php?iid=3662&lid=0&format=json&systemTime=0",
+      "file": "hours-today.json"
+    },
+    {
+      "url": "https://davidson.libcal.com/ical_subscribe.php?src=p&cid=7393",
+      "file": "events.ics"
+    }
+  ]
+}

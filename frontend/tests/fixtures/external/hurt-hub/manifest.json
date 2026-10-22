@@ -1,0 +1,18 @@
+{
+  "source": "hurt-hub",
+  "description": "Hurt Hub (The Events Calendar for WordPress), live samples from 2026-09-30 (9 events); organizer details replaced.",
+  "capturedAt": "2026-09-30",
+  "routes": [
+    {
+      "url": "https://hurthub.davidson.edu/events/?ical=1",
+      "file": "events.ics",
+      "note": "TZID=America/New_York local times with a VTIMEZONE block."
+    },
+    {
+      "url": "https://hurthub.davidson.edu/wp-json/tribe/events/v1/events",
+      "anyQuery": true,
+      "file": "tribe-events.json",
+      "note": "Tribe REST JSON fallback; answers any query string."
+    }
+  ]
+}

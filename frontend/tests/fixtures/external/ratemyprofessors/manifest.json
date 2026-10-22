@@ -1,0 +1,12 @@
+{
+  "source": "ratemyprofessors",
+  "description": "SYNTHETIC roster in the shape of the RateMyProfessors GraphQL response to newSearch.teachers(query: {text: '', schoolID: 'U2Nob29sLTM5NjU='}, first: 1000). Names reproduce the real name forms that break naive matching (PLAN §5 Ratings; see cases.json); every id, legacyId and number is invented, and there is no review text.",
+  "routes": [
+    {
+      "method": "POST",
+      "url": "https://www.ratemyprofessors.com/graphql",
+      "bodyIncludes": "U2Nob29sLTM5NjU=",
+      "file": "teachers-davidson.json"
+    }
+  ]
+}

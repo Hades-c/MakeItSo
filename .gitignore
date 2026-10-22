@@ -7,6 +7,12 @@ node_modules/
 frontend/.next/
 frontend/out/
 
+# Test output
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+
 # Environment files — NEVER commit these
 .env
 .env.local
@@ -17,6 +23,11 @@ frontend/.env.*.local
 
 # Vercel
 .vercel
+
+# Agent notes that `next dev` (Next 16) writes when it detects an AI agent. Whether the repo carries an
+# AGENTS.md/CLAUDE.md is the owner's decision, so the generated ones are never committed (PLAN §2).
+frontend/AGENTS.md
+frontend/CLAUDE.md
 
 # TypeScript
 *.tsbuildinfo

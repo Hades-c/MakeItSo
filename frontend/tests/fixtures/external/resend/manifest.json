@@ -1,0 +1,12 @@
+{
+  "source": "resend",
+  "description": "Resend transactional e-mail API (an outbound service, not a data source): the success answer of POST /emails, shaped like Resend's documented response. Synthetic: no message is ever sent in fixtures mode.",
+  "routes": [
+    {
+      "method": "POST",
+      "url": "https://api.resend.com/emails",
+      "file": "email-sent.json",
+      "note": "Any message: Resend answers 200 with the new e-mail's id."
+    }
+  ]
+}
