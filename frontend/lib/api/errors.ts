@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { API_ERROR_CODES } from "@/lib/api/error-codes";
 
 /**
  * The JSON error body every route handler returns (PLAN §2 "API errors"):
@@ -16,17 +17,8 @@ import * as z from "zod";
  *   unavailable        501 not implemented yet, 503 upstream/config unavailable
  *   internal           500 unexpected (logged server-side, never leaked)
  */
-export const API_ERROR_CODES = [
-  "bad_request",
-  "validation_failed",
-  "unauthorized",
-  "forbidden",
-  "not_found",
-  "conflict",
-  "rate_limited",
-  "unavailable",
-  "internal",
-] as const;
+// The codes live in ./error-codes (zod-free, for callApi).
+export { API_ERROR_CODES };
 export const ApiErrorCodeSchema = z.enum(API_ERROR_CODES);
 export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;
 

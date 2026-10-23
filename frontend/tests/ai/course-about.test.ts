@@ -22,7 +22,13 @@ import {
   REMEMBERED_INVALID_MESSAGE,
   REMEMBERED_REFUSAL_MESSAGE,
 } from "@/server/ai/features/course-about";
-import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
+import {
+  MOCK_FALLBACK_MODEL,
+  MOCK_MODEL,
+  mockAiRequests,
+  resetMockAi,
+  setMockAiScenario,
+} from "@/server/ai/mock";
 import { SYSTEM } from "@/server/ai/prompts/course-about";
 import {
   consumeGenerationQuota,
@@ -156,14 +162,15 @@ describe("generation and the shared cache", () => {
     const body = CourseAboutResultSchema.parse(await bodyOf(first));
     expect(body).toMatchObject({
       kind: "ok",
-      servedModel: "claude-sonnet-5-5",
+      servedModel: MOCK_MODEL,
       fallbackUsed: false,
       cached: false,
     });
     if (body.kind !== "ok") throw new Error("expected ok");
     expect(body.data.about.summary).toMatch(/abstract data types/);
+    // The mock provider's own id in the stored provenance, never a Claude model's.
     expect(body.data.provenance).toMatchObject({
-      model: "claude-sonnet-5-5",
+      model: MOCK_MODEL,
       promptVersion: "course-about/1",
       inputHash: expect.stringMatching(/^[a-f0-9]{64}$/),
       generatedAt: "2026-09-30T16:00:00.000Z",
@@ -192,6 +199,9 @@ describe("generation and the shared cache", () => {
     const usage = await AiUsage.findOne({ userId: usageSubject(user.id) }).lean();
     expect(usage).toMatchObject({ feature: "course-about", generations: 1, cacheHits: 1 });
     expect(usage!.inputTokens).toBeGreaterThan(0);
+    expect(usage!.models).toEqual([MOCK_MODEL]);
+    const stored = await AiCache.findOne({ feature: "course-about" }).lean();
+    expect(stored?.provenance?.model).toBe(MOCK_MODEL);
   });
 
   it("shares one entry across terms when the official text is the same", async () => {
@@ -274,9 +284,9 @@ describe("generation and the shared cache", () => {
     const body = CourseAboutResultSchema.parse(await bodyOf(await post(CSC_221)));
     expect(body).toMatchObject({
       kind: "ok",
-      servedModel: "claude-sonnet-5",
+      servedModel: MOCK_FALLBACK_MODEL,
       fallbackUsed: true,
-      data: { provenance: { model: "claude-sonnet-5" } },
+      data: { provenance: { model: MOCK_FALLBACK_MODEL } },
     });
   });
 });

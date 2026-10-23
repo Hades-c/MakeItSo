@@ -1,17 +1,15 @@
 import type { PlanMapSlot, PlanMapTerm } from "@/components/domain/plan-map";
 import type { RequirementSlot as SlotView } from "@/components/domain/requirement-slots";
 import { compareTerms, isSummer, termLabel, type TermCode } from "@/lib/term";
-import { canonicalCourseCode } from "@/lib/types/catalog";
-import { normalizeCourseCode } from "@/lib/types/common";
-import {
-  ACTIVE_PLAN_STATUSES,
-  REQUIREMENT_SLOTS,
-  type PlanItem,
-  type PlanProgress,
-  type PlanStatus,
-  type PlanWarning,
-  type RequirementSlot,
+import { canonicalCourseCode, normalizeCourseCode } from "@/lib/course-code";
+import type {
+  PlanItem,
+  PlanProgress,
+  PlanStatus,
+  PlanWarning,
+  RequirementSlot,
 } from "@/lib/types/plan";
+import { ACTIVE_PLAN_STATUSES, REQUIREMENT_SLOTS } from "@/lib/types/plan-constants";
 
 /**
  * The 4-year plan tab's view model (pure, isomorphic): items per term, the degree map, the requirement tracker

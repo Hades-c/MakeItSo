@@ -1,4 +1,4 @@
-import { COURSE_CODE_PATTERN, normalizeCourseCode } from "@/lib/types/common";
+import { COURSE_CODE_PATTERN, normalizeCourseCode } from "@/lib/course-code";
 import { isTermCode, type TermCode } from "@/lib/term";
 
 /**
@@ -92,6 +92,15 @@ export function parseTermParam(value: string | string[] | null | undefined): Ter
  */
 export const RETURN_PATH_HEADER = "x-mis-return-path";
 
+/** The fragment parameter of the e-mailed password reset link: /forgot-password#token=<token>. */
+export const RESET_TOKEN_PARAM = "token";
+
+/** The reset token in a location hash ("#token=…"), or null. */
+export function resetTokenFromHash(hash: string): string | null {
+  const token = new URLSearchParams(hash.replace(/^#/, "")).get(RESET_TOKEN_PARAM);
+  return token ? token : null;
+}
+
 /** The RETURN_PATH_HEADER value for a requested URL: "/plan?tab=four-year" (Next's internal `_rsc` dropped). */
 export function returnPathOf(url: URL): string {
   const search = new URLSearchParams(url.search);
@@ -153,7 +162,12 @@ export const routes = {
   login: (callbackUrl?: string) => `/login${queryString({ callbackUrl })}`,
   register: () => "/register",
   verify: () => "/verify",
-  forgotPassword: () => "/forgot-password",
+  /**
+   * /forgot-password; with `token`, the e-mailed reset link. The token travels in the fragment (#token=…), which
+   * the browser never sends to a server (no request logs, no Referer); the page reads it, then drops it.
+   */
+  forgotPassword: (params: { token?: string } = {}) =>
+    `/forgot-password${params.token ? `#${RESET_TOKEN_PARAM}=${encodeURIComponent(params.token)}` : ""}`,
   privacy: () => "/privacy",
   /**
    * /onboarding, at `step` (none: resume where the student stopped). `next` is the page to continue to once setup

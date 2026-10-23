@@ -7,7 +7,7 @@ import {
   type ResolvedTerms,
   type Section,
 } from "@/lib/types/catalog";
-import { normalizeCourseCode } from "@/lib/types/common";
+import { normalizeCourseCode } from "@/lib/course-code";
 import {
   ACTIVE_PLAN_STATUSES,
   type PlanItem,

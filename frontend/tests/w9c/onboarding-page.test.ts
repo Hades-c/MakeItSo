@@ -15,6 +15,7 @@ import {
 } from "@/app/onboarding/_lib/plan-items";
 import { resumeStep } from "@/app/onboarding/_lib/steps";
 import { AddPlanItemBodySchema } from "@/lib/api/plan";
+import { unlistedPrograms } from "@/lib/unlisted-programs";
 import { CAREERS } from "@/server/content/careers";
 import { officialProgramNames } from "@/server/programs";
 import { addItem, getPlan, getProgress, updateItem } from "@/server/plan";
@@ -86,11 +87,16 @@ describe("loadOnboarding", () => {
       interests: [],
       onboardedAt: null,
     });
-    expect(data.majors).toEqual(await officialProgramNames("major"));
+    // The official names, then the programs without an Acalog offering (a CIS major, the MES minor).
+    expect(data.majors).toEqual([
+      ...(await officialProgramNames("major")),
+      ...unlistedPrograms("major").map((program) => program.name),
+    ]);
     expect(data.majors).not.toContain("Undecided");
     expect(data.minors).toEqual([
       ...(await officialProgramNames("minor")),
       ...(await officialProgramNames("interdisciplinary-minor")),
+      ...unlistedPrograms("minor").map((program) => program.name),
     ]);
     expect(data.careers).toEqual(
       CAREERS.map(({ slug, name, cluster }) => ({ slug, name, cluster })),

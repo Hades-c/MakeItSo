@@ -13,11 +13,13 @@ import {
   type LibraryHours,
   type LibraryLocationHours,
 } from "@/lib/types/feeds";
-import FeedItem from "@/models/FeedItem";
+import type { QueryFilter } from "mongoose";
+import FeedItem, { type FeedItemDoc } from "@/models/FeedItem";
 import { now } from "@/server/clock";
 import { getDb, trusted } from "@/server/db";
 import { readEnv } from "@/server/env";
 import { FEED_SOURCES } from "@/server/feeds/config";
+import { groupListings, MERGE_WINDOW_MS } from "@/server/feeds/merge";
 import { toFeedItem, WIRE_PROJECTION } from "@/server/feeds/store";
 import { staleSources, syncFeeds } from "@/server/feeds/sync";
 import { escapeRegExp, foldForSearch } from "@/server/feeds/text";
@@ -95,7 +97,8 @@ export interface EventsPage {
  * was cut at `limit`. `kinds` defaults to events + deadlines; `sources` to every feed source; `q` matches title,
  * location and summary (every word, case and accent insensitive). Overlap: startsAt < to, and endsAt > from, or
  * (no end) startsAt ≥ from, or (an event without an end) startsAt > from − OPEN_ENDED_EVENT_MS. Items without a
- * start time (undated news) never match a window.
+ * start time (undated news) never match a window. One event listed by several sources counts and shows once, as
+ * its host office's listing (server/feeds/merge.ts); `limit` and `hasMore` count events, not listings.
  */
 export async function listEventsPage(
   query: EventsQueryInput = {},
@@ -120,33 +123,61 @@ export async function listEventsPage(
     scheduleStaleRefresh(await staleSources(requestedSources, current));
 
   const tokens = textFilter(q);
-  const docs = await FeedItem.find(
-    {
-      source: trusted({ $in: requestedSources }),
-      kind: trusted({ $in: kinds.length ? [...new Set(kinds)] : [...DEFAULT_EVENT_KINDS] }),
-      startsAt: trusted({ $ne: null, $lt: to }),
-      $or: [
-        { endsAt: trusted({ $gt: from }) },
-        { endsAt: null, startsAt: trusted({ $gte: from }) },
-        {
-          endsAt: null,
-          kind: "event",
-          startsAt: trusted({ $gt: new Date(from.getTime() - OPEN_ENDED_EVENT_MS) }),
-        },
-      ],
-      ...(tokens.length ? { $and: tokens } : {}),
-    },
-    WIRE_PROJECTION,
-  )
-    .sort({ startsAt: 1, title: 1, source: 1, externalId: 1 })
-    .limit(limit + 1)
-    .lean();
-  const hasMore = docs.length > limit;
-  const items = docs
-    .slice(0, limit)
-    .map(toFeedItem)
-    .filter((item): item is FeedItemWire => item !== null);
-  return { items, hasMore };
+  const filter: QueryFilter<FeedItemDoc> = {
+    source: trusted({ $in: requestedSources }),
+    kind: trusted({ $in: kinds.length ? [...new Set(kinds)] : [...DEFAULT_EVENT_KINDS] }),
+    startsAt: trusted({ $ne: null, $lt: to }),
+    $or: [
+      { endsAt: trusted({ $gt: from }) },
+      { endsAt: null, startsAt: trusted({ $gte: from }) },
+      {
+        endsAt: null,
+        kind: "event",
+        startsAt: trusted({ $gt: new Date(from.getTime() - OPEN_ENDED_EVENT_MS) }),
+      },
+    ],
+    ...(tokens.length ? { $and: tokens } : {}),
+  };
+  const timeZone = readEnv("APP_TIMEZONE");
+  // One event listed by several sources is one item (server/feeds/merge.ts), so a page of `limit` events can
+  // need more rows than that: read until the first `limit` events are complete (the last row read starts more
+  // than MERGE_WINDOW_MS after the last one's first listing) or every match is read.
+  let take = limit + 1;
+  for (let round = 1; ; round++) {
+    const docs = await FeedItem.find(filter, WIRE_PROJECTION)
+      .sort({ startsAt: 1, title: 1, source: 1, externalId: 1 })
+      .limit(take)
+      .lean();
+    const groups = groupListings(
+      docs.map(toFeedItem).filter((item): item is FeedItemWire => item !== null),
+      timeZone,
+    );
+    const lastRead = docs.at(-1)?.startsAt?.getTime() ?? 0;
+    const lastOpened = groups[limit - 1]?.first.startsAt;
+    const settled =
+      groups.length > limit && !!lastOpened && lastRead - Date.parse(lastOpened) > MERGE_WINDOW_MS;
+    if (docs.length < take || settled || round === MAX_MERGE_READS) {
+      const items = groups
+        .slice(0, limit)
+        .map((group) => group.shown)
+        .sort(byListOrder);
+      return { items, hasMore: groups.length > limit || docs.length === take };
+    }
+    take *= 2;
+  }
+}
+
+/** At most this many reads per page (each twice the last): a page of 100 reads at most 808 rows. */
+const MAX_MERGE_READS = 4;
+
+/** listEventsPage's order (the query's sort), for the merged page: a shown listing may start a minute later. */
+function byListOrder(a: FeedItemWire, b: FeedItemWire): number {
+  return (
+    Date.parse(a.startsAt!) - Date.parse(b.startsAt!) ||
+    (a.title < b.title ? -1 : a.title > b.title ? 1 : 0) ||
+    (a.source < b.source ? -1 : a.source > b.source ? 1 : 0) ||
+    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  );
 }
 
 /** listEventsPage without the "cut at limit" flag (the frozen service surface). */

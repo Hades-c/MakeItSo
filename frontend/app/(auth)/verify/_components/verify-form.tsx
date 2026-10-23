@@ -10,8 +10,9 @@ import { STANDALONE_LINK } from "@/app/(auth)/_lib/styles";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { accountApi, VerificationCodeSchema } from "@/lib/api/account";
+import { VerificationCodeSchema } from "@/lib/api/account";
 import { ApiClientError, callApi } from "@/lib/api/client";
+import { accountEndpoints } from "@/lib/api/endpoints";
 import { routes } from "@/lib/routes";
 
 export interface VerifyFormProps {
@@ -57,7 +58,7 @@ export function VerifyForm({ email, next, codeSent, notice = null }: VerifyFormP
     }
     setVerifying(true);
     try {
-      await callApi(accountApi.verify, { body: { code: parsed.data } });
+      await callApi(accountEndpoints.verify, { body: { code: parsed.data } });
       router.replace(next);
       router.refresh();
     } catch (caught) {
@@ -72,7 +73,7 @@ export function VerifyForm({ email, next, codeSent, notice = null }: VerifyFormP
     setStatus(null);
     setSending(true);
     try {
-      const result = await callApi(accountApi.resendVerification);
+      const result = await callApi(accountEndpoints.resendVerification);
       if (result.sent) {
         setStatus(`We sent a 6-digit code to ${email}. It works for 15 minutes.`);
         setSent(true);

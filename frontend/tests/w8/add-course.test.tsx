@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AddToPlanTerm } from "@/components/domain/add-to-plan-control";
@@ -105,8 +105,9 @@ describe("AddCourse", () => {
       status: "planned",
       source: "catalog",
     });
+    // The live region is always there; wait for its message.
     const notice = await screen.findByTestId("add-to-plan-notice");
-    expect(notice).toHaveTextContent("Added CSC 221 A to Spring 2027.");
+    await waitFor(() => expect(notice).toHaveTextContent("Added CSC 221 A to Spring 2027."));
     expect(within(notice).getByTestId("added-warnings")).toHaveTextContent(
       "CSC 221 A overlaps BIO 201 A.",
     );

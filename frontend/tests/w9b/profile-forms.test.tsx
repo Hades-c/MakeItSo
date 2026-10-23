@@ -195,6 +195,25 @@ function academics(initial: Partial<Profile> = {}) {
 }
 
 describe("AcademicsForm", () => {
+  it("explains the choices without a catalog offering of their own and links their catalog pages", () => {
+    academics();
+    const majors = within(screen.getByRole("group", { name: "Majors" }));
+    expect(majors.getByTestId("unlisted-major")).toHaveTextContent(
+      "Student-designed major (Center for Interdisciplinary Studies): A major through the Center for Interdisciplinary Studies is applied for and approved there",
+    );
+    expect(
+      majors.getByRole("link", { name: "Center for Interdisciplinary Studies in the catalog" }),
+    ).toHaveAttribute(
+      "href",
+      "https://catalog.davidson.edu/preview_program.php?catoid=28&poid=1794",
+    );
+    const minors = within(screen.getByRole("group", { name: "Minors" }));
+    expect(minors.getByRole("link", { name: "Arab Studies in the catalog" })).toHaveAttribute(
+      "href",
+      "https://catalog.davidson.edu/preview_program.php?catoid=28&poid=1791",
+    );
+  });
+
   it("adds majors and a minor, sets the year, first term and standing, and saves every field", async () => {
     stubFetch(
       profileAnswer({
