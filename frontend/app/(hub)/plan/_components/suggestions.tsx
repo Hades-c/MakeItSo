@@ -6,7 +6,8 @@ import { ErrorState } from "@/components/ui/error-state";
 import { routes } from "@/lib/routes";
 import type { AiFailure } from "@/lib/types/ai";
 import type { Loaded, SuggestionsData } from "../_lib/load";
-import { SuggestionsPanel } from "./suggestions-panel";
+// The panel loads on demand (lazy-islands.tsx).
+import { SuggestionsPanel } from "./lazy-islands";
 
 /**
  * Suggestions (PLAN §3, R2): AI drafts per course. When AI is not available to this student the whole view is a

@@ -7,7 +7,8 @@ import { describeDeadlines } from "../_lib/deadlines";
 import type { Loaded, NextSemesterData } from "../_lib/load";
 import { planHref } from "../_lib/tabs";
 import { meetingsText } from "../_lib/week";
-import { PrintButton } from "./print-button";
+// Loads on demand (lazy-islands.tsx): the print view is not /plan's default view.
+import { PrintButton } from "./lazy-islands";
 import "./print.css";
 
 /**

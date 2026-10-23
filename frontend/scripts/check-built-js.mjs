@@ -12,16 +12,14 @@ export const MAX_FIRST_LOAD_GZIP_BYTES = 200 * 1024;
 export const KEY_ROUTES = ["/today", "/courses", "/courses/[term]/[code]", "/plan"];
 
 /**
- * Temporary ceilings (KB gzipped) for key pages still over the budget, so they cannot grow while the remaining gap
- * is closed. Client islands no longer carry zod (they call the API through lib/api/endpoints.ts), which took about
- * 35 KB off /courses (now 175 KB), the course page (191 KB) and /plan. /plan (210 KB) still loads the islands of all
- * four tabs at once; loading the other tabs' islands on demand is the next step. Lower or delete an entry when its
- * page shrinks; the target stays 200 KB.
+ * Temporary ceilings (KB gzipped) for key pages over the budget, so they cannot grow while the gap is closed: a
+ * page with a ceiling only warns while it stays under it. None is over today. Client islands carry no zod (they
+ * call the API through lib/api/endpoints.ts), and /plan loads only its default view's islands up front
+ * (app/(hub)/plan/_components/lazy-islands.tsx), which put it just under 200 KB: growth in the Next semester view
+ * or in code it shares has to be paid for there. Delete an entry as soon as its page is back under the budget.
  */
 /** @type {Record<string, number>} */
-export const TEMPORARY_CEILINGS_KB = {
-  "/plan": 215,
-};
+export const TEMPORARY_CEILINGS_KB = {};
 
 const gzipCache = new Map();
 function gzipSize(path) {
