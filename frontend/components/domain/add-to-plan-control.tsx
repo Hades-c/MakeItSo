@@ -129,8 +129,10 @@ export function AddToPlanControl({
                 className={cn(
                   "relative flex min-h-11 min-w-0 flex-col items-center justify-center rounded-md px-1.5 pt-2 pb-1.75 text-center",
                   "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus",
+                  // Selection is a 2px --primary outline inside the tile. Not a ring: a ring is a box-shadow,
+                  // and the dark theme's `--elev-card: none` cancelled it, leaving a 1.11:1 cue.
                   checked
-                    ? "bg-surface text-fg shadow-card ring-[1.5px] ring-primary-fill"
+                    ? "bg-surface text-fg outline-2 -outline-offset-2 outline-primary"
                     : "text-fg-2",
                   disabled
                     ? "cursor-not-allowed"

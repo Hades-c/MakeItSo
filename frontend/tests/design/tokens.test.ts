@@ -141,6 +141,11 @@ describe("Lakeside tokens", () => {
       }
     });
 
+    it("selection outline (--primary, the Add to plan term tile) ≥ 3:1 on the control and the tile", () => {
+      expect(contrast(t.primary, t["surface-2"])).toBeGreaterThanOrEqual(3);
+      expect(contrast(t.primary, t.surface)).toBeGreaterThanOrEqual(3);
+    });
+
     it.each([...COURSE_COLORS])("course colour %s is readable on its wash and on surfaces", (c) => {
       const text = t[`course-${c}`];
       expect(contrast(text, t[`course-${c}-wash`])).toBeGreaterThanOrEqual(4.5);
