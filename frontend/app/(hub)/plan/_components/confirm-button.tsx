@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
  * A destructive button that asks first, in the page (no modal): the first press swaps the button for
  * "<question> [Yes, …] [Keep]" with focus on "Keep"; Escape or "Keep" puts the button back and returns focus to
  * it; only "Yes" runs the action, with focus back on the button (if it is still on the page) until the caller
- * moves it on. The question is announced (aria-live).
+ * moves it on. The question is announced (aria-live). The "Yes" button is the danger variant with a trash icon
+ * and words (never colour alone: red is also the accent); give the trigger the same icon.
  */
 export function ConfirmButton({
   question,
@@ -90,6 +92,7 @@ export function ConfirmButton({
           onConfirm();
         }}
       >
+        <Trash2 aria-hidden />
         {confirmLabel}
       </Button>
       <Button ref={keep} type="button" variant="secondary" size={size} onClick={cancel}>

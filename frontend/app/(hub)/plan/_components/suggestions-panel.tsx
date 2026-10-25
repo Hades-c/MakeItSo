@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, LoaderCircle, Plus, Sparkles, Undo2, X } from "lucide-react";
+import { Check, LoaderCircle, Plus, Sparkles, Trash2, Undo2, X } from "lucide-react";
 import { notify } from "@/components/ui/notify";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
@@ -279,6 +279,7 @@ function DraftCard({
           disabled={action.busy}
           onConfirm={() => void close("dismissed")}
         >
+          <Trash2 aria-hidden />
           Dismiss all
         </ConfirmButton>
       </div>

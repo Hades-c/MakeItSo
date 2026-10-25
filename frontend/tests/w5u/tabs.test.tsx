@@ -359,6 +359,9 @@ describe("4-year plan tab", () => {
     });
     expect(within(ask).getByRole("button", { name: "Keep" })).toHaveFocus();
     expect(calls).toHaveLength(1);
+    expect(
+      within(ask).getByRole("button", { name: "Yes, remove" }).querySelector("svg[aria-hidden]"),
+    ).not.toBeNull();
     await user.click(within(ask).getByRole("button", { name: "Yes, remove" }));
     await waitFor(() => expect(calls).toHaveLength(2));
     expect(calls[1]).toMatchObject({ method: "DELETE", url: `/api/plan/items/${wri.id}` });
@@ -645,8 +648,16 @@ describe("Suggestions tab", () => {
     await user.keyboard("{Escape}");
     expect(screen.getByRole("button", { name: "Dismiss all" })).toHaveFocus();
     expect(calls).toHaveLength(0);
+    // Destructive both times: a trash icon and words, the confirm outlined in the danger colour (never a fill).
+    expect(
+      screen.getByRole("button", { name: "Dismiss all" }).querySelector("svg[aria-hidden]"),
+    ).not.toBeNull();
     await user.click(screen.getByRole("button", { name: "Dismiss all" }));
-    await user.click(screen.getByRole("button", { name: "Yes, dismiss all" }));
+    const yes = screen.getByRole("button", { name: "Yes, dismiss all" });
+    expect(yes.querySelector("svg[aria-hidden]")).not.toBeNull();
+    expect(yes).toHaveClass("border-danger", "text-danger");
+    expect(yes.className).not.toMatch(/\bbg-(primary|danger|urgent)-fill\b/);
+    await user.click(yes);
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0]).toMatchObject({ method: "PATCH", body: { status: "dismissed" } });
   });
