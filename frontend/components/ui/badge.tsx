@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 
 /**
  * Small status label. Colour carries meaning only through the semantic tokens; pair it with words (never colour
- * alone). "urgent" (Davidson Red) is for time-critical items only; errors use "danger".
+ * alone). "urgent" (Davidson Red) is for time-critical items only; errors use "danger". Always Inter (font-sans),
+ * also inside a font-display title.
  */
 const badgeVariants = cva(
-  "inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap [&_svg]:size-3 [&_svg]:shrink-0",
+  "inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 font-sans text-xs font-semibold whitespace-nowrap [&_svg]:size-3 [&_svg]:shrink-0",
   {
     variants: {
       variant: {

@@ -31,6 +31,22 @@ describe("SourceTag", () => {
     expect(tag).not.toHaveAttribute("tabindex");
   });
 
+  it("stays Inter inside a Playfair (font-display) heading: labels are never in the display face", () => {
+    render(
+      <h3 className="font-display">
+        Conflict check <SourceTag source="course-schedule" />
+      </h3>,
+    );
+    const tag = screen.getByText("Course schedule", { exact: false });
+    expect(tag).toHaveClass("font-sans");
+    expect(tag).not.toHaveClass("font-display");
+    // The same for the other small labels that can sit in a title.
+    render(<AiChip />);
+    expect(
+      screen.getByText("AI-generated content: verify with your advisor").parentElement,
+    ).toHaveClass("font-sans");
+  });
+
   it("renders a labelled list", () => {
     render(<SourceTagList label="Sources for events" sources={["wildcatsync", "library"]} />);
     const list = screen.getByRole("list", { name: "Sources for events" });

@@ -95,6 +95,9 @@ describe("page building blocks", () => {
     );
     expect(screen.getByText("Due today")).toHaveClass("bg-urgent-wash", "text-urgent");
     expect(screen.getByText("VPRQ")).toHaveClass("bg-success-wash", "font-mono");
+    // Labels stay Inter inside a font-display title; a mono chip is mono only.
+    expect(screen.getByText("Due today")).toHaveClass("font-sans");
+    expect(screen.getByText("VPRQ")).not.toHaveClass("font-sans");
   });
 
   it("Chip wraps long text only when asked to", () => {
