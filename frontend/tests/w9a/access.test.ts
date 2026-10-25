@@ -5,7 +5,9 @@ import { getFlags } from "@/lib/flags";
 import { UNVERIFIED_AI_ALLOWED_MESSAGE } from "@/lib/types/ai-constants";
 import {
   VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE,
+  VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
   VERIFICATION_UNAVAILABLE_MESSAGE,
+  verificationUnavailableMessage,
 } from "@/server/auth/verification";
 
 const ON = getFlags({});
@@ -107,6 +109,7 @@ describe("while AI_ALLOW_UNVERIFIED is on (temporary)", () => {
 
   it("explains the locks truthfully: AI needs a Davidson address, alumni a verified one", () => {
     vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    vi.stubEnv("AI_PROVIDER", "mock");
     expect(alumniGateCopy({ kind: "davidson-only" }, "/alumni").message).toBe(
       UNVERIFIED_AI_ALLOWED_MESSAGE,
     );
@@ -118,5 +121,43 @@ describe("while AI_ALLOW_UNVERIFIED is on (temporary)", () => {
     // Verifying still opens alumni, so the verify step stays.
     expect(verify.action?.label).toBe("Verify your email");
     expect(VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE).not.toMatch(/AI features need/);
+  });
+
+  it("offers AI in the meantime only while AI works: not with AI off or not set up", () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    const noMail = { kind: "verify", mailAvailable: false } as const;
+    // No provider configured (no key), as on a server where AI is not set up yet.
+    vi.stubEnv("AI_PROVIDER", "anthropic");
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    expect(alumniGateCopy(noMail, "/alumni").message).toBe(
+      VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
+    );
+    vi.stubEnv("AI_PROVIDER", "mock");
+    vi.stubEnv("AI_ENABLED", "false");
+    expect(alumniGateCopy(noMail, "/alumni").message).toBe(
+      VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
+    );
+    // The switch's rule all the same (only alumni and cold-email drafts need a verified address), no promise.
+    expect(VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE).toMatch(
+      /alumni network and cold-email drafts need a verified/,
+    );
+    expect(VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE).not.toMatch(/AI features/);
+    // The lock states the rule, which the switch decides whether AI is on or not.
+    expect(alumniGateCopy({ kind: "davidson-only" }, "/alumni").message).toBe(
+      UNVERIFIED_AI_ALLOWED_MESSAGE,
+    );
+  });
+});
+
+describe("verificationUnavailableMessage", () => {
+  it("states the switch's rule, and offers AI only while it works without verifying", () => {
+    expect(verificationUnavailableMessage(false, false)).toBe(VERIFICATION_UNAVAILABLE_MESSAGE);
+    expect(verificationUnavailableMessage(true, true)).toBe(
+      VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE,
+    );
+    expect(verificationUnavailableMessage(true, false)).toBe(
+      VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
+    );
+    expect(VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE).toMatch(/the AI features in the meantime/);
   });
 });

@@ -29,7 +29,7 @@ import { describeFailure } from "../_lib/errors";
 
 const ATTEST_ID = "ai-adult-attest";
 const ATTEST_MESSAGE = "Confirm that you are 18 or older to turn on AI features.";
-/** An unverified @davidson.edu account while AI_ALLOW_UNVERIFIED is on. */
+/** An unverified @davidson.edu account while AI works without verifying (aiOpenWithoutVerifying). */
 const AI_OPEN_UNVERIFIED_NOTE =
   "For now, AI features work before your @davidson.edu address is verified. Cold-email drafts and the alumni network still need a verified address.";
 
@@ -41,8 +41,13 @@ export interface AiConsentPanelProps {
   verifiedDavidson: boolean;
   /** Verified for AI as the routes decide it (server/ai/access.ts isAiVerified); default verifiedDavidson. */
   aiVerified?: boolean;
-  /** The temporary AI_ALLOW_UNVERIFIED switch: decides what the lock notice says. */
+  /** The temporary AI_ALLOW_UNVERIFIED switch: decides the rule the lock notice states. */
   allowUnverifiedAi?: boolean;
+  /**
+   * server/ai/access.ts aiOpenWithoutVerifying: the switch with AI on and set up. Only then does the panel say AI
+   * works before the address is verified (default false).
+   */
+  aiOpenWithoutVerifying?: boolean;
   davidson: boolean;
   /** A mail provider is configured, so /verify can send a code. */
   mailAvailable: boolean;
@@ -135,10 +140,11 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
         </FormAlert>
       ) : null}
       {!props.verifiedDavidson ? (
-        // Not a verified @davidson.edu account: what stays locked. With the switch on, an unverified Davidson
-        // student may use AI (aiVerified) and is told only what still needs a verified address.
+        // Not a verified @davidson.edu account: what stays locked. With the switch on and AI working, an
+        // unverified Davidson student may use AI (aiVerified) and is told only what still needs a verified address;
+        // with AI off or not set up, the panel states the rule and promises nothing.
         <FormAlert tone="info">
-          {(props.aiVerified ?? false)
+          {(props.aiVerified ?? false) && props.aiEnabled && (props.aiOpenWithoutVerifying ?? false)
             ? AI_OPEN_UNVERIFIED_NOTE
             : verifiedOnlyMessage(props.allowUnverifiedAi ?? false)}{" "}
           {!props.davidson ? null : props.mailAvailable ? (

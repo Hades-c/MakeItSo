@@ -227,10 +227,15 @@ like `getFlags()`) or `loadAiAllowsUnverified()` for pages and copy (never throw
 - "Report this": only reports from a verified @davidson.edu mailbox count toward `REPORTS_TO_HIDE`
   (`reports.entries[].verified: false` is kept for the admin but left out of `REPORTER_COUNT`; reports from before
   the switch have no `verified` field and count).
-- Copy says what is true in both states: `verifiedOnlyMessage(switch)` / `aiUnverifiedMessage(feature, switch)`,
-  `verificationUnavailableMessage(switch)`, the verify banner, the landing's AI claim (`landingClaims`: a mail
-  provider OR the switch) and /privacy (rendered per request). The verify links stay tied to the `unverified`
-  gate, so they are offered only where verifying still helps (cold e-mail, alumni).
+- Copy says what is true in both states. Copy that states a RULE follows the switch: `verifiedOnlyMessage(switch)` /
+  `aiUnverifiedMessage(feature, switch)`, what verifying opens (the verify banner, Profile) and /privacy (rendered
+  per request). Copy that PROMISES AI without verifying also needs AI to work: `aiOpenWithoutVerifying()` (the
+  switch AND `AI_ENABLED` AND `aiConfigured()`, what the landing's AI claim checks too) chooses
+  `verificationUnavailableMessage(switch, aiOpen)` ("… the AI features in the meantime" only then; /verify, the
+  alumni gate, the resend 503) and the Profile AI note, so no page offers AI while it is off or not set up. The
+  landing's AI claim is `landingClaims` (AI on and configured, and a mail provider OR the switch). The verify
+  links stay tied to the `unverified` gate, so they are offered only where verifying still helps (cold e-mail,
+  alumni).
 - e2e: a second server with the switch on (playwright.config.ts, `E2E_ALT_PORT`, helpers.ts `E2E_ALT_ORIGIN`)
   runs `tests/e2e/ai-unverified.spec.ts`; remove both with the switch.
 

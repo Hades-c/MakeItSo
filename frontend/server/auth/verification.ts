@@ -1,7 +1,7 @@
 import "server-only";
 import mongoose from "mongoose";
 import User from "@/models/User";
-import { loadAiAllowsUnverified } from "@/server/ai/access";
+import { aiOpenWithoutVerifying, loadAiAllowsUnverified } from "@/server/ai/access";
 import {
   CODE_SENDS_PER_HOUR,
   consumeCode,
@@ -46,15 +46,33 @@ export function tooManyWrongCodesMessage(retryAfterSec: number): string {
 export const VERIFICATION_UNAVAILABLE_MESSAGE =
   "Email verification is not available yet. You can use the catalog and your plan in the meantime; the alumni network and AI features need a verified @davidson.edu account.";
 
-/** The same while AI_ALLOW_UNVERIFIED is on: AI needs no verified address then, except for cold-email drafts. */
+/**
+ * The same while AI works without a verified address (server/ai/access.ts aiOpenWithoutVerifying: the
+ * AI_ALLOW_UNVERIFIED switch, AI_ENABLED and a configured provider), except for cold-email drafts.
+ */
 export const VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE =
   "Email verification is not available yet. You can use the catalog, your plan and, with an @davidson.edu account, the AI features in the meantime; the alumni network and cold-email drafts need a verified @davidson.edu account.";
 
-/** "Email verification is not available yet …", true in either state of AI_ALLOW_UNVERIFIED. */
-export function verificationUnavailableMessage(allowUnverifiedAi: boolean): string {
-  return allowUnverifiedAi
+/**
+ * The switch is on but AI is off or not set up: the switch's rule (only cold-email drafts and alumni need a verified
+ * address), and no offer of AI in the meantime.
+ */
+export const VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE =
+  "Email verification is not available yet. You can use the catalog and your plan in the meantime; the alumni network and cold-email drafts need a verified @davidson.edu account.";
+
+/**
+ * "Email verification is not available yet …", true in either state of AI_ALLOW_UNVERIFIED (`allowUnverifiedAi`:
+ * the rule it states) and of AI itself (`aiOpen`, aiOpenWithoutVerifying(): it offers AI in the meantime only while
+ * AI actually works without verifying).
+ */
+export function verificationUnavailableMessage(
+  allowUnverifiedAi: boolean,
+  aiOpen: boolean,
+): string {
+  if (!allowUnverifiedAi) return VERIFICATION_UNAVAILABLE_MESSAGE;
+  return aiOpen
     ? VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE
-    : VERIFICATION_UNAVAILABLE_MESSAGE;
+    : VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE;
 }
 
 export interface VerifyResult {
@@ -133,10 +151,11 @@ export async function resendVerification(userId: string): Promise<{ sent: boolea
   if (isEmailVerified(user)) return { sent: false };
   const mailer = getMailer(() => at);
   if (!mailer) {
+    const allowUnverifiedAi = loadAiAllowsUnverified();
     throw new ApiError(
       503,
       "unavailable",
-      verificationUnavailableMessage(loadAiAllowsUnverified()),
+      verificationUnavailableMessage(allowUnverifiedAi, aiOpenWithoutVerifying(allowUnverifiedAi)),
     );
   }
   const budget = await codeGuessesExhausted(userId, at, "verify-email");

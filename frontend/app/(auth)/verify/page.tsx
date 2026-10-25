@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { isDavidsonEmail } from "@/lib/api/account";
 import { routes } from "@/lib/routes";
 import { verifiedOnlyMessage } from "@/lib/types/ai-constants";
-import { loadAiAllowsUnverified } from "@/server/ai/access";
+import { aiOpenWithoutVerifying, loadAiAllowsUnverified } from "@/server/ai/access";
 import { liveCode } from "@/server/auth/codes";
 import { isMailAvailable } from "@/server/auth/mailer";
 import {
@@ -27,7 +27,8 @@ export const metadata: Metadata = { title: "Verify your email" };
  * /verify (PLAN §1 compensating control): the signed-in account enters the 6-digit code sent to its address.
  * Any account may verify its own mailbox; only a verified @davidson.edu address unlocks alumni and AI (while the
  * temporary AI_ALLOW_UNVERIFIED switch is on, AI needs no verified address except for cold-email drafts, and the
- * page says so), and requireUser({ verifiedDavidson: true }) sends other accounts here with ?reason=davidson.
+ * page says so: the rule follows the switch, the "AI features in the meantime" offer also needs AI to be on and
+ * set up, aiOpenWithoutVerifying), and requireUser({ verifiedDavidson: true }) sends other accounts here with ?reason=davidson.
  * `next` is where to go afterwards (same-origin only).
  *
  * The page only says a code was sent when there is a live one (VerificationCode for verify-email: unused,
@@ -82,7 +83,10 @@ export default async function VerifyPage({ searchParams }: { searchParams: Searc
       <AuthCard title="Verify your email" description={<>Signed in as {user.email}.</>}>
         <div className="flex flex-col gap-4">
           <FormAlert tone="info" title="Verification is not available yet">
-            {verificationUnavailableMessage(allowUnverifiedAi)}
+            {verificationUnavailableMessage(
+              allowUnverifiedAi,
+              aiOpenWithoutVerifying(allowUnverifiedAi),
+            )}
           </FormAlert>
           {continueLink}
         </div>

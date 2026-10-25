@@ -114,6 +114,7 @@ export default async function ProfilePage() {
             verifiedDavidson={data.verifiedDavidson}
             aiVerified={data.aiVerified}
             allowUnverifiedAi={data.allowUnverifiedAi}
+            aiOpenWithoutVerifying={data.aiOpenWithoutVerifying}
             davidson={profile.davidson}
             mailAvailable={data.mailAvailable}
             timeZone={timeZone}

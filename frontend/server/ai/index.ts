@@ -23,6 +23,7 @@ export { aiConfigured, aiProvider } from "./provider";
 export { aiFeatureEnabled, aiGateInput } from "./gate";
 export {
   aiAllowsUnverified,
+  aiOpenWithoutVerifying,
   aiUnverifiedMessage,
   isAiVerified,
   loadAiAllowsUnverified,

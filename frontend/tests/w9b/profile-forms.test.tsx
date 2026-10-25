@@ -572,6 +572,7 @@ describe("AiConsentPanel", () => {
       verifiedDavidson: false,
       aiVerified: true,
       allowUnverifiedAi: true,
+      aiOpenWithoutVerifying: true,
       mailAvailable: false,
     });
     const note = screen.getByText(
@@ -593,6 +594,31 @@ describe("AiConsentPanel", () => {
     expect(calls).toEqual([
       { url: "/api/profile/ai-consent", method: "PUT", body: { adultAttested: true } },
     ]);
+  });
+
+  it("AI_ALLOW_UNVERIFIED on but AI off or not set up: no promise that AI works, only the rule", () => {
+    const unverified = {
+      verifiedDavidson: false,
+      aiVerified: true,
+      allowUnverifiedAi: true,
+      mailAvailable: false,
+    };
+    const rule =
+      /^AI features are limited to @davidson.edu accounts, and the alumni network and cold-email drafts to verified ones\./;
+    // AI_ENABLED off: the panel says so, and does not also say AI works before verifying.
+    const { unmount } = consent({ ...unverified, aiEnabled: false, aiOpenWithoutVerifying: true });
+    expect(screen.getByText(/switched off for everyone right now/)).toBeInTheDocument();
+    expect(screen.queryByText(/AI features work before/)).toBeNull();
+    expect(screen.getByText(rule, { selector: "div" })).toHaveTextContent(
+      "Email verification is not available yet.",
+    );
+    unmount();
+    // On, but no provider configured (aiOpenWithoutVerifying false): the rule, no promise.
+    consent({ ...unverified, aiOpenWithoutVerifying: false });
+    expect(screen.queryByText(/AI features work before/)).toBeNull();
+    expect(screen.getByText(rule, { selector: "div" })).toBeInTheDocument();
+    // Consent can still be given (it applies once AI works).
+    expect(screen.getByRole("button", { name: "Turn on AI features" })).toBeVisible();
   });
 
   it("AI_ALLOW_UNVERIFIED on: a non-Davidson account is told AI needs an @davidson.edu address", () => {

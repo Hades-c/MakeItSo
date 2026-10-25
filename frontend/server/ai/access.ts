@@ -2,8 +2,10 @@ import "server-only";
 import { isDavidsonEmail } from "@/lib/api/account";
 import type { AiFeature } from "@/lib/types/ai";
 import { ALUMNI_VERIFIED_ONLY_MESSAGE, verifiedOnlyMessage } from "@/lib/types/ai-constants";
+import { aiConfigured } from "@/server/ai/provider";
 import { isVerifiedDavidsonUser, type VerifiableAccount } from "@/server/auth/session";
 import { EnvError, readEnv } from "@/server/env";
+import { loadFlags } from "@/server/features";
 
 /**
  * Who counts as verified for AI (PLAN §1 capability gating), and the owner's TEMPORARY switch AI_ALLOW_UNVERIFIED
@@ -13,6 +15,8 @@ import { EnvError, readEnv } from "@/server/env";
  *                                          gate itself use it, so pages and routes never disagree
  *   aiAllowsUnverified()                   the switch, for route paths (a malformed value throws EnvError → 500)
  *   loadAiAllowsUnverified()               the switch for pages and copy: never throws (malformed → off, logged)
+ *   aiOpenWithoutVerifying(allow)          the switch AND AI working now: for copy that PROMISES AI without a
+ *                                          verified address (copy that states the rule follows the switch)
  *   aiUnverifiedMessage(feature, allow)    what a student who is not verified for the feature is told
  *
  * With the switch on, an @davidson.edu account that has not verified its mailbox counts as verified for AI. Not
@@ -48,6 +52,20 @@ export function loadAiAllowsUnverified(
     }
     return false;
   }
+}
+
+/**
+ * Whether AI works right now for an @davidson.edu account that has not verified its address: the switch is on AND
+ * AI is (AI_ENABLED and a configured provider, what the landing's AI claim checks too). Copy that PROMISES AI
+ * without verifying (verificationUnavailableMessage's "… the AI features in the meantime", the Profile AI note) is
+ * chosen with this, never with the switch alone, so no page offers AI while AI is off or not set up. Copy that
+ * states a RULE (verifiedOnlyMessage, aiUnverifiedMessage, what verifying opens in the verify banner and on
+ * Profile, /privacy) follows the switch. Never throws.
+ */
+export function aiOpenWithoutVerifying(
+  allowUnverified: boolean = loadAiAllowsUnverified(),
+): boolean {
+  return allowUnverified && loadFlags().ai && aiConfigured();
 }
 
 /**

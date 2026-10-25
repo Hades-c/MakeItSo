@@ -2,7 +2,7 @@ import "server-only";
 import { isDavidsonEmail } from "@/lib/api/account";
 import type { Flags } from "@/lib/flags";
 import { verifiedOnlyMessage } from "@/lib/types/ai-constants";
-import { loadAiAllowsUnverified } from "@/server/ai/access";
+import { aiOpenWithoutVerifying, loadAiAllowsUnverified } from "@/server/ai/access";
 import { isEmailVerified, verifiedOnlyRedirect, type SessionUser } from "@/server/auth/session";
 import { verificationUnavailableMessage } from "@/server/auth/verification";
 import { featureEnabled } from "@/server/features";
@@ -48,12 +48,14 @@ export interface AlumniGateCopy {
 /**
  * The explanation for a viewer who may not see alumni. `returnTo` is the page to come back to after verifying
  * (/verify?reason=davidson&next=<returnTo>). Legacy non-Davidson accounts get no verify button: verifying their
- * mailbox would not unlock alumni.
+ * mailbox would not unlock alumni. `allowUnverifiedAi` (the switch) decides the rule the lock states; `aiOpen`
+ * (aiOpenWithoutVerifying: the switch with AI on and set up) whether "no mail yet" may offer AI in the meantime.
  */
 export function alumniGateCopy(
   access: Extract<AlumniAccess, { kind: "verify" | "davidson-only" }>,
   returnTo: string,
   allowUnverifiedAi: boolean = loadAiAllowsUnverified(),
+  aiOpen: boolean = aiOpenWithoutVerifying(allowUnverifiedAi),
 ): AlumniGateCopy {
   const lock = verifiedOnlyMessage(allowUnverifiedAi);
   if (access.kind === "davidson-only") {
@@ -66,7 +68,7 @@ export function alumniGateCopy(
   if (!access.mailAvailable) {
     return {
       title: "Alumni open once your email is verified",
-      message: verificationUnavailableMessage(allowUnverifiedAi),
+      message: verificationUnavailableMessage(allowUnverifiedAi, aiOpen),
       action: null,
     };
   }

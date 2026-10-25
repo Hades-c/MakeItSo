@@ -8,6 +8,7 @@ import {
 } from "@/lib/types/ai-constants";
 import {
   aiAllowsUnverified,
+  aiOpenWithoutVerifying,
   aiUnverifiedMessage,
   isAiVerified,
   loadAiAllowsUnverified,
@@ -105,5 +106,36 @@ describe("the switch (AI_ALLOW_UNVERIFIED)", () => {
     expect(errors).toHaveBeenCalledTimes(1);
     expect(errors.mock.calls.flat().join(" ")).toMatch(/AI_ALLOW_UNVERIFIED/);
     expect(errors.mock.calls.flat().join(" ")).not.toMatch(/sometimes/);
+  });
+});
+
+describe("aiOpenWithoutVerifying (what copy may promise)", () => {
+  it("needs the switch AND AI working: AI_ENABLED and a configured provider", () => {
+    vi.stubEnv("AI_PROVIDER", "mock");
+    expect(aiOpenWithoutVerifying()).toBe(false);
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    expect(aiOpenWithoutVerifying()).toBe(true);
+    // The switch value can be passed in by a caller that already read it.
+    expect(aiOpenWithoutVerifying(false)).toBe(false);
+    vi.stubEnv("AI_ENABLED", "false");
+    expect(aiOpenWithoutVerifying()).toBe(false);
+    vi.stubEnv("AI_ENABLED", "true");
+    vi.stubEnv("AI_PROVIDER", "anthropic");
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    expect(aiOpenWithoutVerifying()).toBe(false);
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-test-key");
+    expect(aiOpenWithoutVerifying()).toBe(true);
+  });
+
+  it("never throws: a malformed flag reads as off", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.stubEnv("AI_PROVIDER", "mock");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    vi.stubEnv("AI_ENABLED", "maybe");
+    // A malformed AI_ENABLED takes its default (on), like every page.
+    expect(aiOpenWithoutVerifying()).toBe(true);
+    vi.stubEnv("AI_ENABLED", "true");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "sometimes");
+    expect(aiOpenWithoutVerifying()).toBe(false);
   });
 });

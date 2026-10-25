@@ -3,7 +3,7 @@ import type { Profile } from "@/lib/api/profile";
 import type { Flags } from "@/lib/flags";
 import type { CareerCluster } from "@/server/content/careers";
 import { CAREERS } from "@/server/content/careers";
-import { isAiVerified, loadAiAllowsUnverified } from "@/server/ai/access";
+import { aiOpenWithoutVerifying, isAiVerified, loadAiAllowsUnverified } from "@/server/ai/access";
 import {
   getProfile,
   isMailAvailable,
@@ -44,6 +44,11 @@ export interface ProfilePageData {
    * (consent and the 18+ attestation still needed), cold e-mail and alumni excepted.
    */
   allowUnverifiedAi: boolean;
+  /**
+   * aiOpenWithoutVerifying: the switch with AI on and set up, so the page may say AI works before the address is
+   * verified (the switch alone decides only the rule a lock states).
+   */
+  aiOpenWithoutVerifying: boolean;
   /** Verified for AI (isAiVerified, as the AI routes decide it): all AI needs besides consent. */
   aiVerified: boolean;
   /** A mail provider is configured, so /verify can send a code. */
@@ -68,6 +73,7 @@ export async function loadProfilePage(userId: string): Promise<ProfilePageData> 
     flags: { ai: loadFlags().ai },
     verifiedDavidson: isVerifiedDavidsonUser(profile),
     allowUnverifiedAi,
+    aiOpenWithoutVerifying: aiOpenWithoutVerifying(allowUnverifiedAi),
     // course-about stands for every AI feature but cold e-mail (the verified-only one).
     aiVerified: isAiVerified(profile, "course-about", allowUnverifiedAi),
     mailAvailable: isMailAvailable(),
