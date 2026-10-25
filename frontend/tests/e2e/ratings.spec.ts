@@ -139,7 +139,7 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   await expect(arianna.getByTestId("rating-tags")).toContainText(
     "Most common tags (from 8 ratings, as of Sep 29): Extra credit (4)",
   );
-  await expect(arianna.getByTestId("rating-tags")).toContainText("· via RateMyProfessors");
+  await expect(arianna.getByTestId("rating-tags")).toHaveText(/ via RateMyProfessors$/);
   await expect(arianna.getByTestId("rating-tags")).toContainText("Get ready to read (3)");
   await expect(arianna.getByTestId("rating-tags")).toContainText("Beware of pop quizzes (2)");
   await expect(arianna.getByTestId("rating-tags")).not.toContainText("Amazing lectures");
