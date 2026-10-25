@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectErrors, labelInNameMismatches, SAME_ORIGIN } from "./helpers";
+import { collectErrors, labelInNameMismatches, primaryFills, SAME_ORIGIN } from "./helpers";
 import {
   addItem,
   horizontalOverflow,
@@ -41,6 +41,10 @@ async function addSection(page: Page, query: string, course: string, crn: string
     picker.getByRole("heading", { name: `${course} sections in Spring 2027` }),
   ).toBeFocused();
   await picker.getByRole("radio", { name: new RegExp(`CRN ${crn}`) }).check();
+  // One red button with the picker open: "Copy for WebTree" once the list has a choice, the picker's add is
+  // outlined.
+  const fills = await primaryFills(page);
+  expect(fills.length, `red fills: ${fills.join("; ")}`).toBeLessThanOrEqual(1);
   await picker.getByRole("button", { name: /^Add as/ }).click();
 }
 

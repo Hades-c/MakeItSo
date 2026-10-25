@@ -236,6 +236,44 @@ export async function horizontalOverflow(page: Page): Promise<number> {
   );
 }
 
+/**
+ * The controls on the whole page drawn as a Davidson Red fill (computed background = --primary-fill), by their
+ * words: a screen has one primary action (CONTRACTS.md "Look"), so a page should list at most one. Selection and
+ * the current page are red by rule, not actions, so a control marked current, pressed, selected, checked or on is
+ * left out (the five-day strip's shown day, a checked checkbox, an "on" switch), and so are controls that are not
+ * on screen (the sr-only skip link until it is focused).
+ */
+export async function primaryFills(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.backgroundColor = "var(--primary-fill)";
+    document.body.append(probe);
+    const red = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    const state = (el: Element) =>
+      el.hasAttribute("aria-current") ||
+      ["aria-pressed", "aria-selected", "aria-checked"].some(
+        (name) => el.getAttribute(name) === "true",
+      ) ||
+      ["checked", "on", "active"].includes(el.getAttribute("data-state") ?? "") ||
+      ["checkbox", "switch", "radio", "tab"].includes(el.getAttribute("role") ?? "");
+    return [
+      ...document.querySelectorAll<HTMLElement>(
+        'a[href], button, input[type="submit"], input[type="button"], [role="button"]',
+      ),
+    ]
+      .filter((el) => {
+        if (!el.checkVisibility({ visibilityProperty: true })) return false;
+        // sr-only clips the element to nothing (its padding can still give it a size).
+        if (getComputedStyle(el).clipPath.startsWith("inset(50%")) return false;
+        const rect = el.getBoundingClientRect();
+        return rect.width > 8 && rect.height > 8;
+      })
+      .filter((el) => !state(el) && getComputedStyle(el).backgroundColor === red)
+      .map((el) => (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 40));
+  });
+}
+
 /** The phone project, or any viewport under the 720px breakpoint. */
 export function isMobile(page: Page): boolean {
   return (page.viewportSize()?.width ?? 1440) < 720;

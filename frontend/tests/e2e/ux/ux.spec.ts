@@ -9,6 +9,7 @@ import {
 import {
   attributionReport,
   newSignedInAccount,
+  primaryFills,
   SAME_ORIGIN,
   seriousViolations,
   smallTapTargets,
@@ -80,6 +81,12 @@ const DUE_RED: Budget[] = [
 ];
 /** Visible [data-source] items (and new-tab links, L0 lines) the strict provenance check finds fault with. */
 const ATTRIBUTED: Budget = { check: "attribution", op: "==", target: 0 };
+/**
+ * One red button per screen (CONTRACTS.md "Look", since Davidson Red became the accent on 2026-10-25): the
+ * controls drawn as a --primary-fill on the whole page, selection and the current page left out (helpers.ts
+ * primaryFills). Hard on every page at every width.
+ */
+const ONE_RED: Budget = { check: "primaryFills", op: "<=", target: 1, hard: true };
 
 /** The spec §11 targets, on the live pages' own selectors. */
 const PAGES: UxPage[] = [
@@ -95,9 +102,11 @@ const PAGES: UxPage[] = [
         { check: "small12", op: "==", target: 0 },
         { check: "sizes", op: "<=", target: 5 },
         { check: "boxed", op: "<=", target: 2 },
-        // Red marks "now": the now pill, today in the five-day strip and the plan map's current term (Avery has
-        // nothing of her own due today). Since 2026-10-25 Davidson Red is also the accent (the primary action, the
-        // current page, selection), so the measure counts those too; this keeps it from growing.
+        // Urgency by meaning (the --urgent token classes): the now pill only, since Avery has nothing of her own
+        // due today. Hard: a stray due-today label or a second now mark fails, whatever red the accent spends.
+        { check: "urgent", op: "==", target: 1, hard: true },
+        // Red spend by colour, now that --urgent and the accent are the same Davidson Red: the now pill, today in
+        // the five-day strip and the plan map's current term. This keeps it from growing.
         { check: "red", op: "<=", target: 3 },
         ...DUE_RED,
       ],
@@ -106,6 +115,7 @@ const PAGES: UxPage[] = [
       390: [
         { check: "height", op: "<=", target: 2400 },
         { check: "pos:#due-soon-title.bottom", op: "<=", target: 780 },
+        { check: "urgent", op: "==", target: 1, hard: true },
         ...DUE_RED,
         ...PHONE,
       ],
@@ -280,6 +290,7 @@ async function measure(page: Page, width: Width, checks: readonly Budget[]) {
     srcLabels: m.visibleSourceLabels,
     interactive: m.interactive,
     red: c.red,
+    urgent: c.urgent,
     dueNotForYouUrgent: c.dueNotForYou.urgent,
     dueNotForYouRows: c.dueNotForYou.rows,
     overflow: c.overflow,
@@ -293,7 +304,11 @@ async function measure(page: Page, width: Width, checks: readonly Budget[]) {
     );
   }
   for (const { check } of checks) {
-    if (check === "smallTargets") {
+    if (check === "primaryFills") {
+      const fills = await primaryFills(page);
+      values.primaryFills = fills.length;
+      if (fills.length > 1) notes.push(`red fills @${width}: ${fills.join("; ")}`);
+    } else if (check === "smallTargets") {
       const small = await smallTapTargets(page);
       values.smallTargets = small.length;
       if (small.length) notes.push(`small targets @${width}: ${small.slice(0, 6).join("; ")}`);
@@ -332,7 +347,7 @@ test.describe("UI budgets", () => {
       const widths = (Object.keys(target.budgets).map(Number) as Width[]).sort((a, b) => b - a);
 
       for (const width of widths) {
-        const checks = target.budgets[width] ?? [];
+        const checks = [...(target.budgets[width] ?? []), ONE_RED];
         const context = await browser.newContext({
           ...contextFor(width),
           storageState: avery,
@@ -432,8 +447,43 @@ test.describe("UI budgets", () => {
       `<main><span class="bg-urgent-fill">12:00p</span><div><span class="dot bg-urgent"></span></div>` +
       `${row(true, "text-urgent")}${other}</main>`;
     await page.setContent(html(row(false, "plain")));
-    expect(await pageChecks(page)).toMatchObject({ red: 2, dueNotForYou: { rows: 1, urgent: 0 } });
+    expect(await pageChecks(page)).toMatchObject({
+      red: 2,
+      urgent: 2,
+      dueNotForYou: { rows: 1, urgent: 0 },
+    });
     await page.setContent(html(row(false, "text-urgent", true)));
-    expect(await pageChecks(page)).toMatchObject({ red: 2, dueNotForYou: { rows: 1, urgent: 1 } });
+    expect(await pageChecks(page)).toMatchObject({
+      red: 2,
+      urgent: 2,
+      dueNotForYou: { rows: 1, urgent: 1 },
+    });
+    // The accent in the same red (the plan map's current term): red spend, never urgency.
+    await page.setContent(
+      html(`<span class="text-primary" style="color:rgb(194, 29, 29)">F26 · now</span>`),
+    );
+    expect(await pageChecks(page)).toMatchObject({ red: 3, urgent: 2 });
+  });
+
+  test("the red-fill measure counts actions, not selection or the current page", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "runs once");
+    const fill = "background:var(--primary-fill);color:#fff;display:inline-block;padding:12px";
+    // The skip link is the app shell's: sr-only (Tailwind's rule) with padding of its own, red once focused.
+    const srOnly =
+      ".sr-only{clip-path:inset(50%);white-space:nowrap;border-width:0;width:1px;height:1px;margin:-1px;" +
+      "padding:0;position:absolute;overflow:hidden}.skip{padding:8px 16px}";
+    const html = (extra: string) =>
+      `<style>:root{--primary-fill:rgb(212, 33, 33)}${srOnly}</style>` +
+      `<a href="#main" class="sr-only skip" style="${fill}">Skip to content</a><main id="main">` +
+      `<button style="${fill}">Save academics</button>` +
+      `<a href="/today?day=2026-09-30" aria-current="page" style="${fill}">Wed 30</a>` +
+      `<button role="checkbox" aria-checked="true" style="${fill}">✓</button>` +
+      `<button style="padding:12px">Cancel</button>${extra}</main>`;
+    await page.setContent(html(""));
+    expect(await primaryFills(page)).toEqual(["Save academics"]);
+    await page.setContent(html(`<a href="/verify" style="${fill}">Get a code</a>`));
+    expect(await primaryFills(page)).toEqual(["Save academics", "Get a code"]);
   });
 });

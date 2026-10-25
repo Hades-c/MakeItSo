@@ -5,6 +5,7 @@ import {
   collectErrors,
   formError,
   horizontalOverflow,
+  primaryFills,
   registerViaApi,
   seriousViolations,
   signIn,
@@ -99,6 +100,9 @@ test("profile: every area renders, accessibly, without sideways scrolling", asyn
       await expect(page.getByRole("region", { name, exact: true })).toBeVisible();
     }
     await expect(page.getByText("Not verified")).toBeVisible();
+    // One red button on the page, with the verify banner above it: Save academics ("Get a code" and
+    // "Turn on AI features" are outlined).
+    expect(await primaryFills(page), `red fills ${colorScheme}`).toEqual(["Save academics"]);
     expect(await horizontalOverflow(page), "scrolls sideways").toBeLessThanOrEqual(0);
     expect(await seriousViolations(page), `axe ${colorScheme}`).toEqual([]);
   }

@@ -148,9 +148,17 @@ export interface PageChecks {
   /**
    * Red marks in <main> that say something: elements with text drawn in the urgent red or on its fill, counted
    * once (not again for a child that inherits the colour). The now indicator is one (its pill; the dot on its
-   * line has no text), and so is each of the student's due-today labels.
+   * line has no text), and so is each of the student's due-today labels. Since 2026-10-25 --urgent and
+   * --primary are the same Davidson Red, so this also counts the accent (the current term, the shown day): it is
+   * the page's red spend, not its urgency.
    */
   red: number;
+  /**
+   * Urgency by meaning, not colour: marks in <main> with text drawn with an --urgent token class (text-urgent,
+   * bg-urgent-fill, bg-urgent-wash), counted once. Those tokens are only for "now" and the student's own items due
+   * today (CONTRACTS.md "Look"), so this tells the now pill and due-today labels apart from the accent.
+   */
+  urgent: number;
   /**
    * Today's Due rows that are not the student's ("Also in the next two weeks", held-back rows included), and how
    * many of them are drawn as urgent (data-urgent, or any urgent red inside): QW1 keeps red for the student.
@@ -164,7 +172,10 @@ export interface PageChecks {
   minFont: number;
 }
 
-/** Page-level checks: overflow, red spend, rail labels, h2 order (axe.cjs), the type floor (targets.cjs). */
+/**
+ * Page-level checks: overflow, red spend and urgency, rail labels, h2 order (axe.cjs), the type floor
+ * (targets.cjs).
+ */
 export function pageChecks(page: Page): Promise<PageChecks> {
   return page.evaluate(() => {
     const vis = (e: Element | null): e is HTMLElement =>
@@ -192,6 +203,13 @@ export function pageChecks(page: Page): Promise<PageChecks> {
       (e) => vis(e) && !!e.textContent?.trim() && isRed(e),
     );
     const red = redMarks.filter((e) => !redMarks.some((o) => o !== e && o.contains(e))).length;
+    const URGENT_CLASS = /(^|\s)(text-urgent|bg-urgent-fill|bg-urgent-wash)(\s|$)/;
+    const urgentMarks = [...main.querySelectorAll("*")].filter(
+      (e) => vis(e) && !!e.textContent?.trim() && URGENT_CLASS.test(e.getAttribute("class") ?? ""),
+    );
+    const urgent = urgentMarks.filter(
+      (e) => !urgentMarks.some((o) => o !== e && o.contains(e)),
+    ).length;
     // Hidden rows too (behind "Show N more"): computed colours do not need layout.
     const notForYou = [
       ...main.querySelectorAll('[data-testid="due-soon-item"][data-for-you="false"]'),
@@ -237,6 +255,7 @@ export function pageChecks(page: Page): Promise<PageChecks> {
     return {
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       red,
+      urgent,
       dueNotForYou,
       railLabelsVisible,
       h2Order: { same: JSON.stringify(dom) === JSON.stringify(visual), dom, visual },
