@@ -164,6 +164,15 @@ export default function DesignGalleryPage() {
               status="matched"
               avgRating={3.7}
               numRatings={21}
+              avgDifficulty={2.6}
+              wouldTakeAgainPct={80}
+              topTags={[
+                { tag: "Amazing lectures", count: 9 },
+                { tag: "Get ready to read", count: 7 },
+                { tag: "Caring", count: 5 },
+              ]}
+              tagRatingsCounted={21}
+              tagsAsOf="2026-09-30T13:05:00Z"
               asOf="2026-09-30T13:00:00Z"
               url="https://www.ratemyprofessors.com/search/professors/3965?q=Aldridge"
               instructorName="Daniel Aldridge"
@@ -284,6 +293,7 @@ export default function DesignGalleryPage() {
                   status="matched"
                   avgRating={4.6}
                   numRatings={1}
+                  avgDifficulty={2}
                   size="sm"
                   url="https://www.ratemyprofessors.com/search/professors/3965"
                   asOf="2026-09-29T09:00:00Z"

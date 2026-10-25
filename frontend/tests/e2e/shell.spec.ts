@@ -84,6 +84,81 @@ test("public pages have no serious accessibility problems in either theme", asyn
   expect(errors).toEqual([]);
 });
 
+test("the 720-1179px rail shows every label, and the Sources panel says its times in words", async ({
+  page,
+  request,
+}) => {
+  test.skip(isMobile(page), "the rail and the sidebar are tablet and desktop surfaces");
+  const email = uniqueEmail("e2e-rail");
+  await registerViaApi(request, { name: "Rail Tester", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+  const main = page.getByRole("navigation", { name: "Main" });
+
+  for (const width of [768, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of ["/today", "/courses/202602/CSC-221"]) {
+      await page.goto(route);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      // Each label is on screen, at 13px or more, under its icon, and no link relies on a tooltip.
+      const labels = await main.getByRole("link").evaluateAll((links) =>
+        links.map((link) => {
+          const label = [...link.querySelectorAll("span")].find((s) => s.textContent?.trim());
+          const r = label?.getBoundingClientRect();
+          const icon = link.querySelector("svg")?.getBoundingClientRect();
+          return {
+            text: label?.textContent?.trim() ?? "",
+            visible: !!r && r.width > 8 && r.height > 8 && label!.checkVisibility(),
+            px: label ? parseFloat(getComputedStyle(label).fontSize) : 0,
+            below: !!r && !!icon && r.top >= icon.bottom - 1,
+            title: link.hasAttribute("title"),
+            height: link.getBoundingClientRect().height,
+          };
+        }),
+      );
+      expect(
+        labels.map((l) => l.text),
+        `${route} @${width}`,
+      ).toEqual(["Today", "Courses", "My plan", "Careers", "Events", "Alumni"]);
+      for (const label of labels) {
+        expect(label, `${route} @${width}`).toMatchObject({
+          visible: true,
+          below: true,
+          title: false,
+        });
+        expect(label.px, `${label.text} @${width}`).toBeGreaterThanOrEqual(13);
+        expect(label.height, `${label.text} @${width}`).toBeGreaterThanOrEqual(44);
+      }
+      expect(await horizontalOverflow(page), `${route} @${width}`).toBeLessThanOrEqual(0);
+    }
+  }
+
+  // The full sidebar (1180px and up): every time in the Sources panel follows a visible word.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/today");
+  const panel = page.getByRole("region", { name: "Sources" });
+  await expect(panel).toBeVisible();
+  await expect(main.locator("[title]")).toHaveCount(0);
+  const times = await panel.locator("time").evaluateAll((nodes) =>
+    nodes.map((time) => {
+      const status = time.parentElement?.textContent ?? "";
+      return {
+        before: status
+          .slice(0, status.indexOf(time.textContent ?? ""))
+          .replace(/^,\s*/, "")
+          .trim(),
+        title: time.hasAttribute("title"),
+      };
+    }),
+  );
+  expect(times.length).toBeGreaterThan(0);
+  for (const time of times) {
+    expect(time.before).toMatch(
+      /^(Synced|Checked|Out of date · last synced|Sync failed · last synced)$/,
+    );
+    expect(time.title).toBe(false);
+  }
+});
+
 test("bottom tabs are the only fixed bar on phones and every tab is tappable", async ({
   page,
   request,

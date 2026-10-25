@@ -1,3 +1,4 @@
+import type { Section } from "@/lib/types/catalog";
 import type { WebTreeChoice, WebTreeList } from "@/lib/types/plan";
 
 /**
@@ -12,6 +13,44 @@ export const MAX_CHOICES = 20;
 export const MAX_ALTERNATES = 10;
 
 export type EditResult = { ok: true; list: WebTreeList } | { ok: false; reason: string };
+
+/** A section as "Add a course" adds it: what the list, the week grid and the picker need. Plain data. */
+export interface PickedSection {
+  crn: string;
+  courseCode: string;
+  section: string;
+  title: string;
+  meetings: Section["meetings"];
+  instructors: string[];
+  enrollment: Section["enrollment"];
+}
+
+/** A catalog section as a PickedSection (instructors by name; "Staff (TBA)" for the Staff placeholder). */
+export function pickedSection(section: Section): PickedSection {
+  return {
+    crn: section.crn,
+    courseCode: section.courseCode,
+    section: section.section,
+    title: section.title,
+    meetings: section.meetings,
+    instructors: section.instructors.map((person) =>
+      person.isStaff ? "Staff (TBA)" : `${person.first} ${person.last}`.trim(),
+    ),
+    enrollment: section.enrollment,
+  };
+}
+
+/**
+ * A course planned for the term, for "From your plan". `section` is the plan's own section, found in the term's
+ * schedule by the item's CRN: then one press adds it ("Add as choice N"), with no picker. Null when the item has
+ * no CRN or its CRN is no longer in the schedule: the student chooses a section.
+ */
+export interface PlanCourseOption {
+  courseCode: string;
+  title: string;
+  crn: string | null;
+  section: PickedSection | null;
+}
 
 /** Choices sorted by rank, renumbered 1..n. */
 export function normalizeRanks(choices: readonly WebTreeChoice[]): WebTreeChoice[] {

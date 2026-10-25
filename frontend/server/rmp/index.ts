@@ -2,7 +2,14 @@ import "server-only";
 import * as z from "zod";
 import { getFlags } from "@/lib/flags";
 import type { Instructor } from "@/lib/types/catalog";
-import { type InstructorRating, RmpRatingSchema, type RosterSyncResult } from "@/lib/types/ratings";
+import {
+  type InstructorRating,
+  RMP_TOP_TAGS,
+  RmpRatingSchema,
+  type RmpTagCount,
+  RmpTagCountSchema,
+  type RosterSyncResult,
+} from "@/lib/types/ratings";
 import RmpTeacher from "@/models/RmpTeacher";
 import { getDb, trusted } from "@/server/db";
 import { findOverride, matchInstructor, type MatchOutcome } from "@/server/rmp/match";
@@ -19,7 +26,9 @@ import { rmpProfileUrl, runRosterSync } from "@/server/rmp/roster";
  * - `getRatings(instructors, { subject, relatedSubjects, homeSubjects })`: reads the stored roster only (no per-view
  *   RMP calls) and runs the matching engine (server/rmp/match.ts) per instructor: never surname-only; departments
  *   mapped to subject codes before a conflict is flagged; conflicts and ambiguity → "review". Stored rows are
- *   validated before use; a bad row is logged and ignored.
+ *   validated before use; a bad row is logged and ignored. A match carries the rating, count, difficulty and
+ *   "would take again" (null without ratings or an answer), and the stored tag counts (server/rmp/tags.ts, filled
+ *   by the daily cron through server/rmp/cron.ts; [] until counted).
  * - RMP_ENABLED=false: every rating is "disabled" and neither function touches the network or the roster.
  *
  * rmpteachers holds no per-user data, so this module registers nothing with server/account/erasers.ts.
@@ -61,11 +70,34 @@ const StoredTeacherSchema = z.object({
     .nullish()
     .transform((value) => value ?? null),
   fetchedAt: z.date(),
+  // A tag the vocabulary no longer lists is left out rather than failing the whole row.
+  topTags: z
+    .array(z.unknown())
+    .nullish()
+    .transform((tags) =>
+      (tags ?? [])
+        .flatMap((tag): RmpTagCount[] => {
+          const parsed = RmpTagCountSchema.safeParse(tag);
+          return parsed.success ? [parsed.data] : [];
+        })
+        .slice(0, RMP_TOP_TAGS),
+    ),
+  tagRatingsCounted: z
+    .number()
+    .int()
+    .min(0)
+    .nullish()
+    .transform((value) => value ?? 0),
+  tagsFetchedAt: z
+    .date()
+    .nullish()
+    .transform((value) => value ?? null),
 });
 type StoredTeacher = z.output<typeof StoredTeacherSchema>;
 
 const TEACHER_FIELDS =
-  "legacyId firstName lastName department numRatings avgRating avgDifficulty wouldTakeAgainPct fetchedAt";
+  "legacyId firstName lastName department numRatings avgRating avgDifficulty wouldTakeAgainPct fetchedAt " +
+  "topTags tagRatingsCounted tagsFetchedAt";
 
 function isStaff(instructor: Instructor): boolean {
   return instructor.isStaff || isStaffName(instructor.first, instructor.last);
@@ -115,15 +147,21 @@ function toRating(instructor: Instructor, outcome: MatchOutcome<StoredTeacher>):
   const teacher = outcome.teacher;
   if (outcome.status !== "matched") return { instructor: plain, status: outcome.status };
   if (!teacher) return { instructor: plain, status: "unmatched" };
+  const rated = teacher.numRatings > 0;
   const rmp = RmpRatingSchema.safeParse({
     legacyId: teacher.legacyId,
     avgRating: teacher.avgRating,
     numRatings: teacher.numRatings,
-    avgDifficulty: teacher.avgDifficulty,
-    wouldTakeAgainPct: teacher.wouldTakeAgainPct,
+    // RMP sends 0 (difficulty) and -1 or 0 (would take again, stored as null) for a teacher nobody rated yet;
+    // every rating has a difficulty of 1-5, so an average under 1 is "no value".
+    avgDifficulty: rated && teacher.avgDifficulty >= 1 ? teacher.avgDifficulty : null,
+    wouldTakeAgainPct: rated ? teacher.wouldTakeAgainPct : null,
     department: teacher.department,
     url: rmpProfileUrl(teacher.legacyId),
     asOf: teacher.fetchedAt.toISOString(),
+    topTags: rated ? teacher.topTags : [],
+    tagRatingsCounted: rated ? teacher.tagRatingsCounted : 0,
+    tagsAsOf: rated && teacher.tagsFetchedAt ? teacher.tagsFetchedAt.toISOString() : null,
   });
   if (!rmp.success) {
     console.warn(`[rmp] stored teacher ${teacher.legacyId} is invalid; showing no rating`);

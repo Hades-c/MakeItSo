@@ -2,7 +2,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { nextRegularTerm, termLabel, type TermCode } from "@/lib/term";
-import type { Availability } from "@/lib/types/catalog";
+import type { Availability, TermInfo } from "@/lib/types/catalog";
 import {
   countCourses,
   getCourseHistory,
@@ -25,14 +25,20 @@ function rethrowFatal(error: unknown): void {
   if (error instanceof MissingFixtureError) throw error;
 }
 
-/** The current, registration and next terms (null when the catalog cannot say). */
-export const loadCareerTerms = cache(async (): Promise<CareerTerms | null> => {
+/** A career page's terms, plus every known term with its dates: what the plan's statuses are judged by. */
+export interface LoadedCareerTerms extends CareerTerms {
+  schedule: readonly TermInfo[];
+}
+
+/** The current, registration and next terms, and the terms list (null when the catalog cannot say). */
+export const loadCareerTerms = cache(async (): Promise<LoadedCareerTerms | null> => {
   try {
     const resolved = await resolveTerms();
     return {
       current: resolved.current,
       registration: resolved.registration,
       next: nextRegularTerm(resolved.registration),
+      schedule: resolved.terms,
     };
   } catch (error) {
     rethrowFatal(error);

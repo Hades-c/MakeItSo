@@ -3,13 +3,14 @@ import { startTestDb, type TestDb } from "../helpers/db";
 import * as cronRoute from "@/app/api/cron/rmp/route";
 import { GET as getRatingsRoute } from "@/app/api/ratings/route";
 import { RatingsResponseSchema } from "@/lib/api/ratings";
-import { RosterSyncResultSchema } from "@/lib/types/ratings";
+import { RmpCronResultSchema } from "@/lib/types/ratings";
+import RmpTagSync from "@/models/RmpTagSync";
 import RmpTeacher from "@/models/RmpTeacher";
 import SourceSync from "@/models/SourceSync";
 import type { SessionUser } from "@/server/auth/session";
 import type * as CatalogModule from "@/server/catalog";
 import { getCourse, searchCourses } from "@/server/catalog";
-import { getDb } from "@/server/db";
+import { getDb, trusted } from "@/server/db";
 import { ApiError, isDefinedRoute } from "@/server/http";
 import { syncRoster } from "@/server/rmp";
 import { RATINGS_ROUTE_RATE_LIMIT } from "@/server/rmp/course";
@@ -262,9 +263,9 @@ describe("GET /api/ratings", () => {
 });
 
 describe("GET /api/cron/rmp", () => {
-  it("is a defineRoute handler with room for a slow roster", () => {
+  it("is a defineRoute handler with room for the roster and the tag counts (Hobby's 300 s)", () => {
     expect(isDefinedRoute(cronRoute.GET)).toBe(true);
-    expect(cronRoute.maxDuration).toBe(60);
+    expect(cronRoute.maxDuration).toBe(300);
   });
 
   it("answers 503 until CRON_SECRET is set, then needs the Bearer secret", async () => {
@@ -280,20 +281,55 @@ describe("GET /api/cron/rmp", () => {
     expect(await RmpTeacher.countDocuments()).toBe(0);
   });
 
-  it("syncs the roster and records the source", async () => {
+  it("syncs the roster, counts the tags and records both", async () => {
     vi.stubEnv("CRON_SECRET", CRON_SECRET);
     const res = await cron({ authorization: `Bearer ${CRON_SECRET}` });
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("private, no-store");
-    expect(RosterSyncResultSchema.parse(await res.json())).toEqual({
-      ok: true,
-      count: 31,
-      rejectedOtherSchool: 2,
+    expect(RmpCronResultSchema.parse(await res.json())).toEqual({
+      roster: { ok: true, count: 31, rejectedOtherSchool: 2, skipped: false },
+      tags: { ok: true, updated: 27, skipped: 0, remaining: 0, requests: 3, outOfTime: false },
     });
     expect(await RmpTeacher.countDocuments()).toBe(31);
+    expect(await RmpTeacher.countDocuments({ tagsFetchedAt: trusted({ $type: "date" }) })).toBe(27);
     expect(await SourceSync.findOne({ sourceId: "ratemyprofessors" }).lean()).toMatchObject({
       ok: true,
       lastCount: 31,
+    });
+    expect(await RmpTagSync.findOne({ key: "tags" }).lean()).toMatchObject({
+      ok: true,
+      lastUpdated: 27,
+    });
+
+    // The next day: the roster is skipped (weekly) and every count is current.
+    const again = RmpCronResultSchema.parse(
+      await (await cron({ authorization: `Bearer ${CRON_SECRET}` })).json(),
+    );
+    expect(again.roster).toMatchObject({ skipped: true });
+    expect(again.tags).toMatchObject({ ok: true, updated: 0, requests: 0 });
+  });
+
+  it("serves the counted tags with the rating, and difficulty / would take again as RMP has them", async () => {
+    vi.stubEnv("CRON_SECRET", CRON_SECRET);
+    session.user = { id: "64b000000000000000000001", email: "sam@davidson.edu", name: "Sam" };
+    await cron({ authorization: `Bearer ${CRON_SECRET}` });
+    vi.mocked(getCourse).mockResolvedValue(THE_101);
+    const body = RatingsResponseSchema.parse(
+      await (await ratings("?term=202602&code=THE%20101")).json(),
+    );
+    expect(body.ratings[0]?.rmp).toMatchObject({
+      legacyId: 9000009,
+      avgDifficulty: 1.9,
+      wouldTakeAgainPct: 68.5,
+      topTags: [
+        { tag: "Lecture heavy", count: 10 },
+        { tag: "Respected", count: 8 },
+        { tag: "Graded by few things", count: 4 },
+        { tag: "Lots of homework", count: 2 },
+        { tag: "Accessible outside class", count: 1 },
+      ],
+      tagRatingsCounted: 22,
+      tagsAsOf: expect.any(String),
     });
   });
 
@@ -302,9 +338,13 @@ describe("GET /api/cron/rmp", () => {
     vi.stubEnv("RMP_ENABLED", "false");
     const res = await cron({ authorization: `Bearer ${CRON_SECRET}` });
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ ok: false, count: 0 });
+    expect(await res.json()).toMatchObject({
+      roster: { ok: false, count: 0, skipped: false },
+      tags: { ok: false, requests: 0 },
+    });
     expect(await RmpTeacher.countDocuments()).toBe(0);
     expect(await SourceSync.countDocuments()).toBe(0);
+    expect(await RmpTagSync.countDocuments()).toBe(0);
   });
 
   it("only answers GET", async () => {

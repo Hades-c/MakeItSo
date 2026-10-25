@@ -5,6 +5,7 @@ import type { SessionUser } from "@/server/auth/session";
 import { VERIFICATION_UNAVAILABLE_MESSAGE } from "@/server/auth/verification";
 import { ALUMNI, alumniForCareer } from "@/server/content/alumni";
 import { CAREERS, getCareer } from "@/server/content/careers";
+import { FIXTURE_TERMS } from "../helpers/terms";
 
 /**
  * The streamed server sections of the careers and alumni pages, rendered for real with their data loaders
@@ -242,7 +243,10 @@ describe("CareerCourses", () => {
         { termCode: "202701", status: "not-yet-published" },
       ]);
     }
-    state.presence = new Map([["CSC 221", new Set(["202602"])]]);
+    state.presence = new Map([
+      ["CSC 221", new Map([["202602", "planned"]])],
+      ["CSC 121", new Map([["202501", "completed"]])],
+    ]);
     await renderAsync(CareerCourses({ career }));
     const items = screen.getByTestId("career-courses").querySelectorAll(":scope > li");
     expect(items).toHaveLength(career.courses.length);
@@ -254,7 +258,39 @@ describe("CareerCourses", () => {
     expect(
       within(csc221 as HTMLElement).getByRole("button", { name: "In your plan for Spring 2027" }),
     ).toBeVisible();
+    // A completed course says so and offers no Add.
+    const csc121 = [...items].find((item) => item.getAttribute("data-course") === "CSC 121")!;
+    expect(within(csc121 as HTMLElement).getByTestId("course-plan-status")).toHaveTextContent(
+      "Completed Fall 2025",
+    );
+    expect(within(csc121 as HTMLElement).queryByRole("button")).toBeNull();
     expect(state.planCalls).toEqual([ID]);
+  });
+
+  it("judges the plan's statuses by the terms' own dates and the server's now", async () => {
+    // Dec 20: Fall 2026 ended on Dec 15, though it stays the current term until Spring 2027 starts.
+    vi.stubEnv("FIXTURES_NOW", "2026-12-20T12:00:00-05:00");
+    state.terms = {
+      current: "202601",
+      registration: "202602",
+      next: "202701",
+      schedule: FIXTURE_TERMS,
+    };
+    state.presence = new Map([
+      ["CSC 121", new Map([["202601", "completed"]])],
+      ["CSC 221", new Map([["202601", "in-progress"]])],
+    ]);
+    await renderAsync(CareerCourses({ career }));
+    const items = [...screen.getByTestId("career-courses").querySelectorAll(":scope > li")];
+    const status = (code: string) =>
+      within(
+        items.find((item) => item.getAttribute("data-course") === code) as HTMLElement,
+      ).getByTestId("course-plan-status");
+    expect(status("CSC 121")).toHaveTextContent("Completed Fall 2026");
+    expect(status("CSC 121")).not.toHaveAttribute("data-warning");
+    expect(status("CSC 221")).toHaveTextContent(
+      "In your Fall 2026 plan · marked In progress, check your plan",
+    );
   });
 
   it("never reads a plan without a session, and lists courses without availability when it is unknown", async () => {

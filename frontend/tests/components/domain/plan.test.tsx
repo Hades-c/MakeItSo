@@ -9,10 +9,16 @@ import {
 } from "@/components/domain/add-to-plan-control";
 import { PlanMap, compactColumns, type PlanMapTerm } from "@/components/domain/plan-map";
 import { layoutTerm } from "@/components/domain/plan-layout";
-import { RatingSummary, safeRmpUrl } from "@/components/domain/rating-summary";
+import {
+  MIN_DETAIL_RATINGS,
+  RatingSummary,
+  safeRmpUrl,
+  shownTags,
+} from "@/components/domain/rating-summary";
 import { RequirementSlots, type RequirementSlot } from "@/components/domain/requirement-slots";
 import { SeatBar, seatSummary } from "@/components/domain/seat-bar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { seenText, spokenText } from "../../helpers/text";
 
 const done = (code: string) => ({ status: "done" as const, code, credits: 1 });
 const now = (code: string) => ({ status: "in-progress" as const, code, credits: 1 });
@@ -330,6 +336,20 @@ describe("AddToPlanControl", () => {
     expect(screen.getByRole("button", { name: "Add to Fall 2026" })).toBeEnabled();
   });
 
+  it("marks the selected term with a 2px --primary outline, not a ring the dark theme cancels", async () => {
+    const user = userEvent.setup();
+    render(<Controlled />);
+    const [fall26, , fall27] = screen.getAllByRole("radio");
+    const tile = (radio: HTMLElement | undefined) => radio!.closest("label")!;
+    expect(tile(fall26)).toHaveClass("outline-2", "-outline-offset-2", "outline-primary");
+    // A ring is a box-shadow: `--elev-card: none` (dark) wiped it out together with the card shadow.
+    expect(tile(fall26).className).not.toMatch(/(^|\s)(ring-|shadow-)/);
+    expect(tile(fall27)).not.toHaveClass("outline-primary");
+    await user.click(tile(fall27));
+    expect(tile(fall27)).toHaveClass("outline-primary");
+    expect(tile(fall26)).not.toHaveClass("outline-primary");
+  });
+
   it("moves with the arrow keys, skipping terms that cannot be chosen", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -540,15 +560,187 @@ describe("RatingSummary", () => {
         timeZone="America/New_York"
       />,
     );
-    expect(screen.getByText(/1 rating/)).toHaveTextContent(
-      "1 rating for Daniel Aldridge · as of Sep 29, 2026",
-    );
+    const line = screen.getByText(/1 rating/);
+    expect(seenText(line)).toBe("1 rating · as of Sep 29, 2026");
+    expect(spokenText(line)).toBe("1 rating for Daniel Aldridge, as of Sep 29, 2026");
     const link = screen.getByRole("link", { name: /^RMP: Daniel Aldridge on RateMyProfessors/ });
     expect(link).toHaveAttribute("href", RMP);
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
     expect(link).toHaveAttribute("target", "_blank");
     // A 44px target on phones.
     expect(link).toHaveClass("max-md:min-h-11");
+  });
+
+  it("adds the difficulty, 'would take again' and the most common tags, labelled and in plain words", () => {
+    const { container } = render(
+      <RatingSummary
+        status="matched"
+        avgRating={3.66}
+        numRatings={21}
+        avgDifficulty={2.6}
+        wouldTakeAgainPct={66.6667}
+        topTags={[
+          { tag: "Participation matters", count: 12 },
+          { tag: "Get ready to read", count: 9 },
+          { tag: "Caring", count: 8 },
+          { tag: "Respected", count: 7 },
+        ]}
+        tagRatingsCounted={21}
+        tagsAsOf="2026-10-25T10:00:00Z"
+        asOf="2026-09-30T13:00:00Z"
+        url={RMP}
+        instructorName="Daniel Aldridge"
+        timeZone="America/New_York"
+      />,
+    );
+    const block = container.firstElementChild!;
+    expect(seenText(block)).toBe(
+      "3.7 / 5 21 ratings for Daniel Aldridge · Difficulty 2.6 of 5 · 67% would take again " +
+        "Most common tags (from 21 ratings, as of Oct 25, 2026): Participation matters (12), " +
+        "Get ready to read (9), Caring (8) · via RateMyProfessors " +
+        "RateMyProfessors as of Sep 30, 2026 RateMyProfessors",
+    );
+    // The two numbers out of 5 are told apart: "Rating" is read out, "Difficulty" is printed.
+    expect(spokenText(block)).toContain(
+      "Rating 3.7 out of 5 21 ratings for Daniel Aldridge, Difficulty 2.6 of 5, 67% would take again " +
+        "Most common tags (from 21 ratings, as of Oct 25, 2026): Participation matters (12 ratings), " +
+        "Get ready to read (9 ratings), Caring (8 ratings), via RateMyProfessors " +
+        "Source: RateMyProfessors",
+    );
+    // Sentence case text, no chips or boxes for the new parts.
+    const tags = screen.getByTestId("rating-tags");
+    expect(tags.tagName).toBe("P");
+    expect(tags.querySelector("[class*=border], [class*=uppercase]")).toBeNull();
+  });
+
+  it("leaves out what RMP does not have", () => {
+    const { container, rerender } = render(
+      <RatingSummary
+        status="matched"
+        avgRating={4}
+        numRatings={3}
+        avgDifficulty={null}
+        wouldTakeAgainPct={null}
+        topTags={[]}
+        tagRatingsCounted={3}
+      />,
+    );
+    expect(seenText(container)).toBe("4.0 / 5 3 ratings RateMyProfessors");
+    rerender(
+      <RatingSummary
+        status="matched"
+        avgRating={4}
+        numRatings={3}
+        avgDifficulty={0}
+        wouldTakeAgainPct={0}
+      />,
+    );
+    // 0 is not a difficulty (RMP's scale is 1-5), but 0% would take again is an answer.
+    expect(seenText(container)).toBe("4.0 / 5 3 ratings · 0% would take again RateMyProfessors");
+  });
+
+  it("shows tags only from 3 counted ratings, only those used twice, at most three", () => {
+    const topTags = [
+      { tag: "Caring", count: 5 },
+      { tag: "Hilarious", count: 2 },
+      { tag: "Respected", count: 2 },
+      { tag: "Tough grader", count: 2 },
+      { tag: "Test heavy", count: 1 },
+    ];
+    expect(shownTags(topTags, 10).map((t) => t.tag)).toEqual(["Caring", "Hilarious", "Respected"]);
+    expect(shownTags(topTags, 2)).toEqual([]);
+    expect(shownTags([{ tag: "Caring", count: 1 }], 10)).toEqual([]);
+    expect(shownTags(undefined, 10)).toEqual([]);
+    const { rerender } = render(
+      <RatingSummary
+        status="matched"
+        avgRating={4}
+        numRatings={2}
+        topTags={[{ tag: "Caring", count: 2 }]}
+        tagRatingsCounted={2}
+      />,
+    );
+    expect(screen.queryByTestId("rating-tags")).toBeNull();
+    rerender(
+      <RatingSummary
+        status="matched"
+        avgRating={4}
+        numRatings={3}
+        topTags={[{ tag: "Caring", count: 2 }]}
+        tagRatingsCounted={3}
+      />,
+    );
+    // Without a count date, the line still says how many ratings it is from.
+    expect(seenText(screen.getByTestId("rating-tags"))).toBe(
+      "Most common tags (from 3 ratings): Caring (2) · via RateMyProfessors",
+    );
+  });
+
+  it("shows difficulty and would take again only from 3 ratings; the rating itself from 1", () => {
+    const props = {
+      status: "matched" as const,
+      avgRating: 1.2,
+      avgDifficulty: 1,
+      wouldTakeAgainPct: 0,
+      topTags: [{ tag: "Caring", count: 2 }],
+      instructorName: "Bryan Thurtle-Schmidt",
+      nameShown: true,
+    };
+    const { container, rerender } = render(
+      <RatingSummary {...props} numRatings={2} tagRatingsCounted={2} />,
+    );
+    // Two ratings: "0% would take again" or "Difficulty 1.0" would be about two students.
+    expect(seenText(container)).toBe("1.2 / 5 2 ratings RateMyProfessors");
+    rerender(<RatingSummary {...props} numRatings={2} size="sm" />);
+    expect(seenText(container)).toBe("1.2 2 ratings RateMyProfessors");
+    rerender(<RatingSummary {...props} numRatings={3} tagRatingsCounted={3} />);
+    expect(seenText(container)).toBe(
+      "1.2 / 5 3 ratings · Difficulty 1.0 of 5 · 0% would take again " +
+        "Most common tags (from 3 ratings): Caring (2) · via RateMyProfessors RateMyProfessors",
+    );
+    rerender(<RatingSummary {...props} numRatings={3} size="sm" />);
+    expect(seenText(container)).toBe("1.2 3 ratings · Difficulty 1.0 of 5 RateMyProfessors");
+    expect(MIN_DETAIL_RATINGS).toBe(3);
+  });
+
+  it("compact form: the rating and the difficulty only", () => {
+    render(
+      <RatingSummary
+        status="matched"
+        avgRating={4.2}
+        numRatings={17}
+        avgDifficulty={3}
+        wouldTakeAgainPct={80}
+        topTags={[{ tag: "Caring", count: 8 }]}
+        tagRatingsCounted={17}
+        size="sm"
+        asOf="2026-09-28T10:00:00Z"
+        instructorName="Katy Williams"
+        timeZone="America/New_York"
+      />,
+    );
+    const line = screen.getByText(/17 ratings/).closest("p")!;
+    expect(seenText(line)).toBe(
+      "4.2 17 ratings · Difficulty 3.0 of 5 · as of Sep 28, 2026 RateMyProfessors",
+    );
+    expect(spokenText(line)).toBe(
+      "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, as of Sep 28, 2026 " +
+        "Source: RateMyProfessors",
+    );
+  });
+
+  it("keeps the name for screen readers only when the caller already shows it", () => {
+    const { container } = render(
+      <RatingSummary
+        status="matched"
+        avgRating={4}
+        numRatings={5}
+        instructorName="Katy Williams"
+        nameShown
+      />,
+    );
+    expect(seenText(container)).toBe("4.0 / 5 5 ratings RateMyProfessors");
+    expect(spokenText(container)).toContain("5 ratings for Katy Williams");
   });
 
   it("never renders a non-RMP link", () => {

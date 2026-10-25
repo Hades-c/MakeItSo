@@ -11,7 +11,7 @@ import {
   ColdEmailSchema,
 } from "@/lib/types/ai";
 import { FeedItemSchema } from "@/lib/types/feeds";
-import { InstructorRatingSchema } from "@/lib/types/ratings";
+import { InstructorRatingSchema, RMP_TAGS, RmpRatingSchema } from "@/lib/types/ratings";
 
 describe("AI results (PLAN §4.1.8)", () => {
   const Result = aiResultSchema(ColdEmailSchema);
@@ -70,7 +70,26 @@ describe("ratings (PLAN §4.1.7)", () => {
     department: "Economics",
     url: "https://www.ratemyprofessors.com/professor/9000001",
     asOf: "2026-09-30T12:00:00.000Z",
+    topTags: [{ tag: "Tough grader", count: 13 }],
+    tagRatingsCounted: 41,
+    tagsAsOf: "2026-09-30T12:05:00.000Z",
   };
+
+  it("carries RMP's tags from its fixed list only, at most five, and no difficulty under 1", () => {
+    const parse = (patch: Record<string, unknown>) =>
+      RmpRatingSchema.safeParse({ ...rmp, ...patch }).success;
+    expect(parse({})).toBe(true);
+    expect(parse({ avgDifficulty: null, topTags: [], tagRatingsCounted: 0, tagsAsOf: null })).toBe(
+      true,
+    );
+    expect(parse({ tagsAsOf: "Sep 30" })).toBe(false);
+    expect(parse({ tagsAsOf: undefined })).toBe(false);
+    expect(parse({ topTags: [{ tag: "Great professor", count: 2 }] })).toBe(false);
+    expect(parse({ topTags: [{ tag: "Caring", count: 0 }] })).toBe(false);
+    expect(parse({ topTags: RMP_TAGS.slice(0, 6).map((tag) => ({ tag, count: 1 })) })).toBe(false);
+    expect(parse({ avgDifficulty: 0 })).toBe(false);
+    expect(parse({ topTags: undefined })).toBe(false);
+  });
 
   it("carries RMP data exactly when matched", () => {
     expect(InstructorRatingSchema.parse({ instructor, status: "matched", rmp }).rmp).toEqual(rmp);

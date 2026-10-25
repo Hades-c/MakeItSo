@@ -360,6 +360,175 @@ describe("WebTreeEditor", () => {
     expect(screen.getByLabelText("Add as")).toHaveValue("2");
   });
 
+  it("adds a planned section in one press, with no picker, and moves on to the next planned course", async () => {
+    const user = userEvent.setup();
+    const planned = (courseCode: string, crn: string, section: string, title: string) => ({
+      courseCode,
+      title,
+      crn,
+      section: {
+        crn,
+        courseCode,
+        section,
+        title,
+        meetings: [meeting("10:30", "11:20")],
+        instructors: ["Katy Williams"],
+        enrollment: { current: 10, max: 24, remaining: 14 },
+      },
+    });
+    const empty: WebTreeList = { termCode: "202602", choices: [] };
+    const calls = stubFetch(saved(empty), saved(empty), saved(empty));
+    render(
+      <WebTreeEditor
+        {...props({
+          list: empty,
+          details: {},
+          conflicts: [],
+          warnings: [],
+          planCourses: [
+            planned("CSC 221", "20135", "A", "Data Structures"),
+            planned("ENV 237", "20226", "A", "Intro to Interdisciplinary GIS"),
+            planned("MAT 140", "20300", "B", "Calculus I"),
+          ],
+        })}
+      />,
+    );
+    const rows = screen.getAllByTestId("plan-course");
+    expect(rows[0]).toHaveTextContent("CSC 221 A· CRN 20135");
+    expect(screen.queryByRole("button", { name: /^Choose a section/ })).toBeNull();
+    const first = screen.getByRole("button", {
+      name: "Add as choice 1: CSC 221 section A, CRN 20135",
+    });
+    expect(first).toHaveTextContent("Add as choice 1");
+    // Label in Name (WCAG 2.5.3): each row's name starts with the words on its button.
+    for (const row of rows) {
+      const button = within(row).getByRole("button");
+      expect(button.getAttribute("aria-label")?.startsWith(button.textContent ?? "-")).toBe(true);
+    }
+    await user.click(first);
+    expect(screen.queryByTestId("section-picker")).toBeNull();
+    expect(screen.getAllByTestId("webtree-choice")).toHaveLength(1);
+    // Its row is gone; the next planned course's button has focus and the next rank.
+    const second = screen.getByRole("button", {
+      name: "Add as choice 2: ENV 237 section A, CRN 20226",
+    });
+    expect(second).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await user.click(
+      screen.getByRole("button", { name: "Add as choice 3: MAT 140 section B, CRN 20300" }),
+    );
+    // Three presses, three choices: the plan's own sections, in order.
+    await waitFor(() => expect(calls.length).toBeGreaterThanOrEqual(1));
+    expect(screen.getAllByTestId("webtree-choice")).toHaveLength(3);
+    expect(screen.queryAllByTestId("plan-course")).toHaveLength(0);
+    expect(screen.getByLabelText("Add as")).toHaveFocus();
+    await waitFor(() => expect(screen.getByTestId("webtree-status")).toHaveTextContent("Saved."));
+    expect(calls.at(-1)).toMatchObject({
+      method: "PUT",
+      body: {
+        termCode: "202602",
+        choices: [
+          { rank: 1, crn: "20135", courseCode: "CSC 221", alternates: [] },
+          { rank: 2, crn: "20226", courseCode: "ENV 237", alternates: [] },
+          { rank: 3, crn: "20300", courseCode: "MAT 140", alternates: [] },
+        ],
+      },
+    });
+  });
+
+  it("moves focus to the new choice, never a disabled button, when a one-press add fills the list", async () => {
+    const user = userEvent.setup();
+    // 19 choices: one more fills the list (MAX_CHOICES = 20), which disables every "Add as choice" button.
+    const nineteen: WebTreeList = {
+      termCode: "202602",
+      choices: Array.from({ length: 19 }, (_, i) => ({
+        rank: i + 1,
+        crn: String(21000 + i),
+        courseCode: `HIS ${100 + i}`,
+        alternates: [],
+      })),
+    };
+    const planned = (courseCode: string, crn: string) => ({
+      courseCode,
+      title: courseCode,
+      crn,
+      section: {
+        crn,
+        courseCode,
+        section: "A",
+        title: courseCode,
+        meetings: [meeting("10:30", "11:20")],
+        instructors: [],
+        enrollment: { current: 10, max: 24, remaining: 14 },
+      },
+    });
+    stubFetch(saved(nineteen));
+    render(
+      <WebTreeEditor
+        {...props({
+          list: nineteen,
+          details: {},
+          conflicts: [],
+          warnings: [],
+          planCourses: [planned("CSC 221", "20135"), planned("ENV 237", "20226")],
+        })}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /^Add as choice 20: CSC 221 section A/ }));
+    expect(screen.getAllByTestId("webtree-choice")).toHaveLength(20);
+    // The next planned course's button is disabled now: focus is on the new choice's heading instead.
+    expect(screen.getByRole("button", { name: /^Add as choice 21: ENV 237/ })).toBeDisabled();
+    const heading = document.getElementById("choice-20135")!;
+    expect(heading.tagName).toBe("H3");
+    expect(heading).toHaveTextContent(/^Choice 20: CSC 221/);
+    expect(heading).toHaveFocus();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(screen.getByText("The list already holds 20 choices.")).toBeVisible();
+  });
+
+  it("adds a planned section as an alternate when the 'Add as' select says so", async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(saved(LIST));
+    render(
+      <WebTreeEditor
+        {...props({
+          planCourses: [
+            {
+              courseCode: "MAT 140",
+              title: "Calculus I",
+              crn: "20300",
+              section: {
+                crn: "20300",
+                courseCode: "MAT 140",
+                section: "B",
+                title: "Calculus I",
+                meetings: [],
+                instructors: [],
+                enrollment: { current: 0, max: 24, remaining: 24 },
+              },
+            },
+            { courseCode: "HIS 357", title: "History", crn: null, section: null },
+          ],
+        })}
+      />,
+    );
+    // Without a CRN the student still chooses a section.
+    expect(screen.getByRole("button", { name: "Choose a section of HIS 357" })).toBeEnabled();
+    await user.selectOptions(screen.getByLabelText("Add as"), "2");
+    await user.click(
+      screen.getByRole("button", {
+        name: "Add as an alternate for choice 2: MAT 140 section B, CRN 20300",
+      }),
+    );
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]!.body).toMatchObject({
+      choices: [
+        { rank: 1, crn: "20135" },
+        { rank: 2, crn: "20478", alternates: ["20300"] },
+      ],
+    });
+  });
+
   it("offers the term's plan courses, preselecting the plan's section", async () => {
     const user = userEvent.setup();
     stubFetch([
@@ -410,7 +579,10 @@ describe("WebTreeEditor", () => {
           details: {},
           conflicts: [],
           warnings: [],
-          planCourses: [{ courseCode: "CSC 221", title: "Data Structures", crn: "20136" }],
+          // A planned CRN the schedule no longer lists: the student chooses a section.
+          planCourses: [
+            { courseCode: "CSC 221", title: "Data Structures", crn: "20136", section: null },
+          ],
         })}
       />,
     );

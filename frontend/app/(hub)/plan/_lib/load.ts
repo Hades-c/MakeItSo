@@ -32,6 +32,7 @@ import type { SlotFiller } from "./choice";
 import type { DeadlineInput } from "./deadlines";
 import { isActive } from "./four-year";
 import type { SectionTimes } from "./week";
+import { pickedSection, type PlanCourseOption } from "./webtree-edit";
 
 /**
  * Server loaders for the /plan tabs (PLAN §3, §5). Server components call the services directly (no self-HTTP):
@@ -83,12 +84,6 @@ function slotFillers(
 }
 
 // ---- Next semester -----------------------------------------------------------------------------------------------
-
-export interface PlanCourseOption {
-  courseCode: string;
-  title: string;
-  crn: string | null;
-}
 
 export interface NextSemesterData {
   termCode: TermCode;
@@ -150,9 +145,20 @@ export async function loadNextSemester(
         instructors: instructorNames(section.instructors),
       };
     }
-    const planCourses = plan.items
-      .filter((item) => item.termCode === termCode && isActive(item))
-      .map((item) => ({ courseCode: item.courseCode, title: item.title, crn: item.crn ?? null }));
+    // The plan's own sections, so "From your plan" adds one with a single press (no second pick of the same CRN).
+    const planCourses: PlanCourseOption[] = await Promise.all(
+      plan.items
+        .filter((item) => item.termCode === termCode && isActive(item))
+        .map(async (item) => {
+          const planned = item.crn ? await getSection(termCode, item.crn) : null;
+          return {
+            courseCode: item.courseCode,
+            title: item.title,
+            crn: item.crn ?? null,
+            section: planned ? pickedSection(planned) : null,
+          };
+        }),
+    );
     const { deadlines, ...rest } = report;
     return {
       termCode,

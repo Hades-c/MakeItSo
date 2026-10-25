@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, TriangleAlert } from "lucide-react";
 import type { AddToPlanTerm } from "@/components/domain/add-to-plan-control";
 import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
@@ -8,7 +8,10 @@ import { routes } from "@/lib/routes";
 import type { TermCode } from "@/lib/term";
 import type { Availability } from "@/lib/types/catalog";
 import type { Career } from "@/lib/types/content";
+import { cn } from "@/lib/utils";
 import { getSessionUser } from "@/server/auth/session";
+import { now } from "@/server/clock";
+import type { TermClock } from "@/server/plan/status-rules";
 import {
   addToPlanTerms,
   courseLinkTerm,
@@ -17,14 +20,24 @@ import {
   type CareerTerms,
 } from "../_lib/availability";
 import { loadCareerTerms, loadCourseHistories } from "../_lib/catalog";
-import { loadPlanPresence, type PlanPresence } from "../_lib/plan";
+import {
+  courseStanding,
+  loadPlanPresence,
+  plannedTerms,
+  standingText,
+  type PlanPresence,
+  type StandingText,
+} from "../_lib/plan";
 import { CourseAddToPlan } from "./course-add-to-plan";
 
 /**
  * The career's real Davidson courses with live availability per term (PLAN §3, §5 "Availability"): the current
  * term, the registration term (the default for Add to plan) and the next, unpublished one with "usually offered"
  * when the catalog supports it. Availability comes from getCourseHistory() on every request; when it cannot be
- * read, the course is listed without it (never a guess). Each course has an Add to plan control.
+ * read, the course is listed without it (never a guess). A course the student has not taken has an Add to plan
+ * control; one completed or under way says so in words instead (with a warning when it is also planned again),
+ * and one with a status that cannot be true yet (Completed for a term that is not over, In progress for a term
+ * that has ended) says to check the plan, with a link.
  */
 
 export interface CareerCourseView {
@@ -35,24 +48,37 @@ export interface CareerCourseView {
   terms: AddToPlanTerm[] | null;
   initialTerm: TermCode | null;
   inPlanTerms: string[];
+  /**
+   * The course's place in the plan in words ("Completed Fall 2025", "Taking now (Fall 2026)", a repeat or a status
+   * that cannot be true yet with `warning`), or null when it is not taken yet. It shows instead of an Add control.
+   */
+  status: StandingText | null;
   /** "Fall 2027 isn’t published yet. Usually offered in Fall (based on …)", or null. */
   usually: string | null;
   /** The course page to link, or null when the course ran in no known term. */
   href: string | null;
 }
 
-/** Pure: one course row from its history (null = unknown), the terms and the plan presence. */
+/**
+ * Pure: one course row from its history (null = unknown), the terms and the plan presence. `clock` judges the
+ * plan's statuses: the terms list with its dates and now (an empty list when the terms cannot be read, so the
+ * date's term decides and a status that cannot be true yet is flagged even then).
+ */
 export function courseView(
   course: Career["courses"][number],
   history: readonly Availability[] | null,
   terms: CareerTerms | null,
   presence: PlanPresence | null,
+  clock: TermClock,
 ): CareerCourseView {
+  const entries = presence?.get(course.code);
+  const standing = courseStanding(entries, clock);
   const base = {
     code: course.code,
     title: course.title,
     why: course.why,
-    inPlanTerms: [...(presence?.get(course.code) ?? [])],
+    inPlanTerms: plannedTerms(entries),
+    status: standing ? standingText(standing) : null,
   };
   if (!history || !terms) {
     return { ...base, terms: null, initialTerm: null, usually: null, href: null };
@@ -107,7 +133,9 @@ export function CareerCourseItem({
       </h3>
       <p className="mt-1 text-sm text-fg-2">{view.why}</p>
       <div className="mt-auto pt-3">
-        {view.terms && currentTerm ? (
+        {view.status ? (
+          <PlanStatusLine code={view.code} status={view.status} />
+        ) : view.terms && currentTerm ? (
           <CourseAddToPlan
             courseCode={view.code}
             terms={view.terms}
@@ -132,6 +160,45 @@ export function CareerCourseItem({
   );
 }
 
+/**
+ * Situation before catalog: a course already taken never offers "Add" without saying so. A warning (a repeat, or
+ * a status that cannot be true yet) is the warning icon and words in the warning colour (spec §5.6
+ * `.st-warn`); the marked state's "check your plan" links the 4-year plan.
+ */
+function PlanStatusLine({ code, status }: { code: string; status: StandingText }) {
+  const check = status.check && status.text.endsWith(status.check.words) ? status.check : null;
+  return (
+    <p
+      className={cn(
+        "flex items-start gap-1.5 text-sm font-semibold",
+        status.warning ? "text-warning" : "text-fg",
+      )}
+      data-testid="course-plan-status"
+      data-source="my-plan"
+      data-warning={status.warning ? "true" : undefined}
+    >
+      {status.warning ? <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" /> : null}
+      <span>
+        <span className="sr-only">Source: your plan. </span>
+        {check ? (
+          <>
+            {status.text.slice(0, -check.words.length)}
+            <Link
+              href={check.href}
+              // Inline in the sentence (WCAG 2.5.8's inline exception), like the page's other text links.
+              className="text-primary underline underline-offset-2"
+            >
+              {check.words} <span className="sr-only">for {code} in your 4-year plan</span>
+            </Link>
+          </>
+        ) : (
+          status.text
+        )}
+      </span>
+    </p>
+  );
+}
+
 export async function CareerCourses({ career }: { career: Career }) {
   const user = await getSessionUser();
   const [terms, histories, presence] = await Promise.all([
@@ -140,8 +207,10 @@ export async function CareerCourses({ career }: { career: Career }) {
     user ? loadPlanPresence(user.id) : null,
   ]);
   const loginHref = routes.login(routes.career(career.slug));
+  // Without the terms list, the date decides the current term (lib/term's own fallback).
+  const clock: TermClock = { terms: terms?.schedule ?? [], at: now() };
   const views = career.courses.map((course) =>
-    courseView(course, histories.get(course.code) ?? null, terms, presence),
+    courseView(course, histories.get(course.code) ?? null, terms, presence, clock),
   );
   const planHref = routes.plan("next");
 

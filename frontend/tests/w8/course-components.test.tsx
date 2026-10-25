@@ -3,6 +3,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { describe, expect, it, vi } from "vitest";
 import { CourseSections, SectionItem } from "@/app/(hub)/courses/_components/course-sections";
 import {
+  InstructorRatings,
+  ratedInstructors,
+} from "@/app/(hub)/courses/_components/instructor-ratings";
+import {
   CourseAboutCard,
   CourseHeader,
   CourseWeekCard,
@@ -18,6 +22,7 @@ import { registerAsLink } from "@/app/(hub)/courses/_lib/sections";
 import type { CourseRow as Row } from "@/app/(hub)/courses/_lib/search";
 import type { Availability } from "@/lib/types/catalog";
 import { detectConflicts } from "@/server/plan";
+import { seenText, spokenText } from "../helpers/text";
 import { course, planItem, section, withSection } from "./helpers";
 
 /** The app wraps every page in a TooltipProvider (some course components use tooltips). */
@@ -128,24 +133,31 @@ describe("SectionItem", () => {
     ).toBeVisible();
   });
 
-  it("shows a matched RateMyProfessors rating with its tag, and nothing for an unmatched one", () => {
+  const rmp = {
+    legacyId: 1234,
+    avgRating: 4.2,
+    numRatings: 17,
+    avgDifficulty: 3,
+    wouldTakeAgainPct: 80,
+    department: "Computer Science",
+    url: "https://www.ratemyprofessors.com/professor/1234",
+    asOf: "2026-09-28T10:00:00.000Z",
+    topTags: [
+      { tag: "Participation matters", count: 12 },
+      { tag: "Get ready to read", count: 9 },
+      { tag: "Caring", count: 8 },
+      { tag: "Respected", count: 5 },
+    ],
+    tagRatingsCounted: 17,
+    // Counted the day after the roster's asOf: the tags line says its own date.
+    tagsAsOf: "2026-09-29T10:05:00.000Z",
+  } as const;
+
+  it("shows a matched rating and its difficulty with its tag, and nothing for an unmatched one", () => {
     const a = csc.sections[0]!;
     const instructor = a.instructors[0]!;
     const ratings = ratingsLookup([
-      {
-        instructor,
-        status: "matched",
-        rmp: {
-          legacyId: 1234,
-          avgRating: 4.2,
-          numRatings: 17,
-          avgDifficulty: 3,
-          wouldTakeAgainPct: 80,
-          department: "Computer Science",
-          url: "https://www.ratemyprofessors.com/professor/1234",
-          asOf: "2026-09-28T10:00:00.000Z",
-        },
-      },
+      { instructor, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
     ]);
     const { unmount } = render(
       <SectionItem section={a} course={csc} chosen={false} ratings={ratings} sectionHref="/x" />,
@@ -153,6 +165,9 @@ describe("SectionItem", () => {
     const rated = document.querySelector('[data-aggregated="ratemyprofessors"]')!;
     expect(rated).toHaveTextContent("4.2");
     expect(rated).toHaveTextContent("17 ratings");
+    expect(rated).toHaveTextContent("Difficulty 3.0 of 5");
+    // The section row is the short form: no "would take again", no tags.
+    expect(rated).not.toHaveTextContent(/would take again|Most common tags/);
     expect(rated.querySelector('[data-source="ratemyprofessors"]')).not.toBeNull();
     unmount();
     render(
@@ -186,6 +201,108 @@ describe("SectionItem", () => {
     // No ratings (RMP_ENABLED off): the footnote does not promise them.
     expect(card).toHaveTextContent("Seats and notes as the Registrar publishes them.");
     expect(card).not.toHaveTextContent(/RateMyProfessors/);
+  });
+
+  it("lists each rated instructor once under the sections, with what RMP says about them", () => {
+    const instructor = csc.sections[0]!.instructors[0]!;
+    expect(csc.sections.every((s) => s.instructors.some((i) => i.last === instructor.last))).toBe(
+      true,
+    );
+    render(
+      <CourseSections
+        course={csc}
+        chosenCrn={null}
+        ratings={ratingsLookup([
+          { instructor, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
+        ])}
+        sectionHref={(crn) => `/c?crn=${crn}`}
+        asOf={null}
+      />,
+    );
+    const list = screen.getByRole("list", { name: "Instructors on RateMyProfessors" });
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    const item = items[0]!;
+    expect(item).toHaveAttribute("data-aggregated", "ratemyprofessors");
+    expect(within(item).getByText(`${instructor.first} ${instructor.last}`)).toBeVisible();
+    expect(seenText(item)).toBe(
+      "Katy Williams 4.2 / 5 17 ratings · Difficulty 3.0 of 5 · 80% would take again " +
+        "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12), " +
+        "Get ready to read (9), Caring (8) · via RateMyProfessors " +
+        "RateMyProfessors as of Sep 28, 2026 RateMyProfessors",
+    );
+    expect(spokenText(item)).toContain(
+      "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, 80% would take again " +
+        "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12 ratings), " +
+        "Get ready to read (9 ratings), Caring (8 ratings), via RateMyProfessors",
+    );
+    expect(within(item).getByText("as of Sep 28, 2026")).toBeVisible();
+    expect(item.querySelector('[data-source="ratemyprofessors"]')).not.toBeNull();
+    expect(within(item).getByRole("link", { name: /on RateMyProfessors|’s page/ })).toHaveAttribute(
+      "href",
+      rmp.url,
+    );
+    // The section rows keep the short form; the details appear once.
+    expect(screen.getAllByText(/would take again/)).toHaveLength(1);
+  });
+
+  it("is its own block, fed a de-duplicated instructor list, so the page can move it", () => {
+    // Two sections taught by the same instructor, one by a second, one by Staff: two entries, in section order.
+    const katy = csc.sections[0]!.instructors[0]!;
+    const sam = { first: "Sam", last: "Okafor", isStaff: false };
+    const staff = { first: "Staff", last: "", isStaff: true };
+    const sections = [
+      { ...csc.sections[0]!, instructors: [katy] },
+      { ...csc.sections[1]!, instructors: [sam, katy] },
+      { ...csc.sections[0]!, crn: "20999", instructors: [staff] },
+    ];
+    const lookup = ratingsLookup([
+      { instructor: katy, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
+      { instructor: sam, status: "matched", rmp: { ...rmp, legacyId: 99, topTags: [] } },
+    ]);
+    const rated = ratedInstructors(sections, lookup);
+    expect(rated.map((r) => r.instructor.last)).toEqual([katy.last, "Okafor"]);
+    expect(ratedInstructors(sections, null)).toEqual([]);
+    const { container } = render(<InstructorRatings instructors={rated} className="mt-9" />);
+    const block = screen.getByTestId("instructor-ratings");
+    expect(block).toHaveClass("mt-9");
+    expect(within(block).getAllByRole("listitem")).toHaveLength(2);
+    // Placed twice (per section row, say), each list is named by its own heading.
+    const twice = render(
+      <>
+        <InstructorRatings instructors={rated.slice(0, 1)} />
+        <InstructorRatings instructors={rated.slice(1)} />
+      </>,
+    );
+    const lists = within(twice.container).getAllByRole("list", {
+      name: "Instructors on RateMyProfessors",
+    });
+    expect(lists).toHaveLength(2);
+    expect(lists[0]!.getAttribute("aria-labelledby")).not.toBe(
+      lists[1]!.getAttribute("aria-labelledby"),
+    );
+    expect(within(lists[1]!).getAllByRole("listitem")).toHaveLength(1);
+    twice.unmount();
+    // Nothing at all without a rated instructor.
+    container.remove();
+    const empty = render(<InstructorRatings instructors={[]} />);
+    expect(empty.container).toBeEmptyDOMElement();
+  });
+
+  it("lists no instructors without a shown rating", () => {
+    const instructor = csc.sections[0]!.instructors[0]!;
+    render(
+      <CourseSections
+        course={csc}
+        chosenCrn={null}
+        ratings={ratingsLookup([
+          { instructor, status: "matched", rmp: { ...rmp, numRatings: 0, topTags: [] } },
+        ])}
+        sectionHref={(crn) => `/c?crn=${crn}`}
+        asOf={null}
+      />,
+    );
+    expect(screen.queryByTestId("instructor-ratings")).toBeNull();
   });
 
   it("mentions ratings only when ratings are shown", () => {

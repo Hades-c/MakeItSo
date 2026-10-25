@@ -16,24 +16,25 @@ import type { WebTreeList } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "../_lib/errors";
 import { meetingsText } from "../_lib/week";
-import { listedCrns, MAX_ALTERNATES, MAX_CHOICES } from "../_lib/webtree-edit";
+import {
+  listedCrns,
+  MAX_ALTERNATES,
+  MAX_CHOICES,
+  pickedSection,
+  type PickedSection,
+  type PlanCourseOption,
+} from "../_lib/webtree-edit";
 
 /**
- * "Add a course" for the WebTree list (a form, not a search landmark: the top bar holds the one site search): pick a course from the plan (the courses already planned for the term) or
- * from a catalog search (GET /api/catalog/search, the public catalog route), then one of its sections (GET
- * /api/catalog/courses/[term]/[code]) and where it goes: a new choice at the end, or an alternate for a choice.
- * The parent applies the edit and saves the list.
+ * "Add a course" for the WebTree list (a form, not a search landmark: the top bar holds the one site search): a
+ * course from the plan (the courses already planned for the term) or from a catalog search (GET
+ * /api/catalog/search, the public catalog route), then one of its sections (GET /api/catalog/courses/[term]/[code])
+ * and where it goes: a new choice at the end, or an alternate for a choice. A planned course whose plan item has a
+ * CRN in the schedule is added in one press ("Add as choice N"): the student already chose that section once. The
+ * parent applies the edit and saves the list.
  */
 
-export interface PickedSection {
-  crn: string;
-  courseCode: string;
-  section: string;
-  title: string;
-  meetings: Section["meetings"];
-  instructors: string[];
-  enrollment: Section["enrollment"];
-}
+export type { PickedSection };
 
 /** "new" or the rank of the choice an alternate is for. */
 export type AddTarget = "new" | number;
@@ -42,8 +43,8 @@ export interface AddCourseProps {
   termCode: string;
   termLabel: string;
   list: WebTreeList;
-  /** Courses planned for this term ("Add from your plan"). */
-  planCourses: readonly { courseCode: string; title: string; crn: string | null }[];
+  /** Courses planned for this term ("From your plan"), with the plan's own section when it has one. */
+  planCourses: readonly PlanCourseOption[];
   target: AddTarget;
   onTargetChange: (target: AddTarget) => void;
   onAdd: (section: PickedSection, target: AddTarget) => void;
@@ -53,20 +54,6 @@ export interface AddCourseProps {
 }
 
 type Loaded<T> = { state: "idle" } | { state: "loading" } | { state: "error"; message: string } | T;
-
-function picked(section: Section): PickedSection {
-  return {
-    crn: section.crn,
-    courseCode: section.courseCode,
-    section: section.section,
-    title: section.title,
-    meetings: section.meetings,
-    instructors: section.instructors.map((person) =>
-      person.isStaff ? "Staff (TBA)" : `${person.first} ${person.last}`.trim(),
-    ),
-    enrollment: section.enrollment,
-  };
-}
 
 function seatsText(enrollment: Section["enrollment"]): string {
   if (enrollment.max <= 0) return "no seats of its own";
@@ -98,6 +85,10 @@ export function AddCourse({
   });
   const [crn, setCrn] = React.useState<string | null>(null);
   const sectionsHeading = React.useRef<HTMLHeadingElement>(null);
+  const targetSelect = React.useRef<HTMLSelectElement>(null);
+  const planButtons = React.useRef(new Map<string, HTMLButtonElement>());
+  /** After a one-press add from the plan: the row it came from, and the row whose button takes focus next. */
+  const focusAfterAdd = React.useRef<{ added: string; next: string | null } | null>(null);
 
   const listed = listedCrns(list);
   const listedCodes = new Set(list.choices.map((choice) => normalizeCourseCode(choice.courseCode)));
@@ -130,6 +121,31 @@ export function AddCourse({
         message: errorMessage(error, "The search did not work. Please try again."),
       });
     }
+  };
+
+  // The added row leaves the list: focus the next row's button (else the "Add as" select), never the page body
+  // and never a disabled button (an add that fills the list: the editor then focuses the new choice). A refused
+  // add keeps its row, and focus stays on its button.
+  React.useLayoutEffect(() => {
+    const request = focusAfterAdd.current;
+    if (!request) return;
+    focusAfterAdd.current = null;
+    if (planButtons.current.has(request.added)) return;
+    const next = request.next ? planButtons.current.get(request.next) : undefined;
+    (next && !next.disabled ? next : targetSelect.current)?.focus();
+  });
+
+  const addLabel =
+    target === "new"
+      ? `Add as choice ${list.choices.length + 1}`
+      : `Add as an alternate for choice ${target}`;
+  const addDirect = (index: number, section: PickedSection) => {
+    const entry = fromPlan[index]!;
+    focusAfterAdd.current = {
+      added: entry.courseCode,
+      next: (fromPlan[index + 1] ?? fromPlan[index - 1])?.courseCode ?? null,
+    };
+    onAdd(section, target);
   };
 
   const chooseCourse = async (code: string, preferredCrn: string | null) => {
@@ -168,6 +184,7 @@ export function AddCourse({
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idBase}-target`}>Add as</Label>
         <select
+          ref={targetSelect}
           id={`${idBase}-target`}
           className={cn(controlClass, "h-11 px-3 md:h-10")}
           value={String(target)}
@@ -197,21 +214,57 @@ export function AddCourse({
             From your {termLabel} plan <SourceTag source="my-plan" />
           </h4>
           <ul className="mt-2 flex flex-col gap-1.5">
-            {fromPlan.map((entry) => (
-              <li key={entry.courseCode} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <CourseCode code={entry.courseCode} />
-                <span className="min-w-0 flex-1 text-sm text-fg-2">{entry.title}</span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={disabled}
-                  onClick={() => void chooseCourse(entry.courseCode, entry.crn)}
+            {fromPlan.map((entry, index) => {
+              // The plan's own section, unless it is already on the list (as another choice's alternate).
+              const own = entry.section && !listed.has(entry.section.crn) ? entry.section : null;
+              const register = (button: HTMLButtonElement | null) => {
+                if (button) planButtons.current.set(entry.courseCode, button);
+                else planButtons.current.delete(entry.courseCode);
+              };
+              return (
+                <li
+                  key={entry.courseCode}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1"
+                  data-testid="plan-course"
                 >
-                  Choose a section <span className="sr-only">of {entry.courseCode}</span>
-                </Button>
-              </li>
-            ))}
+                  <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
+                    <CourseCode code={entry.courseCode} section={own?.section} />
+                    {own ? (
+                      <span className="font-mono text-xs text-fg-2">
+                        <span aria-hidden>· </span>CRN {own.crn}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm text-fg-2">{entry.title}</span>
+                  {own ? (
+                    <Button
+                      ref={register}
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={disabled || full}
+                      // The visible words come first (WCAG 2.5.3): saying "click Add as choice 1" finds it.
+                      aria-label={`${addLabel}: ${entry.courseCode} section ${own.section}, CRN ${own.crn}`}
+                      onClick={() => addDirect(index, own)}
+                    >
+                      <Plus aria-hidden />
+                      {addLabel}
+                    </Button>
+                  ) : (
+                    <Button
+                      ref={register}
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={disabled}
+                      onClick={() => void chooseCourse(entry.courseCode, entry.crn)}
+                    >
+                      Choose a section <span className="sr-only">of {entry.courseCode}</span>
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
@@ -300,7 +353,7 @@ export function AddCourse({
               className="mt-2 flex flex-col gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (chosen) onAdd(picked(chosen), target);
+                if (chosen) onAdd(pickedSection(chosen), target);
               }}
             >
               <fieldset className="flex flex-col gap-1.5">
@@ -336,7 +389,7 @@ export function AddCourse({
                         </span>
                         {section.instructors.length > 0 ? (
                           <span className="block text-xs text-fg-3">
-                            {picked(section).instructors.join(", ")}
+                            {pickedSection(section).instructors.join(", ")}
                           </span>
                         ) : null}
                       </span>
@@ -347,9 +400,7 @@ export function AddCourse({
               <div>
                 <Button type="submit" disabled={!chosen || full || disabled}>
                   <Plus aria-hidden />
-                  {target === "new"
-                    ? `Add as choice ${list.choices.length + 1}`
-                    : `Add as an alternate for choice ${target}`}
+                  {addLabel}
                 </Button>
               </div>
             </form>

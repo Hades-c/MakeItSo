@@ -112,6 +112,8 @@ describe("lib/api route contracts (PLAN §4.1.16)", () => {
     expect(Object.fromEntries(vercel.crons.map((job) => [job.path, job.schedule]))).toMatchObject({
       "/api/cron/catalog": "13 7 * * *",
       "/api/cron/programs": "23 6 * * 1",
+      // Daily: the roster inside it stays weekly (server/rmp/cron.ts).
+      "/api/cron/rmp": "17 7 * * *",
     });
   });
 

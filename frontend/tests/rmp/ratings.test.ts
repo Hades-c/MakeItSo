@@ -110,13 +110,72 @@ describe("getRatings", () => {
         department: "Economics",
         url: "https://www.ratemyprofessors.com/professor/9000001",
         asOf: now().toISOString(),
+        // Not counted yet (the daily cron counts them after the roster).
+        topTags: [],
+        tagRatingsCounted: 0,
+        tagsAsOf: null,
       },
     });
-    // RMP's -1 ("nobody answered") is stored and served as null; zero ratings still match.
+    // RMP's 0 difficulty and -1 ("nobody answered") of an unrated teacher are served as null; zero ratings still
+    // match.
     expect(alesha?.rmp).toMatchObject({
       legacyId: 9000021,
       numRatings: 0,
+      avgDifficulty: null,
       wouldTakeAgainPct: null,
+    });
+  });
+
+  it("serves the stored tag counts, leaving out a tag RMP_TAGS no longer lists", async () => {
+    await RmpTeacher.updateOne(
+      { legacyId: 9000001 },
+      {
+        $set: {
+          topTags: [
+            { tag: "Caring", count: 7 },
+            { tag: "Respected", count: 3 },
+          ],
+          tagRatingsCounted: 30,
+          tagsFetchedAt: now(),
+        },
+      },
+    );
+    await RmpTeacher.collection.updateOne({ legacyId: 9000001 }, {
+      $push: { topTags: { tag: "A retired tag", count: 2 } },
+    } as never);
+    const [fred] = await getRatings([instructor("Fred", "Smith")], { subject: "ECO" });
+    expect(fred?.rmp).toMatchObject({
+      topTags: [
+        { tag: "Caring", count: 7 },
+        { tag: "Respected", count: 3 },
+      ],
+      tagRatingsCounted: 30,
+      // The tags' own freshness, apart from the roster's asOf.
+      tagsAsOf: now().toISOString(),
+    });
+  });
+
+  it("serves no difficulty, would-take-again or tags for a teacher whose ratings are gone", async () => {
+    await RmpTeacher.updateOne(
+      { legacyId: 9000001 },
+      {
+        $set: {
+          numRatings: 0,
+          avgDifficulty: 0,
+          topTags: [{ tag: "Caring", count: 7 }],
+          tagRatingsCounted: 30,
+          tagsFetchedAt: now(),
+        },
+      },
+    );
+    const [fred] = await getRatings([instructor("Fred", "Smith")], { subject: "ECO" });
+    expect(fred?.rmp).toMatchObject({
+      numRatings: 0,
+      avgDifficulty: null,
+      wouldTakeAgainPct: null,
+      topTags: [],
+      tagRatingsCounted: 0,
+      tagsAsOf: null,
     });
   });
 

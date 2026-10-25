@@ -31,6 +31,7 @@ vi.mock("@/app/(hub)/today/_components/timeline-panel", () => ({
 }));
 vi.mock("@/app/(hub)/today/_components/degree-panel", () => ({ DegreePanel: marker("degree") }));
 vi.mock("@/app/(hub)/today/_components/due-soon-panel", () => ({
+  DUE_SOON_TITLE: "Due for you",
   DueSoonPanel: marker("due-soon"),
 }));
 vi.mock("@/app/(hub)/today/_components/campus-panel", () => ({ CampusPanel: marker("campus") }));

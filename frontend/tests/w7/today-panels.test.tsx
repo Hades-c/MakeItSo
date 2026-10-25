@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SOURCES, type SourceId } from "@/lib/sources";
@@ -253,8 +254,8 @@ describe("the header", () => {
     );
     expect(screen.getByText("Wednesday, September 30")).toHaveAttribute("dateTime", "2026-09-30");
     expect(screen.getByText(/· Fall 2026/)).toBeVisible();
-    // Deadlines for the student: their own problem set only. Due soon also lists the WebTree window and
-    // optional program applications, which are not deadlines (nor is the seniors' minor declaration theirs).
+    // Due for the student: their own problem set and the WebTree window (all students), the rows the Due for
+    // you card lists first. Not the seniors' minor declaration or the conditional program applications.
     const { from, to } = dueSoonRange(NOON);
     const listed = buildDueSoon({
       now: NOON,
@@ -262,9 +263,9 @@ describe("the header", () => {
       contentDeadlines: deadlinesBetween(from, to),
       studentDeadlines: [DEADLINE],
     });
-    expect(listed.some((item) => item.kind === "registration" && item.forYou)).toBe(true);
+    expect(listed.filter((item) => item.forYou)).toHaveLength(2);
     expect(screen.getByTestId("day-counts")).toHaveTextContent(
-      "3 classes today · 1 deadline in the next two weeks",
+      "3 classes today · 2 due for you in the next two weeks",
     );
     const strip = screen.getByRole("navigation", { name: "This school week" });
     const links = within(strip).getAllByRole("link");
@@ -468,10 +469,10 @@ describe("the timeline", () => {
   });
 });
 
-describe("Due soon", () => {
+describe("Due for you", () => {
   it("lists the calendar, the programs and the student's deadline, each tagged and linked", async () => {
     const { container } = await show(DueSoonPanel({ userId: USER, now: NOON }));
-    const card = screen.getByRole("region", { name: /^Due soon/ });
+    const card = screen.getByRole("region", { name: /^Due for you/ });
     const items = within(card).getAllByTestId("due-soon-item");
     expect(items.length).toBeGreaterThan(3);
     expect(expectAllTagged(container)).toBe(items.length);
@@ -489,6 +490,73 @@ describe("Due soon", () => {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
       expect(link).toHaveAttribute("target", "_blank");
     }
+  });
+
+  it("counts the rows listed for the student, the header's number, and lists the others after them", async () => {
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    const card = screen.getByRole("region", { name: /^Due for you/ });
+    const mine = within(
+      within(card).getByRole("list", { name: "Due for you in the next two weeks" }),
+    ).getAllByTestId("due-soon-item");
+    // The problem set and the WebTree window: the count beside the title says 2, as the header does.
+    expect(mine.map((li) => li.dataset.forYou)).toEqual(["true", "true"]);
+    expect(screen.getByRole("region", { name: "Due for you 2" })).toBe(card);
+    const also = within(card).getByRole("list", { name: "Also in the next two weeks" });
+    const others = within(also).getAllByTestId("due-soon-item");
+    expect(others.every((li) => li.dataset.forYou === "false")).toBe(true);
+    expect(others.map((li) => li.textContent).join(" ")).toContain("Minor Declaration");
+    // The first rows are the student's, then the others, in the DOM as on screen.
+    const all = within(card).getAllByTestId("due-soon-item");
+    expect(all.slice(0, 2)).toEqual(mine);
+  });
+
+  it("draws a row in red only when it is the student's and due today", async () => {
+    state.plan = ok(plan({ deadlines: [{ ...DEADLINE, dueAt: "2026-09-30T17:00:00-04:00" }] }));
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    const items = screen.getAllByTestId("due-soon-item");
+    // The seniors' Watson nomination is due today at 3 PM too, but it is not this first-year's.
+    const watson = items.find((li) => li.textContent?.includes("Watson"));
+    expect(watson).toHaveTextContent(/Today/);
+    expect(watson?.dataset.forYou).toBe("false");
+    expect(watson).not.toHaveAttribute("data-urgent");
+    expect(watson?.querySelector(".text-urgent")).toBeNull();
+    const own = items.find((li) => li.dataset.kind === "student");
+    expect(own).toHaveAttribute("data-urgent", "true");
+    expect(own?.querySelector(".text-urgent")).toHaveTextContent("Today 5:00p");
+    expect(items.filter((li) => li.dataset.urgent === "true")).toEqual([own]);
+  });
+
+  it("holds the rest back behind one real button that shows them in place", async () => {
+    const user = userEvent.setup();
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    const card = screen.getByRole("region", { name: /^Due for you/ });
+    const { from, to } = dueSoonRange(NOON);
+    const total = buildDueSoon({
+      now: NOON,
+      standing: "first-year",
+      contentDeadlines: deadlinesBetween(from, to),
+      studentDeadlines: [DEADLINE],
+    }).length;
+    const visible = () =>
+      within(card)
+        .getAllByTestId("due-soon-item")
+        .filter((li) => !li.closest("[hidden]"));
+    expect(visible()).toHaveLength(8);
+    const more = total - 8;
+    expect(more).toBeGreaterThan(0);
+    const button = within(card).getByRole("button", {
+      name: `Show ${more} more in the next two weeks`,
+    });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(card).not.toHaveTextContent(/And \d+ more/);
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(visible()).toHaveLength(total);
+    const revealed = document.getElementById(button.getAttribute("aria-controls") ?? "");
+    expect(revealed).toBeVisible();
+    expect(within(revealed!).getAllByTestId("due-soon-item")).toHaveLength(more);
+    await user.click(screen.getByRole("button", { name: /^Show fewer/ }));
+    expect(visible()).toHaveLength(8);
   });
 
   it("keeps the calendar and program rows when only the plan fails", async () => {
@@ -515,8 +583,22 @@ describe("Due soon", () => {
     state.curatedThrows = true;
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     await show(DueSoonPanel({ userId: USER, now: NOON }));
-    expect(screen.getByTestId("panel-error")).toHaveTextContent("Due soon could not load");
+    // The card's new name in every state: never "Due soon".
+    expect(screen.getByRole("region", { name: "Due for you" })).toBeVisible();
+    expect(screen.getByTestId("panel-error")).toHaveTextContent(
+      "Due for you could not load right now.",
+    );
+    expect(document.body).not.toHaveTextContent(/due soon/i);
+    expect(log).toHaveBeenCalledWith("[today] could not build Due for you:", expect.any(Error));
     log.mockRestore();
+  });
+
+  it("loads under the same name", async () => {
+    const { PanelSkeleton } = await import("@/app/(hub)/today/_components/panel-states");
+    const { DUE_SOON_TITLE } = await import("@/app/(hub)/today/_components/due-soon-panel");
+    render(<PanelSkeleton id="due-soon" title={DUE_SOON_TITLE} />);
+    expect(screen.getByRole("region", { name: "Due for you" })).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading due for you…");
   });
 });
 
@@ -651,7 +733,7 @@ describe("panel boundaries", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     render(
       <>
-        <PanelBoundary id="due-soon" title="Due soon" what="Due soon">
+        <PanelBoundary id="due-soon" title="Due for you" what="Due for you">
           <Boom />
         </PanelBoundary>
         <PanelBoundary id="quick-links" title="Quick links" what="Quick links">
@@ -659,7 +741,7 @@ describe("panel boundaries", () => {
         </PanelBoundary>
       </>,
     );
-    expect(screen.getByTestId("panel-error")).toHaveTextContent("Due soon could not load");
+    expect(screen.getByTestId("panel-error")).toHaveTextContent("Due for you could not load");
     expect(screen.getByRole("region", { name: /Quick links/ })).toBeVisible();
     expect(screen.getAllByRole("link").length).toBe(8);
     log.mockRestore();

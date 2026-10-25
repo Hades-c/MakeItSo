@@ -54,8 +54,19 @@ describe("loadNextSemester", () => {
       "calendar:f26-adddrop-ends",
     ]);
     expect(data.deadlines.every((d) => d.source === "registrar")).toBe(true);
+    // The plan's own section, from the schedule: "From your plan" adds it in one press.
     expect(data.planCourses).toEqual([
-      { courseCode: "CSC 221", title: "Data Structures", crn: "20135" },
+      {
+        courseCode: "CSC 221",
+        title: "Data Structures",
+        crn: "20135",
+        section: expect.objectContaining({
+          crn: "20135",
+          courseCode: "CSC 221",
+          section: "A",
+          instructors: ["Katy Williams"],
+        }),
+      },
     ]);
     expect(data.slotFillers.COMP).toEqual({ courseCode: "WRI 101", termCode: "202501" });
     expect(data.slotFillers.MQRQ).toEqual({ courseCode: "CSC 221", termCode: "202602" });

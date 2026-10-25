@@ -141,6 +141,11 @@ describe("Lakeside tokens", () => {
       }
     });
 
+    it("selection outline (--primary, the Add to plan term tile) ≥ 3:1 on the control and the tile", () => {
+      expect(contrast(t.primary, t["surface-2"])).toBeGreaterThanOrEqual(3);
+      expect(contrast(t.primary, t.surface)).toBeGreaterThanOrEqual(3);
+    });
+
     it.each([...COURSE_COLORS])("course colour %s is readable on its wash and on surfaces", (c) => {
       const text = t[`course-${c}`];
       expect(contrast(text, t[`course-${c}-wash`])).toBeGreaterThanOrEqual(4.5);
@@ -152,8 +157,10 @@ describe("Lakeside tokens", () => {
 
   it("has a type scale with a 12px floor", () => {
     const sizes = [...css.matchAll(/--text-(\w+):\s*([\d.]+)rem;/g)].map((m) => Number(m[2]) * 16);
-    expect(sizes.length).toBe(7);
+    expect(sizes.length).toBe(8);
     expect(Math.min(...sizes)).toBe(12);
+    // The rail labels' own size (spec §5.8): 13px, the only size between 12 and 14.
+    expect(css).toMatch(/--text-nav:\s*0\.8125rem;/);
   });
 
   it("keeps keyboard focus clear of the sticky top bar and the phone bottom tabs on every page (WCAG 2.4.11)", () => {

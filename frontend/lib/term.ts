@@ -275,6 +275,28 @@ export function registrationTermFrom(
   return nextRegularTerm(currentTermFrom(terms, options));
 }
 
+/** Where a term stands on a day: before its first day, from its first through its last day, or after it. */
+export type TermPhase = "not-started" | "in-session" | "over";
+
+/**
+ * The phase of `code` at `now` by its own dates in `terms` (summer terms too); null when the list has no usable
+ * start and end date for it. Unlike `currentTermFrom`, which keeps an ended term current until the next regular
+ * one starts, this says Fall 2026 is over from Dec 16.
+ */
+export function termPhaseFrom(
+  terms: readonly TermScheduleEntry[],
+  code: TermCode,
+  { now }: ResolveOptions,
+): TermPhase | null {
+  const entry = terms.find((t) => t.code === code);
+  const start = termDayKey(entry?.startDate);
+  const end = termDayKey(entry?.endDate);
+  if (!start || !end) return null;
+  const today = dayKey(now, TERM_TIME_ZONE);
+  if (today < start) return "not-started";
+  return today <= end ? "in-session" : "over";
+}
+
 export const CLASS_STANDINGS = [
   "incoming",
   "first-year",

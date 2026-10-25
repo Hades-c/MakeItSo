@@ -16,16 +16,19 @@ import {
 } from "../_lib/format";
 import { instructorKeyOf, type RatingsLookup } from "../_lib/ratings";
 import type { RegisterAs } from "../_lib/sections";
+import { InstructorRatings, ratedInstructors, shownRating } from "./instructor-ratings";
 import { WRAP_CHIP } from "./wrap";
 import { ShowInWeekLink } from "./week-focus";
 
 /**
  * Every section of the course in the term (PLAN §5 "Sections"): CRN, section, its own title when it differs,
  * meetings ("Time TBA" when there is no time), room, instructors in upstream order ("Staff (TBA)"; a matched
- * RateMyProfessors rating when RMP is on), seats ("Over-enrolled" when the API reports more than max), the notes
- * verbatim, restriction flags, "Register as <sibling>" for a max-0 cross-listing, the hidden registration-only
- * listings ("Also registrable as …") and "Registration section for …". "Show in my week" picks the section the
- * week grid and the header show (?crn= in the URL).
+ * RateMyProfessors rating and difficulty when RMP is on), seats ("Over-enrolled" when the API reports more than
+ * max), the notes verbatim, restriction flags, "Register as <sibling>" for a max-0 cross-listing, the hidden
+ * registration-only listings ("Also registrable as …") and "Registration section for …". "Show in my week" picks
+ * the section the week grid and the header show (?crn= in the URL). Under the sections, each rated instructor once
+ * with the rest of what RMP says (would take again, most common tags), however many sections they teach
+ * (InstructorRatings, its own component, so it can move).
  */
 
 export function SectionItem({
@@ -109,24 +112,23 @@ export function SectionItem({
           <li className="text-sm text-fg-2">Staff (TBA)</li>
         ) : (
           section.instructors.map((instructor, index) => {
-            const rating = instructor.isStaff ? null : ratings?.get(instructorKeyOf(instructor));
-            const shown =
-              rating?.status === "matched" && rating.rmp && rating.rmp.numRatings > 0
-                ? rating
-                : null;
+            const shown = instructor.isStaff
+              ? null
+              : shownRating(ratings?.get(instructorKeyOf(instructor)));
             return (
               <li
                 key={`${instructor.first}-${instructor.last}-${index}`}
                 className="flex flex-wrap items-center gap-x-3 gap-y-1"
               >
                 <span className="text-sm font-semibold text-fg">{instructorName(instructor)}</span>
-                {shown?.rmp ? (
+                {shown ? (
                   <span data-aggregated="ratemyprofessors" className="min-w-0">
                     <RatingSummary
                       status="matched"
                       size="sm"
                       avgRating={shown.rmp.avgRating}
                       numRatings={shown.rmp.numRatings}
+                      avgDifficulty={shown.rmp.avgDifficulty}
                       asOf={shown.rmp.asOf}
                       url={shown.rmp.url}
                       instructorName={instructorName(instructor)}
@@ -272,6 +274,10 @@ export function CourseSections({
           </li>
         ))}
       </ul>
+      <InstructorRatings
+        instructors={ratedInstructors(course.sections, ratings)}
+        className="mt-4 border-t border-line pt-4"
+      />
       <p className="mt-3 text-xs text-fg-3">
         Seats and notes as the Registrar publishes them
         {ratings
