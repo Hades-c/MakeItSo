@@ -200,6 +200,26 @@ rows, whose cacheKey starts with `{"userId":"<id or e-mail>"`): export and delet
 are their only readers and writers. Legacy "cold-email" rows are keyed by the student's name only and are not
 attributable, so no eraser touches them (the privacy notice says to ask).
 
+## Look (`app/globals.css`, `components/ui`)
+
+Owner's decision, 2026-10-25: the classic MakeItSo fonts with Davidson's official colours. This supersedes the
+Lakeside palette and Instrument Sans named in PLAN §1 ("Visual") and §7 ("Colours": `--line-strong` is now
+#80868F light / #66768E dark; "red means now/urgent" becomes the rules below).
+
+- Type: Inter (`font-sans`, everything by default); Playfair Display bold (`font-display`) for the wordmark, page
+  h1s and card/section titles only; IBM Plex Mono (`font-mono`) only for course codes, CRNs and the verification
+  code. Counts or meta inside a `font-display` heading say `font-sans`.
+- Colour: Davidson Red fills (`bg-primary-fill`, white text) for the one primary action per screen and selected
+  fills; red text and tint (`text-primary`, `bg-primary-wash`) for the current page and selection; `--urgent` for
+  "now" and the student's own items due today. Text links use the `link` utility, never `text-primary`. Info
+  notices and icons are neutral (`bg-surface-2`, `text-fg-2`); status green and amber are icon + words.
+- Never colour alone: the now pill has a clock icon, urgent due labels an alarm icon, errors an icon
+  (`FieldError` from `components/ui/field`), destructive actions `variant="danger"` (outlined crimson) with a
+  trash icon, words and a confirm. The current nav item carries a `--nav-mark` bar (≥ 3:1). Focus is `--focus`
+  (Lake Blue), never red.
+- `AddToPlanControl` / `AddCourse` take `emphasis` (`"primary"` default, `"secondary"` in lists with a button
+  per row).
+
 ## Tests
 
 - `EXTERNAL_MODE=fixtures` and `FIXTURES_NOW=2026-09-30T12:00:00-04:00` in vitest, Playwright and CI; a unit test

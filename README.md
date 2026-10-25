@@ -19,7 +19,7 @@ alumni and campus events.
 | Layer         | Technology                                                                              |
 | ------------- | --------------------------------------------------------------------------------------- |
 | App           | Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 5.9 (strict)                 |
-| UI            | Tailwind CSS 4 (Lakeside tokens) · Radix UI primitives · lucide-react · sonner          |
+| UI            | Tailwind CSS 4 (design tokens) · Radix UI primitives · lucide-react · sonner            |
 | Auth          | NextAuth.js v4 (email + password credentials, JWT sessions)                             |
 | Data          | MongoDB + Mongoose 9                                                                    |
 | AI            | Anthropic Claude via `@anthropic-ai/sdk` (being wired up; `AI_PROVIDER=mock` for tests) |
@@ -43,7 +43,7 @@ MakeItSo/
     │   ├── (hub)/             signed-in pages in the AppShell (layout requires a session): /today,
     │   │                      /courses, /courses/[term]/[code], /plan, /careers, /careers/[slug], /events,
     │   │                      /alumni, /profile
-    │   ├── globals.css        Lakeside design tokens (the only place raw colours live)
+    │   ├── globals.css        design tokens (the only place raw colours live)
     │   └── api/               route handlers, all built with defineRoute (auth, register, profile, search)
     ├── server/                server-only modules
     │   ├── env.ts             zod-validated environment, read lazily, with production checks
@@ -60,7 +60,7 @@ MakeItSo/
     │   ├── catalog/ programs/ rmp/ feeds/ content/   the live course catalog, Acalog majors and minors,
     │   │                      ratings, campus feeds and curated content; plan/ is a typed stub until it lands
     │   └── search/            global search over pluggable providers
-    ├── components/ui/         Lakeside UI primitives (Button, Card, SourceTag, CourseCode, Dialog, ...)
+    ├── components/ui/         UI primitives (Button, Card, SourceTag, CourseCode, Dialog, ...)
     ├── components/app/        AppShell: TopBar, Sidebar + Sources panel, BottomTabs, theme, user menu
     ├── lib/                   shared (client + server): term, sources, routes, flags, format, day-summary
     │   ├── types/             zod schemas + types for catalog, plan, feeds, content, ratings, AI
@@ -84,10 +84,16 @@ data registry, feature flags and the service signatures. Outside services are re
 
 ---
 
-## Design system (Lakeside)
+## Design system (classic MakeItSo, Davidson colours)
 
-The look is the "Lakeside" direction: Davidson's Lake Blue, Sandstone and Deep Taupe lead, and Davidson Red is
-kept for "now" and urgent items. Errors use a separate danger colour, and focus rings are Lake Blue.
+The look is the classic MakeItSo type with Davidson's official colours (the owner's decision of 2026-10-25,
+which replaced the earlier "Lakeside" palette): a white ground, Davidson Black (#0F1012) text, cool grey
+structure and Davidson Red (#D42121, PMS 3546 C) as the one accent, from the College's Marketing Toolbox.
+Red marks exactly four things: the one primary action on a screen, the current page (a red bar beside the nav
+item, not only a tint), selection, and "now". Text links are near-black and underlined, never red. Since red is
+the accent, urgency and danger never rely on colour: the now pill has a clock icon, an item due today an alarm
+icon and its words, errors an icon, and destructive buttons are outlined (crimson, never a red fill) with a
+trash icon and words, and ask first. Focus rings are Lake Blue, never red.
 
 - **Tokens** live in `frontend/app/globals.css` as CSS variables for light and dark. With no `data-theme` on
   `<html>` the theme follows the system; the toggle stores an explicit choice in `localStorage` (`mis-theme`),
@@ -98,8 +104,13 @@ kept for "now" and urgent items. Errors use a separate danger colour, and focus 
   `tests/design/no-raw-colors.test.ts` fails on raw hex/rgb colours, palette classes (`bg-red-500`) or dynamically
   built class names in `app/`, `components/` and `lib/`. `tests/design/tokens.test.ts` checks WCAG AA contrast for
   every token pair in both themes.
-- **Type**: Instrument Sans for UI and body, IBM Plex Mono (`font-mono`) for course codes, times, rooms, CRNs and
-  labels. Both are self-hosted from the `@fontsource` packages through `next/font/local`, so the build needs no
+- **Links and states**: text links use the `link` utility (Davidson Black, a grey underline that darkens on
+  hover); the current sidebar item and phone tab carry a bar in `--nav-mark`; field errors use `<FieldError>`
+  (icon + words); a list with an add button on every row uses `emphasis="secondary"`, so a screen keeps one red
+  button.
+- **Type**: Inter for UI and body; Playfair Display bold (`font-display`) for the wordmark, page titles and card
+  and section titles only; IBM Plex Mono (`font-mono`) only for course codes, CRNs and the verification code.
+  All three are self-hosted from the `@fontsource` packages through `next/font/local`, so the build needs no
   network and the browser never calls Google. Sizes `text-xs` (12px, the floor) to `text-2xl`
   (32px), plus `text-3xl` (44px) for big numbers.
 - **Breakpoints**: `md` = 720px (bottom tabs below, sidebar above), `lg` = 900px (two content columns), `xl` =
