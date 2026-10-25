@@ -298,6 +298,10 @@ export interface BudgetResult extends Budget {
   width: number;
   actual: number | null;
   pass: boolean;
+  /** A miss that matches its known baseline entry exactly: listed as KNOWN, never a failure. */
+  known?: boolean;
+  /** Said after the actual value (in the table and in a failure). */
+  detail?: string;
 }
 
 export function judge(budget: Budget, width: number, actual: number | null): BudgetResult {
@@ -311,13 +315,59 @@ export function judge(budget: Budget, width: number, actual: number | null): Bud
   return { ...budget, width, actual, pass };
 }
 
+/** The h2 sequences in the DOM and on screen, as pageChecks measures them. */
+export interface H2Sequences {
+  dom: readonly string[];
+  visual: readonly string[];
+}
+
+/** A baseline entry: the known sequences, and another screen order for two headings that tie on one row. */
+export interface KnownH2Sequences extends H2Sequences {
+  alsoVisual?: readonly string[];
+}
+
+const sequence = (labels: readonly string[]) => labels.join(" > ");
+
+/**
+ * The h2 order check (WCAG 1.3.2), hard on every page at every width: the DOM must read in the order the screen
+ * shows, except where `known` (the page's entry in h2-order-baseline.ts) lists today's mismatch exactly. A new
+ * mismatch fails, a known one whose sequences change fails, and so does a known one that is fixed, so its entry
+ * is removed as the item that fixes it lands.
+ */
+export function judgeH2Order(
+  width: number,
+  observed: H2Sequences & { same: boolean },
+  known: KnownH2Sequences | undefined,
+): BudgetResult {
+  const base = { check: "h2Order", op: "==", target: 1, hard: true, width } as const;
+  const seen = `DOM ${sequence(observed.dom)} | screen ${sequence(observed.visual)}`;
+  if (!known) {
+    return observed.same
+      ? { ...base, actual: 1, pass: true }
+      : { ...base, actual: 0, pass: false, detail: `new mismatch: ${seen}` };
+  }
+  if (observed.same)
+    return { ...base, actual: 1, pass: false, detail: "now in order: remove its baseline entry" };
+  const same =
+    sequence(known.dom) === sequence(observed.dom) &&
+    [known.visual, known.alsoVisual].some((v) => !!v && sequence(v) === sequence(observed.visual));
+  return same
+    ? { ...base, actual: 0, pass: false, known: true, detail: "known, in the baseline" }
+    : { ...base, actual: 0, pass: false, detail: `differs from its baseline: ${seen}` };
+}
+
+/** A result's verdict in the table: PASS, KNOWN (a baselined miss), FAIL (hard) or WARN. */
+export function verdict(r: BudgetResult): "PASS" | "KNOWN" | "FAIL" | "WARN" {
+  return r.pass ? "PASS" : r.known ? "KNOWN" : r.hard ? "FAIL" : "WARN";
+}
+
 /** The target-versus-actual table for one page, as Markdown (the CI job summary renders it). */
 export function budgetTable(page: string, results: readonly BudgetResult[]): string {
   const rows = results.map(
     (r) =>
-      `| ${r.width} | ${r.check} | ${r.op} ${r.target} | ${r.actual ?? "missing"} | ${
-        r.pass ? "PASS" : r.hard ? "FAIL" : "WARN"
-      } |`,
+      `| ${r.width} | ${r.check} | ${r.op} ${r.target} | ${r.actual ?? "missing"}${
+        r.detail ? ` (${r.detail.replaceAll("|", "\\|")})` : ""
+      } | ${verdict(r)} |`,
   );
   return [
     `### ${page}`,

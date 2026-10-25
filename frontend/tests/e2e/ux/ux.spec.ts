@@ -14,10 +14,12 @@ import {
   smallTapTargets,
   verifyMailbox,
 } from "../helpers";
+import { H2_ORDER_BASELINE } from "./h2-order-baseline";
 import {
   budgetTable,
   densityMetrics,
   judge,
+  judgeH2Order,
   obscuredFocus,
   pageChecks,
   positionOf,
@@ -33,9 +35,10 @@ import {
  * and prints a target-versus-actual table (the console, the test's attachments and, in CI, the job summary).
  *
  * Budget misses are warnings (a test annotation and a WARN row): a budget becomes `hard` (a failure) once the item
- * that meets it has landed and held. Hard from day one: axe serious or critical findings (light and dark, 1440
- * and 390) and sideways scrolling at 390. The strict provenance check (attributionReport, §5.5) and the h2 order
- * check (WCAG 1.3.2, until QW8 puts the DOM in visual order) are warnings with their problems listed.
+ * that meets it has landed. Hard from day one: axe serious or critical findings (light and dark, 1440 and 390),
+ * sideways scrolling at 390 and the h2 order (WCAG 1.3.2) on every page at every width, against the mismatches
+ * known today (h2-order-baseline.ts, KNOWN rows) that QW8 and later items remove. The strict provenance check
+ * (attributionReport, §5.5) is a warning with its problems listed.
  *
  * Runs once, in the desktop project (it sets its own viewports, a touch phone for 390). `npm run test:ux` runs
  * only this file; `npm run test:e2e` (CI) runs it with the rest.
@@ -63,7 +66,6 @@ const PHONE: Budget[] = [
   { check: "obscured", op: "==", target: 0 },
   { check: "minFont", op: ">=", target: 12 },
 ];
-const ORDER: Budget = { check: "h2Order", op: "==", target: 1 };
 /** Visible [data-source] items (and new-tab links, L0 lines) the strict provenance check finds fault with. */
 const ATTRIBUTED: Budget = { check: "attribution", op: "==", target: 0 };
 
@@ -82,14 +84,12 @@ const PAGES: UxPage[] = [
         { check: "sizes", op: "<=", target: 5 },
         { check: "boxed", op: "<=", target: 2 },
         { check: "red", op: "<=", target: 1 },
-        ORDER,
       ],
       1024: RAIL,
       768: RAIL,
       390: [
         { check: "height", op: "<=", target: 2400 },
         { check: "pos:#due-soon-title.bottom", op: "<=", target: 780 },
-        ORDER,
         ...PHONE,
       ],
     },
@@ -101,14 +101,12 @@ const PAGES: UxPage[] = [
       1440: [
         { check: "height", op: "<=", target: 1500 },
         { check: "words", op: "<=", target: 395 },
-        ORDER,
       ],
       1024: RAIL,
       768: RAIL,
       390: [
         { check: "height", op: "<=", target: 2600 },
         { check: "pos:#sections-title.top", op: "<=", target: 650 },
-        ORDER,
         ...PHONE,
       ],
     },
@@ -267,7 +265,6 @@ async function measure(page: Page, width: Width, checks: readonly Budget[]) {
     red: c.red,
     overflow: c.overflow,
     railLabelsVisible: c.railLabelsVisible,
-    h2Order: c.h2Order.same ? 1 : 0,
     minFont: c.minFont,
   };
   const notes: string[] = [];
@@ -293,7 +290,7 @@ async function measure(page: Page, width: Width, checks: readonly Budget[]) {
       values[check] = at ? at[edge] : null;
     }
   }
-  return { values, notes };
+  return { values, notes, h2Order: c.h2Order };
 }
 
 test.describe("UI budgets", () => {
@@ -330,6 +327,9 @@ test.describe("UI budgets", () => {
           notes.push(...measured.notes);
           for (const budget of checks)
             results.push(judge(budget, width, measured.values[budget.check] ?? null));
+          results.push(
+            judgeH2Order(width, measured.h2Order, H2_ORDER_BASELINE[`${target.name}@${width}`]),
+          );
 
           if (width === 1440 || width === 390) {
             // The strict provenance check (a warning until M1), then axe in both themes (hard).
@@ -359,19 +359,30 @@ test.describe("UI budgets", () => {
       });
       if (process.env.GITHUB_STEP_SUMMARY)
         appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${table}\n`);
-      for (const miss of results.filter((r) => !r.pass && !r.hard)) {
+      for (const miss of results.filter((r) => !r.pass && (r.known || !r.hard))) {
         testInfo.annotations.push({
           type: "warning",
-          description: `${target.name} @${miss.width}: ${miss.check} is ${miss.actual ?? "missing"}, target ${miss.op} ${miss.target}`,
+          description: `${target.name} @${miss.width}: ${miss.check} is ${miss.actual ?? "missing"}, target ${miss.op} ${miss.target}${miss.detail ? ` (${miss.detail})` : ""}`,
         });
       }
-      const failed = results.filter((r) => !r.pass && r.hard);
+      const failed = results.filter((r) => !r.pass && r.hard && !r.known);
       expect(
         failed.map(
-          (r) => `${r.check} @${r.width}: ${r.actual ?? "missing"} (target ${r.op} ${r.target})`,
+          (r) =>
+            `${r.check} @${r.width}: ${r.actual ?? "missing"} (target ${r.op} ${r.target})${
+              r.detail ? `: ${r.detail}` : ""
+            }`,
         ),
         `${target.name}: hard budgets`,
       ).toEqual([]);
     });
   }
+
+  test("the h2 order baseline names only measured pages and widths", ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "runs once");
+    const measured = new Set(
+      PAGES.flatMap((p) => Object.keys(p.budgets).map((width) => `${p.name}@${width}`)),
+    );
+    expect(Object.keys(H2_ORDER_BASELINE).filter((key) => !measured.has(key))).toEqual([]);
+  });
 });
