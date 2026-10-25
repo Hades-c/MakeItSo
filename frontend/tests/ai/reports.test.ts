@@ -10,6 +10,7 @@ import { CourseAboutResultSchema } from "@/lib/api/ai";
 import { UNVERIFIED_AI_ALLOWED_MESSAGE, UNVERIFIED_MESSAGE } from "@/lib/types/ai-constants";
 import AiCache from "@/models/AiCache";
 import User from "@/models/User";
+import { eraseAccountData } from "@/server/account/erasers";
 import { readShared, writeShared } from "@/server/ai/cache";
 import { REPORTS_TO_HIDE, TTL_MS } from "@/server/ai/config";
 import { HIDDEN_MESSAGE } from "@/server/ai/features/course-about";
@@ -271,6 +272,34 @@ describe("POST /api/ai/report while AI_ALLOW_UNVERIFIED is on", () => {
     await signIn();
     await reportIt({ feature: "course-about", key });
     expect(await AiCache.findOne({ key }).lean()).toMatchObject({ reports: { count: 2 } });
+  });
+
+  it("after the switch is off (or removed), stored unverified reports still never count: a later report and an erasure recompute without them", async () => {
+    await signIn();
+    const key = await entryKey();
+    const throwaway = await signIn({ verified: false });
+    for (let i = 0; i < REPORTS_TO_HIDE; i++) {
+      await signIn({ verified: false });
+      expect((await reportIt({ feature: "course-about", key })).status).toBe(204);
+    }
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "false");
+    // Unverified accounts are refused again; what they reported stays, marked, for the admin.
+    auth.session = await sessionFor(throwaway);
+    expect((await reportIt({ feature: "course-about", key })).status).toBe(403);
+    // A verified report recomputes the count (REPORTER_COUNT): the stored `verified: false` entries stay out.
+    const verified = await signIn();
+    expect((await reportIt({ feature: "course-about", key })).status).toBe(204);
+    let doc = await AiCache.findOne({ key }).lean();
+    expect(doc).toMatchObject({ hidden: false, reports: { count: 1 } });
+    expect(doc!.reports!.entries.filter((entry) => entry.verified === false)).toHaveLength(
+      REPORTS_TO_HIDE,
+    );
+    // So does an account erasure (server/ai/account-data.ts): REPORTS_TO_HIDE unverified reports never hide it.
+    await eraseAccountData(verified.id);
+    doc = await AiCache.findOne({ key }).lean();
+    expect(doc).toMatchObject({ hidden: false, reports: { count: 0 } });
+    expect(doc!.reports!.entries).toHaveLength(REPORTS_TO_HIDE);
+    expect((await about()).status).toBe(200);
   });
 
   it("still refuses accounts that may not see AI answers (legacy non-Davidson), saying why", async () => {

@@ -18,7 +18,8 @@ import { ApiError } from "@/server/http/errors";
  *     verified @davidson.edu mailbox COUNT: while the temporary AI_ALLOW_UNVERIFIED switch lets unverified accounts
  *     see AI answers, their reports are kept (`verified: false`, with the reason, for the admin) but never hide an
  *     entry, so throwaway sign-ups cannot take a course summary down. A report from before the switch (no
- *     `verified` field) came from a verified account and counts.
+ *     `verified` field) came from a verified account and counts. The rule outlives the switch: the `verified:
+ *     false` entries stay stored after it is turned off or removed, so REPORTER_COUNT's filter stays too.
  *   - A report adds the student to the entry's reporters (a set: reporting twice counts once; a student who
  *     reported unverified and reports again once verified now counts). Reporters are counted by MAILBOX (the quota
  *     subject: the canonical address, so "+tag" aliases of one inbox are one reporter), not by account. With 3
@@ -34,8 +35,8 @@ import { ApiError } from "@/server/http/errors";
 
 /**
  * The number of distinct COUNTING reporters of an entry: the distinct `reporter` (mailbox subject) of its report
- * entries, leaving out reports from unverified accounts (`verified: false`); an entry written before reporters were
- * recorded counts by its userId. (An aggregation expression, shared with the account eraser, which recomputes it
+ * entries, leaving out reports from unverified accounts (`verified: false`, permanently: see the filter); an entry
+ * written before reporters were recorded counts by its userId. (An aggregation expression, shared with the account eraser, which recomputes it
  * after removing a student's reports.)
  */
 export const REPORTER_COUNT = {
@@ -44,6 +45,9 @@ export const REPORTER_COUNT = {
       {
         $map: {
           input: {
+            // Keep after AI_ALLOW_UNVERIFIED is removed: `verified: false` entries stay stored after the switch is
+            // off, and without this filter the next recount (a report, an account erasure) would count them.
+            // Drop it only after a migration has deleted those entries and their reports.userIds.
             $filter: {
               input: { $ifNull: ["$reports.entries", []] },
               as: "entry",

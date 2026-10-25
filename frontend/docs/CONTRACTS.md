@@ -226,7 +226,12 @@ like `getFlags()`) or `loadAiAllowsUnverified()` for pages and copy (never throw
   per-user quotas, AI_DAILY_TOKEN_BUDGET and the payload allow-lists are unchanged.
 - "Report this": only reports from a verified @davidson.edu mailbox count toward `REPORTS_TO_HIDE`
   (`reports.entries[].verified: false` is kept for the admin but left out of `REPORTER_COUNT`; reports from before
-  the switch have no `verified` field and count).
+  the switch have no `verified` field and count). **This rule is permanent**: the `verified` field and the
+  `$filter` on `$$entry.verified` in `REPORTER_COUNT` stay when the switch is turned off or removed. The
+  `verified: false` entries stay in `reports.entries` after that, and every recount (the next report,
+  `server/ai/account-data.ts` erasing an account) must keep leaving them out, or the old throwaway reports count
+  and hide any shared answer with 3 or more of them. Dropping the field or the filter needs a migration that first
+  deletes the `verified: false` entries and their ids from `reports.userIds`.
 - Copy says what is true in both states. Copy that states a RULE follows the switch: `verifiedOnlyMessage(switch)` /
   `aiUnverifiedMessage(feature, switch)`, what verifying opens (the verify banner, Profile) and /privacy (rendered
   per request). Copy that PROMISES AI without verifying also needs AI to work: `aiOpenWithoutVerifying()` (the
@@ -238,6 +243,11 @@ like `getFlags()`) or `loadAiAllowsUnverified()` for pages and copy (never throw
   alumni).
 - e2e: a second server with the switch on (playwright.config.ts, `E2E_ALT_PORT`, helpers.ts `E2E_ALT_ORIGIN`)
   runs `tests/e2e/ai-unverified.spec.ts`; remove both with the switch.
+- Removing the switch (once mail works): remove `AI_ALLOW_UNVERIFIED` from server/env.ts and the docs, the
+  switch's paths in `server/ai/access.ts` (`isAiVerified` becomes `isVerifiedDavidsonUser`) and in the copy above,
+  and the e2e server. Keep the report rule above (the `verified` model field, `REPORTER_COUNT`'s filter, and
+  `reportEntry` marking a re-report from a now-verified student `verified: true`) unless the migration it
+  describes has run first.
 
 ## Models (collections)
 

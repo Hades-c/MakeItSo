@@ -62,7 +62,9 @@ const AiCacheSchema = new Schema(
               /**
                * false: an account without a verified @davidson.edu mailbox reported it (AI_ALLOW_UNVERIFIED), which
                * is kept but not counted toward hiding (server/ai/reports.ts). Missing on reports from before the
-               * switch, which only verified accounts could send: they count.
+               * switch, which only verified accounts could send: they count. Permanent: keep this field (and
+               * REPORTER_COUNT's filter on it) when the switch is removed, unless a migration first deletes the
+               * `verified: false` entries.
                */
               verified: { type: Boolean },
             },

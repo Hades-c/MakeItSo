@@ -161,7 +161,8 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 on, an @davidson.edu account that has not verified its address may use AI after consenting (18+ attestation
 included); cold-email drafts and the alumni network stay verified-only, legacy non-Davidson accounts stay locked,
 quotas and the daily token budget are unchanged, and "Report this" from an unverified account never hides a shared
-answer (`frontend/server/ai/access.ts`, `frontend/docs/CONTRACTS.md`).
+answer (`frontend/server/ai/access.ts`, `frontend/docs/CONTRACTS.md`). When the switch is removed, that report rule
+stays: reports kept from unverified accounts must go on not counting (CONTRACTS.md, "Removing the switch").
 
 Production (`next start` and every Vercel deployment) also checks that the Vercel production environment does not
 use `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures`, the console mailer or `FIXTURES_NOW`, and `RATE_LIMITS=off` is

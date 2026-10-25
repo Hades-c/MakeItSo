@@ -9,7 +9,9 @@ import { loadFlags } from "@/server/features";
 
 /**
  * Who counts as verified for AI (PLAN §1 capability gating), and the owner's TEMPORARY switch AI_ALLOW_UNVERIFIED
- * (server/env.ts; remove it, and this file's switch, once a mail provider can verify addresses):
+ * (server/env.ts; remove it, and this file's switch, once a mail provider can verify addresses, but KEEP the report
+ * rule in server/ai/reports.ts: reports stored with `verified: false` outlive the switch, and REPORTER_COUNT must
+ * keep leaving them out unless a migration deletes them first; docs/CONTRACTS.md "Removing the switch"):
  *
  *   isAiVerified(account, feature, allow)  THE rule: aiGateInput (every AI route) and every page that decides an AI
  *                                          gate itself use it, so pages and routes never disagree
@@ -23,7 +25,7 @@ import { loadFlags } from "@/server/features";
  * for cold e-mail (VERIFIED_ONLY_AI_FEATURES), and never for alumni data, which only verified viewers see (a legal
  * and privacy rule: server/content alumniForCareer, app/(hub)/alumni/_lib/access.ts). Legacy non-Davidson accounts
  * stay locked either way. Consent, the 18+ attestation, quotas and AI_DAILY_TOKEN_BUDGET are unchanged, and
- * reports from unverified accounts do not count toward hiding a shared answer (server/ai/reports.ts).
+ * reports from unverified accounts do not count toward hiding a shared answer (server/ai/reports.ts, permanent).
  */
 
 /** AI features that stay verified-only whatever the switch says: they use alumni data. */
