@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, TriangleAlert } from "lucide-react";
 import type { AddToPlanTerm } from "@/components/domain/add-to-plan-control";
 import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
@@ -17,14 +17,15 @@ import {
   type CareerTerms,
 } from "../_lib/availability";
 import { loadCareerTerms, loadCourseHistories } from "../_lib/catalog";
-import { loadPlanPresence, type PlanPresence } from "../_lib/plan";
+import { courseStanding, loadPlanPresence, standingText, type PlanPresence } from "../_lib/plan";
 import { CourseAddToPlan } from "./course-add-to-plan";
 
 /**
  * The career's real Davidson courses with live availability per term (PLAN §3, §5 "Availability"): the current
  * term, the registration term (the default for Add to plan) and the next, unpublished one with "usually offered"
  * when the catalog supports it. Availability comes from getCourseHistory() on every request; when it cannot be
- * read, the course is listed without it (never a guess). Each course has an Add to plan control.
+ * read, the course is listed without it (never a guess). A course the student has not taken has an Add to plan
+ * control; one completed or under way says so in words instead (with a warning when it is also planned again).
  */
 
 export interface CareerCourseView {
@@ -35,6 +36,11 @@ export interface CareerCourseView {
   terms: AddToPlanTerm[] | null;
   initialTerm: TermCode | null;
   inPlanTerms: string[];
+  /**
+   * The course's place in the plan in words ("Completed Fall 2025", "Taking now (Fall 2026)", a repeat with
+   * `warning`), or null when it is not taken yet. A taken course shows this instead of an Add control.
+   */
+  status: { text: string; warning: boolean } | null;
   /** "Fall 2027 isn’t published yet. Usually offered in Fall (based on …)", or null. */
   usually: string | null;
   /** The course page to link, or null when the course ran in no known term. */
@@ -48,11 +54,14 @@ export function courseView(
   terms: CareerTerms | null,
   presence: PlanPresence | null,
 ): CareerCourseView {
+  const entries = presence?.get(course.code);
+  const standing = courseStanding(entries, terms?.current ?? null);
   const base = {
     code: course.code,
     title: course.title,
     why: course.why,
-    inPlanTerms: [...(presence?.get(course.code) ?? [])],
+    inPlanTerms: [...(entries?.keys() ?? [])],
+    status: standing ? standingText(standing) : null,
   };
   if (!history || !terms) {
     return { ...base, terms: null, initialTerm: null, usually: null, href: null };
@@ -107,7 +116,22 @@ export function CareerCourseItem({
       </h3>
       <p className="mt-1 text-sm text-fg-2">{view.why}</p>
       <div className="mt-auto pt-3">
-        {view.terms && currentTerm ? (
+        {view.status ? (
+          // Situation before catalog: a course already taken never offers "Add" without saying so.
+          <p
+            className="flex items-start gap-1.5 text-sm font-semibold text-fg"
+            data-testid="course-plan-status"
+            data-source="my-plan"
+          >
+            {view.status.warning ? (
+              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+            ) : null}
+            <span>
+              <span className="sr-only">Source: your plan. </span>
+              {view.status.text}
+            </span>
+          </p>
+        ) : view.terms && currentTerm ? (
           <CourseAddToPlan
             courseCode={view.code}
             terms={view.terms}

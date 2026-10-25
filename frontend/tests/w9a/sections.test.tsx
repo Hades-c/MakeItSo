@@ -242,7 +242,10 @@ describe("CareerCourses", () => {
         { termCode: "202701", status: "not-yet-published" },
       ]);
     }
-    state.presence = new Map([["CSC 221", new Set(["202602"])]]);
+    state.presence = new Map([
+      ["CSC 221", new Map([["202602", "planned"]])],
+      ["CSC 121", new Map([["202501", "completed"]])],
+    ]);
     await renderAsync(CareerCourses({ career }));
     const items = screen.getByTestId("career-courses").querySelectorAll(":scope > li");
     expect(items).toHaveLength(career.courses.length);
@@ -254,6 +257,12 @@ describe("CareerCourses", () => {
     expect(
       within(csc221 as HTMLElement).getByRole("button", { name: "In your plan for Spring 2027" }),
     ).toBeVisible();
+    // A completed course says so and offers no Add.
+    const csc121 = [...items].find((item) => item.getAttribute("data-course") === "CSC 121")!;
+    expect(within(csc121 as HTMLElement).getByTestId("course-plan-status")).toHaveTextContent(
+      "Completed Fall 2025",
+    );
+    expect(within(csc121 as HTMLElement).queryByRole("button")).toBeNull();
     expect(state.planCalls).toEqual([ID]);
   });
 

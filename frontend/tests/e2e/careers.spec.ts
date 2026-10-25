@@ -6,6 +6,7 @@ import {
   isMobile,
   newSignedInAccount,
   newVerifiedAccount,
+  SAME_ORIGIN,
   seriousViolations,
   smallTapTargets,
 } from "./helpers";
@@ -213,6 +214,44 @@ test("a career page: live availability per term, Add to plan, sourced sections",
   await expect(csc221.getByRole("button", { name: "Add to Fall 2027" })).toBeVisible();
   // The plan route is missing or not implemented on this branch: its 404/501 is the only allowed console error.
   expect(errors.filter((e) => !/status of (404|501)/.test(e))).toEqual([]);
+});
+
+test("a career page says which courses the student has taken instead of offering Add", async ({
+  page,
+  request,
+}) => {
+  await newSignedInAccount(page, request, "e2e-career-taken");
+  // Avery's plan: CSC 121 completed, CSC 221 completed and planned again, CSC 321 under way.
+  for (const data of [
+    { termCode: "202501", courseCode: "CSC 121", status: "completed" },
+    { termCode: "202502", courseCode: "CSC 221", status: "completed" },
+    { termCode: "202602", courseCode: "CSC 221", status: "planned", crn: "20135" },
+    { termCode: "202601", courseCode: "CSC 321", status: "in-progress", crn: "10147" },
+  ]) {
+    const res = await page.request.post("/api/plan/items", { data, headers: SAME_ORIGIN });
+    expect(res.status(), await res.text()).toBe(201);
+  }
+  await page.goto("/careers/software-engineering");
+  for (const [code, words] of [
+    ["CSC 121", "Completed Fall 2025"],
+    ["CSC 221", "Completed Spring 2026 · in your Spring 2027 plan"],
+    ["CSC 321", "Taking now (Fall 2026)"],
+  ] as const) {
+    const card = page.locator(`[data-course="${code}"]`);
+    await expect(card.getByTestId("course-plan-status"), code).toHaveText(
+      `Source: your plan. ${words}`,
+    );
+    await expect(card.getByRole("button", { name: /^Add to/ }), code).toHaveCount(0);
+    await expect(card.getByRole("radio"), code).toHaveCount(0);
+  }
+  // A course not taken yet keeps its Add to plan control.
+  await expect(
+    page
+      .locator('[data-course="MAT 230"]')
+      .getByRole("button", { name: /^(Add to|Choose a term)/ }),
+  ).toBeVisible();
+  expect(await expectAllTagged(page)).toBeGreaterThanOrEqual(8);
+  expect(await seriousViolations(page)).toEqual([]);
 });
 
 test("office programs on a career page: published deadlines and amounts, tagged", async ({
