@@ -17,7 +17,7 @@ export default function GlobalError({
           <h1 className="font-display text-xl font-strong">MakeItSo could not load</h1>
           <p className="mt-2 text-sm text-fg-2">Something went wrong. Please try again.</p>
           {error.digest ? (
-            <p className="mt-3 font-mono text-xs text-fg-3">Reference: {error.digest}</p>
+            <p className="mt-3 text-xs text-fg-3">Reference: {error.digest}</p>
           ) : null}
           <button
             type="button"

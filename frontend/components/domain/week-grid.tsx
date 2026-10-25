@@ -94,7 +94,7 @@ export function WeekGrid({
         >
           <span aria-hidden />
           {layout.days.map((day) => (
-            <span key={day} aria-hidden className="pb-1 text-center font-mono text-xs text-fg-3">
+            <span key={day} aria-hidden className="pb-1 text-center text-xs text-fg-3">
               {DAY_NAMES[day].short}
             </span>
           ))}
@@ -103,7 +103,7 @@ export function WeekGrid({
               <span
                 key={hour}
                 className={cn(
-                  "absolute right-1 font-mono text-xs leading-none text-fg-3",
+                  "absolute right-1 text-xs leading-none text-fg-3 tabular-nums",
                   i === 0
                     ? "translate-y-0"
                     : i === hours.length - 1
@@ -289,7 +289,7 @@ function DayList({ day, placed }: { day: WeekDay; placed: PlacedBlock[] }) {
               p.block.conflict && "ring-2 ring-danger ring-offset-1 ring-offset-surface",
             )}
           >
-            <span className="w-24 shrink-0 font-mono text-xs leading-5 text-fg-2">
+            <span className="w-24 shrink-0 text-xs leading-5 text-fg-2">
               {timeRange(p.interval)}
             </span>
             <span className="flex min-w-0 flex-col gap-0.5">
@@ -337,7 +337,7 @@ function ListedBlocks({
               {block.code}
             </span>
             {block.title ? <span className="text-fg">{block.title}</span> : null}
-            {when ? <span className="font-mono text-xs text-fg-2">{when}</span> : null}
+            {when ? <span className="text-xs text-fg-2">{when}</span> : null}
           </li>
         ))}
       </ul>

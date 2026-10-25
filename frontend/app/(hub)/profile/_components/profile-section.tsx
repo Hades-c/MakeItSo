@@ -50,7 +50,7 @@ export function FactList({ children }: { children: React.ReactNode }) {
 export function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <>
-      <dt className="font-mono text-xs tracking-label text-fg-3 uppercase md:pt-0.5">{label}</dt>
+      <dt className="text-xs font-medium tracking-label text-fg-3 uppercase md:pt-0.5">{label}</dt>
       <dd className="min-w-0 break-words text-fg">{children}</dd>
     </>
   );

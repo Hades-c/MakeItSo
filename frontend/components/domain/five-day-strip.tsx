@@ -72,7 +72,7 @@ export function FiveDayStrip({
               <span
                 aria-hidden
                 className={cn(
-                  "font-mono text-xs leading-4 tracking-label uppercase",
+                  "text-xs leading-4 font-medium tracking-label uppercase",
                   filled ? "text-on-primary" : "text-fg-3",
                 )}
               >

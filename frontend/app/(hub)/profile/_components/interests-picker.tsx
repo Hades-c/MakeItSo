@@ -51,7 +51,7 @@ export function InterestsPicker({ initial, careers }: InterestsPickerProps) {
           <div key={cluster} role="group" aria-labelledby={headingId}>
             <h3
               id={headingId}
-              className="mb-2 font-mono text-xs font-medium tracking-label text-fg-3 uppercase"
+              className="mb-2 text-xs font-medium tracking-label text-fg-3 uppercase"
             >
               {cluster}
             </h3>

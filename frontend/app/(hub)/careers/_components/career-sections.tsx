@@ -160,7 +160,7 @@ export function HandshakeCard({ baseUrl, query }: { baseUrl: string; query: stri
         <p className="mt-3 text-sm text-fg-2">Search Handshake for:</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <code
-            className="rounded-sm bg-surface-2 px-2 py-1 font-mono text-sm text-fg"
+            className="rounded-sm bg-surface-2 px-2 py-1 text-sm text-fg"
             data-testid="handshake-query"
           >
             {query}

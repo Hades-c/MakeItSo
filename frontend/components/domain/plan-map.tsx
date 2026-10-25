@@ -145,7 +145,7 @@ export function PlanMap({
             >
               <span
                 className={cn(
-                  "mb-0.5 text-center font-mono text-xs leading-4 whitespace-nowrap",
+                  "mb-0.5 text-center text-xs leading-4 whitespace-nowrap",
                   target ? "font-semibold text-primary" : "text-fg-3",
                 )}
               >
@@ -250,7 +250,7 @@ export function PlanMap({
         <ol aria-label={label} className="flex flex-col gap-3">
           {years.map((year) => (
             <li key={year.label}>
-              <p className="mb-1.5 font-mono text-xs text-fg-3">{year.label}</p>
+              <p className="mb-1.5 text-xs text-fg-3">{year.label}</p>
               {/* Fall | Spring side by side, a summer underneath across both; two slots per line. */}
               <ol className="grid grid-cols-2 gap-x-2 gap-y-3">
                 {year.fall ? (
@@ -346,7 +346,7 @@ function TermColumn({
       <p
         aria-hidden
         className={cn(
-          "mb-0.5 font-mono text-xs leading-4 whitespace-nowrap",
+          "mb-0.5 text-xs leading-4 whitespace-nowrap",
           labelStyle === "short" && "text-center",
           current ? "font-semibold text-primary" : "text-fg-3",
         )}

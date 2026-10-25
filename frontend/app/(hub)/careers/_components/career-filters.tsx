@@ -80,7 +80,7 @@ export function CareerFilters({
               aria-current={filters.cluster === null ? "page" : undefined}
               className={chip(filters.cluster === null, total === 0)}
             >
-              All <span className="font-mono text-xs">{total}</span>
+              All <span className="text-xs tabular-nums">{total}</span>
             </Link>
           </li>
           {clusters.map(({ cluster, count }) => (
@@ -90,7 +90,7 @@ export function CareerFilters({
                 aria-current={filters.cluster === cluster ? "page" : undefined}
                 className={chip(filters.cluster === cluster, count === 0)}
               >
-                {cluster} <span className="font-mono text-xs">{count}</span>
+                {cluster} <span className="text-xs tabular-nums">{count}</span>
               </Link>
             </li>
           ))}

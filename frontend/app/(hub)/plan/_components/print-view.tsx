@@ -96,7 +96,7 @@ export function WebTreePrintView({
                 const section = data.sections[choice.crn];
                 return (
                   <tr key={choice.crn} className="border-b border-line align-top">
-                    <td className="py-2 pr-3 font-mono font-semibold">{choice.rank}</td>
+                    <td className="py-2 pr-3 font-semibold tabular-nums">{choice.rank}</td>
                     <td className="py-2 pr-3 font-mono">
                       {detail?.registerAs ? detail.registerAs.crn : choice.crn}
                     </td>

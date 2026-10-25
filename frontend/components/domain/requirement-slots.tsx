@@ -95,7 +95,7 @@ export function RequirementSlots({
                   : TILE[slot.status],
               )}
             >
-              <span className="font-mono text-xs font-semibold">
+              <span className="text-xs font-semibold">
                 {slot.code}
                 <span className="sr-only"> ({slot.label})</span>
               </span>

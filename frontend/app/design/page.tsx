@@ -49,7 +49,7 @@ const STACK = "flex min-w-0 flex-col gap-5";
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mt-10 mb-3 border-t border-line pt-5 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
+    <p className="mt-10 mb-3 border-t border-line pt-5 text-xs font-medium tracking-label text-fg-3 uppercase">
       {children}
     </p>
   );

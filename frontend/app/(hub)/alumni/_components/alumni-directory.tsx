@@ -107,7 +107,9 @@ export async function AlumniDirectory({ params }: { params: SearchParamsRecord }
                 className="mb-3 font-display text-lg font-strong tracking-title text-fg"
               >
                 Alumni{" "}
-                <span className="font-mono text-xs font-medium text-fg-3">{reachable.length}</span>
+                <span className="font-sans text-xs font-medium text-fg-3 tabular-nums">
+                  {reachable.length}
+                </span>
               </h2>
               <AlumniGrid alumni={reachable} />
             </section>
@@ -119,7 +121,9 @@ export async function AlumniDirectory({ params }: { params: SearchParamsRecord }
                 className="font-display text-lg font-strong tracking-title text-fg"
               >
                 Notable alumni{" "}
-                <span className="font-mono text-xs font-medium text-fg-3">{notable.length}</span>
+                <span className="font-sans text-xs font-medium text-fg-3 tabular-nums">
+                  {notable.length}
+                </span>
               </h2>
               <p className="mt-1 mb-3 text-sm text-fg-2">
                 Public figures, trustees and college officers, listed for reference. Please don’t
