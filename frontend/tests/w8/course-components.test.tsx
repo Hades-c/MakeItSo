@@ -144,6 +144,8 @@ describe("SectionItem", () => {
           department: "Computer Science",
           url: "https://www.ratemyprofessors.com/professor/1234",
           asOf: "2026-09-28T10:00:00.000Z",
+          topTags: [],
+          tagRatingsCounted: 0,
         },
       },
     ]);
