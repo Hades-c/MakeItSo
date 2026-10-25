@@ -214,7 +214,13 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
             ) : null}
           </div>
           <div>
-            <Button ref={toggle} aria-disabled={busy ? true : undefined} onClick={turnOn}>
+            {/* Secondary: Save academics is the page's one red action, and consent is never pushed. */}
+            <Button
+              ref={toggle}
+              variant="secondary"
+              aria-disabled={busy ? true : undefined}
+              onClick={turnOn}
+            >
               {busy ? "Turning on…" : "Turn on AI features"}
             </Button>
           </div>

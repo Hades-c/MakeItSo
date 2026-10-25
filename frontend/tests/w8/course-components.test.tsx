@@ -346,6 +346,10 @@ describe("course cards", () => {
       "href",
       "#add-to-plan",
     );
+    // A jump to the Add to plan card, whose button is the page's one red action: outlined.
+    expect(screen.getByRole("link", { name: "Add to plan" }).className).not.toMatch(
+      /\bbg-primary-fill\b/,
+    );
   });
 
   it("header: a course already planned for this term jumps to the plan state instead of offering Add to plan", () => {

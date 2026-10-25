@@ -210,7 +210,8 @@ export function CourseHeader({
               </a>
             </Button>
           ) : (
-            <Button asChild size="lg" className="w-full">
+            // A jump to the Add to plan card below, whose button is the page's one red action.
+            <Button asChild size="lg" variant="secondary" className="w-full">
               <a href="#add-to-plan">
                 <Plus aria-hidden />
                 Add to plan

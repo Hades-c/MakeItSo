@@ -301,7 +301,8 @@ export function CourseFilters({
             </fieldset>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button type="submit">
+            {/* Secondary: Search above is the page's one red action (both submit the same form). */}
+            <Button type="submit" variant="secondary">
               <LoaderCircle
                 aria-hidden
                 className="hidden animate-spin group-data-[pending]/search:inline motion-reduce:animate-none"

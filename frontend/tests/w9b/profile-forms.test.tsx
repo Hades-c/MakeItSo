@@ -488,6 +488,10 @@ describe("AiConsentPanel", () => {
   it("needs the 18+ attestation before anything is sent", async () => {
     stubFetch();
     consent();
+    // Outlined: consent is never the page's red call to action (Save academics is).
+    expect(screen.getByRole("button", { name: "Turn on AI features" }).className).not.toMatch(
+      /\bbg-primary-fill\b/,
+    );
     await userEvent.click(screen.getByRole("button", { name: "Turn on AI features" }));
     expect(alertWith("Confirm that you are 18 or older to turn on AI features.")).toBeDefined();
     expect(screen.getByRole("checkbox", { name: "I am 18 or older" })).toHaveFocus();

@@ -47,7 +47,8 @@ export function VerifyBanner({ email, replaceable, hoursLeft }: VerifyBannerProp
           </p>
         </div>
       </div>
-      <Button asChild className="w-full md:w-auto">
+      {/* Secondary: the banner sits above every hub page, whose own primary action keeps the one red fill. */}
+      <Button asChild variant="secondary" className="w-full md:w-auto">
         <Link href={routes.verify()}>Get a code</Link>
       </Button>
     </section>

@@ -378,6 +378,10 @@ describe("VerifyBanner", () => {
     );
     expect(screen.getByRole("heading", { name: "Verify your Davidson email" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Get a code" })).toHaveAttribute("href", "/verify");
+    // Above every hub page, whose own primary action keeps the one red fill.
+    expect(screen.getByRole("link", { name: "Get a code" }).className).not.toMatch(
+      /\bbg-primary-fill\b/,
+    );
     // It never claims a code was sent (review regression).
     expect(screen.getByTestId("verify-banner")).not.toHaveTextContent(/we sent|enter the code/i);
     expect(screen.getByTestId("verify-banner")).toHaveTextContent(

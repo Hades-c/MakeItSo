@@ -337,6 +337,10 @@ describe("WebTreeEditor", () => {
     const radio = await screen.findByRole("radio", { name: /CRN 21001/ });
     expect(radio).toBeChecked();
     expect(screen.getByTestId("section-picker")).toHaveTextContent("15 of 20 seats open");
+    // Outlined: "Copy for WebTree" is the tab's one red action.
+    expect(screen.getByRole("button", { name: "Add as choice 1" }).className).not.toMatch(
+      /\bbg-primary-fill\b/,
+    );
     await user.click(screen.getByRole("button", { name: "Add as choice 1" }));
     await waitFor(() => expect(calls).toHaveLength(3));
     expect(calls[0]!.url).toBe("/api/catalog/search?term=202602&q=world&pageSize=8");

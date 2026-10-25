@@ -396,7 +396,8 @@ export function AddCourse({
                 })}
               </fieldset>
               <div>
-                <Button type="submit" disabled={!chosen || full || disabled}>
+                {/* Secondary, like the plan rows' Add buttons: "Copy for WebTree" is the tab's one red action. */}
+                <Button type="submit" variant="secondary" disabled={!chosen || full || disabled}>
                   <Plus aria-hidden />
                   {addLabel}
                 </Button>
