@@ -53,7 +53,7 @@ export default async function ProfilePage() {
             <li key={section.id}>
               <a
                 href={`#${section.id}`}
-                className="inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0"
+                className="inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0"
               >
                 {section.label}
               </a>
@@ -172,7 +172,7 @@ function Verification({ data, timeZone }: { data: ProfilePageData; timeZone: str
         {data.mailAvailable ? (
           <Link
             href={`${routes.verify()}${queryString({ next: routes.profile() })}`}
-            className="-my-2 inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0"
+            className="-my-2 inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0"
           >
             Verify your email
           </Link>

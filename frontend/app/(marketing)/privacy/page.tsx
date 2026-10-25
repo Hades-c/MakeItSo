@@ -74,7 +74,7 @@ export default function PrivacyPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-10 md:px-6 md:py-14">
-        <p className="mb-3 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
+        <p className="mb-3 text-xs font-medium tracking-label text-fg-3 uppercase">
           Last updated {LAST_UPDATED}
         </p>
         <h1 className="font-display text-xl font-strong text-fg md:text-2xl">
@@ -91,10 +91,7 @@ export default function PrivacyPage() {
           className="mt-8 rounded-xl border border-line bg-surface p-5 shadow-card md:p-6"
           aria-labelledby="short-version"
         >
-          <h2
-            id="short-version"
-            className="font-mono text-xs font-medium tracking-label text-fg-3 uppercase"
-          >
+          <h2 id="short-version" className="text-xs font-medium tracking-label text-fg-3 uppercase">
             The short version
           </h2>
           <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-sm text-fg md:text-base">
@@ -156,7 +153,7 @@ export default function PrivacyPage() {
               emails are sent through{" "}
               <a
                 href="https://resend.com/legal/privacy-policy"
-                className="font-semibold text-primary underline"
+                className="font-semibold link"
                 rel="noopener noreferrer"
                 target="_blank"
               >
@@ -203,7 +200,7 @@ export default function PrivacyPage() {
               and{" "}
               <a
                 href="https://www.anthropic.com/legal/privacy"
-                className="font-semibold text-primary underline"
+                className="font-semibold link"
                 rel="noopener noreferrer"
                 target="_blank"
               >
@@ -262,7 +259,7 @@ export default function PrivacyPage() {
             <ul>
               <li>
                 <b>Download my data</b> on your{" "}
-                <Link href={routes.profile()} className="font-semibold text-primary underline">
+                <Link href={routes.profile()} className="font-semibold link">
                   profile
                 </Link>{" "}
                 gives you a JSON file of everything MakeItSo stores about you (up to 5 times a day),
@@ -285,7 +282,7 @@ export default function PrivacyPage() {
               Questions, removal or correction requests: reach the people who run MakeItSo through{" "}
               <a
                 href={SUPPORT_CONTACT.url}
-                className="font-semibold text-primary underline"
+                className="font-semibold link"
                 rel="noopener noreferrer"
                 target="_blank"
               >

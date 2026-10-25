@@ -21,7 +21,7 @@ export function ExternalLink({
       href={href}
       rel="noopener noreferrer"
       className={cn(
-        "inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:inline md:min-h-0",
+        "inline-flex min-h-11 items-center rounded-sm font-semibold link md:inline md:min-h-0",
         className,
       )}
     >

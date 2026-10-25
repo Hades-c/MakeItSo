@@ -186,7 +186,7 @@ function PlanStatusLine({ code, status }: { code: string; status: StandingText }
             <Link
               href={check.href}
               // Inline in the sentence (WCAG 2.5.8's inline exception), like the page's other text links.
-              className="text-primary underline underline-offset-2"
+              className="link"
             >
               {check.words} <span className="sr-only">for {code} in your 4-year plan</span>
             </Link>

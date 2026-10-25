@@ -86,9 +86,7 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
           {group.isRegistration ? (
             <span className="text-xs font-semibold text-primary">Registration term</span>
           ) : null}
-          <span className="font-mono text-xs font-medium text-fg-3">
-            {creditsText(group.credits)}
-          </span>
+          <span className="text-xs font-medium text-fg-3">{creditsText(group.credits)}</span>
         </h3>
         {note ? <p className="text-xs text-fg-2">{note}</p> : null}
         {group.items.length === 0 ? (

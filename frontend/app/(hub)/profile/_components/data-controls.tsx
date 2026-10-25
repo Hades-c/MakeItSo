@@ -45,7 +45,7 @@ const PRIVACY_YOUR_DATA = "/privacy#your-data";
 
 function PrivacyLink({ children }: { children: React.ReactNode }) {
   return (
-    <Link href={PRIVACY_YOUR_DATA} className="font-semibold text-primary underline">
+    <Link href={PRIVACY_YOUR_DATA} className="font-semibold link">
       {children}
     </Link>
   );

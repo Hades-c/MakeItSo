@@ -76,7 +76,7 @@ function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZon
             : "border-line bg-surface-2",
         )}
       >
-        <span className="font-mono text-xs leading-4 uppercase">
+        <span className="text-xs leading-4 font-medium uppercase">
           {WEEKDAY(timeZone).format(shownDay)}
         </span>
         <span className="text-base leading-5 font-strong">
@@ -85,12 +85,7 @@ function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZon
       </span>
       <div className="min-w-0">
         <p className="text-sm leading-snug font-semibold text-fg md:text-base">
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(STRETCHED_LINK, "hover:text-primary")}
-          >
+          <a href={item.url} target="_blank" rel="noopener noreferrer" className={STRETCHED_LINK}>
             {item.title} <span className="sr-only">(opens in a new tab)</span>
             <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
           </a>

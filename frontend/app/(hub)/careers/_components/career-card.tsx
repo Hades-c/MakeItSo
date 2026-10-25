@@ -27,7 +27,7 @@ export function CardPay({ pay }: { pay: NonNullable<Career["pay"]> }) {
           href={pay.url}
           rel="noopener noreferrer"
           aria-label={`Source: BLS Occupational Outlook Handbook, ${occupation}`}
-          className="relative z-10 inline-flex min-h-11 min-w-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0 md:min-w-0"
+          className="relative z-10 inline-flex min-h-11 min-w-11 items-center rounded-sm font-semibold link md:min-h-0 md:min-w-0"
         >
           Source
         </a>

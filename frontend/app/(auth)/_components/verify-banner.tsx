@@ -23,10 +23,10 @@ export function VerifyBanner({ email, replaceable, hoursLeft }: VerifyBannerProp
     <section
       aria-labelledby="verify-banner-title"
       data-testid="verify-banner"
-      className="mb-5 flex flex-col gap-3 rounded-xl border border-line bg-primary-wash p-4 md:flex-row md:items-center md:justify-between md:gap-5"
+      className="mb-5 flex flex-col gap-3 rounded-xl border border-line bg-surface-2 p-4 md:flex-row md:items-center md:justify-between md:gap-5"
     >
       <div className="flex min-w-0 items-start gap-3">
-        <MailWarning aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />
+        <MailWarning aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-2" />
         <div className="min-w-0 text-sm">
           <h2 id="verify-banner-title" className="font-strong text-fg">
             Verify your Davidson email

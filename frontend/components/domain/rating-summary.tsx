@@ -155,7 +155,7 @@ function RatingDots({ value, small }: { value: number; small?: boolean }) {
             )}
           >
             <span
-              className="absolute inset-y-0 left-0 bg-primary-fill"
+              className="absolute inset-y-0 left-0 bg-fg-2"
               style={{ width: `${Math.round(fill * 100)}%` }}
             />
           </span>
@@ -226,7 +226,7 @@ export function RatingSummary({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex min-h-11 items-center gap-1 rounded-xs text-sm font-semibold text-primary hover:underline md:min-h-0"
+      className="inline-flex min-h-11 items-center gap-1 rounded-xs text-sm font-semibold link md:min-h-0"
     >
       RateMyProfessors
       <ArrowUpRight aria-hidden className="size-3.5" />
@@ -265,7 +265,7 @@ export function RatingSummary({
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-0.5 rounded-xs font-semibold text-primary hover:underline max-md:min-h-11 max-md:px-1"
+            className="inline-flex items-center gap-0.5 rounded-xs font-semibold link max-md:min-h-11 max-md:px-1"
           >
             RMP
             <ArrowUpRight aria-hidden className="size-3.5" />

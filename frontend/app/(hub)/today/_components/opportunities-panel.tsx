@@ -3,7 +3,6 @@ import { SectionCard } from "@/components/ui/section-card";
 import { SourceTag } from "@/components/ui/source-tag";
 import { formatShortDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
-import { cn } from "@/lib/utils";
 import {
   dueSoonRange,
   etDay,
@@ -62,7 +61,7 @@ export async function OpportunitiesPanel({
                   href={program.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={cn(STRETCHED_LINK, "hover:text-primary")}
+                  className={STRETCHED_LINK}
                 >
                   {program.name} <span className="sr-only">(opens in a new tab)</span>
                   <ExternalLink
@@ -81,7 +80,7 @@ export async function OpportunitiesPanel({
               </p>
             </div>
             {/* Only the short date here: a long label in a column that cannot shrink squeezes the title. */}
-            <p className="shrink-0 text-right font-mono text-xs leading-5 whitespace-nowrap text-fg-2">
+            <p className="shrink-0 text-right text-xs leading-5 whitespace-nowrap text-fg-2">
               {shortDay(program.deadline.date)}
             </p>
           </li>
@@ -103,7 +102,7 @@ export async function OpportunitiesPanel({
                 href={handshake.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cn(STRETCHED_LINK, "hover:text-primary")}
+                className={STRETCHED_LINK}
               >
                 Jobs and internships on Handshake{" "}
                 <span className="sr-only">(opens in a new tab)</span>

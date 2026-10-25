@@ -17,8 +17,7 @@ import { requirementGroups } from "../_lib/format";
  * the week grid. Mobile stacks them in that order.
  */
 
-const CRUMB =
-  "inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0";
+const CRUMB = "inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0";
 
 export function CourseView({ data, timeZone }: { data: CoursePageData; timeZone?: string }) {
   const { params, course, reference, chosen, add } = data;

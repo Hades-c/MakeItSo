@@ -39,7 +39,7 @@ const CHIP = [
   "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus has-[:focus-visible]:outline-solid",
 ].join(" ");
 
-const LEGEND = "mb-2 font-mono text-xs font-medium tracking-label text-fg-3 uppercase";
+const LEGEND = "mb-2 text-xs font-medium tracking-label text-fg-3 uppercase";
 
 function toggle<T extends string>(list: readonly T[], value: T, order: readonly T[]): T[] {
   const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -194,7 +194,7 @@ export function EventsFilters({ view }: EventsFiltersProps) {
         {filtered ? (
           <ClearFiltersLink
             view={view}
-            className="-my-2 inline-flex min-h-11 items-center gap-1.5 rounded-sm font-semibold text-primary hover:underline md:min-h-0"
+            className="-my-2 inline-flex min-h-11 items-center gap-1.5 rounded-sm font-semibold link md:min-h-0"
           >
             <X aria-hidden className="size-4" />
             Clear filters

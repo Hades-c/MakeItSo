@@ -44,10 +44,10 @@ export async function TodayActions({
         <section
           aria-labelledby="onboarding-title"
           data-testid="onboarding-nudge"
-          className="flex flex-col gap-3 rounded-xl border border-primary bg-primary-wash p-4 md:flex-row md:items-center md:justify-between"
+          className="flex flex-col gap-3 rounded-xl border border-line bg-surface-2 p-4 md:flex-row md:items-center md:justify-between"
         >
           <div className="flex items-start gap-3">
-            <Sparkles aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />
+            <Sparkles aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-2" />
             <div>
               <h2 id="onboarding-title" className="text-base font-strong text-fg">
                 Finish setting up MakeItSo

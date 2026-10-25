@@ -141,7 +141,7 @@ export default async function HomePage() {
       <main>
         <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-12 md:px-6 md:py-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-14">
           <div>
-            <p className="mb-4 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
+            <p className="mb-4 text-xs font-medium tracking-label text-fg-3 uppercase">
               For Davidson College students
             </p>
             <h1 className="font-display text-xl font-strong md:text-3xl">
@@ -166,7 +166,7 @@ export default async function HomePage() {
           >
             <h2
               id="provenance-title"
-              className="font-mono text-xs font-medium tracking-label text-fg-3 uppercase"
+              className="text-xs font-medium tracking-label text-fg-3 uppercase"
             >
               Every item is labelled
             </h2>
@@ -200,7 +200,7 @@ export default async function HomePage() {
             >
               {featureCards.map(({ icon: Icon, title, body }) => (
                 <li key={title} className="rounded-xl border border-line bg-bg p-5">
-                  <span className="mb-4 grid size-10 place-items-center rounded-md bg-primary-wash text-primary">
+                  <span className="mb-4 grid size-10 place-items-center rounded-md bg-surface-2 text-taupe">
                     <Icon aria-hidden strokeWidth={1.8} className="size-5" />
                   </span>
                   <h3 className="font-display text-lg font-strong tracking-title">{title}</h3>

@@ -142,7 +142,7 @@ export function CourseAddToPlan({
         ) : null}
         {underway ? (
           <p className="flex items-start gap-1.5 text-fg" data-testid="current-term-note">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-2" />
             <span>
               {labelOf(terms, currentTerm)} is already under way: adding {courseCode} there records
               it as a class you’re taking this term.

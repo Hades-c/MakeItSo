@@ -12,7 +12,7 @@ export interface FormAlertProps {
 
 const TONES = {
   danger: { role: "alert", icon: TriangleAlert, box: "border-danger bg-danger-wash text-danger" },
-  info: { role: "status", icon: Info, box: "border-line bg-primary-wash text-fg" },
+  info: { role: "status", icon: Info, box: "border-line bg-surface-2 text-fg" },
   success: { role: "status", icon: CircleCheck, box: "border-line bg-success-wash text-fg" },
 } as const;
 
@@ -32,7 +32,7 @@ export function FormAlert({ tone = "danger", title, children, className }: FormA
         aria-hidden
         className={cn(
           "mt-0.5 size-4 shrink-0",
-          tone === "info" && "text-primary",
+          tone === "info" && "text-fg-2",
           tone === "success" && "text-success",
         )}
       />

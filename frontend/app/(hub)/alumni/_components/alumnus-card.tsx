@@ -104,10 +104,7 @@ export function AlumnusCard({
           {careers.map((career, index) => (
             <span key={career.slug}>
               {index > 0 ? ", " : null}
-              <Link
-                href={routes.career(career.slug)}
-                className="font-semibold text-primary hover:underline"
-              >
+              <Link href={routes.career(career.slug)} className="font-semibold link">
                 {career.name}
               </Link>
             </span>
@@ -128,7 +125,7 @@ export function AlumnusCard({
           rel="noopener noreferrer"
           aria-label={`${linkedinLabel}: ${alumnus.name}`}
           data-contact={alumnus.contactable ? "linkedin" : undefined}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm font-semibold text-primary hover:underline md:min-h-8"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm font-semibold link md:min-h-8"
         >
           <LinkedInIcon />
           {linkedinLabel}
@@ -156,7 +153,7 @@ export function AlumnusCard({
                 href={url}
                 rel="noopener noreferrer"
                 title={url}
-                className="flex min-h-11 min-w-0 items-center text-primary underline underline-offset-2 md:block md:min-h-0"
+                className="flex min-h-11 min-w-0 items-center link md:block md:min-h-0"
               >
                 <span className="block min-w-0 truncate">{shortUrl(url)}</span>
               </a>

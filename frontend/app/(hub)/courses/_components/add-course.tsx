@@ -144,7 +144,7 @@ export function AddCourse({
       <div className="flex flex-col gap-1.5 text-sm">
         {section && !added ? (
           <p className="text-fg-2" data-testid="add-section">
-            Adds section <span className="font-mono text-xs font-semibold">{section}</span>.
+            Adds section <span className="font-semibold">{section}</span>.
           </p>
         ) : null}
         {showUnpublished ? (
@@ -154,7 +154,7 @@ export function AddCourse({
         ) : null}
         {underway ? (
           <p className="flex items-start gap-1.5 text-fg" data-testid="current-term-note">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-2" />
             <span>
               {labelOf(terms, currentTerm)} is under way: adding {courseCode} there records it as a
               class you’re taking this term.

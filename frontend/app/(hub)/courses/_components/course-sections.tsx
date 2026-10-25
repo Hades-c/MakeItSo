@@ -69,7 +69,7 @@ export function SectionItem({
           tabIndex={-1}
           className="flex flex-wrap items-baseline gap-x-2 text-base font-strong text-fg"
         >
-          <span className="font-mono text-sm">Section {section.section}</span>
+          <span className="text-sm">Section {section.section}</span>
           <span className="font-mono text-xs font-medium text-fg-2">CRN {section.crn}</span>
         </h3>
         {chosen ? (
@@ -91,7 +91,7 @@ export function SectionItem({
             const room = meeting ? meetingRoom(meeting) : null;
             return (
               <li key={index} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <span className="inline-flex items-center gap-1.5 font-mono text-xs text-fg">
+                <span className="inline-flex items-center gap-1.5 text-xs text-fg">
                   <Clock aria-hidden className="size-3.5 shrink-0 text-fg-3" />
                   {meeting ? meetingText(meeting, "long") : "Time TBA"}
                 </span>
@@ -152,7 +152,7 @@ export function SectionItem({
       {sibling ? (
         <p className="text-sm font-semibold text-fg" data-testid="register-as">
           Register as{" "}
-          <Link href={sibling.href} className="text-primary underline underline-offset-2">
+          <Link href={sibling.href} className="link">
             {sibling.label}
           </Link>{" "}
           <span className="font-mono text-xs font-medium text-fg-2">(CRN {sibling.crn})</span>
@@ -165,7 +165,7 @@ export function SectionItem({
               {index > 0 ? ", " : null}
               <Link
                 href={routes.course(section.termCode, listing.courseCode)}
-                className="font-semibold text-primary underline underline-offset-2"
+                className="font-semibold link"
               >
                 {listing.courseCode} {listing.section}
               </Link>
@@ -187,7 +187,7 @@ export function SectionItem({
           Registration section for{" "}
           <Link
             href={routes.course(section.termCode, section.regFor)}
-            className="font-semibold break-words text-primary underline underline-offset-2"
+            className="font-semibold break-words link"
           >
             {regForTitle ? `${regForTitle} (${section.regFor})` : section.regFor}
           </Link>
@@ -255,7 +255,9 @@ export function CourseSections({
           className="flex items-center gap-2 font-display text-lg font-strong tracking-title text-fg"
         >
           Sections{" "}
-          <span className="font-mono text-xs font-medium text-fg-3">{course.sections.length}</span>
+          <span className="font-sans text-xs font-medium text-fg-3 tabular-nums">
+            {course.sections.length}
+          </span>
         </h2>
         <SourceTag source="course-schedule" asOf={asOf} />
       </div>

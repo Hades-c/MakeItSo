@@ -168,12 +168,10 @@ export function CourseFilters({
         </div>
 
         <details className="group mt-3" open={advanced > 0 || undefined}>
-          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-sm font-semibold text-primary md:min-h-9 [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-sm font-semibold text-fg md:min-h-9 [&::-webkit-details-marker]:hidden">
             <SlidersHorizontal aria-hidden className="size-4" />
             Filters
-            {advanced > 0 ? (
-              <span className="font-mono text-xs text-fg-2">{advanced} active</span>
-            ) : null}
+            {advanced > 0 ? <span className="text-xs text-fg-2">{advanced} active</span> : null}
           </summary>
           <div className="mt-2 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="flex flex-col gap-1.5">
@@ -334,7 +332,7 @@ export function CourseFilters({
           {hasFilters(query) ? (
             <Link
               href={routes.courses({ term })}
-              className="inline-flex min-h-11 items-center rounded-sm px-1 text-sm font-semibold text-primary hover:underline md:min-h-8"
+              className="inline-flex min-h-11 items-center rounded-sm px-1 text-sm font-semibold link md:min-h-8"
             >
               Clear all
             </Link>

@@ -75,14 +75,14 @@ function GateNotice({ gate }: { gate: "unverified" | "consent_required" }) {
         {gate === "unverified" ? (
           <Link
             href={routes.verify()}
-            className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
+            className="inline-flex min-h-11 items-center font-semibold link md:min-h-0"
           >
             Verify your Davidson email
           </Link>
         ) : (
           <Link
             href={routes.profile()}
-            className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
+            className="inline-flex min-h-11 items-center font-semibold link md:min-h-0"
           >
             Turn on AI features in your profile
           </Link>

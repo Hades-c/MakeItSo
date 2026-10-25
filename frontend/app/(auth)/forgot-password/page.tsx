@@ -36,7 +36,7 @@ export default async function ForgotPasswordPage() {
             MakeItSo cannot email you a reset code yet. Reach the people who run it through{" "}
             <a
               href={SUPPORT_CONTACT.url}
-              className="font-semibold text-primary underline"
+              className="font-semibold link"
               rel="noopener noreferrer"
               target="_blank"
             >
