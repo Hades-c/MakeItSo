@@ -13,9 +13,11 @@ import {
   calendarDeadlineRows,
   dayBounds,
   degreeMapTerms,
+  dueForYouCount,
   dueLabel,
   dueSoonRange,
   etClock,
+  groupDueSoon,
   MAX_TIMELINE_EVENTS,
   milestonesOn,
   pickShown,
@@ -430,7 +432,7 @@ describe("Due soon", () => {
     expect(before.map((i) => i.id)).toContain("calendar:f26-webtree-closes");
   });
 
-  it("never lets office programs push the calendar or the student's own out of the list", () => {
+  it("lists the student's rows first, then every other row by date, and holds none back", () => {
     const items = buildDueSoon({
       now,
       standing: "first-year",
@@ -438,14 +440,33 @@ describe("Due soon", () => {
       studentDeadlines: [deadline({ dueAt: edt("12:00", "2026-10-13").toISOString() })],
     });
     expect(items.length).toBeGreaterThan(4);
-    const shown = pickShown(items, 4);
-    expect(shown).toHaveLength(4);
-    const ids = shown.map((i) => i.id);
-    expect(ids).toContain("calendar:f26-webtree-spring27");
-    expect(ids).toContain("calendar:f26-minor-declaration");
-    expect(ids).toContain(`student:${ID}`);
-    expect(shown.map((i) => i.day)).toEqual(shown.map((i) => i.day).sort());
-    expect(pickShown(items, 100)).toEqual(items);
+    const { forYou, also, more } = groupDueSoon(items, 4);
+    // For the student: their own deadline and the WebTree window (no audience), never the seniors' minor
+    // declaration, which waits under "Also in the next two weeks".
+    expect(forYou.every((i) => i.forYou)).toBe(true);
+    expect(forYou.map((i) => i.id)).toEqual(
+      expect.arrayContaining(["calendar:f26-webtree-spring27", `student:${ID}`]),
+    );
+    expect([...also, ...more].every((i) => !i.forYou)).toBe(true);
+    expect([...also, ...more].map((i) => i.id)).toContain("calendar:f26-minor-declaration");
+    // One count: the header and the card both count exactly the rows listed for the student.
+    expect(dueForYouCount(items)).toBe(forYou.length);
+    // Every row is in exactly one group, and each group keeps the list's date order.
+    expect([...forYou, ...also, ...more].map((i) => i.id).sort()).toEqual(
+      items.map((i) => i.id).sort(),
+    );
+    for (const group of [forYou, [...also, ...more]]) {
+      const at = group.map((i) => items.indexOf(i));
+      expect(at).toEqual([...at].sort((a, b) => a - b));
+    }
+    // At most 4 rows show at first, the student's always included; the rest are one press away.
+    expect(forYou.length + also.length).toBe(Math.max(4, forYou.length));
+    expect(pickShown(items, 4)).toEqual([...forYou, ...also]);
+    expect(pickShown(items, 100)).toHaveLength(items.length);
+    const tight = groupDueSoon(items, 1);
+    expect(tight.forYou).toEqual(forYou);
+    expect(tight.also).toEqual([]);
+    expect(tight.more).toHaveLength(items.length - forYou.length);
   });
 
   it.each([

@@ -16,8 +16,9 @@ import { addDaysToKey, etClock, etDay, zonedInstant } from "@/server/today/time"
  *
  * - A window already under way (WebTree Oct 12 - Nov 3) stays while it lasts, sorted as of today.
  * - A deadline with a published time that has passed is gone; an all-day one stays for its whole day.
- * - `forYou` is false when the row names other class years or a conditional audience: listed with the audience,
- *   never counted as the student's own (the day summary counts only `forYou` items).
+ * - `forYou` is false when the row names other class years or a conditional audience: listed with the audience
+ *   under "Also in the next two weeks", never counted as due for the student (the header, the card's count and
+ *   the day summary count only `forYou` items), and never drawn in the urgent red.
  */
 
 export const DUE_SOON_DAYS = 14;
@@ -125,14 +126,12 @@ const KIND_ORDER: Record<DueSoonKind, number> = {
 };
 
 /**
- * The deadlines among Due soon items that are the student's to meet (the header's "N deadlines in the next two
- * weeks"): the calendar's one-day deadline rows for their class year and their own. Registration openings and
- * windows, multi-day rows and optional program applications are listed, never counted as deadlines.
+ * How many rows are due for the student: their own deadlines and the calendar and program rows whose audience
+ * certainly includes them (`forYou`). The header's "N due for you in the next two weeks" and the card's count
+ * both use it, and it is exactly the number of rows listed under the card's heading (groupDueSoon `forYou`).
  */
-export function ownDeadlineCount(items: readonly DueSoonItem[]): number {
-  return items.filter(
-    (item) => item.forYou && (item.kind === "deadline" || item.kind === "student"),
-  ).length;
+export function dueForYouCount(items: readonly DueSoonItem[]): number {
+  return items.filter((item) => item.forYou).length;
 }
 
 export function buildDueSoon(input: DueSoonInput): DueSoonItem[] {
@@ -187,19 +186,29 @@ export function dueLabel(item: DueSoonItem, now: Date): string {
 }
 
 /**
- * The rows Due soon shows when there are more than `max`: the academic calendar's and the student's own first
- * (registration windows and Registrar deadlines must never be pushed out by office programs), then the programs
- * in date order; the result keeps the list's date order.
+ * The card's groups. `forYou`: every row for the student, in date order, never held back (the count says how many
+ * there are). `also`: the other rows ("Also in the next two weeks": other class years, conditional audiences), in
+ * date order, as many as fit in `max` rows after the student's. `more`: the rest of those, one press away ("Show N
+ * more"). Nothing is dropped: the three groups together are `items`.
+ */
+export interface DueSoonGroups {
+  forYou: DueSoonItem[];
+  also: DueSoonItem[];
+  more: DueSoonItem[];
+}
+
+export function groupDueSoon(items: readonly DueSoonItem[], max: number): DueSoonGroups {
+  const forYou = items.filter((item) => item.forYou);
+  const others = items.filter((item) => !item.forYou);
+  const room = Math.max(0, max - forYou.length);
+  return { forYou, also: others.slice(0, room), more: others.slice(room) };
+}
+
+/**
+ * The rows Due soon shows before "Show N more", in the order they are listed: the student's rows first, then the
+ * others by date (groupDueSoon `forYou` then `also`).
  */
 export function pickShown(items: readonly DueSoonItem[], max: number): DueSoonItem[] {
-  if (items.length <= max) return [...items];
-  const keep = new Set(
-    [
-      ...items.filter((item) => item.kind !== "program"),
-      ...items.filter((item) => item.kind === "program"),
-    ]
-      .slice(0, max)
-      .map((item) => item.id),
-  );
-  return items.filter((item) => keep.has(item.id));
+  const { forYou, also } = groupDueSoon(items, max);
+  return [...forYou, ...also];
 }

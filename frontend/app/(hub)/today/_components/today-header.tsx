@@ -4,6 +4,7 @@ import { formatLongDate } from "@/lib/format";
 import {
   buildDueSoon,
   contentDeadlines,
+  dueForYouCount,
   dueSoonRange,
   etDay,
   loadFeedItems,
@@ -11,7 +12,6 @@ import {
   loadProfile,
   loadSchedule,
   loadTerms,
-  ownDeadlineCount,
   safely,
   scheduleTermLabel,
   standingOf,
@@ -82,8 +82,9 @@ export async function TodayHeader({
     }),
   );
   const { from, to } = dueSoonRange(now);
+  // The same rows and the same count as the Due for you card: one number for "what's due" on the page.
   const dueForYou = safely("the deadline count", () =>
-    ownDeadlineCount(
+    dueForYouCount(
       buildDueSoon({
         now,
         standing,
@@ -130,9 +131,11 @@ export async function TodayHeader({
             </>
           ) : null}
           {summary && dueForYou !== null ? " · " : null}
-          {dueForYou === null ? null : (
+          {dueForYou === null ? null : dueForYou === 0 ? (
+            <>nothing due for you in the next two weeks</>
+          ) : (
             <>
-              <b>{plural(dueForYou, "deadline", "deadlines")}</b> in the next two weeks
+              <b>{dueForYou} due for you</b> in the next two weeks
             </>
           )}
         </span>

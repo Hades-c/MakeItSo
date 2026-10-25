@@ -8,24 +8,32 @@ import {
   contentDeadlines,
   dueLabel,
   dueSoonRange,
+  groupDueSoon,
   loadPlan,
   loadProfile,
-  pickShown,
   safely,
   standingOf,
   type DueSoonItem,
 } from "@/server/today";
 import { STRETCHED_LINK } from "../_lib/styles";
 import { PanelError } from "./panel-states";
+import { ShowMore } from "./show-more";
 
-/** Rows shown before "and n more". */
+/** Rows listed before "Show N more" (the student's own rows are always listed, however many). */
 export const DUE_SOON_SHOWN = 8;
 
+/** The card's title, also its loading and error states'. */
+export const DUE_SOON_TITLE = "Due for you";
+
 /**
- * Due soon (PLAN §3): the academic calendar's deadlines and registration windows, the curated office programs'
- * deadlines and the student's own, for the next two weeks, each with the tag of its stored source and a link to
- * the page that publishes it. Rows for other class years or a conditional audience say who they are for. When
- * the plan cannot load, the curated rows are still listed, with a one-line note that the student's own are missing.
+ * Due for you (PLAN §3 "Due soon"): the academic calendar's deadlines and registration windows, the curated office
+ * programs' deadlines and the student's own, for the next two weeks, each with the tag of its stored source and a
+ * link to the page that publishes it. The rows for the student (their own, and those whose audience certainly
+ * includes them) come first and are what the count counts, the same number as the header's "N due for you". The
+ * others say who they are for and follow under "Also in the next two weeks", by date; past DUE_SOON_SHOWN rows
+ * the rest are one press away ("Show N more"), never cut. Only the student's rows are ever drawn in the urgent
+ * red. When the plan cannot load, the curated rows are still listed, with a one-line note that the student's own
+ * are missing.
  */
 export async function DueSoonPanel({ userId, now }: { userId: string; now: Date }) {
   const [plan, profile] = await Promise.all([loadPlan(userId), loadProfile(userId)]);
@@ -38,18 +46,23 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
       contentDeadlines: contentDeadlines(from, to),
       studentDeadlines: plan.ok ? plan.value.deadlines : [],
     });
-    const shown = pickShown(items, DUE_SOON_SHOWN).map((item) => ({
-      item,
-      label: dueLabel(item, now),
-    }));
-    return { items, shown };
+    const labelled = (rows: readonly DueSoonItem[]) =>
+      rows.map((item) => ({ item, label: dueLabel(item, now) }));
+    const groups = groupDueSoon(items, DUE_SOON_SHOWN);
+    return {
+      total: items.length,
+      forYou: labelled(groups.forYou),
+      also: labelled(groups.also),
+      more: labelled(groups.more),
+    };
   });
-  if (!built) return <PanelError id="due-soon" title="Due soon" what="Due soon" />;
-  const { items, shown } = built;
-  const more = items.length - shown.length;
+  if (!built) return <PanelError id="due-soon" title={DUE_SOON_TITLE} what="Due soon" />;
+  const { total, forYou, also, more } = built;
+  const rows = (list: typeof forYou) =>
+    list.map(({ item, label }) => <DueSoonRow key={item.id} item={item} label={label} />);
 
   return (
-    <SectionCard id="due-soon" title="Due soon" count={items.length}>
+    <SectionCard id="due-soon" title={DUE_SOON_TITLE} count={forYou.length}>
       {plan.ok ? null : (
         <p
           role="status"
@@ -60,30 +73,58 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
           <span>Your own deadlines could not load right now.</span>
         </p>
       )}
-      {items.length === 0 ? (
+      {total === 0 ? (
         <p className="text-sm text-fg-2">Nothing due in the next two weeks.</p>
+      ) : forYou.length === 0 ? (
+        <p className="text-sm text-fg-2" data-testid="due-for-you-none">
+          Nothing due for you in the next two weeks.
+        </p>
       ) : (
-        <ol className="-mt-1 divide-y divide-line" aria-label="Due in the next two weeks">
-          {shown.map(({ item, label }) => (
-            <DueSoonRow key={item.id} item={item} label={label} />
-          ))}
+        <ol
+          className="-mt-1 divide-y divide-line"
+          aria-label="Due for you in the next two weeks"
+          data-testid="due-for-you"
+        >
+          {rows(forYou)}
         </ol>
       )}
-      {more > 0 ? (
-        <p className="mt-2 text-sm text-fg-3">And {more} more in the next two weeks.</p>
+      {also.length + more.length > 0 ? (
+        <div className="mt-3 border-t border-line pt-3" data-testid="due-also">
+          <h3 id="due-soon-also" className="text-sm font-semibold text-fg-2">
+            Also in the next two weeks
+          </h3>
+          {also.length > 0 ? (
+            <ol className="divide-y divide-line" aria-labelledby="due-soon-also">
+              {rows(also)}
+            </ol>
+          ) : null}
+          {more.length > 0 ? (
+            <ShowMore count={more.length} context="in the next two weeks">
+              <ol
+                className="divide-y divide-line border-t border-line"
+                aria-label="More in the next two weeks"
+              >
+                {rows(more)}
+              </ol>
+            </ShowMore>
+          ) : null}
+        </div>
       ) : null}
     </SectionCard>
   );
 }
 
 function DueSoonRow({ item, label }: { item: DueSoonItem; label: string }) {
-  const urgent = !item.endDay && label.startsWith("Today");
+  // Red is for now, and for the student's own rows due today (PLAN §7): never another class year's deadline.
+  const urgent = item.forYou && !item.endDay && label.startsWith("Today");
   const title = item.label ? `${item.title}: ${item.label}` : item.title;
   return (
     <li
       data-testid="due-soon-item"
       data-aggregated={item.source}
       data-kind={item.kind}
+      data-for-you={item.forYou ? "true" : "false"}
+      data-urgent={urgent ? "true" : undefined}
       className="relative flex min-h-11 items-start justify-between gap-3 py-3"
     >
       <div className="min-w-0">
