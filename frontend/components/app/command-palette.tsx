@@ -356,7 +356,7 @@ function PaletteBody({
           </span>
           <kbd
             aria-hidden
-            className="hidden rounded-xs border border-line-2 bg-surface px-1.5 text-xs text-fg-3 md:inline"
+            className="hidden rounded-xs border border-line-2 bg-surface px-1.5 font-sans text-xs text-fg-3 md:inline"
           >
             Esc
           </kbd>

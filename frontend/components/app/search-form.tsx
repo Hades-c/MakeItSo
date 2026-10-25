@@ -53,7 +53,7 @@ export function SearchForm({ className }: { className?: string }) {
       >
         <kbd
           aria-hidden
-          className="rounded-xs border border-line-2 bg-surface px-1.5 text-xs text-fg-3"
+          className="rounded-xs border border-line-2 bg-surface px-1.5 font-sans text-xs text-fg-3"
         >
           {apple ? "⌘K" : "Ctrl K"}
         </kbd>

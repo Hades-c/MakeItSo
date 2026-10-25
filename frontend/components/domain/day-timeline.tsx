@@ -188,10 +188,11 @@ export function DayTimeline({
           {nowShown ? (
             <span
               data-testid="now-pill"
-              className="absolute right-1 z-10 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-full bg-urgent-fill py-0.5 pr-1.5 pl-1 text-xs leading-4 font-semibold whitespace-nowrap text-on-urgent tabular-nums"
+              className="absolute -right-1.5 z-10 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-full bg-urgent-fill px-1 py-0.5 text-xs leading-4 font-semibold whitespace-nowrap text-on-urgent"
               style={{ top: percent(layout.now!) }}
             >
-              {/* Red is also the accent, so "now" is never colour alone: the clock glyph and the time. */}
+              {/* Red is also the accent, so "now" is never colour alone: the clock glyph and the time. The pill
+                  reaches 6px past the gutter, over the now-line's start: blocks begin 10px into the column. */}
               <Clock aria-hidden className="size-3 shrink-0" />
               {clockLabel(nowMinute)}
             </span>
