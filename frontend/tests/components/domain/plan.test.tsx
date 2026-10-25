@@ -72,6 +72,23 @@ describe("PlanMap", () => {
     expect(plannedSeg!.style.width).toBe("3.125%");
   });
 
+  it("keeps red for now: planned is grey stripes and the key is neutral, like the cells", () => {
+    render(<PlanMap terms={PLAN} requiredCredits={32} />);
+    const bar = screen.getByRole("img", { name: /^12 of 32 credits/ });
+    const [, nowSeg, plannedSeg] = [...bar.children] as HTMLElement[];
+    expect(nowSeg).toHaveClass("bg-primary-fill");
+    // The same "planned" as the map's dark dashed outline, not red stripes.
+    expect(plannedSeg).toHaveClass("bg-stripes-planned");
+    expect(bar.parentElement!.innerHTML).not.toMatch(/stripes-primary/);
+    // In-progress cells take their course's colour, so the key's swatch is a neutral solid outline.
+    const key = screen.getByRole("list", { name: "Key" });
+    expect(within(key).getByText("In progress").querySelector("span")).toHaveClass(
+      "border-fg-2",
+      "bg-surface-2",
+    );
+    expect(key.innerHTML).not.toMatch(/primary/);
+  });
+
   it("shows every term in one row with status in words, never by hue alone", () => {
     const { container } = render(<PlanMap terms={PLAN} requiredCredits={32} />);
     const row = rowView(container);

@@ -482,13 +482,13 @@
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
-/* "Planned" on progress bars: red stripes, so it reads differently from the solid "in progress" fill without relying
- * on colour. */
-@utility bg-stripes-primary {
+/* "Planned" on progress bars: dark grey stripes, so it reads differently from the solid fills without relying on
+ * colour, and matches the dark dashed "Planned" outline of the plan map (red is not a status colour). */
+@utility bg-stripes-planned {
   background-image: repeating-linear-gradient(
     135deg,
-    var(--primary-fill) 0 2px,
-    var(--primary-wash) 2px 4.5px
+    var(--fg-2) 0 2px,
+    var(--surface-2) 2px 4.5px
   );
 }
 

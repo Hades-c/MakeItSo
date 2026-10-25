@@ -84,7 +84,8 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
           {group.label}
           {group.isCurrent ? <span className="text-xs font-semibold text-primary">Now</span> : null}
           {group.isRegistration ? (
-            <span className="text-xs font-semibold text-primary">Registration term</span>
+            // The next term, not now: neutral (red marks "Now" only).
+            <span className="text-xs font-semibold text-fg-2">Registration term</span>
           ) : null}
           <span className="text-xs font-medium text-fg-3">{creditsText(group.credits)}</span>
         </h3>

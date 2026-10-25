@@ -60,7 +60,7 @@ function cellClasses(cell: PlanCell): string {
   if (cell.status === "in-progress") {
     return cn(
       "border-[1.5px]",
-      colors ? cn(colors.chip, colors.border) : "border-primary bg-primary-wash text-primary",
+      colors ? cn(colors.chip, colors.border) : "border-fg-2 bg-surface-2 text-fg",
     );
   }
   return cn(
@@ -208,7 +208,7 @@ export function PlanMap({
               style={{ width: percent(share(totals.inProgress, requiredCredits)) }}
             />
             <span
-              className="bg-stripes-primary"
+              className="bg-stripes-planned"
               style={{ width: percent(share(totals.planned, requiredCredits)) }}
             />
           </div>
@@ -225,7 +225,7 @@ export function PlanMap({
               {totals.inProgress} in progress
             </li>
             <li className="flex items-center gap-1.25">
-              <span className="size-2 rounded-[2px] bg-stripes-primary" />
+              <span className="size-2 rounded-[2px] bg-stripes-planned" />
               {totals.planned} planned
             </li>
           </ul>
@@ -283,9 +283,10 @@ export function PlanMap({
           Done
         </li>
         <li className="flex items-center gap-1.5">
+          {/* Neutral, like the other swatches: in-progress cells take their course's colour, never red. */}
           <span
             aria-hidden
-            className="size-3 rounded-[3px] border-[1.5px] border-primary bg-primary-wash"
+            className="size-3 rounded-[3px] border-[1.5px] border-fg-2 bg-surface-2"
           />
           In progress
         </li>

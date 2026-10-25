@@ -286,6 +286,10 @@ describe("4-year plan tab", () => {
     const terms = screen.getAllByTestId("plan-term").map((el) => el.getAttribute("data-term"));
     // Summers only with something in them; AP before Davidson first.
     expect(terms).toEqual(["none", "202501", "202502", "202601", "202602", "202701"]);
+    // Red marks "Now" only: the registration term is the next one, in grey.
+    expect(screen.getByText("Now")).toHaveClass("text-primary");
+    expect(screen.getByText("Registration term")).toHaveClass("text-fg-2");
+    expect(screen.getByText("Registration term")).not.toHaveClass("text-primary");
     expect(
       screen.getByRole("checkbox", { name: "First Lifetime Activity course done" }),
     ).toBeChecked();
