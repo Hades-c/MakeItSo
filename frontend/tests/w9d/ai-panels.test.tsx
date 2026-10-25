@@ -89,6 +89,16 @@ describe("CareerAiPanels", () => {
     expect(names.some((n) => n?.includes("Thomas Marshburn"))).toBe(false);
   });
 
+  it("keeps one red button on the page: the career plan, not the e-mail beside it", async () => {
+    await renderPanels();
+    expect(screen.getByRole("button", { name: "Draft my career plan" })).toHaveClass(
+      "bg-primary-fill",
+    );
+    const email = screen.getByRole("button", { name: "Draft an email" });
+    expect(email.className).not.toMatch(/\bbg-primary-fill\b/);
+    expect(email).toHaveClass("border-line-strong");
+  });
+
   it("the Alumni section off: the career plan only", async () => {
     vi.stubEnv("FEATURE_ALUMNI", "false");
     await renderPanels();
