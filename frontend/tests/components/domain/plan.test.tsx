@@ -503,7 +503,7 @@ describe("SeatBar", () => {
 describe("RatingSummary", () => {
   const RMP = "https://www.ratemyprofessors.com/professor/123456";
 
-  it("shows the rating, count, an RMP source tag, the sync date as text, and a safe link", () => {
+  it("shows the rating, count, the sync date as text, and the source once, as a safe link", () => {
     render(
       <RatingSummary
         status="matched"
@@ -518,19 +518,23 @@ describe("RatingSummary", () => {
     );
     expect(screen.getByText("3.7")).toBeInTheDocument();
     expect(screen.getByText("21 ratings for Daniel Aldridge")).toBeInTheDocument();
-    const tag = screen.getByText("RateMyProfessors", {
-      selector: "[data-source] *, [data-source]",
-    });
-    expect(tag.closest("[data-source]")).toHaveAttribute("data-source", "ratemyprofessors");
-    // The date is printed, not hidden in a hover/focus tooltip (phones can see it), and the tag is not a tab stop.
+    // The date is printed, not hidden in a hover/focus tooltip (phones can see it).
     const asOf = screen.getByText("as of Sep 30, 2026");
     expect(asOf).toBeVisible();
     expect(asOf.closest(".sr-only")).toBeNull();
-    expect(tag.closest("[data-source]")).not.toHaveAttribute("tabindex");
-    const link = screen.getByRole("link", { name: /RateMyProfessors: Daniel Aldridge’s page/ });
+    // One provenance line: the date, then the source named once as the profile link (no tag beside a link).
+    const line = screen.getByTestId("rating-source");
+    expect(seenText(line)).toBe("as of Sep 30, 2026 · RateMyProfessors");
+    const link = screen.getByRole("link", {
+      name: "Source: RateMyProfessors, Daniel Aldridge’s page (opens in a new tab)",
+    });
+    expect(link).toHaveAttribute("data-source", "ratemyprofessors");
     expect(link).toHaveAttribute("href", RMP);
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(line.querySelectorAll("[data-source]")).toHaveLength(1);
+    // A 44px target on phones.
+    expect(link).toHaveClass("min-h-11");
   });
 
   it("renders nothing, or a quiet 'No rating', without a match", () => {
@@ -545,30 +549,6 @@ describe("RatingSummary", () => {
     expect(screen.getByText("No rating")).toBeInTheDocument();
     rerender(<RatingSummary status="matched" avgRating={4} numRatings={0} empty="quiet" />);
     expect(screen.getByText("No ratings yet")).toBeInTheDocument();
-  });
-
-  it("has a compact form with the date and a short RMP link", () => {
-    render(
-      <RatingSummary
-        status="matched"
-        avgRating={4.6}
-        numRatings={1}
-        size="sm"
-        asOf="2026-09-29T09:00:00Z"
-        url={RMP}
-        instructorName="Daniel Aldridge"
-        timeZone="America/New_York"
-      />,
-    );
-    const line = screen.getByText(/1 rating/);
-    expect(seenText(line)).toBe("1 rating · as of Sep 29, 2026");
-    expect(spokenText(line)).toBe("1 rating for Daniel Aldridge, as of Sep 29, 2026");
-    const link = screen.getByRole("link", { name: /^RMP: Daniel Aldridge on RateMyProfessors/ });
-    expect(link).toHaveAttribute("href", RMP);
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(link).toHaveAttribute("target", "_blank");
-    // A 44px target on phones.
-    expect(link).toHaveClass("max-md:min-h-11");
   });
 
   it("adds the difficulty, 'would take again' and the most common tags, labelled and in plain words", () => {
@@ -597,16 +577,17 @@ describe("RatingSummary", () => {
     expect(seenText(block)).toBe(
       "3.7 / 5 21 ratings for Daniel Aldridge · Difficulty 2.6 of 5 · 67% would take again " +
         "Most common tags (from 21 ratings, as of Oct 25, 2026): Participation matters (12), " +
-        "Get ready to read (9), Caring (8) · via RateMyProfessors " +
-        "RateMyProfessors as of Sep 30, 2026 RateMyProfessors",
+        "Get ready to read (9), Caring (8) as of Sep 30, 2026 · RateMyProfessors",
     );
     // The two numbers out of 5 are told apart: "Rating" is read out, "Difficulty" is printed.
     expect(spokenText(block)).toContain(
       "Rating 3.7 out of 5 21 ratings for Daniel Aldridge, Difficulty 2.6 of 5, 67% would take again " +
         "Most common tags (from 21 ratings, as of Oct 25, 2026): Participation matters (12 ratings), " +
-        "Get ready to read (9 ratings), Caring (8 ratings), via RateMyProfessors " +
-        "Source: RateMyProfessors",
+        "Get ready to read (9 ratings), Caring (8 ratings) as of Sep 30, 2026, " +
+        "Source: RateMyProfessors, Daniel Aldridge’s page (opens in a new tab)",
     );
+    // The source is said once: no "via" on the tags line, no tag beside the link.
+    expect(seenText(block).match(/RateMyProfessors/g)).toHaveLength(1);
     // Sentence case text, no chips or boxes for the new parts.
     const tags = screen.getByTestId("rating-tags");
     expect(tags.tagName).toBe("P");
@@ -626,6 +607,9 @@ describe("RatingSummary", () => {
       />,
     );
     expect(seenText(container)).toBe("4.0 / 5 3 ratings RateMyProfessors");
+    // No profile link: the source in words all the same, for screen readers too.
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(spokenText(container)).toContain("Source: RateMyProfessors");
     rerender(
       <RatingSummary
         status="matched"
@@ -672,7 +656,7 @@ describe("RatingSummary", () => {
     );
     // Without a count date, the line still says how many ratings it is from.
     expect(seenText(screen.getByTestId("rating-tags"))).toBe(
-      "Most common tags (from 3 ratings): Caring (2) · via RateMyProfessors",
+      "Most common tags (from 3 ratings): Caring (2)",
     );
   });
 
@@ -691,42 +675,12 @@ describe("RatingSummary", () => {
     );
     // Two ratings: "0% would take again" or "Difficulty 1.0" would be about two students.
     expect(seenText(container)).toBe("1.2 / 5 2 ratings RateMyProfessors");
-    rerender(<RatingSummary {...props} numRatings={2} size="sm" />);
-    expect(seenText(container)).toBe("1.2 2 ratings RateMyProfessors");
     rerender(<RatingSummary {...props} numRatings={3} tagRatingsCounted={3} />);
     expect(seenText(container)).toBe(
       "1.2 / 5 3 ratings · Difficulty 1.0 of 5 · 0% would take again " +
-        "Most common tags (from 3 ratings): Caring (2) · via RateMyProfessors RateMyProfessors",
+        "Most common tags (from 3 ratings): Caring (2) RateMyProfessors",
     );
-    rerender(<RatingSummary {...props} numRatings={3} size="sm" />);
-    expect(seenText(container)).toBe("1.2 3 ratings · Difficulty 1.0 of 5 RateMyProfessors");
     expect(MIN_DETAIL_RATINGS).toBe(3);
-  });
-
-  it("compact form: the rating and the difficulty only", () => {
-    render(
-      <RatingSummary
-        status="matched"
-        avgRating={4.2}
-        numRatings={17}
-        avgDifficulty={3}
-        wouldTakeAgainPct={80}
-        topTags={[{ tag: "Caring", count: 8 }]}
-        tagRatingsCounted={17}
-        size="sm"
-        asOf="2026-09-28T10:00:00Z"
-        instructorName="Katy Williams"
-        timeZone="America/New_York"
-      />,
-    );
-    const line = screen.getByText(/17 ratings/).closest("p")!;
-    expect(seenText(line)).toBe(
-      "4.2 17 ratings · Difficulty 3.0 of 5 · as of Sep 28, 2026 RateMyProfessors",
-    );
-    expect(spokenText(line)).toBe(
-      "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, as of Sep 28, 2026 " +
-        "Source: RateMyProfessors",
-    );
   });
 
   it("keeps the name for screen readers only when the caller already shows it", () => {
@@ -749,7 +703,6 @@ describe("RatingSummary", () => {
         status="matched"
         avgRating={4.6}
         numRatings={1}
-        size="sm"
         url="https://evil.example/rmp"
       />,
     );

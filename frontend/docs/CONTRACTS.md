@@ -105,14 +105,18 @@ The frozen interfaces every workstream codes against. They change only through t
   and its count, from one rating; difficulty and "would take again", from three ratings (`MIN_DETAIL_RATINGS`,
   `components/domain/rating-summary.tsx`: with one or two they read 0% or 100% about a named professor); the most
   common tags, from three counted ratings, each used at least twice, at most three, on a line with its own freshness,
-  "Most common tags (from 39 ratings, as of Oct 25, 2026): … · via RateMyProfessors" (`rmp.tagRatingsCounted` and
-  `rmp.tagsAsOf`, the daily count; the roster's `asOf` dates the rest); the source tag and the profile link. No
-  review text, and no ratings on /courses rows or career cards.
+  "Most common tags (from 39 ratings, as of Oct 25, 2026): …" (`rmp.tagRatingsCounted` and `rmp.tagsAsOf`, the
+  daily count); then ONE provenance line, the roster's `asOf` and the source named once as the profile link, "as of
+  Oct 22, 2026 · RateMyProfessors ↗" (`SourceLink` in `components/ui/source-tag.tsx`: `data-source` and the
+  "Source: RateMyProfessors" name, like a SourceTag; never a tag beside a separately worded link). All of it once
+  per instructor, in "Instructors on RateMyProfessors": the section rows list instructors by name only. No review
+  text, and no ratings on section rows, /courses rows or career cards.
 - `rmp.tagsAsOf`: when the tags were counted (`rmpteachers.tagsFetchedAt`), null until counted or with no ratings.
 - "Instructors on RateMyProfessors" is its own component, `InstructorRatings`
   (`app/(hub)/courses/_components/instructor-ratings.tsx`), fed by `ratedInstructors(sections, ratings)`: each
-  rated instructor once, in section order, Staff left out. A course page layout places it (today under the
-  sections; M6 may move it to a hoisted "Both sections:" line or to each section row) without touching it.
+  rated instructor once, in section order, Staff left out. It is the only place a course page shows RMP data; a
+  layout may move it (today under the sections, above the matching-rule footnote, which appears once) without
+  touching it.
 - Tag counts (`server/rmp/tags.ts`, the daily cron): a teacher whose own answer is unusable (missing, null,
   malformed, or a cursor that does not move) is skipped and marked, `tagsFailures` + 1 and `tagsRetryAt` (1 day,
   doubling per failure in a row, at most 30), and is not due until then, so a few bad teachers at the front of the

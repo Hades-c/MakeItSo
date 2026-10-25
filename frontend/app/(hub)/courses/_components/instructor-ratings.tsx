@@ -7,9 +7,11 @@ import { instructorKeyOf, type RatingsLookup } from "../_lib/ratings";
 
 /**
  * "Instructors on RateMyProfessors": each rated instructor once, with what RMP says about them (rating and count,
- * difficulty, would take again, the most common tags with their own count and date, the source and the profile
- * link). Self-contained and fed by a de-duplicated instructor list (ratedInstructors), so the course page can
- * place it anywhere: today under the sections, later on a hoisted "Both sections:" line or per section row.
+ * difficulty, would take again, the most common tags with their own count and date) and one provenance line, the
+ * roster's "as of" date and the source named once as the link to the profile ("as of Oct 22, 2026 ·
+ * RateMyProfessors ↗"). The only place a course page shows RMP data: the section rows list instructors by name
+ * only. Self-contained and fed by a de-duplicated instructor list (ratedInstructors), so the course page can place
+ * it anywhere (today under the sections).
  */
 
 export type MatchedRating = InstructorRating & { rmp: RmpRating };

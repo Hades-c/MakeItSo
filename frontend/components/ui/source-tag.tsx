@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import { SOURCES, type SourceId } from "@/lib/sources";
 import { DEFAULT_TIME_ZONE, formatAsOf } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,50 @@ export function SourceTag({
         {asOfText}
       </span>
     </span>
+  );
+}
+
+export interface SourceLinkProps {
+  source: SourceId;
+  /** The item's own page at the source; the caller checks it (https, the source's host). null: plain text. */
+  href: string | null;
+  /** What the link opens, read after the source's name: "Arianna Smith’s page". */
+  what?: string;
+  className?: string;
+}
+
+/**
+ * The source named once, as the link to the item's own page there ("RateMyProfessors ↗"), for an item that links
+ * its source page: a SourceTag beside a separately worded link would say the source twice. It keeps the SourceTag
+ * contract, `data-source` and the "Source: <label>" accessible name (expectAllTagged, expectAllAttributed), and a
+ * new-tab link says so. Without a link it is the same words as plain text.
+ */
+export function SourceLink({ source, href, what, className }: SourceLinkProps) {
+  const label = SOURCES[source].label;
+  if (!href) {
+    return (
+      <span className={className} data-source={source}>
+        <span className="sr-only">Source: </span>
+        {label}
+      </span>
+    );
+  }
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-source={source}
+      className={cn(
+        "inline-flex min-h-11 items-center gap-1 rounded-xs font-semibold text-primary hover:underline md:min-h-0",
+        className,
+      )}
+    >
+      {/* The space outside the hidden span: accessible-name algorithms trim each element's own text. */}
+      <span className="sr-only">Source:</span> {label}
+      <ArrowUpRight aria-hidden className="size-3.5" />
+      <span className="sr-only">{what ? `, ${what}` : ""} (opens in a new tab)</span>
+    </a>
   );
 }
 
