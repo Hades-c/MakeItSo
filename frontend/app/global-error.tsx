@@ -1,8 +1,13 @@
 "use client";
 
 import "./globals.css";
+import { fontVariables } from "./fonts";
 
-/** Last-resort boundary when the root layout itself fails. Must render its own <html> and <body>. */
+/**
+ * Last-resort boundary when the root layout itself fails. Must render its own <html> and <body>, and with them the
+ * font variables the layout would have set (app/fonts.ts): without them `font-display` and `font-sans` have no
+ * family to resolve, and the page fell back to the browser's sans-serif.
+ */
 export default function GlobalError({
   error,
   reset,
@@ -11,7 +16,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={fontVariables}>
       <body className="flex min-h-dvh items-center justify-center px-4">
         <main role="alert" className="max-w-md text-center">
           <h1 className="font-display text-xl font-strong">MakeItSo could not load</h1>

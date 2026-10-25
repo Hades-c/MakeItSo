@@ -11,7 +11,7 @@
  * now pill carries a clock icon, an urgent due label an alarm icon and its words, destructive actions are outlined
  * with a trash icon and words (and ask first), errors carry an icon. Status green and amber appear as icon + words.
  * Focus rings stay Lake Blue, never red. Values: aesthetics/white-red-aa (contrast.md there checks every pair).
- * Type: see app/layout.tsx (Inter; Playfair Display bold through `font-display`; IBM Plex Mono for codes only).
+ * Type: see app/fonts.ts (Inter; Playfair Display bold through `font-display`; IBM Plex Mono for codes only).
  *
  * This file is the ONLY place colours are written as raw values. Components use the Tailwind utilities generated
  * from the @theme blocks below (bg-surface, text-fg-2, border-line, text-course-pine, ...). The default Tailwind
@@ -308,7 +308,7 @@
 }
 
 @theme inline {
-  /* Fonts (next/font variables from app/layout.tsx). font-display: Playfair Display bold for the wordmark, page
+  /* Fonts (next/font variables from app/fonts.ts). font-display: Playfair Display bold for the wordmark, page
    * titles and card/section titles only, with lining figures so times and course numbers in a title sit on the
    * line. font-mono: course codes, CRNs and the verification code only. */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
