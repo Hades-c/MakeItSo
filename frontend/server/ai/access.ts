@@ -26,6 +26,8 @@ import { loadFlags } from "@/server/features";
  * and privacy rule: server/content alumniForCareer, app/(hub)/alumni/_lib/access.ts). Legacy non-Davidson accounts
  * stay locked either way. Consent, the 18+ attestation, quotas and AI_DAILY_TOKEN_BUDGET are unchanged, and
  * reports from unverified accounts do not count toward hiding a shared answer (server/ai/reports.ts, permanent).
+ * Known risk, left to the owner: a quota then limits an address nobody has proven they own, so the daily token
+ * budget is the only real cost limit, and a few throwaway sign-ups can use it up for everyone (README, CONTRACTS).
  */
 
 /** AI features that stay verified-only whatever the switch says: they use alumni data. */

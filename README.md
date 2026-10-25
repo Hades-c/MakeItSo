@@ -164,6 +164,14 @@ quotas and the daily token budget are unchanged, and "Report this" from an unver
 answer (`frontend/server/ai/access.ts`, `frontend/docs/CONTRACTS.md`). When the switch is removed, that report rule
 stays: reports kept from unverified accounts must go on not counting (CONTRACTS.md, "Removing the switch").
 
+**Cost risk while it is on**: the per-student quotas (20 generations a day) then limit addresses nobody has proven
+they own. Sign-up sends no mail, accepts any @davidson.edu address and allows 5 accounts an hour per IP, so each
+throwaway account gets its own quota, and `AI_DAILY_TOKEN_BUDGET` (input, output and cache tokens of everyone) is
+the only real cost limit. A handful of such accounts can use up the whole budget (one plan-suggestions or
+career-plan model call may use up to 12,000 output tokens), which costs the full budget that day and shows "AI is
+paused for today" to every student until midnight in Davidson. Set the budget to what you are willing to spend in a
+day, and keep the Anthropic workspace's spend limit, while the switch is on.
+
 Production (`next start` and every Vercel deployment) also checks that the Vercel production environment does not
 use `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures`, the console mailer or `FIXTURES_NOW`, and `RATE_LIMITS=off` is
 refused anywhere without `EXTERNAL_MODE=fixtures`. A bad value fails the request that needs it with a 500 and a

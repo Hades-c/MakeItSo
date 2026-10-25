@@ -223,7 +223,14 @@ like `getFlags()`) or `loadAiAllowsUnverified()` for pages and copy (never throw
   says: `alumniForCareer`, the alumni pages, the search provider and `defineRoute` `verified` use
   `isVerifiedDavidsonUser`.
 - Consent and the 18+ attestation are still required (the Profile AI section lets any signed-in student consent);
-  per-user quotas, AI_DAILY_TOKEN_BUDGET and the payload allow-lists are unchanged.
+  per-user quotas, AI_DAILY_TOKEN_BUDGET and the payload allow-lists are unchanged. **Known risk (owner
+  decision)**: with the switch on, a quota limits an address nobody has proven they own (registration sends no
+  mail and allows 5 accounts an hour per IP), so `AI_DAILY_TOKEN_BUDGET` is the only real cost limit, and a few
+  throwaway sign-ups can use it up: the owner pays the full budget that day and every student sees "AI is paused
+  for today". Options that add a limit without changing the existing ones (none built): a token sub-budget for
+  accounts verified only through the switch, a lower generation quota for them, or a per-IP limit on the
+  generating routes while the switch is on. Today every production account is unverified (no mail provider), so
+  each of these would also limit every real student.
 - "Report this": only reports from a verified @davidson.edu mailbox count toward `REPORTS_TO_HIDE`
   (`reports.entries[].verified: false` is kept for the admin but left out of `REPORTER_COUNT`; reports from before
   the switch have no `verified` field and count). **This rule is permanent**: the `verified` field and the

@@ -426,6 +426,23 @@ describe("quota and budget", () => {
     expect(mockAiRequests()).toHaveLength(0);
   });
 
+  it("AI_ALLOW_UNVERIFIED on: each unverified account has its own quota, and the one shared budget is what stops them all (the documented cost risk)", async () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    // A throwaway sign-up uses its whole quota...
+    const first = await signIn({ verified: false });
+    for (let i = 0; i < DAILY_GENERATION_QUOTA; i++) await consumeGenerationQuota(first.id);
+    expect((await post(CSC_221)).status).toBe(429);
+    // ...and the next one at another unproven address starts with a full quota of its own.
+    await signIn({ verified: false });
+    expect((await post(CSC_221)).status).toBe(200);
+    // Their tokens count toward AI_DAILY_TOKEN_BUDGET, which then pauses verified students too.
+    vi.stubEnv("AI_DAILY_TOKEN_BUDGET", String(await tokensUsedToday()));
+    await signIn();
+    const paused = await post({ termCode: "202602", courseCode: "CSC 121" });
+    expect(paused.status).toBe(503);
+    expect((await bodyOf(paused)).kind).toBe("budget");
+  });
+
   it("answers budget (503) once the day's tokens reach AI_DAILY_TOKEN_BUDGET, but still serves cached entries", async () => {
     await signIn();
     expect((await post(CSC_221)).status).toBe(200);
