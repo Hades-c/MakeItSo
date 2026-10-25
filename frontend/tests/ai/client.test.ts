@@ -67,6 +67,15 @@ function fakeClient(
   return { client: { beta: { messages: { create } } }, create };
 }
 
+/** What the Messages API answers: the mock's message shape with the real model ids (only this fake SDK uses them). */
+function sdkMessage(options: Parameters<typeof mockMessage>[0] = {}) {
+  return mockMessage({
+    model: options.fallback ? "claude-sonnet-5" : "claude-sonnet-5-5",
+    declinedModel: "claude-sonnet-5-5",
+    ...options,
+  });
+}
+
 function failingClient(error: unknown) {
   return fakeClient(() => {
     throw error;
@@ -88,7 +97,7 @@ afterEach(() => {
 
 describe("the request (PLAN §6.1 W6 call shape)", () => {
   it("sends Claude Sonnet 5.5 with server-side fallback, effort, the zod output format and a cached system prompt", async () => {
-    const { client, create } = fakeClient(() => mockMessage({ text: okText }));
+    const { client, create } = fakeClient(() => sdkMessage({ text: okText }));
     await run(client);
     expect(create).toHaveBeenCalledTimes(1);
     const params = create.mock.calls[0]![0];
@@ -146,7 +155,7 @@ describe("the request (PLAN §6.1 W6 call shape)", () => {
   it("uses the mock provider with AI_PROVIDER=mock, and a test override before anything", async () => {
     vi.stubEnv("AI_PROVIDER", "mock");
     expect(defaultTransport()).toBe(mockTransport);
-    const override = vi.fn(async () => mockMessage({ text: okText }));
+    const override = vi.fn(async () => sdkMessage({ text: okText }));
     setAiTransportForTests(override);
     expect(defaultTransport()).toBe(override);
     const outcome = await generate(Schema, REQUEST);
@@ -187,7 +196,7 @@ describe("time: every call is capped by the request's deadline", () => {
 
   it("starts no call with less than the minimum left: a timeout, no request", async () => {
     expect(callBudget(NOW + AI_MIN_CALL_MS - 1, NOW)).toBeNull();
-    const { client, create } = fakeClient(() => mockMessage({ text: okText }));
+    const { client, create } = fakeClient(() => sdkMessage({ text: okText }));
     const outcome = await generate(Schema, REQUEST, {
       transport: sdkTransport(client),
       deadlineAt: Date.now() + 1_000,
@@ -198,7 +207,7 @@ describe("time: every call is capped by the request's deadline", () => {
   });
 
   it("passes timeout, maxRetries and an abort signal to the SDK per request", async () => {
-    const { client, create } = fakeClient(() => mockMessage({ text: okText }));
+    const { client, create } = fakeClient(() => sdkMessage({ text: okText }));
     await generate(Schema, REQUEST, {
       transport: sdkTransport(client),
       deadlineAt: Date.now() + 70_000,
@@ -229,7 +238,7 @@ describe("time: every call is capped by the request's deadline", () => {
 describe("result handling, in order", () => {
   it("ok: parses and validates the text, with the served model and no fallback", async () => {
     const { client } = fakeClient(() =>
-      mockMessage({ text: okText, inputTokens: 120, outputTokens: 30 }),
+      sdkMessage({ text: okText, inputTokens: 120, outputTokens: 30 }),
     );
     expect(await run(client)).toEqual({
       kind: "ok",
@@ -241,7 +250,7 @@ describe("result handling, in order", () => {
   });
 
   it("refusal → refused, before looking at any text (an answer: origin response)", async () => {
-    const { client } = fakeClient(() => mockMessage({ text: okText, stopReason: "refusal" }));
+    const { client } = fakeClient(() => sdkMessage({ text: okText, stopReason: "refusal" }));
     const outcome = await run(client);
     expect(outcome).toMatchObject({
       kind: "refused",
@@ -253,7 +262,7 @@ describe("result handling, in order", () => {
 
   it("max_tokens and the context window → truncated", async () => {
     for (const stopReason of ["max_tokens", "model_context_window_exceeded"] as const) {
-      const { client } = fakeClient(() => mockMessage({ text: okText, stopReason }));
+      const { client } = fakeClient(() => sdkMessage({ text: okText, stopReason }));
       expect(await run(client)).toMatchObject({ kind: "truncated", origin: "response" });
     }
   });
@@ -261,7 +270,7 @@ describe("result handling, in order", () => {
   it("no text, text that is not JSON, and JSON that fails the schema → invalid", async () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     for (const text of [null, "Sure! {not json", JSON.stringify({ summary: 3 })]) {
-      const { client } = fakeClient(() => mockMessage({ text }));
+      const { client } = fakeClient(() => sdkMessage({ text }));
       expect(await run(client)).toMatchObject({ kind: "invalid", origin: "response" });
     }
     expect(errors).toHaveBeenCalledTimes(3);
@@ -271,7 +280,7 @@ describe("result handling, in order", () => {
 
   it("a fallback-served answer: fallbackUsed from usage.iterations, servedModel = res.model, text after the boundary", async () => {
     const { client } = fakeClient(() =>
-      mockMessage({
+      sdkMessage({
         fallback: true,
         text: okText,
         inputTokens: 200,
@@ -308,7 +317,7 @@ describe("result handling, in order", () => {
   });
 
   it("sums usage over iterations, falling back to the top-level usage", () => {
-    const message = mockMessage({ inputTokens: 10, outputTokens: 5 });
+    const message = sdkMessage({ inputTokens: 10, outputTokens: 5 });
     expect(tokenUsage({ ...message.usage, iterations: null, cache_read_input_tokens: 7 })).toEqual({
       inputTokens: 10,
       outputTokens: 5,

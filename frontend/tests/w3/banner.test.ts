@@ -2,7 +2,7 @@ import type { Session } from "next-auth";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
 import { insertUser, sessionFor, stubAuthEnv, stubNowPlus } from "./helpers";
-import { verifyBannerFor } from "@/server/auth/banner";
+import { verifyBannerFor, verifyStepFor } from "@/server/auth/banner";
 import { resolveSessionUser } from "@/server/auth/session";
 import { now } from "@/server/clock";
 import { getDb } from "@/server/db";
@@ -86,5 +86,24 @@ describe("the hub's verify banner", () => {
 
     vi.stubEnv("MAIL_PROVIDER", "none");
     expect(await verifyBannerFor(signedIn, now())).toBeNull();
+  });
+});
+
+describe("verifyStepFor (the AI gates' 'Verify your Davidson email' link)", () => {
+  it("links /verify only for an unverified @davidson.edu address while mail is available", () => {
+    const next = "/courses/202602/CSC-221";
+    expect(verifyStepFor({ email: "fresh@davidson.edu", emailVerifiedAt: null }, next)).toBe(
+      "/verify?reason=davidson&next=%2Fcourses%2F202602%2FCSC-221",
+    );
+    // A legacy non-Davidson account: verifying would not unlock AI.
+    expect(verifyStepFor({ email: "legacy@gmail.com", emailVerifiedAt: null }, next)).toBeNull();
+    expect(
+      verifyStepFor({ email: "legacy@gmail.com", emailVerifiedAt: "2026-01-01T00:00:00Z" }, next),
+    ).toBeNull();
+    expect(
+      verifyStepFor({ email: "done@davidson.edu", emailVerifiedAt: "2026-09-01T00:00:00Z" }, next),
+    ).toBeNull();
+    vi.stubEnv("MAIL_PROVIDER", "none");
+    expect(verifyStepFor({ email: "fresh@davidson.edu", emailVerifiedAt: null }, next)).toBeNull();
   });
 });

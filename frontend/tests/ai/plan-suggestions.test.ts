@@ -29,7 +29,7 @@ import {
   NO_CANDIDATES_MESSAGE,
   withFlagNotes,
 } from "@/server/ai/features/plan-suggestions";
-import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
+import { MOCK_MODEL, mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
 import { SYSTEM } from "@/server/ai/prompts/plan-suggestions";
 import { REGENERATION_QUOTA_MESSAGE } from "@/server/ai/usage";
 import { invalidateTermIndex } from "@/server/catalog/store";
@@ -131,7 +131,7 @@ describe("retrieve-then-rank", () => {
     await signIn();
     const body = await okDraft(await post({}));
     expect(body).toMatchObject({
-      servedModel: "claude-sonnet-5-5",
+      servedModel: MOCK_MODEL,
       fallbackUsed: false,
       cached: false,
     });

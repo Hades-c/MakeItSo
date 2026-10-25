@@ -2,6 +2,8 @@ import type * as React from "react";
 import type { Metadata } from "next";
 import { ErrorState } from "@/components/ui/error-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { routes } from "@/lib/routes";
+import { verifyStepFor } from "@/server/auth/banner";
 import { requireUser } from "@/server/auth/session";
 import { now } from "@/server/clock";
 import { readEnv } from "@/server/env";
@@ -10,7 +12,8 @@ import { NextSemesterTab } from "./_components/next-semester";
 import { PlanTabs } from "./_components/plan-tabs";
 import { WebTreePrintView } from "./_components/print-view";
 import { SuggestionsTab } from "./_components/suggestions";
-import { SummerEditor } from "./_components/summer-editor";
+// The other views' islands load on demand (lazy-islands.tsx); only Next semester's ship with the page.
+import { SummerEditor } from "./_components/lazy-islands";
 import { TAB_LABELS } from "./_lib/labels";
 import { loadFourYear, loadNextSemester, loadSuggestions, loadSummer } from "./_lib/load";
 import { parsePlanParams, type SearchParamsRecord } from "./_lib/tabs";
@@ -26,8 +29,9 @@ export const metadata: Metadata = { title: "My plan" };
  *   - Suggestions: AI drafts, accepted per course (R2; explained away when AI is not available);
  *   - Summer: summer plans.
  * Server component: only the current view's data is loaded, straight from the services (server/plan, catalog,
- * the AI gate), with "now" from server/clock in APP_TIMEZONE. Client islands mutate through lib/api/plan and
- * refresh the page.
+ * the AI gate), with "now" from server/clock in APP_TIMEZONE. Only the default view's client islands are in the
+ * page's first-load JavaScript; the others load when their view is open (_components/lazy-islands.tsx). Client
+ * islands mutate through lib/api/endpoints and refresh the page.
  */
 export default async function PlanPage({
   searchParams,
@@ -52,7 +56,13 @@ export default async function PlanPage({
       body = <FourYearTab loaded={await loadFourYear(user.id)} />;
       break;
     case "suggestions":
-      body = <SuggestionsTab loaded={await loadSuggestions(user.id)} timeZone={timeZone} />;
+      body = (
+        <SuggestionsTab
+          loaded={await loadSuggestions(user.id)}
+          timeZone={timeZone}
+          verifyHref={verifyStepFor(user, routes.plan("suggestions"))}
+        />
+      );
       break;
     case "summer": {
       const loaded = await loadSummer(user.id);

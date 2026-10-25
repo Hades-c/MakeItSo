@@ -16,9 +16,10 @@ import {
   type TermCode,
 } from "@/lib/term";
 import type { ProgramOfferingKind } from "@/lib/types/catalog";
-import { SlugSchema } from "@/lib/types/common";
+import { unlistedPrograms } from "@/lib/unlisted-programs";
 import User, { type IUser } from "@/models/User";
 import { now } from "@/server/clock";
+import { isCareerSlug } from "@/server/content/careers";
 import { getDb } from "@/server/db";
 import { ApiError, zodIssues } from "@/server/http/errors";
 import { officialProgramNames } from "@/server/programs";
@@ -36,12 +37,15 @@ import { snapshotOfferingNames } from "@/server/programs/snapshot";
  *     `minor` string is mapped the same way, and dropped when it matches nothing (or is "Undecided").
  *   - graduationYear defaults to the first-year class; `standing` is derived with lib/term classStanding (a
  *     student-set standingOverride wins and is not an estimate).
- *   - Missing timestamps are null. Legacy fields (currentYear, bio, careerInterests, totalCreditsRequired) are
- *     ignored, never deleted.
+ *   - interests are the career-path slugs of server/content (the 24 careers); a stored slug that is not one (an
+ *     old or hand-edited value) is left out. Missing timestamps are null. Legacy fields (currentYear, bio,
+ *     careerInterests, totalCreditsRequired) are ignored, never deleted.
  *
  * Writing (updateProfile): the strict ProfilePatchBodySchema whitelist, then these rules:
  *   - null clears (`$unset`) the clearable fields firstTerm and standingOverride; [] clears a list;
- *   - majors/minors must be official names (max 3, de-duplicated); `major`/`minor` are mirrored for rollback;
+ *   - majors/minors must be official names or the unlisted programs (profileProgramNames: a CIS major, the Middle
+ *     East Studies minor; max 3, de-duplicated); `major`/`minor` are mirrored for rollback;
+ *   - interests must be career-path slugs (400 with path `interests.<index>` otherwise), de-duplicated;
  *   - firstTerm is a Fall or Spring term between 8 academic years before graduation and the graduation spring;
  *   - aiConsent: true needs the 18+ attestation (stored, or adultAttested: true in the same request) and sets
  *     aiConsentAt once; false clears it. adultAttested: false clears the attestation AND the consent;
@@ -114,6 +118,19 @@ export async function officialNames(kind: ProgramKind): Promise<OfficialNames> {
     }
   }
   return { names: snapshotOfferingNames(KINDS_OF[kind]), source: "snapshot" };
+}
+
+/**
+ * The names a profile may store: the official names (officialNames) followed by the programs that have no Acalog
+ * offering of their own (lib/unlisted-programs.ts: a CIS major, the Middle East Studies minor). The onboarding and
+ * profile pickers list these; updateProfile accepts exactly these.
+ */
+export async function profileProgramNames(kind: ProgramKind): Promise<OfficialNames> {
+  const official = await officialNames(kind);
+  const unlisted = unlistedPrograms(kind)
+    .map((program) => program.name)
+    .filter((name) => !official.names.includes(name));
+  return { names: [...official.names, ...unlisted], source: official.source };
 }
 
 /** "Major in Computer Science (B.S. Degree)" → "computer science"; "French & Francophone Studies" → "french and …". */
@@ -216,9 +233,13 @@ export function toProfile(
     firstTerm:
       typeof doc.firstTerm === "string" && isTermCode(doc.firstTerm) ? doc.firstTerm : null,
     standingOverride,
-    interests: (doc.interests ?? [])
-      .filter((slug): slug is string => SlugSchema.safeParse(slug).success)
-      .slice(0, 24),
+    interests: [
+      ...new Set(
+        (doc.interests ?? []).filter(
+          (slug): slug is string => typeof slug === "string" && isCareerSlug(slug),
+        ),
+      ),
+    ].slice(0, 24),
     aiConsentAt: iso(doc.aiConsentAt),
     adultAttestedAt: iso(doc.adultAttestedAt),
     onboardedAt: iso(doc.onboardedAt),
@@ -231,7 +252,10 @@ const PROFILE_FIELDS =
   "name email emailVerifiedAt majors minors major minor graduationYear firstTerm standingOverride interests aiConsentAt adultAttestedAt onboardedAt createdAt";
 
 async function loadNames() {
-  const [majors, minors] = await Promise.all([officialNames("major"), officialNames("minor")]);
+  const [majors, minors] = await Promise.all([
+    profileProgramNames("major"),
+    profileProgramNames("minor"),
+  ]);
   return { majors: majors.names, minors: minors.names };
 }
 
@@ -324,7 +348,14 @@ export async function updateProfile(userId: string, patch: ProfilePatchBody): Pr
   if (input.standingOverride === null) unset.standingOverride = "";
   else if (input.standingOverride !== undefined) set.standingOverride = input.standingOverride;
 
-  if (input.interests !== undefined) set.interests = [...new Set(input.interests)];
+  if (input.interests !== undefined) {
+    input.interests.forEach((slug, index) => {
+      if (!isCareerSlug(slug)) {
+        issues.push({ path: `interests.${index}`, message: "Pick a career path from the list." });
+      }
+    });
+    set.interests = [...new Set(input.interests)];
+  }
 
   if (input.adultAttested === true) set.adultAttestedAt = doc.adultAttestedAt ?? at;
   if (input.adultAttested === false) {

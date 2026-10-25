@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { ApiClientError, callApi } from "@/lib/api/client";
-import { planApi, type AddPlanItemBody, type UpdatePlanItemBody } from "@/lib/api/plan";
+import { planEndpoints } from "@/lib/api/endpoints";
+import type { AddPlanItemBody, UpdatePlanItemBody } from "@/lib/api/plan";
 import type { PlanItem, PlanWarning } from "@/lib/types/plan";
 import { describeFailure, type Failure } from "../_lib/errors";
 
@@ -23,7 +24,7 @@ export function usePlanItems(initial: readonly PlanItem[]) {
 
   const reload = useCallback(async () => {
     try {
-      const { plan } = await callApi(planApi.getPlan, {});
+      const { plan } = await callApi(planEndpoints.getPlan, {});
       setItems(plan.items);
     } catch {
       // Keep what is shown; the next change re-checks on the server anyway.
@@ -61,7 +62,7 @@ export function usePlanItems(initial: readonly PlanItem[]) {
     (key: string, body: AddPlanItemBody) =>
       run(key, async () => {
         try {
-          const { item, warnings } = await callApi(planApi.addItem, { body });
+          const { item, warnings } = await callApi(planEndpoints.addItem, { body });
           setItems((current) => [...current.filter((other) => other.id !== item.id), item]);
           return { ok: true, item, warnings };
         } catch (caught) {
@@ -76,7 +77,7 @@ export function usePlanItems(initial: readonly PlanItem[]) {
     (key: string, itemId: string, body: UpdatePlanItemBody) =>
       run(key, async () => {
         try {
-          const { item, warnings } = await callApi(planApi.updateItem, {
+          const { item, warnings } = await callApi(planEndpoints.updateItem, {
             params: { id: itemId },
             body,
           });
@@ -93,7 +94,7 @@ export function usePlanItems(initial: readonly PlanItem[]) {
     (key: string, itemId: string) =>
       run(key, async () => {
         try {
-          await callApi(planApi.removeItem, { params: { id: itemId } });
+          await callApi(planEndpoints.removeItem, { params: { id: itemId } });
           setItems((current) => current.filter((other) => other.id !== itemId));
           return { ok: true, warnings: [] };
         } catch (caught) {

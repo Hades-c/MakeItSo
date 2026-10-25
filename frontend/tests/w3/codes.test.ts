@@ -9,13 +9,17 @@ import {
   CODE_RETENTION_MS,
   CODE_TTL_MS,
   consumeCode,
+  consumeResetLink,
   deleteCodes,
+  findResetLink,
   generateCode,
   hashCode,
   issueCode,
+  issueResetCode,
   liveCode,
   markCodeSent,
   MAX_CODE_ATTEMPTS,
+  parseResetToken,
 } from "@/server/auth/codes";
 import { CODE_FAILURES_PER_DAY, codeFailureKey } from "@/server/auth/rate-limits";
 import { getDb } from "@/server/db";
@@ -279,5 +283,44 @@ describe("markCodeSent (start of the 24 h replacement window)", () => {
     expect(await sentAt(pending.id)).toEqual(at);
     expect(await sentAt(legacy.id)).toBeUndefined();
     expect(await sentAt(verified.id)).toBeUndefined();
+  });
+});
+
+describe("reset links (issueResetCode / findResetLink / consumeResetLink)", () => {
+  it("opens the live send once; a newer send between lookup and use makes the old link fail", async () => {
+    const id = userId();
+    const first = await issueResetCode(id, "casey@davidson.edu", at);
+    expect(first.code).toMatch(/^\d{6}$/);
+    expect(parseResetToken(first.linkToken)).toEqual({
+      userId: id,
+      secret: first.linkToken.split(".")[1],
+    });
+    const found = await findResetLink(first.linkToken, later(1000));
+    expect(found).toMatchObject({ userId: id, email: "casey@davidson.edu" });
+    // A new send replaces the document's hashes while the old link's request is in flight.
+    const second = await issueResetCode(id, "casey@davidson.edu", later(2000));
+    expect(await consumeResetLink(found!, later(3000))).toBe(false);
+    expect(await findResetLink(first.linkToken, later(3000))).toBeNull();
+    const current = await findResetLink(second.linkToken, later(3000));
+    expect(await consumeResetLink(current!, later(4000))).toBe(true);
+    expect(await consumeResetLink(current!, later(5000))).toBe(false);
+    expect(await findResetLink(second.linkToken, later(5000))).toBeNull();
+  });
+
+  it("is not blocked by a used-up code, and ends with the code's 15 minutes", async () => {
+    const id = userId();
+    const { code, linkToken } = await issueResetCode(id, "casey@davidson.edu", at);
+    const wrong = code === "000000" ? "111111" : "000000";
+    // The code's 5 attempts are spent (the day's budget is never read for a link either).
+    for (let i = 0; i < 5; i++) await consumeCode(id, "reset-password", wrong, later(i));
+    expect((await consumeCode(id, "reset-password", code, later(10))).ok).toBe(false);
+    expect(await findResetLink(linkToken, later(60_000))).not.toBeNull();
+    expect(await findResetLink(linkToken, later(15 * 60_000))).toBeNull();
+    // Verification codes carry no link.
+    await issueCode(id, "casey@davidson.edu", "verify-email", at);
+    const verify = await VerificationCode.findOne({ userId: id, purpose: "verify-email" }).lean();
+    expect(verify?.linkHash).toBeNull();
+    expect(parseResetToken("nope")).toBeNull();
+    expect(parseResetToken(`${id}.short`)).toBeNull();
   });
 });

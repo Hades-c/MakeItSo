@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -16,16 +16,20 @@ import { STANDALONE_LINK } from "@/app/(auth)/_lib/styles";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { accountApi, EmailSchema, PasswordSchema, VerificationCodeSchema } from "@/lib/api/account";
+import { EmailSchema, PasswordSchema, VerificationCodeSchema } from "@/lib/api/account";
 import { ApiClientError, callApi } from "@/lib/api/client";
-import { routes } from "@/lib/routes";
+import { accountEndpoints } from "@/lib/api/endpoints";
+import { resetTokenFromHash, routes } from "@/lib/routes";
 
-type Errors = Partial<Record<"email" | "code" | "newPassword" | "form", string>>;
+type Errors = Partial<Record<"email" | "code" | "newPassword" | "token" | "form", string>>;
 
 const EMAIL_FIELDS: FieldSpecs<"email"> = { email: { id: "email", label: "Email" } };
 const RESET_FIELDS: FieldSpecs<"code" | "newPassword"> = {
   code: { id: "code", label: "Reset code" },
   newPassword: { id: "new-password", label: "New password" },
+};
+const LINK_FIELDS: FieldSpecs<"newPassword"> = {
+  newPassword: { id: "link-new-password", label: "New password" },
 };
 const ALL_FIELDS: FieldSpecs<"email" | "code" | "newPassword"> = {
   ...EMAIL_FIELDS,
@@ -37,7 +41,12 @@ function errorsFrom(caught: unknown): Errors {
   if (caught.code === "network") return { form: NETWORK_ERROR };
   const errors: Errors = {};
   for (const issue of caught.issues ?? []) {
-    if (issue.path === "email" || issue.path === "code" || issue.path === "newPassword") {
+    if (
+      issue.path === "email" ||
+      issue.path === "code" ||
+      issue.path === "newPassword" ||
+      issue.path === "token"
+    ) {
       errors[issue.path] ??= issue.message;
     }
   }
@@ -45,10 +54,15 @@ function errorsFrom(caught: unknown): Errors {
   return errors;
 }
 
-/** Step 1: the address → a code by e-mail. Step 2: code + new password → signed in. */
+/**
+ * Step 1: the address → an e-mail with a reset link and a code. Step 2: code + new password → signed in. Opened
+ * from the e-mailed link (/forgot-password#token=…), it asks only for the new password; the token is read from the
+ * fragment and removed from the address bar at once (kept out of the history).
+ */
 export function ForgotPasswordForm() {
   const router = useRouter();
-  const [step, setStep] = useState<"email" | "reset">("email");
+  const [step, setStep] = useState<"email" | "reset" | "link">("email");
+  const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -56,6 +70,44 @@ export function ForgotPasswordForm() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   useFocusFirstInvalid(errors, ALL_FIELDS);
+
+  useEffect(() => {
+    const fromLink = resetTokenFromHash(window.location.hash);
+    if (!fromLink) return;
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    // The fragment is only readable in the browser, after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setToken(fromLink);
+    setStep("link");
+  }, []);
+
+  async function resetWithLink(event: React.FormEvent) {
+    event.preventDefault();
+    if (!token) return;
+    const passwordCheck = PasswordSchema.safeParse(newPassword);
+    if (!passwordCheck.success) {
+      setErrors({ newPassword: passwordCheck.error.issues[0]?.message });
+      return;
+    }
+    setErrors({});
+    setLoading(true);
+    try {
+      const { email: account } = await callApi(accountEndpoints.confirmPasswordResetLink, {
+        body: { token, newPassword },
+      });
+      const result = await signIn("credentials", {
+        email: account,
+        password: newPassword,
+        redirect: false,
+      });
+      router.replace(result && !result.error ? routes.today() : routes.login());
+      router.refresh();
+      return;
+    } catch (caught) {
+      setErrors(errorsFrom(caught));
+    }
+    setLoading(false);
+  }
 
   async function requestCode(event: React.FormEvent) {
     event.preventDefault();
@@ -67,7 +119,7 @@ export function ForgotPasswordForm() {
     }
     setLoading(true);
     try {
-      const result = await callApi(accountApi.requestPasswordReset, {
+      const result = await callApi(accountEndpoints.requestPasswordReset, {
         body: { email: parsed.data },
       });
       setNotice(result.message);
@@ -89,7 +141,7 @@ export function ForgotPasswordForm() {
     if (!codeCheck.success || !passwordCheck.success) return;
     setLoading(true);
     try {
-      await callApi(accountApi.confirmPasswordReset, {
+      await callApi(accountEndpoints.confirmPasswordReset, {
         body: { email, code: codeCheck.data, newPassword },
       });
       const result = await signIn("credentials", { email, password: newPassword, redirect: false });
@@ -108,11 +160,62 @@ export function ForgotPasswordForm() {
     </Link>
   );
 
+  if (step === "link") {
+    return (
+      <AuthCard
+        title="Choose a new password"
+        description="From the link in your reset e-mail."
+        footer={footer}
+      >
+        <form onSubmit={resetWithLink} className="flex flex-col gap-4" noValidate>
+          {errors.token || errors.form ? (
+            <FormAlert>
+              <p>{errors.token ?? errors.form}</p>
+            </FormAlert>
+          ) : null}
+          <FieldErrorSummary errors={errors} fields={LINK_FIELDS} />
+          <Field
+            id={LINK_FIELDS.newPassword.id}
+            label={LINK_FIELDS.newPassword.label}
+            hint="At least 10 characters. Not your Davidson password, and nothing common."
+            error={errors.newPassword}
+          >
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={10}
+              required
+            />
+          </Field>
+          <Button type="submit" size="lg" className="w-full" disabled={loading}>
+            {loading ? "Saving…" : "Set new password"}
+          </Button>
+          {errors.token ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => {
+                setStep("email");
+                setToken(null);
+                setErrors({});
+              }}
+            >
+              Ask for a new link
+            </Button>
+          ) : null}
+        </form>
+      </AuthCard>
+    );
+  }
+
   if (step === "email") {
     return (
       <AuthCard
         title="Forgot your password?"
-        description="Enter your account's email address and we'll send you a reset code."
+        description="Enter your account's email address and we'll send you a reset link and code."
         footer={footer}
       >
         <form onSubmit={requestCode} className="flex flex-col gap-4" noValidate>
@@ -131,7 +234,7 @@ export function ForgotPasswordForm() {
             />
           </Field>
           <Button type="submit" size="lg" className="w-full" disabled={loading}>
-            {loading ? "Sending…" : "Send reset code"}
+            {loading ? "Sending…" : "Send reset e-mail"}
           </Button>
         </form>
       </AuthCard>

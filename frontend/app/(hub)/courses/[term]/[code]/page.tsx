@@ -3,6 +3,7 @@ import { notFound, permanentRedirect, unstable_rethrow } from "next/navigation";
 import { routes } from "@/lib/routes";
 import { cache } from "react";
 import { termLabel } from "@/lib/term";
+import { verifyStepFor } from "@/server/auth/banner";
 import { requireUser } from "@/server/auth/session";
 import { now } from "@/server/clock";
 import { ErrorState } from "@/components/ui/error-state";
@@ -98,5 +99,11 @@ export default async function CoursePage({
   }
   const plan = await loadStudentPlan(user.id, now());
   const data = await loadCoursePage(resolved, { userId: user.id, requestedCrn: crn, plan });
-  return <CourseView data={data} timeZone={readEnv("APP_TIMEZONE")} />;
+  return (
+    <CourseView
+      data={data}
+      timeZone={readEnv("APP_TIMEZONE")}
+      verifyHref={verifyStepFor(user, canonical)}
+    />
+  );
 }

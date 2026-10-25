@@ -9,6 +9,7 @@ import { E2E_ORIGIN, formError, registerViaApi, SAME_ORIGIN, signIn, uniqueEmail
 interface MailboxMessage {
   kind: string;
   code: string | null;
+  text: string;
 }
 
 async function mailbox(request: APIRequestContext, email: string): Promise<MailboxMessage[]> {
@@ -294,7 +295,7 @@ test("forgot password: reset with an e-mailed code", async ({ page, request }) =
   await page.getByRole("link", { name: "Forgot password?" }).click();
   await expect(page).toHaveURL(/\/forgot-password$/);
   await page.getByLabel("Email").fill(email);
-  await page.getByRole("button", { name: "Send reset code" }).click();
+  await page.getByRole("button", { name: "Send reset e-mail" }).click();
   await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
 
   const code = await latestCode(request, email, "reset-password");
@@ -308,6 +309,34 @@ test("forgot password: reset with an e-mailed code", async ({ page, request }) =
   await page.getByLabel("Password").fill("old e2e password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(formError(page)).toHaveText("Invalid email or password");
+});
+
+test("forgot password: reset with the e-mailed link", async ({ page, request }) => {
+  const email = uniqueEmail("e2e-reset-link");
+  await registerViaApi(request, { name: "Link Reset", email, password: "old e2e password" });
+  const asked = await request.post("/api/auth/password-reset", {
+    data: { email },
+    headers: SAME_ORIGIN,
+  });
+  expect(asked.status()).toBe(202);
+  let link = "";
+  await expect
+    .poll(async () => {
+      const messages = await mailbox(request, email);
+      const text = [...messages].reverse().find((m) => m.kind === "reset-password")?.text ?? "";
+      link = /\/forgot-password#token=\S+/.exec(text)?.[0] ?? "";
+      return link;
+    })
+    .not.toBe("");
+
+  await page.goto(link);
+  await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
+  // The token leaves the address bar (and the history) at once.
+  await expect(page).toHaveURL(/\/forgot-password$/);
+  await expect(page.getByLabel("Reset code")).toHaveCount(0);
+  await page.getByLabel("New password").fill("new link e2e password");
+  await page.getByRole("button", { name: "Set new password" }).click();
+  await expect(page).toHaveURL(/\/today$/);
 });
 
 test("download my data, then delete the account", async ({ page, request }) => {

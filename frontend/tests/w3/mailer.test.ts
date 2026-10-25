@@ -157,9 +157,23 @@ describe("account e-mails", () => {
     expect(verify.text).toContain("not a Davidson College");
     expect(verify.text).toMatch(/15 minutes/);
 
-    const reset = passwordResetEmail("casey@davidson.edu", "777777");
+    const token = `${"a".repeat(24)}.${"b".repeat(22)}`;
+    const reset = passwordResetEmail("casey@davidson.edu", { code: "777777", linkToken: token });
     expect(reset).toMatchObject({ kind: "reset-password", code: "777777" });
-    expect(reset.text).toContain("https://make-it-so.vercel.app/forgot-password");
+    expect(reset.text).toContain(`https://make-it-so.vercel.app/forgot-password#token=${token}`);
+    expect(reset.text).toContain(
+      "Or enter the code 777777 at https://make-it-so.vercel.app/forgot-password,",
+    );
+  });
+
+  it("send the reset link alone while the account's codes are locked for the day", () => {
+    vi.stubEnv("APP_ORIGIN", "https://make-it-so.vercel.app");
+    const token = `${"a".repeat(24)}.${"b".repeat(22)}`;
+    const reset = passwordResetEmail("casey@davidson.edu", { code: null, linkToken: token });
+    expect(reset.code).toBeUndefined();
+    expect(reset.text).toContain(`https://make-it-so.vercel.app/forgot-password#token=${token}`);
+    expect(reset.text).toContain("This e-mail has no code");
+    expect(reset.text).not.toMatch(/\b\d{6}\b/);
   });
 
   it("never put a code in the messages that go to an address someone else may have typed", () => {

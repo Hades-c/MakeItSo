@@ -7,9 +7,8 @@ import { Sparkles } from "lucide-react";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
-import { aiApi } from "@/lib/api/ai";
 import { ApiClientError, callApi } from "@/lib/api/client";
-import { planApi } from "@/lib/api/plan";
+import { aiEndpoints, planEndpoints } from "@/lib/api/endpoints";
 import type { TermCode } from "@/lib/term";
 import type { AiFailure, AiOk, CareerPlan } from "@/lib/types/ai";
 import type { PlanDraft } from "@/lib/types/plan";
@@ -88,7 +87,7 @@ function SendToPlan({ draft, suggestionsHref }: { draft: PlanDraft; suggestionsH
     if (send.phase === "checking") return;
     setSend({ phase: "checking" });
     try {
-      const { drafts } = await callApi(planApi.listDrafts);
+      const { drafts } = await callApi(planEndpoints.listDrafts);
       const outcome = draftSendOutcome(drafts, draft.id);
       if (outcome === "pending") {
         setSend({ phase: "sent" });
@@ -246,7 +245,7 @@ export function AiCareerPlanPanel({
 
   const generate = (regenerate: boolean) => {
     if (busy) return;
-    void run(() => callApi(aiApi.careerPlan, { body: { careerSlug, regenerate } }));
+    void run(() => callApi(aiEndpoints.careerPlan, { body: { careerSlug, regenerate } }));
   };
 
   if (gate) {

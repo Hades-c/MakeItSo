@@ -25,9 +25,15 @@ import { readDataBlocks } from "@/server/ai/blocks";
  * contract requests): API errors are real SDK error instances and responses are real BetaMessage shapes, so
  * server/ai/client.ts handles them exactly as it would handle the API. The last requests are kept in memory
  * (mockAiRequests) so tests can check the exact request body.
+ *
+ * Its answers name their own model ids (MOCK_MODEL, MOCK_FALLBACK_MODEL), never a Claude model's, so a response's
+ * servedModel, the aicache_v2 provenance and the aiusages models always tell mock output from a real model's.
  */
 
-export const MOCK_FALLBACK_MODEL = "claude-sonnet-5";
+/** The model id mock answers report (servedModel, provenance.model, aiusages.models). */
+export const MOCK_MODEL = "mock";
+/** The model id of a mock answer "served by the server-side fallback". */
+export const MOCK_FALLBACK_MODEL = "mock-fallback";
 
 export const MOCK_AI_SCENARIOS = [
   "ok",
@@ -134,7 +140,10 @@ function userBlocks(params: MessageCreateParamsNonStreaming): string[] {
 export interface MockMessageOptions {
   text?: string | null;
   stopReason?: BetaMessage["stop_reason"];
+  /** The model that answered (default MOCK_MODEL, or MOCK_FALLBACK_MODEL with `fallback`). */
   model?: string;
+  /** With `fallback`: the model that declined first (default MOCK_MODEL). */
+  declinedModel?: string;
   inputTokens?: number;
   outputTokens?: number;
   fallback?: boolean;
@@ -159,9 +168,13 @@ function iteration(
   } as const;
 }
 
-/** A BetaMessage as the Messages API returns it (also used by the client tests' fake SDK). */
+/**
+ * A BetaMessage as the Messages API returns it, from the mock's own models unless `model` says otherwise (the
+ * client tests' fake SDK passes the real model ids).
+ */
 export function mockMessage(options: MockMessageOptions = {}): BetaMessage {
-  const model = options.model ?? (options.fallback ? MOCK_FALLBACK_MODEL : "claude-sonnet-5-5");
+  const model = options.model ?? (options.fallback ? MOCK_FALLBACK_MODEL : MOCK_MODEL);
+  const declined = options.declinedModel ?? MOCK_MODEL;
   const input = options.inputTokens ?? 100;
   const output = options.outputTokens ?? 50;
   const usage: BetaUsage = {
@@ -174,7 +187,7 @@ export function mockMessage(options: MockMessageOptions = {}): BetaMessage {
     output_tokens: output,
     iterations: options.fallback
       ? [
-          iteration("message", "claude-sonnet-5-5", input, 0),
+          iteration("message", declined, input, 0),
           iteration("fallback_message", model, input, output),
         ]
       : [iteration("message", model, input, output)],
@@ -187,7 +200,7 @@ export function mockMessage(options: MockMessageOptions = {}): BetaMessage {
   if (options.fallback && !options.prefix) {
     content.push({
       type: "fallback",
-      from: { model: "claude-sonnet-5-5" },
+      from: { model: declined },
       to: { model },
       trigger: { type: "refusal", category: "cyber" },
     });

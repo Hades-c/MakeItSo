@@ -27,6 +27,16 @@ async function checkPage(page: Page, what: string) {
   if (isMobile(page)) expect(await smallTapTargets(page), `${what}: tap targets`).toEqual([]);
 }
 
+/**
+ * Open a view other than Next semester straight from its URL. Its client islands load on demand
+ * (_components/lazy-islands.tsx), so they hydrate a few dozen milliseconds after the load event: let the network
+ * settle first, or a click lands on the server-rendered form (a native submit) instead of reaching React.
+ */
+async function openView(page: Page, tab: "four-year" | "suggestions" | "summer") {
+  await page.goto(`/plan?tab=${tab}`);
+  await page.waitForLoadState("networkidle");
+}
+
 /** Search the registration schedule, pick the section with `crn`, add it where the "Add as" select says. */
 async function addSection(page: Page, query: string, course: string, crn: string) {
   const panel = page.getByTestId("webtree-add");
@@ -225,7 +235,7 @@ test("the 4-year plan: map, statuses, P/F, move, manual entries, requirements", 
   await addItem(page, { termCode: "202601", courseCode: "CSC 121", status: "in-progress" });
   await addItem(page, { termCode: "202602", courseCode: "CSC 221" });
 
-  await page.goto("/plan?tab=four-year");
+  await openView(page, "four-year");
   await expect(page.getByRole("link", { name: "4-year plan" })).toHaveAttribute(
     "aria-current",
     "page",
@@ -272,8 +282,14 @@ test("the 4-year plan: map, statuses, P/F, move, manual entries, requirements", 
     "data-status",
     "done",
   );
+  // The box shows checked at once; reload only once the save has answered (a reload would cancel it).
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/plan/manual") && response.request().method() === "PATCH",
+  );
   await page.getByRole("checkbox", { name: "Team Sport course done" }).click();
   await expect(page.getByRole("checkbox", { name: "Team Sport course done" })).toBeChecked();
+  expect((await saved).ok()).toBe(true);
   await page.reload();
   await expect(page.getByRole("checkbox", { name: "Team Sport course done" })).toBeChecked();
 
@@ -302,7 +318,7 @@ test("suggestions: explained while AI is unavailable, then accepted per course",
   await checkPage(page, "suggestions gate");
 
   await verifyAndConsent(page, email);
-  await page.goto("/plan?tab=suggestions");
+  await openView(page, "suggestions");
   await expect(page.getByRole("heading", { name: "No suggestions yet" })).toBeVisible();
   await page.getByRole("button", { name: "Get suggestions" }).click();
   const draft = page.getByTestId("suggestion-draft");
@@ -343,7 +359,7 @@ test("suggestions: explained while AI is unavailable, then accepted per course",
 
 test("summer plans: add, edit, remove", async ({ page, request }) => {
   await newPlanner(page, request, "e2e-summer");
-  await page.goto("/plan?tab=summer");
+  await openView(page, "summer");
   await expect(page.getByRole("heading", { name: "No summer plans yet" })).toBeVisible();
   const form = page.locator("#summer-add-title").locator("xpath=ancestor::section[1]");
   await form.getByLabel("Summer").selectOption("202603");
@@ -367,6 +383,30 @@ test("summer plans: add, edit, remove", async ({ page, request }) => {
   await rows.getByRole("button", { name: "Yes, remove" }).click();
   await expect(page.getByRole("heading", { name: "No summer plans yet" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Add a summer plan" })).toBeFocused();
+});
+
+test("another view's islands load on demand, starting when its tab is focused", async ({
+  page,
+  request,
+}) => {
+  await newPlanner(page, request, "e2e-tabs");
+  await page.goto("/plan");
+  await page.waitForLoadState("networkidle");
+  const scripts: string[] = [];
+  page.on("request", (req) => {
+    if (req.resourceType() === "script") scripts.push(req.url());
+  });
+  const summer = page.getByRole("link", { name: "Summer" });
+  await summer.focus();
+  // Not part of the Next semester page: focusing the tab fetches them.
+  await expect.poll(() => scripts.length).toBeGreaterThan(0);
+
+  await summer.click();
+  await expect(page).toHaveURL(/\/plan\?tab=summer$/);
+  const form = page.locator("#summer-add-title").locator("xpath=ancestor::section[1]");
+  await form.getByLabel("Title").fill("Lab job");
+  await form.getByRole("button", { name: "Add summer plan" }).click();
+  await expect(page.getByTestId("summer-activity")).toContainText("Lab job");
 });
 
 test("signed out, /plan goes to sign-in and comes back", async ({ page }) => {
@@ -417,7 +457,7 @@ test("a legacy (hackathon) plan is shown converted, with unverified courses flag
   } finally {
     await client.close();
   }
-  await page.goto("/plan?tab=four-year");
+  await openView(page, "four-year");
   await expect(page.getByTestId("legacy-plan")).toContainText(
     "Converted from your earlier MakeItSo plan",
   );

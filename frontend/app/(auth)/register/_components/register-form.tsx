@@ -24,8 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { accountApi, RegisterBodySchema } from "@/lib/api/account";
+import { RegisterBodySchema } from "@/lib/api/account";
 import { ApiClientError, callApi } from "@/lib/api/client";
+import { accountEndpoints } from "@/lib/api/endpoints";
 import { routes } from "@/lib/routes";
 
 export interface ClassYearOption {
@@ -90,7 +91,7 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
     setFieldErrors({});
     setLoading(true);
     try {
-      const accepted = await callApi(accountApi.register, { body });
+      const accepted = await callApi(accountEndpoints.register, { body });
       // A new account can sign in straight away (unverified accounts use the catalog and the plan).
       const result = await signIn("credentials", { email, password, redirect: false });
       if (result && !result.error) {

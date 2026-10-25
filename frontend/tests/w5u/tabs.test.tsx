@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { REQUIREMENT_SLOTS, type PlanDraft, type PlanProgress } from "@/lib/types/plan";
 import { FourYearTab } from "@/app/(hub)/plan/_components/four-year";
 import { NextSemesterTab } from "@/app/(hub)/plan/_components/next-semester";
@@ -15,6 +16,20 @@ const refresh = vi.fn();
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), warning: vi.fn() } }));
+// The views' on-demand islands, here rendered at once (next/dynamic renders them a moment later, which
+// lazy-islands.test.tsx covers).
+const preloadPlanView = vi.hoisted(() => vi.fn());
+vi.mock("@/app/(hub)/plan/_components/lazy-islands", async () => ({
+  ManualEntryForm: (await import("@/app/(hub)/plan/_components/manual-entry")).ManualEntryForm,
+  ManualRequirements: (await import("@/app/(hub)/plan/_components/manual-requirements"))
+    .ManualRequirements,
+  PlanItemRow: (await import("@/app/(hub)/plan/_components/plan-item-row")).PlanItemRow,
+  PrintButton: (await import("@/app/(hub)/plan/_components/print-button")).PrintButton,
+  SuggestionsPanel: (await import("@/app/(hub)/plan/_components/suggestions-panel"))
+    .SuggestionsPanel,
+  SummerEditor: (await import("@/app/(hub)/plan/_components/summer-editor")).SummerEditor,
+  preloadPlanView,
+}));
 
 // Radix Switch and Checkbox measure themselves (jsdom has no ResizeObserver).
 globalThis.ResizeObserver ??= class {
@@ -61,6 +76,20 @@ describe("PlanTabs", () => {
     await user.click(screen.getByRole("link", { name: "Next semester" }));
     expect(push).toHaveBeenCalledTimes(1);
     push.mockClear();
+  });
+
+  it("starts loading another view's islands when its tab is pointed at or focused", async () => {
+    const user = userEvent.setup();
+    render(<PlanTabs active="next" />);
+    await user.hover(screen.getByRole("link", { name: "Summer" }));
+    expect(preloadPlanView).toHaveBeenLastCalledWith("summer");
+    screen.getByRole("link", { name: "4-year plan" }).focus();
+    expect(preloadPlanView).toHaveBeenLastCalledWith("four-year");
+    // Not for the view already open.
+    preloadPlanView.mockClear();
+    await user.hover(screen.getByRole("link", { name: "Next semester" }));
+    screen.getByRole("link", { name: "Next semester" }).focus();
+    expect(preloadPlanView).not.toHaveBeenCalled();
   });
 });
 
@@ -564,6 +593,23 @@ describe("Suggestions tab", () => {
       />,
     );
     expect(screen.getByTestId("ai-gate")).toHaveTextContent("AI features are turned off.");
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("offers /verify only when the page passes a verify step (unverified @davidson.edu)", () => {
+    const unverified = suggestions({ kind: "unverified", message: UNVERIFIED_MESSAGE });
+    const href = "/verify?reason=davidson&next=%2Fplan%3Ftab%3Dsuggestions";
+    const { unmount } = render(
+      <SuggestionsTab loaded={unverified} timeZone={TZ} verifyHref={href} />,
+    );
+    expect(screen.getByRole("link", { name: "Verify your Davidson email" })).toHaveAttribute(
+      "href",
+      href,
+    );
+    unmount();
+    // A legacy non-Davidson account (a gmail address): verifying cannot unlock AI, so only the explanation.
+    render(<SuggestionsTab loaded={unverified} timeZone={TZ} verifyHref={null} />);
+    expect(screen.getByTestId("ai-gate")).toHaveTextContent(UNVERIFIED_MESSAGE);
     expect(screen.queryByRole("link")).toBeNull();
   });
 

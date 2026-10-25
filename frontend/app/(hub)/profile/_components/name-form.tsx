@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { callApi } from "@/lib/api/client";
-import { profileApi, ProfilePatchBodySchema } from "@/lib/api/profile";
+import { profileEndpoints } from "@/lib/api/endpoints";
+import { ProfilePatchBodySchema } from "@/lib/api/profile";
 import { describeFailure } from "../_lib/errors";
 
 const FIELDS: FieldSpecs<"name"> = { name: { id: "profile-name", label: "Name" } };
@@ -49,7 +50,7 @@ export function NameForm({ initialName }: NameFormProps) {
     setFieldErrors({});
     setSaving(true);
     try {
-      const { profile } = await callApi(profileApi.update, { body: { name } });
+      const { profile } = await callApi(profileEndpoints.update, { body: { name } });
       setName(profile.name);
       setSaved(profile.name);
       setStatus("Name saved.");

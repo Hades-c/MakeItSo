@@ -1,5 +1,5 @@
 import { termLabel } from "@/lib/term";
-import { normalizeCourseCode } from "@/lib/types/common";
+import { normalizeCourseCode } from "@/lib/course-code";
 import type { RequirementSlot, SlotStatus } from "@/lib/types/plan";
 
 /**

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
-import { authExtraApi } from "@/app/(auth)/_lib/contracts";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { callApi } from "@/lib/api/client";
+import { authExtraEndpoints } from "@/lib/api/endpoints";
 import { formatMediumDate } from "@/lib/format";
 import { queryString, routes } from "@/lib/routes";
 import { describeFailure } from "../_lib/errors";
@@ -72,7 +72,7 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
     setAttestError(null);
     setBusy(true);
     try {
-      const { profile } = await callApi(authExtraApi.grantAiConsent, {
+      const { profile } = await callApi(authExtraEndpoints.grantAiConsent, {
         body: { adultAttested: true },
       });
       focusToggle.current = profile.aiConsentAt !== null;
@@ -91,7 +91,7 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
     setStatus("");
     setBusy(true);
     try {
-      const { profile } = await callApi(authExtraApi.revokeAiConsent);
+      const { profile } = await callApi(authExtraEndpoints.revokeAiConsent);
       focusToggle.current = profile.aiConsentAt === null;
       setConsentAt(profile.aiConsentAt);
       setAttested(profile.adultAttestedAt !== null);

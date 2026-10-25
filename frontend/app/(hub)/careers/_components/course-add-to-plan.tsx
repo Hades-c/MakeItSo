@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Info } from "lucide-react";
 import { AddToPlanControl, type AddToPlanTerm } from "@/components/domain/add-to-plan-control";
 import { ApiClientError, callApi } from "@/lib/api/client";
-import { planApi } from "@/lib/api/plan";
+import { planEndpoints } from "@/lib/api/endpoints";
 import { cn } from "@/lib/utils";
 
 /**
@@ -99,7 +99,7 @@ export function CourseAddToPlan({
     setNotice(null);
     const label = labelOf(terms, termCode);
     try {
-      const result = await callApi(planApi.addItem, {
+      const result = await callApi(planEndpoints.addItem, {
         body: {
           termCode,
           courseCode,
