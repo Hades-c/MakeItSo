@@ -22,7 +22,9 @@ manifest format and matching rules.
 - Real samples were fetched on 2026-09-30 and trimmed (feeds to at most 15 items). Keep files byte-exact:
   `.gitattributes` turns off line-ending conversion and Prettier ignores this directory.
 - No personal data: e-mail addresses, phone numbers and event-contact names are replaced (`contact@example.edu`,
-  `555-555-0100`, "Event Contact"); RSS bylines read "Staff". No alumni data and no RateMyProfessors review text.
+  `555-555-0100`, "Event Contact"); RSS bylines read "Staff". That includes URL-encoded addresses, such as the
+  recipient inside an Outlook SafeLinks `data=` parameter (`…%7C02%7Ccontact%40example.edu%7C…`). Office mailboxes
+  the upstream pages publish (`prehealth@`, `catsched@davidson.edu`) may stay; the fixtures test allow-lists them. No alumni data and no RateMyProfessors review text.
 - The RateMyProfessors roster is synthetic: real name forms (so matching can be tested against the course data),
   invented ids and numbers. Its tag answers hold made-up picks from RMP's fixed tag list and nothing else per rating.
 - Every subset keeps each cross-listed section's siblings (matched by CRN), so sibling lookups never dangle.

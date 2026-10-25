@@ -45,13 +45,20 @@ describe("tests/fixtures/external (PLAN §4.1.10)", () => {
     expect(total).toBeLessThan(MAX_TOTAL_BYTES);
   });
 
-  it("contains no personal e-mail addresses", () => {
+  it("contains no personal e-mail addresses, URL-encoded ones included", () => {
     const email = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+    // Office mailboxes the upstream pages publish, not a person's address.
+    const roleAddresses = new Set(["prehealth@davidson.edu", "catsched@davidson.edu"]);
     for (const file of filesUnder(root)) {
-      const found = readFileSync(file, "utf8").match(email) ?? [];
+      // Outlook SafeLinks carry the recipient as "…&data=05%7C02%7C<user>%40davidson.edu%7C…": decode the "|"
+      // separator and the "@" so an encoded address is caught like a plain one.
+      const text = readFileSync(file, "utf8").replace(/%7C/gi, "|").replace(/%40/g, "@");
+      const found = text.match(email) ?? [];
       const personal = found.filter(
         (address) =>
-          address !== "contact@example.edu" && !/^\d[\d-]*@hurthub\.davidson\.edu$/.test(address),
+          address !== "contact@example.edu" &&
+          !roleAddresses.has(address.toLowerCase()) &&
+          !/^\d[\d-]*@hurthub\.davidson\.edu$/.test(address),
       );
       expect(personal, path.relative(root, file)).toEqual([]);
     }
