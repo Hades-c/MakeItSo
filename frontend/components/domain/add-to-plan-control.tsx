@@ -38,6 +38,11 @@ export interface AddToPlanControlProps {
   courseCode?: string;
   /** Shown between the term choice and the button, e.g. a compact PlanMap preview. */
   children?: React.ReactNode;
+  /**
+   * The add button's weight: "primary" (the Davidson Red fill) where adding is the screen's one main action (the
+   * course page); "secondary" (outlined) where every row of a list has its own (the catalog, a career's courses).
+   */
+  emphasis?: "primary" | "secondary";
   className?: string;
 }
 
@@ -83,6 +88,7 @@ export function AddToPlanControl({
   added = false,
   courseCode,
   children,
+  emphasis = "primary",
   className,
 }: AddToPlanControlProps) {
   const id = React.useId();
@@ -129,10 +135,11 @@ export function AddToPlanControl({
                 className={cn(
                   "relative flex min-h-11 min-w-0 flex-col items-center justify-center rounded-md px-1.5 pt-2 pb-1.75 text-center",
                   "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus",
-                  // Selection is a 2px --primary outline inside the tile. Not a ring: a ring is a box-shadow,
-                  // and the dark theme's `--elev-card: none` cancelled it, leaving a 1.11:1 cue.
+                  // Selection is a 2px --primary outline inside the tile, on the red tint: a bare red outline
+                  // would read as "invalid". Not a ring: a ring is a box-shadow, and the dark theme's
+                  // `--elev-card: none` cancelled it, leaving a 1.11:1 cue.
                   checked
-                    ? "bg-surface text-fg outline-2 -outline-offset-2 outline-primary"
+                    ? "bg-primary-wash text-fg outline-2 -outline-offset-2 outline-primary"
                     : "text-fg-2",
                   disabled
                     ? "cursor-not-allowed"
@@ -180,11 +187,11 @@ export function AddToPlanControl({
           term that cannot be chosen (or none) is dimmed. */}
       <Button
         size="lg"
-        variant={added ? "secondary" : "primary"}
+        variant={added ? "secondary" : emphasis}
         className={cn(
           "mt-3.5 w-full",
           (pending || added) && !blocked && "aria-disabled:opacity-100",
-          added && !pending && "border-primary text-fg [&_svg]:text-primary",
+          added && !pending && "border-primary bg-primary-wash text-fg [&_svg]:text-primary",
         )}
         aria-disabled={inactive || undefined}
         aria-busy={pending || undefined}

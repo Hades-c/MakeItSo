@@ -138,6 +138,7 @@ export function CourseRow({
             unpublishedNote={row.add.unpublishedNote}
             planHref={planHref}
             loginHref={loginHref}
+            emphasis="secondary"
           />
         ) : (
           <p

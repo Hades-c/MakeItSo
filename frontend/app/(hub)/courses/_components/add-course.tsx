@@ -48,6 +48,8 @@ export interface AddCourseProps {
   unpublishedNote?: string | null;
   planHref: string;
   loginHref: string;
+  /** The add button's weight (AddToPlanControl): "secondary" in lists, where every row has one. */
+  emphasis?: "primary" | "secondary";
   className?: string;
 }
 
@@ -90,6 +92,7 @@ export function AddCourse({
   unpublishedNote = null,
   planHref,
   loginHref,
+  emphasis,
   className,
 }: AddCourseProps) {
   const [value, setValue] = React.useState<string | null>(initialTerm);
@@ -190,6 +193,7 @@ export function AddCourse({
         pending={pending}
         added={added}
         courseCode={courseCode}
+        emphasis={emphasis}
       >
         {notes}
       </AddToPlanControl>

@@ -165,6 +165,7 @@ export function CourseAddToPlan({
         pending={pending}
         added={added}
         courseCode={courseCode}
+        emphasis="secondary"
       >
         {notes}
       </AddToPlanControl>
