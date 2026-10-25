@@ -138,7 +138,7 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `NEXTAUTH_URL`          | yes\*        | Public URL of the app, e.g. `http://localhost:3000`. \*Optional on Vercel                                 |
 | `APP_ORIGIN`            | production   | Public origin checked against the `Origin` of every POST/PUT/PATCH/DELETE (not needed on Vercel previews) |
 | `ANTHROPIC_API_KEY`     | for AI       | Anthropic API key, used by AI features when `AI_PROVIDER=anthropic`                                       |
-| `AI_PROVIDER`           | no           | `anthropic` (default) or `mock` (tests and e2e; rejected on the Vercel production environment)            |
+| `AI_PROVIDER`           | no           | `anthropic` (default) or `mock` (tests and e2e, answers as model `mock`; rejected on Vercel production)   |
 | `AI_ENABLED`            | no           | All AI features on/off. Default `true` (AI also needs a verified @davidson.edu account and consent)       |
 | `AI_DAILY_TOKEN_BUDGET` | no           | Tokens per day across all users before AI pauses. Default `2000000`                                       |
 | `MAIL_PROVIDER`         | no           | `none`, `console` (codes in the server log; dev/test default) or `resend`. Default `none` in production   |
@@ -199,6 +199,16 @@ server log naming the variable; it never fails the build.
 
 CI (`.github/workflows/ci.yml`) runs all of the above on every pull request and on pushes to `main`, plus
 `npm audit --omit=dev --audit-level=high`. It needs no secrets.
+
+**Known dev-only advisory.** A full `npm audit` (dev dependencies included) reports
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) (high: stack exhaustion on deeply nested
+brace patterns) in `braces`, through `eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` → `micromatch`.
+It waits for an upstream fix: the advisory covers every release up to 3.0.3, the latest `braces`, so an npm
+`overrides` entry has nothing safe to pin; `npm audit fix --force` would downgrade `eslint-config-next` to 14,
+which does not support Next.js 16; and swapping `fast-glob` for another globber under the ESLint plugin is not an
+API-compatible override. The package only runs at lint time on this repository's own glob patterns, never ships
+to users and never sees request input. Revisit when `braces` publishes a fix (an override to it is then enough)
+or `@next/eslint-plugin-next` drops `fast-glob`.
 
 ---
 

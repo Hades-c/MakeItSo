@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { apiRoute } from "@/lib/api/spec";
+import { UNVERIFIED_MESSAGE } from "@/lib/types/ai-constants";
 import { IsoDateTimeSchema, ObjectIdSchema } from "@/lib/types/common";
 
 /**
@@ -36,12 +37,8 @@ export function canonicalMailbox(email: string): string {
 
 export const PLUS_ADDRESS_MESSAGE = "Use your Davidson address without a +tag";
 
-/**
- * What a signed-in account without a verified @davidson.edu mailbox is told (PLAN §1; owner to confirm, §8). Used by
- * defineRoute's "verified" 403 and by the AI routes' `unverified` result.
- */
-export const UNVERIFIED_MESSAGE =
-  "The alumni network and AI features are limited to verified @davidson.edu accounts.";
+/** What an account without a verified @davidson.edu mailbox is told (lib/types/ai-constants.ts, zod-free). */
+export { UNVERIFIED_MESSAGE };
 
 export const DavidsonEmailSchema = z
   .string()
@@ -130,6 +127,22 @@ export const PasswordResetRequestBodySchema = z.object({ email: EmailSchema }).s
 export const PasswordResetConfirmBodySchema = z
   .object({ email: EmailSchema, code: VerificationCodeSchema, newPassword: PasswordSchema })
   .strict();
+
+/**
+ * POST /api/auth/password-reset/link: the token of the e-mailed reset link ("<userId>.<secret>", from the
+ * /forgot-password#token= fragment) + the new password → 200 with the account's address (so the page can sign the
+ * student in). The link works once, for 15 minutes, and no wrong-code budget locks it.
+ */
+export const ResetTokenSchema = z
+  .string()
+  .regex(
+    /^[a-f0-9]{24}\.[A-Za-z0-9_-]{22,64}$/,
+    "This reset link is not complete. Open it from the e-mail again.",
+  );
+export const PasswordResetLinkBodySchema = z
+  .object({ token: ResetTokenSchema, newPassword: PasswordSchema })
+  .strict();
+export const PasswordResetLinkResponseSchema = z.object({ email: EmailSchema });
 
 /**
  * GET /api/auth/test-mailbox?email= (FIXTURES ONLY: EXTERNAL_MODE=fixtures + MAIL_PROVIDER=console, never on
@@ -235,6 +248,14 @@ export const accountApi = {
     auth: "public",
     body: PasswordResetConfirmBodySchema,
     response: null,
+  }),
+  /** POST /api/auth/password-reset/link: the e-mailed link's token + new password → 200 { email }. */
+  confirmPasswordResetLink: apiRoute({
+    method: "POST",
+    path: "/api/auth/password-reset/link",
+    auth: "public",
+    body: PasswordResetLinkBodySchema,
+    response: PasswordResetLinkResponseSchema,
   }),
   /** GET /api/auth/test-mailbox?email= — fixtures-only e2e hook (see TestMailboxQuerySchema); 404 elsewhere. */
   testMailbox: apiRoute({

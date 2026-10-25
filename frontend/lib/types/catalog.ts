@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { canonicalCourseCode } from "@/lib/course-code";
 import {
   ClockTimeSchema,
   CourseCodeSchema,
@@ -226,20 +227,8 @@ export const CourseSummarySchema = z.object({
 });
 export type CourseSummary = z.infer<typeof CourseSummarySchema>;
 
-/**
- * Canonical code among cross-listed siblings (PLAN §5 "Plan items"): the alphabetically first of the listing's own
- * code and its sibling codes, so every sibling maps to the same key ("BIO 331" + ["PSY 303"] → "BIO 331").
- * Takes sibling codes or a section's `crossListings` objects.
- */
-export function canonicalCourseCode(
-  code: string,
-  crossListings: readonly (string | Pick<CrossListing, "courseCode">)[] = [],
-): string {
-  const siblings = crossListings.map((listing) =>
-    typeof listing === "string" ? listing : listing.courseCode,
-  );
-  return [code, ...siblings].sort()[0] ?? code;
-}
+// canonicalCourseCode lives in lib/course-code.ts (zod-free, for client islands).
+export { canonicalCourseCode };
 
 // ---- Queries -----------------------------------------------------------------------------------------------------
 

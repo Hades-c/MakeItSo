@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { WRAP_CHIP } from "./wrap";
 import { Chip } from "@/components/ui/chip";
 import { SourceTag } from "@/components/ui/source-tag";
-import { aiApi, type CourseAboutResultSchema } from "@/lib/api/ai";
+import type { CourseAboutResultSchema } from "@/lib/api/ai";
 import { ApiClientError, callApi } from "@/lib/api/client";
-import type { AiFailureKind } from "@/lib/types/ai";
-import { AI_FAILURE_MESSAGES } from "@/lib/types/ai";
+import { aiEndpoints } from "@/lib/api/endpoints";
+import { AI_FAILURE_MESSAGES, type AiFailureKind } from "@/lib/types/ai-constants";
 import { formatMediumDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type * as z from "zod";
@@ -23,6 +23,8 @@ import type * as z from "zod";
  * strips those) with the entry's provenance and a "Report this" link; every failure kind says what happened, with
  * Retry only where trying again can help. The server renders this island only while AI is on and configured;
  * `gate` says when the student must verify their Davidson mailbox or turn AI on first (nothing is requested then).
+ * The "Verify your Davidson email" link shows only with `verifyHref` (server/auth verifyStepFor: an unverified
+ * @davidson.edu address while mail can send a code); a legacy non-Davidson account gets the explanation alone.
  */
 
 type Result = z.infer<typeof CourseAboutResultSchema>;
@@ -46,6 +48,8 @@ export interface CourseAboutPanelProps {
   termCode: string;
   courseCode: string;
   gate: "ready" | "unverified" | "consent_required";
+  /** /verify?reason=davidson&next=… for an unverified @davidson.edu account, else null. */
+  verifyHref?: string | null;
   timeZone?: string;
 }
 
@@ -67,27 +71,30 @@ function Heading() {
   );
 }
 
-function GateNotice({ gate }: { gate: "unverified" | "consent_required" }) {
+const GATE_LINK =
+  "inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0";
+
+function GateNotice({
+  gate,
+  verifyHref,
+}: {
+  gate: "unverified" | "consent_required";
+  verifyHref: string | null;
+}) {
+  const step =
+    gate === "consent_required" ? (
+      <Link href={routes.profile()} className={GATE_LINK}>
+        Turn on AI features in your profile
+      </Link>
+    ) : verifyHref ? (
+      <Link href={verifyHref} className={GATE_LINK}>
+        Verify your Davidson email
+      </Link>
+    ) : null;
   return (
     <div className="text-sm text-fg-2" data-testid="about-gate">
       <p>{AI_FAILURE_MESSAGES[gate]}</p>
-      <p className="mt-2">
-        {gate === "unverified" ? (
-          <Link
-            href={routes.verify()}
-            className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
-          >
-            Verify your Davidson email
-          </Link>
-        ) : (
-          <Link
-            href={routes.profile()}
-            className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
-          >
-            Turn on AI features in your profile
-          </Link>
-        )}
-      </p>
+      {step ? <p className="mt-2">{step}</p> : null}
     </div>
   );
 }
@@ -97,7 +104,7 @@ function ReportLink({ inputHash }: { inputHash: string }) {
   const report = async () => {
     setState("sending");
     try {
-      await callApi(aiApi.report, { body: { feature: "course-about", key: inputHash } });
+      await callApi(aiEndpoints.report, { body: { feature: "course-about", key: inputHash } });
       setState("sent");
     } catch {
       setState("failed");
@@ -172,14 +179,20 @@ function OkView({ result, timeZone }: { result: Ok; timeZone?: string }) {
   );
 }
 
-export function CourseAboutPanel({ termCode, courseCode, gate, timeZone }: CourseAboutPanelProps) {
+export function CourseAboutPanel({
+  termCode,
+  courseCode,
+  gate,
+  verifyHref = null,
+  timeZone,
+}: CourseAboutPanelProps) {
   const [state, setState] = React.useState<State>({
     status: gate === "ready" ? "loading" : "idle",
   });
 
   const request = React.useCallback(async (): Promise<State> => {
     try {
-      const result = await callApi(aiApi.courseAbout, { body: { termCode, courseCode } });
+      const result = await callApi(aiEndpoints.courseAbout, { body: { termCode, courseCode } });
       return { status: "done", result };
     } catch (error) {
       return {
@@ -212,7 +225,7 @@ export function CourseAboutPanel({ termCode, courseCode, gate, timeZone }: Cours
 
   let body: React.ReactNode;
   if (gate !== "ready") {
-    body = <GateNotice gate={gate} />;
+    body = <GateNotice gate={gate} verifyHref={verifyHref} />;
   } else if (state.status === "idle" || state.status === "loading") {
     body = (
       <p role="status" className="flex items-center gap-2 text-sm text-fg-2">
@@ -242,7 +255,7 @@ export function CourseAboutPanel({ termCode, courseCode, gate, timeZone }: Cours
         </p>
       );
     } else if (kind === "unverified" || kind === "consent_required") {
-      body = <GateNotice gate={kind} />;
+      body = <GateNotice gate={kind} verifyHref={verifyHref} />;
     } else {
       body = (
         <div

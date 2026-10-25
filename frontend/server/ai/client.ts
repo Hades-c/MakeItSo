@@ -33,7 +33,7 @@ import {
   AI_TIMEOUT_MS,
   type AiEffort,
 } from "@/server/ai/config";
-import { mockTransport } from "@/server/ai/mock";
+import { MOCK_MODEL, mockTransport } from "@/server/ai/mock";
 import { aiProvider } from "@/server/ai/provider";
 
 /**
@@ -384,6 +384,8 @@ export async function generate<S extends z.ZodType>(
 ): Promise<GenerateOutcome<z.output<S>>> {
   const transport = options.transport ?? defaultTransport();
   const params = buildParams(schema, request);
+  // Without a response, the model the call was for: the mock provider's own id when it is the mock.
+  const requestedModel = transport === mockTransport ? MOCK_MODEL : AI_MODEL;
   const failed = (
     kind: AiFailureKind,
     origin: FailureOrigin,
@@ -397,7 +399,7 @@ export async function generate<S extends z.ZodType>(
     kind,
     message: extra.message ?? aiFailure(kind).message,
     origin,
-    servedModel: extra.servedModel ?? AI_MODEL,
+    servedModel: extra.servedModel ?? requestedModel,
     fallbackUsed: extra.fallbackUsed ?? false,
     usage: extra.usage ?? { ...ZERO_USAGE },
   });
@@ -423,7 +425,7 @@ export async function generate<S extends z.ZodType>(
 
   const usage = tokenUsage(response.usage);
   const meta = {
-    servedModel: response.model || AI_MODEL,
+    servedModel: response.model || requestedModel,
     fallbackUsed: servedByFallback(response.usage),
     usage,
   };

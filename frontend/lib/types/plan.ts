@@ -14,6 +14,7 @@ import {
   ObjectIdSchema,
   TermCodeSchema,
 } from "@/lib/types/common";
+import { ACTIVE_PLAN_STATUSES, PLAN_STATUSES, REQUIREMENT_SLOTS } from "@/lib/types/plan-constants";
 
 /**
  * The student's plan (PLAN §4.1.4). Stored in the `plans` collection (v2, models/Plan.ts) by server/plan (W5s);
@@ -22,26 +23,11 @@ import {
  * "WebTree list".
  */
 
-/** dropped / failed / withdrawn items are kept for history but never count and never block a re-add. */
-export const PLAN_STATUSES = [
-  "planned",
-  "registered",
-  "in-progress",
-  "completed",
-  "failed",
-  "dropped",
-  "withdrawn",
-] as const;
+// PLAN_STATUSES, ACTIVE_PLAN_STATUSES and REQUIREMENT_SLOTS live in ./plan-constants (zod-free, for client islands).
+export { ACTIVE_PLAN_STATUSES, PLAN_STATUSES, REQUIREMENT_SLOTS };
+
 export const PlanStatusSchema = z.enum(PLAN_STATUSES);
 export type PlanStatus = z.infer<typeof PlanStatusSchema>;
-
-/** Statuses that take part in the duplicate key (termCode, canonicalCode) and in credit/slot counting. */
-export const ACTIVE_PLAN_STATUSES = [
-  "planned",
-  "registered",
-  "in-progress",
-  "completed",
-] as const satisfies readonly PlanStatus[];
 
 export const PlanItemSourceSchema = z.enum(["catalog", "manual", "transfer", "ap", "ai-draft"]);
 export type PlanItemSource = z.infer<typeof PlanItemSourceSchema>;
@@ -72,24 +58,6 @@ export const PlanItemSchema = z.object({
 });
 export type PlanItem = z.infer<typeof PlanItemSchema>;
 
-/**
- * Requirement slots the tracker shows (PLAN §5 (b)–(f)): COMP writing; the seven Ways of Knowing; CULT; JEC;
- * FRLG language (or a manual proficiency/exempt toggle); PE (manual checklist: 2 Lifetime Activity + 1 Team Sport).
- */
-export const REQUIREMENT_SLOTS = [
-  "COMP",
-  "LTRQ",
-  "HTRQ",
-  "SSRQ",
-  "NSRQ",
-  "MQRQ",
-  "PRRQ",
-  "VPRQ",
-  "CULT",
-  "JEC",
-  "FRLG",
-  "PE",
-] as const;
 export const RequirementSlotSchema = z.enum(REQUIREMENT_SLOTS);
 export type RequirementSlot = z.infer<typeof RequirementSlotSchema>;
 

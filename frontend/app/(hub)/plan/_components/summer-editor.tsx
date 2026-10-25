@@ -11,8 +11,8 @@ import { Input, controlClass } from "@/components/ui/input";
 import { SourceTag } from "@/components/ui/source-tag";
 import { Textarea } from "@/components/ui/textarea";
 import { callApi } from "@/lib/api/client";
-import { CreateSummerActivityBodySchema, planApi } from "@/lib/api/plan";
-import { termLabel } from "@/lib/term";
+import { planEndpoints } from "@/lib/api/endpoints";
+import { isSummer, isTermCode, termLabel } from "@/lib/term";
 import type { SummerActivity } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
 import { ConfirmButton } from "./confirm-button";
@@ -45,27 +45,51 @@ type Draft = {
   note: string;
 };
 
-/** The request body for a summer activity, or the first problem (pure; exported for tests). */
+/** lib/types/plan SummerActivitySchema's limits (the server checks the same body with it). */
+const SUMMER_LIMITS = { title: 120, organization: 120, note: 500 } as const;
+
+/**
+ * The request body for a summer activity, or the first problem (pure; exported for tests). The same rules as
+ * the server's CreateSummerActivityBodySchema, checked without zod so the page's JavaScript carries none.
+ */
 export function summerBody(
   draft: Draft,
 ):
   | { ok: true; body: Omit<SummerActivity, "id"> }
   | { ok: false; field: keyof Draft; message: string } {
-  if (!draft.termCode) return { ok: false, field: "termCode", message: "Choose a summer." };
-  if (!draft.title.trim()) return { ok: false, field: "title", message: "Give it a title." };
-  const parsed = CreateSummerActivityBodySchema.safeParse({
-    termCode: draft.termCode,
-    title: draft.title.trim(),
-    kind: draft.kind,
-    ...(draft.organization.trim() ? { organization: draft.organization.trim() } : {}),
-    ...(draft.note.trim() ? { note: draft.note.trim() } : {}),
-  });
-  if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    const field = (issue?.path[0] as keyof Draft | undefined) ?? "title";
-    return { ok: false, field, message: issue?.message ?? "Check the form." };
+  if (!isTermCode(draft.termCode) || !isSummer(draft.termCode)) {
+    return { ok: false, field: "termCode", message: "Choose a summer." };
   }
-  return { ok: true, body: parsed.data };
+  const title = draft.title.trim();
+  const organization = draft.organization.trim();
+  const note = draft.note.trim();
+  if (!title) return { ok: false, field: "title", message: "Give it a title." };
+  if (!SUMMER_KINDS.some((kind) => kind.value === draft.kind)) {
+    return { ok: false, field: "kind", message: "Choose what kind of summer plan this is." };
+  }
+  for (const [field, value, noun] of [
+    ["title", title, "title"],
+    ["organization", organization, "organization"],
+    ["note", note, "note"],
+  ] as const) {
+    if (value.length > SUMMER_LIMITS[field]) {
+      return {
+        ok: false,
+        field,
+        message: `Keep the ${noun} under ${SUMMER_LIMITS[field]} characters.`,
+      };
+    }
+  }
+  return {
+    ok: true,
+    body: {
+      termCode: draft.termCode,
+      title,
+      kind: draft.kind,
+      ...(organization ? { organization } : {}),
+      ...(note ? { note } : {}),
+    },
+  };
 }
 
 function ActivityForm({
@@ -230,7 +254,7 @@ function ActivityRow({
           onCancel={stopEditing}
           onSubmit={async (body) => {
             const result = await action.run(
-              () => callApi(planApi.updateSummer, { params: { id: activity.id }, body }),
+              () => callApi(planEndpoints.updateSummer, { params: { id: activity.id }, body }),
               { fallback: "Could not save that. Please try again." },
             );
             if (result.ok) stopEditing();
@@ -282,7 +306,7 @@ function ActivityRow({
             disabled={action.busy}
             onConfirm={async () => {
               const result = await action.run(
-                () => callApi(planApi.removeSummer, { params: { id: activity.id } }),
+                () => callApi(planEndpoints.removeSummer, { params: { id: activity.id } }),
                 { fallback: "Could not remove that. Please try again." },
               );
               if (result.ok) {
@@ -356,7 +380,7 @@ export function SummerEditor({
               submitLabel="Add summer plan"
               busy={action.busy}
               onSubmit={async (body) => {
-                const result = await action.run(() => callApi(planApi.addSummer, { body }), {
+                const result = await action.run(() => callApi(planEndpoints.addSummer, { body }), {
                   fallback: "Could not add that. Please try again.",
                 });
                 if (result.ok) notify.success(`Added ${result.value.activity.title}.`);

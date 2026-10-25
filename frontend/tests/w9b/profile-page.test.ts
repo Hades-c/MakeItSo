@@ -6,6 +6,7 @@ import { startTestDb, type TestDb } from "../helpers/db";
 import { insertUser, sessionFor, stubAuthEnv } from "../w3/helpers";
 import ProfilePage, { metadata } from "@/app/(hub)/profile/page";
 import { loadProfilePage } from "@/app/(hub)/profile/_lib/load";
+import { unlistedPrograms } from "@/lib/unlisted-programs";
 import { CAREERS } from "@/server/content/careers";
 import { getDb } from "@/server/db";
 import { officialProgramNames } from "@/server/programs";
@@ -81,10 +82,15 @@ describe("loadProfilePage", () => {
       adultAttestedAt: null,
     });
     expect(data.profile).not.toHaveProperty("standing");
-    expect(data.majors).toEqual(await officialProgramNames("major"));
+    // The official names, then the programs without an Acalog offering (a CIS major, the MES minor).
+    expect(data.majors).toEqual([
+      ...(await officialProgramNames("major")),
+      ...unlistedPrograms("major").map((program) => program.name),
+    ]);
     expect(data.minors).toEqual([
       ...(await officialProgramNames("minor")),
       ...(await officialProgramNames("interdisciplinary-minor")),
+      ...unlistedPrograms("minor").map((program) => program.name),
     ]);
     expect(data.careers).toEqual(
       CAREERS.map(({ slug, name, cluster }) => ({ slug, name, cluster })),

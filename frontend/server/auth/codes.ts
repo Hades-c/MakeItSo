@@ -1,5 +1,5 @@
 import "server-only";
-import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import mongoose from "mongoose";
 import User from "@/models/User";
 import VerificationCode, { type VerificationPurpose } from "@/models/VerificationCode";
@@ -16,9 +16,9 @@ import { readEnv } from "@/server/env";
  * reserveCodeGuess: "code-fail:user:<id>" for the signed-in verification, "reset-fail:user:<id>" for the public
  * password reset, kept apart so anonymous reset guesses cannot lock the owner's verification). Each check reserves a guess before
  * comparing (atomic, so parallel guesses cannot exceed it) and a right code gives it back. Once the day's 10 are
- * used up, codes are not compared at all (reason "locked") and the callers send no new ones. Without this cap an
- * attacker could spend 5 guesses on every new code, about 30 an hour through verification and reset together,
- * indefinitely.
+ * used up, codes are not compared at all (reason "locked") and the callers send no new ones (a password reset
+ * still sends its link: see "Reset links" below). Without this cap an attacker could spend 5 guesses on every new
+ * code, about 30 an hour through verification and reset together, indefinitely.
  *
  * The stored hash is HMAC-SHA256(NEXTAUTH_SECRET, "<purpose>:<userId>:<code>"): a plain sha256 of six digits can
  * be reversed from a database dump in milliseconds, the keyed hash cannot without the server secret, and binding
@@ -51,14 +51,14 @@ function objectId(userId: string): mongoose.Types.ObjectId {
   return new mongoose.Types.ObjectId(userId);
 }
 
-/** Create (or replace) the user's live code for `purpose` and return the plain code to e-mail. */
-export async function issueCode(
+async function storeCode(
   userId: string,
   email: string,
   purpose: VerificationPurpose,
+  code: string,
+  linkHash: string | null,
   now: Date,
-): Promise<string> {
-  const code = generateCode();
+): Promise<void> {
   await getDb();
   await VerificationCode.findOneAndUpdate(
     { userId: objectId(userId), purpose },
@@ -66,6 +66,7 @@ export async function issueCode(
       $set: {
         email,
         codeHash: hashCode(userId, purpose, code),
+        linkHash,
         attempts: 0,
         lastSentAt: now,
         consumedAt: null,
@@ -75,7 +76,102 @@ export async function issueCode(
     },
     { upsert: true },
   );
+}
+
+/** Create (or replace) the user's live code for `purpose` and return the plain code to e-mail. */
+export async function issueCode(
+  userId: string,
+  email: string,
+  purpose: VerificationPurpose,
+  now: Date,
+): Promise<string> {
+  const code = generateCode();
+  await storeCode(userId, email, purpose, code, null, now);
   return code;
+}
+
+// ---- Reset links -------------------------------------------------------------------------------------------------
+
+/**
+ * A password reset e-mails a code AND a link (lib/routes.ts routes.forgotPassword({ token })) whose token is
+ * "<userId>.<secret>": 128 random bits, stored only as HMAC-SHA256(NEXTAUTH_SECRET, "reset-link:<userId>:<secret>")
+ * next to the code. It lives as long as the code (15 minutes), works once (it consumes the code document too) and
+ * is replaced by the next send. It cannot be guessed, so no guess budget applies to it: someone who knows the
+ * address can spend the code's 5 attempts and the account's 10 wrong codes a day, but the inbox owner can still
+ * reset with the link (the e-mail then carries the link alone).
+ */
+export const RESET_LINK_SECRET_BYTES = 16;
+
+export function hashLinkSecret(userId: string, secret: string): string {
+  return createHmac("sha256", readEnv("NEXTAUTH_SECRET"))
+    .update(`reset-link:${userId}:${secret}`, "utf8")
+    .digest("hex");
+}
+
+/** Create (or replace) the user's reset code and link; returns the plain code and the link's token to e-mail. */
+export async function issueResetCode(
+  userId: string,
+  email: string,
+  now: Date,
+): Promise<{ code: string; linkToken: string }> {
+  const code = generateCode();
+  const secret = randomBytes(RESET_LINK_SECRET_BYTES).toString("base64url");
+  await storeCode(userId, email, "reset-password", code, hashLinkSecret(userId, secret), now);
+  return { code, linkToken: `${userId}.${secret}` };
+}
+
+/** "<24 hex>.<base64url secret>" → its parts, or null. */
+export function parseResetToken(token: string): { userId: string; secret: string } | null {
+  const match = /^([a-f0-9]{24})\.([A-Za-z0-9_-]{22,64})$/.exec(token);
+  return match ? { userId: match[1]!, secret: match[2]! } : null;
+}
+
+/**
+ * The live reset that `token` opens (unused, unexpired, the current send), without using it up: the code
+ * document's id, the user and the address it was sent to; null otherwise. Neither the code's attempts nor the
+ * account's daily budget count here or block it.
+ */
+export interface ResetLink {
+  docId: mongoose.Types.ObjectId;
+  /** The send it belongs to (a newer send keeps the document but changes this). */
+  linkHash: string;
+  userId: string;
+  email: string;
+}
+
+export async function findResetLink(token: string, now: Date): Promise<ResetLink | null> {
+  const parts = parseResetToken(token);
+  if (!parts) return null;
+  await getDb();
+  const doc = await VerificationCode.findOne({
+    userId: objectId(parts.userId),
+    purpose: "reset-password",
+    consumedAt: null,
+    codeExpiresAt: trusted({ $gt: now }),
+  })
+    .select("_id email linkHash")
+    .lean();
+  if (!doc?.linkHash || !sameHash(doc.linkHash, hashLinkSecret(parts.userId, parts.secret))) {
+    return null;
+  }
+  return { docId: doc._id, linkHash: doc.linkHash, userId: parts.userId, email: doc.email };
+}
+
+/**
+ * Use up the reset (link and code) found by findResetLink, exactly once even if two submissions race; false when
+ * it was used, expired or replaced by a newer send meanwhile.
+ */
+export async function consumeResetLink(link: ResetLink, now: Date): Promise<boolean> {
+  const consumed = await VerificationCode.updateOne(
+    {
+      _id: link.docId,
+      linkHash: link.linkHash,
+      consumedAt: null,
+      codeExpiresAt: trusted({ $gt: now }),
+    },
+    { $set: { consumedAt: now } },
+  );
+  return consumed.modifiedCount === 1;
 }
 
 export type CodeCheck =

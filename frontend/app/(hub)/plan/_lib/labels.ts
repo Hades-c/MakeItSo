@@ -1,5 +1,5 @@
 import type { PlanItemSource, PlanStatus } from "@/lib/types/plan";
-import { PLAN_STATUSES } from "@/lib/types/plan";
+import { PLAN_STATUSES } from "@/lib/types/plan-constants";
 import type { PlanTab } from "@/lib/routes";
 
 /** Words for every plan value the UI shows (no grades exist anywhere in MakeItSo). Isomorphic. */

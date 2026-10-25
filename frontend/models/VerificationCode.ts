@@ -19,6 +19,8 @@ import mongoose, {
  * - Attempts: 5 per code (`attempts`, incremented atomically before comparing; reset by a new send). On top of
  *   that, wrong codes count against a per-account budget of 10 a day per purpose (`code-fail:user:<userId>` for
  *   verification, `reset-fail:user:<userId>` for the public password reset; ratelimits, server/auth/codes.ts).
+ *   A password reset also e-mails a link (`linkHash`): its secret cannot be guessed, so neither budget applies to
+ *   it, and someone who burns the code guesses cannot lock the inbox owner out of a reset.
  * - Sends: 3 per hour per user and purpose, enforced with `consumeRateLimit("verify-resend:user:<userId>", 3, 3600)`
  *   (and "reset-send:user:<userId>") in the ratelimits collection (server/http/rate-limit.ts). NOT counted here:
  *   this document disappears with its 15-minute code, so a counter in it would reset every 15 minutes and allow
@@ -34,6 +36,11 @@ const VerificationCodeSchema = new Schema(
     email: { type: String, required: true },
     purpose: { type: String, enum: VERIFICATION_PURPOSES, required: true, default: "verify-email" },
     codeHash: { type: String, required: true },
+    /**
+     * "reset-password" only: the HMAC of the reset link's 128-bit secret (server/auth/codes.ts issueResetCode),
+     * e-mailed with the code. Same lifetime and single use as the code; null for verification codes.
+     */
+    linkHash: { type: String, default: null },
     attempts: { type: Number, default: 0 },
     /** When this code was sent (shown as "sent at …"; the resend limit lives in ratelimits). */
     lastSentAt: { type: Date, required: true },

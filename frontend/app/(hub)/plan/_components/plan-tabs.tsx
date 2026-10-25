@@ -8,13 +8,15 @@ import type { PlanTab } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { TAB_LABELS } from "../_lib/labels";
 import { PLAN_TABS, planHref } from "../_lib/tabs";
+import { preloadPlanView } from "./lazy-islands";
 
 /**
  * The /plan tabs as links (the tab lives in the URL: ?tab=next|four-year|suggestions|summer), so each view is
  * bookmarkable, works without JavaScript and is rendered on the server. The current one is aria-current="page".
  * A plain click opens the tab in a transition: until the server sends the new view, the tab being opened shows
  * a spinner and the view below is marked busy (only search params change, so no loading.tsx would show). Below
- * 640px the four tabs sit in a 2×2 grid, so none is off-screen.
+ * 640px the four tabs sit in a 2×2 grid, so none is off-screen. Pointing at, focusing or touching a tab starts
+ * loading that view's client islands (lazy-islands.tsx), so they are there by the time it opens.
  */
 export function PlanTabs({ active, children }: { active: PlanTab; children?: React.ReactNode }) {
   const router = useRouter();
@@ -46,6 +48,9 @@ export function PlanTabs({ active, children }: { active: PlanTab; children?: Rea
                   aria-current={current ? "page" : undefined}
                   aria-busy={loading || undefined}
                   onClick={(event) => open(event, tab)}
+                  onPointerEnter={current ? undefined : () => preloadPlanView(tab)}
+                  onFocus={current ? undefined : () => preloadPlanView(tab)}
+                  onTouchStart={current ? undefined : () => preloadPlanView(tab)}
                   className={cn(
                     "-mb-px flex min-h-11 items-center gap-1.5 border-b-2 px-3 text-sm font-semibold whitespace-nowrap transition-colors motion-reduce:transition-none",
                     current

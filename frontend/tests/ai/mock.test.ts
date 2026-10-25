@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { generate, type GenerateRequest } from "@/server/ai/client";
 import {
   MOCK_AI_SCENARIOS,
+  MOCK_FALLBACK_MODEL,
+  MOCK_MODEL,
   mockAiRequests,
   mockTransport,
   resetMockAi,
@@ -106,7 +108,9 @@ describe("answers", () => {
     const second = await generate(prompt.OutputSchema, request, { transport: mockTransport });
     expect(first.kind).toBe("ok");
     expect(second).toEqual(first);
-    expect(first.servedModel).toBe("claude-sonnet-5-5");
+    // The mock's own id, never a Claude model's: mock output is told apart in responses, provenance and usage.
+    expect(first.servedModel).toBe(MOCK_MODEL);
+    expect(MOCK_MODEL).toBe("mock");
     expect(first.usage.inputTokens).toBeGreaterThan(0);
   });
 
@@ -179,9 +183,19 @@ describe("the scenario knob", () => {
       await generate(courseAbout.OutputSchema, ABOUT, { transport: mockTransport }),
     ).toMatchObject({
       kind: "ok",
-      servedModel: "claude-sonnet-5",
+      servedModel: MOCK_FALLBACK_MODEL,
       fallbackUsed: true,
     });
+  });
+
+  it("a failed call without an answer is reported as the mock's too", async () => {
+    for (const scenario of ["timeout", "rate_limit", "auth"] as const) {
+      setMockAiScenario(scenario, { times: 1 });
+      const outcome = await generate(courseAbout.OutputSchema, ABOUT, {
+        transport: mockTransport,
+      });
+      expect(outcome.servedModel).toBe(MOCK_MODEL);
+    }
   });
 
   it("applies to a number of calls and to one feature only", async () => {

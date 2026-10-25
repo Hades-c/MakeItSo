@@ -3,7 +3,14 @@ import mongoose from "mongoose";
 import type { CheckInboxResponse } from "@/lib/api/account";
 import User from "@/models/User";
 import { eraseAccountData } from "@/server/account/erasers";
-import { CODE_SENDS_PER_HOUR, consumeCode, issueCode, markCodeSent } from "@/server/auth/codes";
+import {
+  CODE_SENDS_PER_HOUR,
+  consumeCode,
+  consumeResetLink,
+  findResetLink,
+  issueResetCode,
+  markCodeSent,
+} from "@/server/auth/codes";
 import { runAfterResponse } from "@/server/auth/defer";
 import { passwordResetEmail } from "@/server/auth/emails";
 import { getMailer } from "@/server/auth/mailer";
@@ -21,14 +28,17 @@ import { trusted } from "@/server/db";
 import { ApiError } from "@/server/http/errors";
 
 /**
- * "Forgot password" with a mail provider (PLAN §6.1 W3): a 6-digit code (VerificationCode purpose
- * "reset-password": 15 minutes, 5 attempts) e-mailed to the account's address, then the code + a new password.
- * Without a mail provider both steps answer 503 and /forgot-password explains how to reach the maintainers.
+ * "Forgot password" with a mail provider (PLAN §6.1 W3): an e-mail to the account's address with a reset link and
+ * a 6-digit code (VerificationCode purpose "reset-password": 15 minutes, one live send), then a new password with
+ * the link's token (confirmPasswordResetLink) or with the address + code (confirmPasswordReset). Without a mail
+ * provider every step answers 503 and /forgot-password explains how to reach the maintainers.
  *
- * Budgets: 3 reset codes an hour per verified account ("reset-send:user:<id>"); an unverified account's reset and
- * verification codes share ONE budget ("verify-resend:user:<id>"), because a reset code also verifies the
- * mailbox. Wrong codes of both kinds count against the account's 10 a day (server/auth/codes.ts); once used up,
- * no reset code is sent or checked until the window ends.
+ * Budgets: 3 reset e-mails an hour per verified account ("reset-send:user:<id>"); an unverified account's reset and
+ * verification codes share ONE budget ("verify-resend:user:<id>"), because a reset also verifies the mailbox.
+ * Wrong codes count against the code's 5 attempts and the account's 10 a day (server/auth/codes.ts); once those
+ * are used up the code is not checked, and the e-mails carry the link alone until the window ends. The link has
+ * no guess budget (its 128-bit secret cannot be guessed), so whoever knows a student's address can burn the code
+ * guesses but never block the student's own reset (the abuse the owner asked to close, 2026-10-22).
  *
  * Enumeration safety: the request always answers the same 202, and the account lookup and e-mail happen after
  * the response. The confirmation hashes the new password first and runs the same code lookups for an unknown
@@ -51,7 +61,9 @@ import { ApiError } from "@/server/http/errors";
 export const RESET_UNAVAILABLE_MESSAGE =
   "Password reset by email is not available yet. Contact the MakeItSo maintainers to reset your password.";
 export const RESET_CHECK_INBOX_MESSAGE =
-  "If an account uses that address, we sent it a reset code. Check your inbox (and your spam folder).";
+  "If an account uses that address, we sent it a reset link and code. Check your inbox (and your spam folder).";
+export const RESET_LINK_MESSAGE =
+  "This reset link has expired, was already used, or a newer e-mail replaced it. Ask for a new one.";
 export const RESET_CODE_MESSAGE =
   "That code is not right, has expired, or was used too many times. Ask for a new code.";
 
@@ -97,7 +109,8 @@ export async function requestPasswordReset(email: string): Promise<CheckInboxRes
     const user = await findAccountByEmail(email);
     if (!user) return;
     const userId = user._id.toString();
-    if ((await codeGuessesExhausted(userId, at, "reset-password")).exhausted) return;
+    // Codes locked for today (wrong-code budget used up): the e-mail still goes out, with the link alone.
+    const codesLocked = (await codeGuessesExhausted(userId, at, "reset-password")).exhausted;
     const verified = isEmailVerified(user);
     const sends = await consumeAuthLimit(
       verified ? `reset-send:user:${userId}` : `verify-resend:user:${userId}`,
@@ -106,9 +119,13 @@ export async function requestPasswordReset(email: string): Promise<CheckInboxRes
       at,
     );
     if (!sends.allowed) return;
-    const code = await issueCode(userId, user.email, "reset-password", at);
+    const { code, linkToken } = await issueResetCode(userId, user.email, at);
     await mailer.send(
-      passwordResetEmail(user.email, code, { pendingSignup: isPendingSignup(user) }),
+      passwordResetEmail(
+        user.email,
+        { code: codesLocked ? null : code, linkToken },
+        { pendingSignup: isPendingSignup(user) },
+      ),
     );
     if (!verified) await markCodeSent(userId, at);
   });
@@ -196,4 +213,39 @@ export async function confirmPasswordReset(
 
   await applyReset(user._id, check.email, passwordHash, at);
   await clearLoginFailures(user.email);
+}
+
+function badLink(): ApiError {
+  return new ApiError(400, "validation_failed", "Some fields are invalid.", [
+    { path: "token", message: RESET_LINK_MESSAGE },
+  ]);
+}
+
+/**
+ * The e-mailed link: its token + the new password. Returns the account's address (the page signs the student in
+ * with it). The token is the proof, so there is no address to enumerate: a link that does not open a live reset
+ * is a 400 on `token`, a weak password a 400 on `newPassword` that leaves the link usable. Neither the code's
+ * attempts nor the daily wrong-code budget apply (see the module comment).
+ */
+export async function confirmPasswordResetLink(
+  token: string,
+  newPassword: string,
+): Promise<{ email: string }> {
+  const at = now();
+  if (!getMailer(() => at)) throw new ApiError(503, "unavailable", RESET_UNAVAILABLE_MESSAGE);
+  const link = await findResetLink(token, at);
+  if (!link) throw badLink();
+  const user = await User.findById(link.userId).select("_id email").lean();
+  if (!user || user.email !== link.email) throw badLink();
+  const problem = passwordProblem(newPassword, { email: user.email });
+  if (problem) {
+    throw new ApiError(400, "validation_failed", "Some fields are invalid.", [
+      { path: "newPassword", message: problem },
+    ]);
+  }
+  const passwordHash = await hashPassword(newPassword);
+  if (!(await consumeResetLink(link, at))) throw badLink();
+  await applyReset(user._id, link.email, passwordHash, at);
+  await clearLoginFailures(user.email);
+  return { email: user.email };
 }

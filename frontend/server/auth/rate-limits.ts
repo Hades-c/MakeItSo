@@ -35,7 +35,8 @@ import {
  *                    signed-in mailbox verification ("code-fail:user:<id>") and the public password-reset
  *                    confirm ("reset-fail:user:<id>") have separate budgets, so anonymous reset guesses can never
  *                    lock the owner's own in-session verification (or stop its codes). Once a channel's budget is
- *                    used up, its codes are neither checked nor sent until the window ends.
+ *                    used up, its codes are neither checked nor sent until the window ends; a password reset then
+ *                    e-mails its link alone (server/auth/codes.ts "Reset links": no guess budget applies to it).
  *   export 5 / day, password change and account deletion 10 / h, verification 30 / h (per user), password reset
  *   5 / h (request) and 10 / 15 min (confirm) per IP.
  *

@@ -4,7 +4,7 @@ import { STATUS_LABELS } from "@/app/(hub)/plan/_lib/labels";
 import { routes } from "@/lib/routes";
 import { compareTerms, currentTermFrom, termLabel, type TermCode } from "@/lib/term";
 import { ACTIVE_PLAN_STATUSES, type PlanItem } from "@/lib/types/plan";
-import { normalizeCourseCode } from "@/lib/types/common";
+import { normalizeCourseCode } from "@/lib/course-code";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { ApiError } from "@/server/http/errors";
 import { getPlan } from "@/server/plan";

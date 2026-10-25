@@ -12,8 +12,9 @@ import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { accountApi, PasswordSchema } from "@/lib/api/account";
+import { PasswordSchema } from "@/lib/api/account";
 import { callApi } from "@/lib/api/client";
+import { accountEndpoints } from "@/lib/api/endpoints";
 import { routes } from "@/lib/routes";
 import { describeFailure } from "../_lib/errors";
 import { hardNavigate } from "../_lib/navigate";
@@ -72,7 +73,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
     if (Object.keys(errors).length > 0) return;
     setSaving(true);
     try {
-      await callApi(accountApi.changePassword, { body: { currentPassword, newPassword } });
+      await callApi(accountEndpoints.changePassword, { body: { currentPassword, newPassword } });
     } catch (caught) {
       const failure = describeFailure(caught);
       const byField = fieldErrorsFromIssues(failure.issues, FIELD_NAMES);
