@@ -70,7 +70,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       # Includes the UI budgets (tests/e2e/ux, `npm run test:ux` on its own): a target-versus-actual table per page
-      # in the job summary, warnings for budget misses, failures for axe serious/critical and sideways scrolling.
+      # in the job summary, warnings for budget misses, failures for axe serious/critical, sideways scrolling, an
+      # h2 order not in tests/e2e/ux/h2-order-baseline.ts and the budgets of landed items.
       - name: End-to-end tests
         run: npm run test:e2e
         env:

@@ -145,8 +145,17 @@ export function densityMetrics(page: Page, viewportHeight: number): Promise<Dens
 export interface PageChecks {
   /** scrollWidth − clientWidth: > 0 scrolls sideways. */
   overflow: number;
-  /** Elements in <main> drawn in the urgent red (text or fill): the Now pill and the student's due-today rows. */
+  /**
+   * Red marks in <main> that say something: elements with text drawn in the urgent red or on its fill, counted
+   * once (not again for a child that inherits the colour). The now indicator is one (its pill; the dot on its
+   * line has no text), and so is each of the student's due-today labels.
+   */
   red: number;
+  /**
+   * Today's Due rows that are not the student's ("Also in the next two weeks", held-back rows included), and how
+   * many of them are drawn as urgent (data-urgent, or any urgent red inside): QW1 keeps red for the student.
+   */
+  dueNotForYou: { rows: number; urgent: number };
   /** Rail labels on screen at 13px or more (720–1179px). */
   railLabelsVisible: number;
   /** Whether the h2s read in the same order in the DOM as on screen (WCAG 1.3.2). */
@@ -175,11 +184,24 @@ export function pageChecks(page: Page): Promise<PageChecks> {
       probe("var(--urgent)", "color"),
       probe("var(--urgent-fill)", "backgroundColor"),
     ]);
-    const red = [...main.querySelectorAll("*")].filter((e) => {
-      if (!vis(e)) return false;
+    const isRed = (e: Element) => {
       const cs = getComputedStyle(e);
-      return reds.has(cs.backgroundColor) || (reds.has(cs.color) && !!e.textContent?.trim());
-    }).length;
+      return reds.has(cs.backgroundColor) || reds.has(cs.color);
+    };
+    const redMarks = [...main.querySelectorAll("*")].filter(
+      (e) => vis(e) && !!e.textContent?.trim() && isRed(e),
+    );
+    const red = redMarks.filter((e) => !redMarks.some((o) => o !== e && o.contains(e))).length;
+    // Hidden rows too (behind "Show N more"): computed colours do not need layout.
+    const notForYou = [
+      ...main.querySelectorAll('[data-testid="due-soon-item"][data-for-you="false"]'),
+    ];
+    const dueNotForYou = {
+      rows: notForYou.length,
+      urgent: notForYou.filter(
+        (row) => row.hasAttribute("data-urgent") || [row, ...row.querySelectorAll("*")].some(isRed),
+      ).length,
+    };
     const nav = document.querySelector('nav[aria-label="Main"]');
     const railLabelsVisible = nav
       ? [...nav.querySelectorAll("a span")].filter((s) => {
@@ -215,6 +237,7 @@ export function pageChecks(page: Page): Promise<PageChecks> {
     return {
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       red,
+      dueNotForYou,
       railLabelsVisible,
       h2Order: { same: JSON.stringify(dom) === JSON.stringify(visual), dom, visual },
       minFont,

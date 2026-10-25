@@ -37,8 +37,9 @@ import {
  * Budget misses are warnings (a test annotation and a WARN row): a budget becomes `hard` (a failure) once the item
  * that meets it has landed. Hard from day one: axe serious or critical findings (light and dark, 1440 and 390),
  * sideways scrolling at 390 and the h2 order (WCAG 1.3.2) on every page at every width, against the mismatches
- * known today (h2-order-baseline.ts, KNOWN rows) that QW8 and later items remove. The strict provenance check
- * (attributionReport, §5.5) is a warning with its problems listed.
+ * known today (h2-order-baseline.ts, KNOWN rows) that QW8 and later items remove. Hard as their items landed:
+ * QW1's red only for the student and QW17's rail labels. The strict provenance check (attributionReport, §5.5)
+ * is a warning with its problems listed.
  *
  * Runs once, in the desktop project (it sets its own viewports, a touch phone for 390). `npm run test:ux` runs
  * only this file; `npm run test:e2e` (CI) runs it with the rest.
@@ -58,13 +59,22 @@ interface UxPage {
 
 const RAIL: Budget[] = [
   { check: "overflow", op: "==", target: 0 },
-  { check: "railLabelsVisible", op: "==", target: 6 },
+  // QW17: the 720–1179px rail names all six destinations in visible 13px labels.
+  { check: "railLabelsVisible", op: "==", target: 6, hard: true },
 ];
 const PHONE: Budget[] = [
   { check: "overflow", op: "==", target: 0, hard: true },
   { check: "smallTargets", op: "==", target: 0 },
   { check: "obscured", op: "==", target: 0 },
   { check: "minFont", op: ">=", target: 12 },
+];
+/**
+ * QW1: no Due row that is not the student's is drawn as urgent. The second budget keeps the first from passing on
+ * an empty list: Avery (a junior) sees rows for other class years, the seniors' Watson deadline due today among them.
+ */
+const DUE_RED: Budget[] = [
+  { check: "dueNotForYouUrgent", op: "==", target: 0, hard: true },
+  { check: "dueNotForYouRows", op: ">=", target: 1, hard: true },
 ];
 /** Visible [data-source] items (and new-tab links, L0 lines) the strict provenance check finds fault with. */
 const ATTRIBUTED: Budget = { check: "attribution", op: "==", target: 0 };
@@ -83,13 +93,16 @@ const PAGES: UxPage[] = [
         { check: "small12", op: "==", target: 0 },
         { check: "sizes", op: "<=", target: 5 },
         { check: "boxed", op: "<=", target: 2 },
-        { check: "red", op: "<=", target: 1 },
+        // The now indicator only: Avery has nothing of her own due today.
+        { check: "red", op: "==", target: 1 },
+        ...DUE_RED,
       ],
       1024: RAIL,
       768: RAIL,
       390: [
         { check: "height", op: "<=", target: 2400 },
         { check: "pos:#due-soon-title.bottom", op: "<=", target: 780 },
+        ...DUE_RED,
         ...PHONE,
       ],
     },
@@ -263,6 +276,8 @@ async function measure(page: Page, width: Width, checks: readonly Budget[]) {
     srcLabels: m.visibleSourceLabels,
     interactive: m.interactive,
     red: c.red,
+    dueNotForYouUrgent: c.dueNotForYou.urgent,
+    dueNotForYouRows: c.dueNotForYou.rows,
     overflow: c.overflow,
     railLabelsVisible: c.railLabelsVisible,
     minFont: c.minFont,
@@ -384,5 +399,26 @@ test.describe("UI budgets", () => {
       PAGES.flatMap((p) => Object.keys(p.budgets).map((width) => `${p.name}@${width}`)),
     );
     expect(Object.keys(H2_ORDER_BASELINE).filter((key) => !measured.has(key))).toEqual([]);
+  });
+
+  test("the red measures count a mark once and catch a red row that is not the student's", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "runs once");
+    // Today's shapes: the now pill and its line's dot, a due-today label of the student's (its time inherits the
+    // red), and a row for another class year, first plain, then (the bug QW1 fixed) red behind "Show N more".
+    const row = (forYou: boolean, labelClass: string, hidden = false) =>
+      `<div${hidden ? " hidden" : ""}><ol><li data-testid="due-soon-item" data-for-you="${forYou}">` +
+      `<p>Watson Fellowship</p><p class="${labelClass}">Today <span>9:00a</span></p></li></ol></div>`;
+    const html = (other: string) =>
+      `<style>:root{--urgent:rgb(194, 29, 29);--urgent-fill:rgb(176, 24, 24)}` +
+      `.text-urgent{color:var(--urgent)}.bg-urgent{background:var(--urgent)}` +
+      `.bg-urgent-fill{background:var(--urgent-fill);color:rgb(255, 255, 255)}.dot{display:block;width:10px;height:10px}</style>` +
+      `<main><span class="bg-urgent-fill">12:00p</span><div><span class="dot bg-urgent"></span></div>` +
+      `${row(true, "text-urgent")}${other}</main>`;
+    await page.setContent(html(row(false, "plain")));
+    expect(await pageChecks(page)).toMatchObject({ red: 2, dueNotForYou: { rows: 1, urgent: 0 } });
+    await page.setContent(html(row(false, "text-urgent", true)));
+    expect(await pageChecks(page)).toMatchObject({ red: 2, dueNotForYou: { rows: 1, urgent: 1 } });
   });
 });

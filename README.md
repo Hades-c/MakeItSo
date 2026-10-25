@@ -191,7 +191,9 @@ server log naming the variable; it never fails the build.
 - **UI budgets** (`tests/e2e/ux`, part of `test:e2e`; `npm run test:ux` alone): a seeded junior's pages measured at
   390, 768, 1024 and 1440 px against the UI-simplification targets (height, words, type, red, rail labels, tap
   targets, focus behind fixed bars, h2 order, provenance in words). It prints a table per page (and writes it to
-  the CI job summary). Misses are warnings; axe serious/critical findings and sideways scrolling at 390 fail.
+  the CI job summary). Misses are warnings; axe serious/critical findings, sideways scrolling at 390, the budgets
+  of landed items and an h2 order that differs from screen order fail. The mismatches known today are listed in
+  `tests/e2e/ux/h2-order-baseline.ts` (KNOWN rows); a fix fails until its entry is removed.
 
 CI (`.github/workflows/ci.yml`) runs all of the above on every pull request and on pushes to `main`, plus
 `npm audit --omit=dev --audit-level=high`. It needs no secrets.
