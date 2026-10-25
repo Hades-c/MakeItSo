@@ -91,9 +91,10 @@ which replaced the earlier "Lakeside" palette): a white ground, Davidson Black (
 structure and Davidson Red (#D42121, PMS 3546 C) as the one accent, from the College's Marketing Toolbox.
 Red marks exactly four things: the one primary action on a screen, the current page (a red bar beside the nav
 item, not only a tint), selection, and "now". Text links are near-black and underlined, never red. Since red is
-the accent, urgency and danger never rely on colour: the now pill has a clock icon, an item due today an alarm
-icon and its words, errors an icon, and destructive buttons are outlined (crimson, never a red fill) with a
-trash icon and words, and ask first. Focus rings are Lake Blue, never red.
+the accent, urgency and danger never rely on colour: the now pill has a clock icon beside the time, an item due
+today an alarm icon and its words, errors an icon, and destructive buttons are outlined (crimson, never a red
+fill) with a trash icon and words, and ask first. Planned, in progress and the next term are never red. Focus
+rings are Lake Blue, never red.
 
 - **Tokens** live in `frontend/app/globals.css` as CSS variables for light and dark. With no `data-theme` on
   `<html>` the theme follows the system; the toggle stores an explicit choice in `localStorage` (`mis-theme`),
@@ -106,8 +107,9 @@ trash icon and words, and ask first. Focus rings are Lake Blue, never red.
   every token pair in both themes.
 - **Links and states**: text links use the `link` utility (Davidson Black, a grey underline that darkens on
   hover); the current sidebar item and phone tab carry a bar in `--nav-mark`; field errors use `<FieldError>`
-  (icon + words); a list with an add button on every row uses `emphasis="secondary"`, so a screen keeps one red
-  button.
+  and inline messages `<Notice>` (icon + words); a list with an add button on every row uses
+  `emphasis="secondary"`, and a page's other buttons are `variant="secondary"`, so a screen keeps one red button
+  (the UI budgets in `tests/e2e/ux` fail on a second).
 - **Type**: Inter for UI and body; Playfair Display bold (`font-display`) for the wordmark, page titles and card
   and section titles only; IBM Plex Mono (`font-mono`) only for course codes, CRNs and the verification code.
   All three are self-hosted from the `@fontsource` packages through `next/font/local`, so the build needs no

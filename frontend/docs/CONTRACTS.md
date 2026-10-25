@@ -208,17 +208,27 @@ Lakeside palette and Instrument Sans named in PLAN §1 ("Visual") and §7 ("Colo
 
 - Type: Inter (`font-sans`, everything by default); Playfair Display bold (`font-display`) for the wordmark, page
   h1s and card/section titles only; IBM Plex Mono (`font-mono`) only for course codes, CRNs and the verification
-  code. Counts or meta inside a `font-display` heading say `font-sans`.
-- Colour: Davidson Red fills (`bg-primary-fill`, white text) for the one primary action per screen and selected
-  fills; red text and tint (`text-primary`, `bg-primary-wash`) for the current page and selection; `--urgent` for
-  "now" and the student's own items due today. Text links use the `link` utility, never `text-primary`. Info
-  notices and icons are neutral (`bg-surface-2`, `text-fg-2`); status green and amber are icon + words.
-- Never colour alone: the now pill has a clock icon, urgent due labels an alarm icon, errors an icon
-  (`FieldError` from `components/ui/field`), destructive actions `variant="danger"` (outlined crimson) with a
-  trash icon, words and a confirm. The current nav item carries a `--nav-mark` bar (≥ 3:1). Focus is `--focus`
-  (Lake Blue), never red.
+  code. Counts or meta inside a `font-display` heading say `font-sans`; `SourceTag`, `AiChip`, `Badge` and `Chip`
+  already do. The next/font definitions live in `app/fonts.ts`: a document that renders its own `<html>`
+  (`app/global-error.tsx`) puts `fontVariables` on it, as the root layout does.
+- Colour: Davidson Red fills (`bg-primary-fill`, white text) for the one primary action per screen (the whole
+  page: a second action beside it, a jump link to it, a header or banner button, is `variant="secondary"`) and
+  selected fills; red text and tint (`text-primary`, `bg-primary-wash`) for the current page and selection;
+  `--urgent` for "now" and the student's own items due today. Red is never a status: planned, in progress and the
+  registration term are neutral. Text links use the `link` utility, never `text-primary`. Info notices and icons
+  are neutral (`bg-surface-2`, `text-fg-2`); status green and amber are icon + words.
+- Never colour alone: the now pill has a clock icon beside the time (the 56px gutter has no room for the word
+  too: "now" is in the current block's "now · 20 m left" and the screen-reader line "Now: 12:00p"), urgent due
+  labels an alarm icon, errors an icon (`FieldError` from `components/ui/field` for a field or a line beside a
+  button, `Notice` from `components/ui/notice` for an inline message, which picks the icon by tone),
+  destructive actions `variant="danger"` (outlined crimson; `--danger` has no fill) with a trash icon, words and
+  a confirm (`ConfirmButton`'s "Yes, …" carries the icon too). The current nav item carries a `--nav-mark` bar
+  (≥ 3:1). Focus is `--focus` (Lake Blue), never red.
 - `AddToPlanControl` / `AddCourse` take `emphasis` (`"primary"` default, `"secondary"` in lists with a button
   per row).
+- Checked by `tests/e2e/ux`: `primaryFills` (`tests/e2e/helpers.ts`, the controls drawn in `--primary-fill`,
+  selection and the current page left out) is at most 1 on every measured page and width, and Today's `urgent`
+  (marks drawn with an `--urgent` token class) is exactly the now pill for the seeded student.
 
 ## Tests
 
