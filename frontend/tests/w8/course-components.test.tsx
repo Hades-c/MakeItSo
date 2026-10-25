@@ -18,6 +18,7 @@ import { registerAsLink } from "@/app/(hub)/courses/_lib/sections";
 import type { CourseRow as Row } from "@/app/(hub)/courses/_lib/search";
 import type { Availability } from "@/lib/types/catalog";
 import { detectConflicts } from "@/server/plan";
+import { seenText, spokenText } from "../helpers/text";
 import { course, planItem, section, withSection } from "./helpers";
 
 /** The app wraps every page in a TooltipProvider (some course components use tooltips). */
@@ -128,26 +129,29 @@ describe("SectionItem", () => {
     ).toBeVisible();
   });
 
-  it("shows a matched RateMyProfessors rating with its tag, and nothing for an unmatched one", () => {
+  const rmp = {
+    legacyId: 1234,
+    avgRating: 4.2,
+    numRatings: 17,
+    avgDifficulty: 3,
+    wouldTakeAgainPct: 80,
+    department: "Computer Science",
+    url: "https://www.ratemyprofessors.com/professor/1234",
+    asOf: "2026-09-28T10:00:00.000Z",
+    topTags: [
+      { tag: "Participation matters", count: 12 },
+      { tag: "Get ready to read", count: 9 },
+      { tag: "Caring", count: 8 },
+      { tag: "Respected", count: 5 },
+    ],
+    tagRatingsCounted: 17,
+  } as const;
+
+  it("shows a matched rating and its difficulty with its tag, and nothing for an unmatched one", () => {
     const a = csc.sections[0]!;
     const instructor = a.instructors[0]!;
     const ratings = ratingsLookup([
-      {
-        instructor,
-        status: "matched",
-        rmp: {
-          legacyId: 1234,
-          avgRating: 4.2,
-          numRatings: 17,
-          avgDifficulty: 3,
-          wouldTakeAgainPct: 80,
-          department: "Computer Science",
-          url: "https://www.ratemyprofessors.com/professor/1234",
-          asOf: "2026-09-28T10:00:00.000Z",
-          topTags: [],
-          tagRatingsCounted: 0,
-        },
-      },
+      { instructor, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
     ]);
     const { unmount } = render(
       <SectionItem section={a} course={csc} chosen={false} ratings={ratings} sectionHref="/x" />,
@@ -155,6 +159,9 @@ describe("SectionItem", () => {
     const rated = document.querySelector('[data-aggregated="ratemyprofessors"]')!;
     expect(rated).toHaveTextContent("4.2");
     expect(rated).toHaveTextContent("17 ratings");
+    expect(rated).toHaveTextContent("Difficulty 3.0 of 5");
+    // The section row is the short form: no "would take again", no tags.
+    expect(rated).not.toHaveTextContent(/would take again|Most common tags/);
     expect(rated.querySelector('[data-source="ratemyprofessors"]')).not.toBeNull();
     unmount();
     render(
@@ -188,6 +195,64 @@ describe("SectionItem", () => {
     // No ratings (RMP_ENABLED off): the footnote does not promise them.
     expect(card).toHaveTextContent("Seats and notes as the Registrar publishes them.");
     expect(card).not.toHaveTextContent(/RateMyProfessors/);
+  });
+
+  it("lists each rated instructor once under the sections, with what RMP says about them", () => {
+    const instructor = csc.sections[0]!.instructors[0]!;
+    expect(csc.sections.every((s) => s.instructors.some((i) => i.last === instructor.last))).toBe(
+      true,
+    );
+    render(
+      <CourseSections
+        course={csc}
+        chosenCrn={null}
+        ratings={ratingsLookup([
+          { instructor, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
+        ])}
+        sectionHref={(crn) => `/c?crn=${crn}`}
+        asOf={null}
+      />,
+    );
+    const list = screen.getByRole("list", { name: "Instructors on RateMyProfessors" });
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    const item = items[0]!;
+    expect(item).toHaveAttribute("data-aggregated", "ratemyprofessors");
+    expect(within(item).getByText(`${instructor.first} ${instructor.last}`)).toBeVisible();
+    expect(seenText(item)).toBe(
+      "Katy Williams 4.2 / 5 17 ratings · Difficulty 3.0 of 5 · 80% would take again " +
+        "Most common tags: Participation matters (12), Get ready to read (9), Caring (8) " +
+        "RateMyProfessors as of Sep 28, 2026 RateMyProfessors",
+    );
+    expect(spokenText(item)).toContain(
+      "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, 80% would take again " +
+        "Most common tags: Participation matters (12 ratings), Get ready to read (9 ratings), " +
+        "Caring (8 ratings)",
+    );
+    expect(within(item).getByText("as of Sep 28, 2026")).toBeVisible();
+    expect(item.querySelector('[data-source="ratemyprofessors"]')).not.toBeNull();
+    expect(within(item).getByRole("link", { name: /on RateMyProfessors|’s page/ })).toHaveAttribute(
+      "href",
+      rmp.url,
+    );
+    // The section rows keep the short form; the details appear once.
+    expect(screen.getAllByText(/would take again/)).toHaveLength(1);
+  });
+
+  it("lists no instructors without a shown rating", () => {
+    const instructor = csc.sections[0]!.instructors[0]!;
+    render(
+      <CourseSections
+        course={csc}
+        chosenCrn={null}
+        ratings={ratingsLookup([
+          { instructor, status: "matched", rmp: { ...rmp, numRatings: 0, topTags: [] } },
+        ])}
+        sectionHref={(crn) => `/c?crn=${crn}`}
+        asOf={null}
+      />,
+    );
+    expect(screen.queryByTestId("instructor-ratings")).toBeNull();
   });
 
   it("mentions ratings only when ratings are shown", () => {

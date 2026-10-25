@@ -14,12 +14,26 @@ export interface RatingSummaryProps {
   /** 1–5. */
   avgRating?: number;
   numRatings?: number;
+  /** RMP's average difficulty, 1–5 (5 = hardest): "Difficulty 3.1 of 5". null or missing: not shown. */
+  avgDifficulty?: number | null;
+  /** RMP's "would take again" share, 0–100 (lg only): "80% would take again". null or missing: not shown. */
+  wouldTakeAgainPct?: number | null;
+  /**
+   * The teacher's most used RMP tags, most used first, as server/rmp serves them (lg only). Shown as "Most common
+   * tags: …": the first SHOWN_TAGS used at least MIN_TAG_COUNT times, once at least MIN_TAG_RATINGS ratings
+   * were counted.
+   */
+  topTags?: readonly { tag: string; count: number }[];
+  /** How many ratings `topTags` was counted from. */
+  tagRatingsCounted?: number;
   /** When the roster was synced: printed as "as of Sep 30, 2026" beside the source tag. */
   asOf?: Date | string | null;
   /** The professor's RateMyProfessors page. Only https://www.ratemyprofessors.com/ links are rendered. */
   url?: string;
   /** Professor's name as RMP lists it, e.g. "Daniel Aldridge" (read out with the count). */
   instructorName?: string;
+  /** lg: the caller already shows the name beside the summary, so "for <name>" is for screen readers only. */
+  nameShown?: boolean;
   /** What to render without a rating: nothing (default) or a quiet "No rating". */
   empty?: "hide" | "quiet";
   /** lg: the course page card; sm: inline on a section row. */
@@ -52,6 +66,53 @@ function ratingsCount(n: number): string {
   return n === 1 ? "1 rating" : `${n.toLocaleString("en-US")} ratings`;
 }
 
+/** Tags need this many counted ratings before any is shown... */
+export const MIN_TAG_RATINGS = 3;
+/** ...and each shown tag this many uses... */
+export const MIN_TAG_COUNT = 2;
+/** ...and at most this many are shown. */
+export const SHOWN_TAGS = 3;
+
+/** The tags "Most common tags" lists (see RatingSummaryProps.topTags). */
+export function shownTags(
+  topTags: readonly { tag: string; count: number }[] | undefined,
+  tagRatingsCounted: number | undefined,
+): { tag: string; count: number }[] {
+  if (
+    !topTags ||
+    !(typeof tagRatingsCounted === "number" && tagRatingsCounted >= MIN_TAG_RATINGS)
+  ) {
+    return [];
+  }
+  return topTags
+    .filter(({ tag, count }) => tag.trim() && Number.isFinite(count) && count >= MIN_TAG_COUNT)
+    .slice(0, SHOWN_TAGS);
+}
+
+/** "3.1", or null when there is no difficulty to show (RMP's scale is 1–5). */
+function difficultyText(value: number | null | undefined): string | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 1
+    ? Math.min(5, value).toFixed(1)
+    : null;
+}
+
+/** "80%", or null. */
+function takeAgainText(value: number | null | undefined): string | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100
+    ? `${Math.round(value)}%`
+    : null;
+}
+
+/** " · " between the parts of a line: a pause for screen readers, not "middle dot". */
+function Sep() {
+  return (
+    <>
+      <span aria-hidden> · </span>
+      <span className="sr-only">, </span>
+    </>
+  );
+}
+
 /** Five dots filled to the rating (3.7 → three full, one 70%, one empty). Decorative; the number is the text. */
 function RatingDots({ value, small }: { value: number; small?: boolean }) {
   return (
@@ -78,17 +139,24 @@ function RatingDots({ value, small }: { value: number; small?: boolean }) {
 }
 
 /**
- * A professor's RateMyProfessors rating: the average, how many ratings, when it was synced (as visible text, so
- * phones see it too) with the RATEMYPROFESSORS source tag, and a link to RMP. Nothing else from RMP is shown
- * (PLAN §5). Unmatched, staff, disabled and under-review instructors get nothing, or a quiet "No rating" when asked.
+ * A professor's RateMyProfessors rating: the average, how many ratings, the difficulty, when it was synced (as
+ * visible text, so phones see it too) with the RATEMYPROFESSORS source tag, and a link to RMP. The lg size adds
+ * "would take again" and the most common tags (RMP's fixed tags with how many ratings used each). Nothing else from
+ * RMP is shown (PLAN §5). Both numbers out of 5 carry their label ("Rating" is read out, "Difficulty" is printed).
+ * Unmatched, staff, disabled and under-review instructors get nothing, or a quiet "No rating" when asked.
  */
 export function RatingSummary({
   status,
   avgRating,
   numRatings,
+  avgDifficulty,
+  wouldTakeAgainPct,
+  topTags,
+  tagRatingsCounted,
   asOf,
   url,
   instructorName,
+  nameShown = false,
   empty = "hide",
   size = "lg",
   timeZone = DEFAULT_TIME_ZONE,
@@ -115,6 +183,13 @@ export function RatingSummary({
   const href = safeRmpUrl(url);
   const who = instructorName ? ` for ${instructorName}` : "";
   const synced = asOfText(asOf, timeZone);
+  const difficulty = difficultyText(avgDifficulty);
+  const difficultyPart = difficulty ? (
+    <>
+      <Sep />
+      <span>Difficulty {difficulty} of 5</span>
+    </>
+  ) : null;
   const link = href ? (
     <a
       href={href}
@@ -137,6 +212,7 @@ export function RatingSummary({
         data-rating={shown}
       >
         <span className="font-semibold text-fg">
+          <span className="sr-only">Rating </span>
           {shown}
           <span className="sr-only"> out of 5</span>
         </span>
@@ -144,7 +220,13 @@ export function RatingSummary({
         <span>
           {ratingsCount(count)}
           <span className="sr-only">{who}</span>
-          {synced ? ` · ${synced}` : null}
+          {difficultyPart}
+          {synced ? (
+            <>
+              <Sep />
+              {synced}
+            </>
+          ) : null}
         </span>{" "}
         <SourceTag source="ratemyprofessors" />
         {href ? (
@@ -165,11 +247,14 @@ export function RatingSummary({
     );
   }
 
+  const takeAgain = takeAgainText(wouldTakeAgainPct);
+  const tags = shownTags(topTags, tagRatingsCounted);
   return (
     <div className={cn("flex flex-col gap-3", className)} data-rating={shown}>
       <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
         <div>
           <p className="flex items-baseline gap-1">
+            <span className="sr-only">Rating </span>
             <span className="text-3xl font-strong text-fg tabular-nums">{shown}</span>
             <span className="text-base font-medium text-fg-3">
               <span aria-hidden>/ 5</span>
@@ -181,10 +266,31 @@ export function RatingSummary({
           </div>
         </div>
         <p className="text-sm text-fg-2">
-          {ratingsCount(count)}
-          {who}
+          <span>
+            {ratingsCount(count)}
+            {nameShown ? <span className="sr-only">{who}</span> : who}
+          </span>
+          {difficultyPart}
+          {takeAgain ? (
+            <>
+              <Sep />
+              <span>{takeAgain} would take again</span>
+            </>
+          ) : null}
         </p>
       </div>
+      {tags.length > 0 ? (
+        <p className="text-sm text-fg-2" data-testid="rating-tags">
+          Most common tags:{" "}
+          {tags.map(({ tag, count: uses }, index) => (
+            <span key={tag}>
+              {index > 0 ? ", " : null}
+              {tag} <span aria-hidden>{`(${uses})`}</span>
+              <span className="sr-only">{`(${uses} ratings)`}</span>
+            </span>
+          ))}
+        </p>
+      ) : null}
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <SourceTag source="ratemyprofessors" />
         {synced ? <span className="text-xs text-fg-2">{synced}</span> : null}
