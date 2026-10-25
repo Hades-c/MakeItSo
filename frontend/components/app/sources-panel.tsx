@@ -1,5 +1,6 @@
+import type * as React from "react";
 import { ArrowUpRight } from "lucide-react";
-import { DEFAULT_TIME_ZONE, formatAsOf, formatShortDate, formatSyncTime } from "@/lib/format";
+import { dayKey, DEFAULT_TIME_ZONE, formatShortDate, formatTime } from "@/lib/format";
 import { SOURCES, type SourceId } from "@/lib/sources";
 import { cn } from "@/lib/utils";
 
@@ -52,12 +53,20 @@ const DOT: Record<SourceStatus | "never" | "curated", string> = {
   curated: "border-[1.5px] border-success",
 };
 
-const STATUS_TEXT: Record<SourceStatus | "never", string> = {
-  ok: "synced",
-  stale: "out of date",
-  error: "sync failed",
-  never: "not synced yet",
+/** What a synced source's status says before its time ("Synced 12:00 PM"), or on its own (no time). */
+const STATUS_WORDS: Record<SourceStatus | "never", string> = {
+  ok: "Synced",
+  stale: "Out of date · last synced",
+  error: "Sync failed",
+  never: "Not synced yet",
 };
+
+/** When it last synced: the clock time today ("12:00 PM"), else the day ("Sep 29"). */
+function syncedWhen(date: Date, now: Date, timeZone: string): string {
+  return dayKey(date, timeZone) === dayKey(now, timeZone)
+    ? formatTime(date, timeZone)
+    : formatShortDate(date, timeZone);
+}
 
 export interface SourcesPanelProps {
   /** Only sources that really sync or were really verified; never placeholders. */
@@ -71,9 +80,10 @@ export interface SourcesPanelProps {
 const HEADING = "mb-2 font-mono text-xs font-medium uppercase tracking-label text-fg-3";
 
 /**
- * Sidebar "Sources" panel: every source MakeItSo aggregates with its real last-sync (or verified) time, and the
+ * Sidebar "Sources" panel: every source MakeItSo aggregates with its real last-sync (or checked) time, and the
  * platforms it only links to, so the all-in-one promise is visible (Lakeside signature element). Data comes from
- * the server layout.
+ * the server layout. Each time is said in words on screen, never only in a tooltip or to screen readers: "Synced
+ * 12:00 PM", "Checked Sep 30", "Out of date · last synced Sep 29", "Sync failed", "Not synced yet".
  */
 export function SourcesPanel({
   sources,
@@ -90,7 +100,7 @@ export function SourcesPanel({
       {sources.length === 0 ? (
         <p className="text-xs text-fg-3">No sources synced yet.</p>
       ) : (
-        <ul className="flex flex-col gap-2.5 text-xs text-fg-2">
+        <ul className="flex flex-col gap-2 text-xs text-fg-2">
           {sources.map((source) => {
             const label = source.label ?? SOURCES[source.id].label;
             if (isCurated(source)) {
@@ -102,46 +112,51 @@ export function SourcesPanel({
                   ? "UTC"
                   : timeZone;
               return (
-                <li key={`${source.id}-${label}`} className="flex items-center gap-2">
-                  <span
-                    aria-hidden
-                    className={cn("size-1.75 shrink-0 rounded-full", DOT.curated)}
-                  />
-                  <span className="min-w-0 truncate">{label}</span>
+                <SourceRow key={`${source.id}-${label}`} label={label} dot={DOT.curated}>
                   {verified ? (
                     <>
-                      <span className="sr-only">, verified</span>{" "}
+                      Checked{" "}
                       <time
-                        className="ml-auto shrink-0 font-mono text-fg-3"
                         dateTime={
                           verifiedZone === "UTC"
                             ? verified.toISOString().slice(0, 10)
                             : verified.toISOString()
                         }
-                        title={`Verified ${formatShortDate(verified, verifiedZone)}`}
                       >
                         {formatShortDate(verified, verifiedZone)}
                       </time>
                     </>
                   ) : null}
-                </li>
+                </SourceRow>
               );
             }
             const lastSync = validDate(source.lastSync);
-            const state = lastSync === null ? "never" : (source.status ?? "ok");
+            // A failed sync says so even before the first success; otherwise no time means never synced.
+            const state =
+              source.status === "error"
+                ? "error"
+                : lastSync === null
+                  ? "never"
+                  : (source.status ?? "ok");
+            const words = STATUS_WORDS[state];
+            const time =
+              lastSync && state !== "never" ? (
+                <time dateTime={lastSync.toISOString()}>{syncedWhen(lastSync, now, timeZone)}</time>
+              ) : null;
             return (
-              <li key={`${source.id}-${label}`} className="flex items-center gap-2">
-                <span aria-hidden className={cn("size-1.75 shrink-0 rounded-full", DOT[state])} />
-                <span className="min-w-0 truncate">{label}</span>
-                <span className="sr-only">, {STATUS_TEXT[state]},</span>{" "}
-                <time
-                  className="ml-auto shrink-0 font-mono text-fg-3"
-                  dateTime={lastSync?.toISOString()}
-                  title={lastSync ? formatAsOf(lastSync, timeZone) : undefined}
-                >
-                  {formatSyncTime(lastSync, now, timeZone)}
-                </time>
-              </li>
+              <SourceRow key={`${source.id}-${label}`} label={label} dot={DOT[state]}>
+                {time && state === "error" ? (
+                  <>
+                    {words} · last synced {time}
+                  </>
+                ) : time ? (
+                  <>
+                    {words} {time}
+                  </>
+                ) : (
+                  words
+                )}
+              </SourceRow>
             );
           })}
         </ul>
@@ -171,5 +186,31 @@ export function SourcesPanel({
         </>
       ) : null}
     </section>
+  );
+}
+
+/** One source: its status dot, its name, and under it the status and time in words. */
+function SourceRow({
+  label,
+  dot,
+  children,
+}: {
+  label: string;
+  dot: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <li className="flex items-start gap-2">
+      <span aria-hidden className={cn("mt-1.25 size-1.75 shrink-0 rounded-full", dot)} />
+      <span className="min-w-0">
+        <span className="block truncate">{label}</span>
+        {children ? (
+          <span className="block text-fg-3">
+            <span className="sr-only">, </span>
+            {children}
+          </span>
+        ) : null}
+      </span>
+    </li>
   );
 }

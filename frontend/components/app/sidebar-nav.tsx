@@ -44,8 +44,9 @@ export interface SidebarNavProps {
 }
 
 /**
- * Sidebar navigation (≥720px). Full labels from 1180px, an icon rail with visually hidden labels below. Lists only
- * the sections in `nav`, in sidebar order.
+ * Sidebar navigation (≥720px). A row per section from 1180px; below, a rail of 80 × 56px items with the icon and a
+ * visible 13px label under it, like the phone's bottom tabs. Every label is on screen at every width: no tooltip
+ * (`title`) carries it (PLAN §7, no hover-only content). Lists only the sections in `nav`, in sidebar order.
  */
 export function SidebarNav({ counts, nav = ALL_NAV_KEYS }: SidebarNavProps) {
   const pathname = usePathname();
@@ -60,17 +61,16 @@ export function SidebarNav({ counts, nav = ALL_NAV_KEYS }: SidebarNavProps) {
               <Link
                 href={href}
                 aria-current={current ? "page" : undefined}
-                title={label}
                 className={cn(
                   "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm transition-colors xl:min-h-9.75",
-                  "max-xl:justify-center max-xl:px-0",
+                  "max-xl:h-14 max-xl:w-full max-xl:flex-col max-xl:justify-center max-xl:gap-1 max-xl:px-0",
                   current
                     ? "bg-primary-wash font-strong text-primary"
                     : "font-nav text-fg-2 hover:bg-surface-2 hover:text-fg",
                 )}
               >
                 <Icon aria-hidden strokeWidth={1.8} className="size-4.5 shrink-0" />
-                <span className="max-xl:sr-only">{label}</span>
+                <span className="max-xl:text-nav">{label}</span>
                 <CountLabel navKey={key} counts={counts} />
               </Link>
             </li>

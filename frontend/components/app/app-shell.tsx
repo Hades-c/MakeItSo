@@ -53,7 +53,7 @@ export function AppShell({
         Skip to content
       </a>
       <TopBar user={user} nav={nav} />
-      <div className="md:grid md:grid-cols-[4.5rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="md:grid md:grid-cols-[6rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)]">
         <Sidebar
           counts={counts}
           nav={nav}

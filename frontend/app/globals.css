@@ -248,6 +248,8 @@
    */
   --text-xs: 0.75rem; /* 12px: meta, mono labels, chips, source tags */
   --text-xs--line-height: 1rem;
+  --text-nav: 0.8125rem; /* 13px: the labels under the 720-1179px rail's icons */
+  --text-nav--line-height: 1rem;
   --text-sm: 0.875rem; /* 14px: secondary text, nav, buttons, inputs */
   --text-sm--line-height: 1.25rem;
   --text-base: 0.9375rem; /* 15px: body */
