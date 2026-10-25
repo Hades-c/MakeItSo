@@ -596,14 +596,14 @@ describe("RatingSummary", () => {
     const block = container.firstElementChild!;
     expect(seenText(block)).toBe(
       "3.7 / 5 21 ratings for Daniel Aldridge · Difficulty 2.6 of 5 · 67% would take again " +
-        "Most common tags (from 21 ratings, as of Oct 25): Participation matters (12), " +
+        "Most common tags (from 21 ratings, as of Oct 25, 2026): Participation matters (12), " +
         "Get ready to read (9), Caring (8) · via RateMyProfessors " +
         "RateMyProfessors as of Sep 30, 2026 RateMyProfessors",
     );
     // The two numbers out of 5 are told apart: "Rating" is read out, "Difficulty" is printed.
     expect(spokenText(block)).toContain(
       "Rating 3.7 out of 5 21 ratings for Daniel Aldridge, Difficulty 2.6 of 5, 67% would take again " +
-        "Most common tags (from 21 ratings, as of Oct 25): Participation matters (12 ratings), " +
+        "Most common tags (from 21 ratings, as of Oct 25, 2026): Participation matters (12 ratings), " +
         "Get ready to read (9 ratings), Caring (8 ratings), via RateMyProfessors " +
         "Source: RateMyProfessors",
     );

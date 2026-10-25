@@ -227,13 +227,13 @@ describe("SectionItem", () => {
     expect(within(item).getByText(`${instructor.first} ${instructor.last}`)).toBeVisible();
     expect(seenText(item)).toBe(
       "Katy Williams 4.2 / 5 17 ratings · Difficulty 3.0 of 5 · 80% would take again " +
-        "Most common tags (from 17 ratings, as of Sep 29): Participation matters (12), " +
+        "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12), " +
         "Get ready to read (9), Caring (8) · via RateMyProfessors " +
         "RateMyProfessors as of Sep 28, 2026 RateMyProfessors",
     );
     expect(spokenText(item)).toContain(
       "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, 80% would take again " +
-        "Most common tags (from 17 ratings, as of Sep 29): Participation matters (12 ratings), " +
+        "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12 ratings), " +
         "Get ready to read (9 ratings), Caring (8 ratings), via RateMyProfessors",
     );
     expect(within(item).getByText("as of Sep 28, 2026")).toBeVisible();

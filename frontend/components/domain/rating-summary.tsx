@@ -1,6 +1,6 @@
 import { ArrowUpRight } from "lucide-react";
 import { SourceTag } from "@/components/ui/source-tag";
-import { DEFAULT_TIME_ZONE, formatMediumDate, formatShortDate } from "@/lib/format";
+import { DEFAULT_TIME_ZONE, formatMediumDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type RatingStatus = "matched" | "unmatched" | "staff" | "disabled" | "review";
@@ -26,8 +26,8 @@ export interface RatingSummaryProps {
   wouldTakeAgainPct?: number | null;
   /**
    * The teacher's most used RMP tags, most used first, as server/rmp serves them (lg only). Shown as "Most common
-   * tags (from 39 ratings, as of Oct 25): …": the first SHOWN_TAGS used at least MIN_TAG_COUNT times, once at
-   * least MIN_DETAIL_RATINGS ratings were counted.
+   * tags (from 39 ratings, as of Oct 25, 2026): …": the first SHOWN_TAGS used at least MIN_TAG_COUNT times, once
+   * at least MIN_DETAIL_RATINGS ratings were counted.
    */
   topTags?: readonly { tag: string; count: number }[];
   /** How many ratings `topTags` was counted from (the tags line says so). */
@@ -101,7 +101,10 @@ export function shownTags(
     .slice(0, SHOWN_TAGS);
 }
 
-/** "from 39 ratings, as of Oct 25" (the date left out when missing or unreadable). */
+/**
+ * "from 39 ratings, as of Oct 25, 2026" (the date left out when missing or unreadable). With the year, like the
+ * roster's line: stored counts are kept while every count run fails, so the date can be a year old.
+ */
 function tagsFreshness(
   counted: number,
   tagsAsOf: Date | string | null | undefined,
@@ -109,7 +112,7 @@ function tagsFreshness(
 ): string {
   const date = tagsAsOf ? new Date(tagsAsOf) : null;
   const when =
-    date && !Number.isNaN(date.getTime()) ? `, as of ${formatShortDate(date, timeZone)}` : "";
+    date && !Number.isNaN(date.getTime()) ? `, as of ${formatMediumDate(date, timeZone)}` : "";
   return `from ${ratingsCount(counted)}${when}`;
 }
 

@@ -137,7 +137,7 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   await expect(arianna).toContainText("14% would take again");
   // The tags' own freshness: how many ratings they were counted from, and when (not the roster's date).
   await expect(arianna.getByTestId("rating-tags")).toContainText(
-    "Most common tags (from 8 ratings, as of Sep 29): Extra credit (4)",
+    "Most common tags (from 8 ratings, as of Sep 29, 2026): Extra credit (4)",
   );
   await expect(arianna.getByTestId("rating-tags")).toHaveText(/ via RateMyProfessors$/);
   await expect(arianna.getByTestId("rating-tags")).toContainText("Get ready to read (3)");

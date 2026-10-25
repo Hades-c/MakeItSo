@@ -102,7 +102,7 @@ The frozen interfaces every workstream codes against. They change only through t
   and its count, from one rating; difficulty and "would take again", from three ratings (`MIN_DETAIL_RATINGS`,
   `components/domain/rating-summary.tsx`: with one or two they read 0% or 100% about a named professor); the most
   common tags, from three counted ratings, each used at least twice, at most three, on a line with its own freshness,
-  "Most common tags (from 39 ratings, as of Oct 25): … · via RateMyProfessors" (`rmp.tagRatingsCounted` and
+  "Most common tags (from 39 ratings, as of Oct 25, 2026): … · via RateMyProfessors" (`rmp.tagRatingsCounted` and
   `rmp.tagsAsOf`, the daily count; the roster's `asOf` dates the rest); the source tag and the profile link. No
   review text, and no ratings on /courses rows or career cards.
 - `rmp.tagsAsOf`: when the tags were counted (`rmpteachers.tagsFetchedAt`), null until counted or with no ratings.
