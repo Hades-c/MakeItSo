@@ -87,11 +87,8 @@
   --success-wash: #f3f4f6;
   --warning: #8a5300;
   --warning-wash: #f3f4f6;
-  --danger: #a3134d; /* errors and destructive actions: a crimson distinct from Davidson Red, always icon + words */
-  --danger-fill: #a3134d;
-  --danger-fill-hover: #8a0f41;
+  --danger: #a3134d; /* errors, destructive outlines (never a fill): crimson, not Davidson Red; icon + words */
   --danger-wash: #fbe4ec;
-  --on-danger: #ffffff;
 
   /* Decor */
   --taupe: #7a6650; /* Deep Taupe, darkened to hold 3:1 as an icon */
@@ -158,10 +155,7 @@
     --warning: #f0b75e;
     --warning-wash: #1b2532;
     --danger: #f68fb0;
-    --danger-fill: #c2255c;
-    --danger-fill-hover: #d23a6f;
     --danger-wash: #3b1726;
-    --on-danger: #ffffff;
     --taupe: #c4af96;
     --sand: #232d3b;
     --focus: #93b6ee;
@@ -216,10 +210,7 @@
   --warning: #f0b75e;
   --warning-wash: #1b2532;
   --danger: #f68fb0;
-  --danger-fill: #c2255c;
-  --danger-fill-hover: #d23a6f;
   --danger-wash: #3b1726;
-  --on-danger: #ffffff;
   --taupe: #c4af96;
   --sand: #232d3b;
   --focus: #93b6ee;
@@ -340,10 +331,7 @@
   --color-warning: var(--warning);
   --color-warning-wash: var(--warning-wash);
   --color-danger: var(--danger);
-  --color-danger-fill: var(--danger-fill);
-  --color-danger-fill-hover: var(--danger-fill-hover);
   --color-danger-wash: var(--danger-wash);
-  --color-on-danger: var(--on-danger);
   --color-taupe: var(--taupe);
   --color-sand: var(--sand);
   --color-focus: var(--focus);

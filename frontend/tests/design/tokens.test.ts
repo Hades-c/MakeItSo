@@ -104,10 +104,11 @@ describe("design tokens", () => {
     }
   });
 
-  it("keeps danger distinct from Davidson Red", () => {
+  it("keeps danger distinct from Davidson Red, and never a fill (destructive buttons are outlined)", () => {
     for (const t of Object.values(THEMES)) {
       expect(t.danger).not.toBe(t.urgent);
-      expect(t["danger-fill"]).not.toBe(t["urgent-fill"]);
+      expect(t.danger).not.toBe(t.primary);
+      expect(Object.keys(t).filter((name) => /^(danger-fill|on-danger)/.test(name))).toEqual([]);
     }
   });
 
@@ -139,8 +140,6 @@ describe("design tokens", () => {
       ["on-primary", "primary-fill"],
       ["on-primary", "primary-fill-hover"],
       ["on-urgent", "urgent-fill"],
-      ["on-danger", "danger-fill"],
-      ["on-danger", "danger-fill-hover"],
       ["bg", "fg"],
       ["fg", "sand"],
     ])("%s on %s ≥ 4.5:1", (fg, bg) => {
