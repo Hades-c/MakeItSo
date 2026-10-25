@@ -135,12 +135,14 @@ test("today: the day summary, timeline, strip and panels for a student with sect
       page.locator('[data-testid="due-soon-item"][data-for-you="false"] .text-urgent'),
     ).toHaveCount(0);
     // Every row is one press away: "Show N more" reveals the rest in place.
-    const showMore = dueCard.getByRole("button", { name: /^Show \d+ more/ });
+    const showMore = dueCard.getByTestId("show-more");
+    await expect(showMore).toHaveAccessibleName(/^Show \d+ more in the next two weeks$/);
     await expect(showMore).toHaveAttribute("aria-expanded", "false");
     const total = await due.count();
     await expect(due.filter({ visible: true })).not.toHaveCount(total);
     await showMore.click();
     await expect(showMore).toHaveAttribute("aria-expanded", "true");
+    await expect(showMore).toHaveAccessibleName(/^Show fewer/);
     await expect(due.filter({ visible: true })).toHaveCount(total);
     await expect(due.filter({ hasText: "Problem set" })).toContainText("Tomorrow 11:59p");
     const webtree = due.filter({ hasText: "WebTree Open" });

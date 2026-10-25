@@ -221,7 +221,13 @@ test("a career page says which courses the student has taken instead of offering
   request,
 }) => {
   await newSignedInAccount(page, request, "e2e-career-taken");
-  // Avery's plan: CSC 121 completed, CSC 221 completed and planned again, CSC 321 under way.
+  // A junior (class of 2028, so Fall 2025 is in their plan). Avery's courses: CSC 121 completed, CSC 221
+  // completed and planned again, CSC 321 under way.
+  const profile = await page.request.patch("/api/profile", {
+    data: { graduationYear: 2028 },
+    headers: SAME_ORIGIN,
+  });
+  expect(profile.status()).toBe(200);
   for (const data of [
     { termCode: "202501", courseCode: "CSC 121", status: "completed" },
     { termCode: "202502", courseCode: "CSC 221", status: "completed" },

@@ -22,7 +22,7 @@ import { ShowMore } from "./show-more";
 /** Rows listed before "Show N more" (the student's own rows are always listed, however many). */
 export const DUE_SOON_SHOWN = 8;
 
-/** The card's title, also its loading and error states'. */
+/** The card's title (the page's loading and error states for it say the same). */
 export const DUE_SOON_TITLE = "Due for you";
 
 /**
