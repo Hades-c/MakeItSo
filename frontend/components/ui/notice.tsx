@@ -3,8 +3,9 @@ import { CircleCheck, Info, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * One inline message for the plan tabs: an error (danger wash + icon + words), a warning, a success or a neutral
- * note. Colour never carries the meaning alone. Renders nothing without children.
+ * One inline message (the plan tabs, the Add to plan notices, inline failures): an error (danger wash + icon +
+ * words), a warning, a success or a neutral note, each with its icon. Colour never carries the meaning alone (red
+ * is also the accent). Renders nothing without children. For a form field's error, use FieldError (./field).
  */
 export function Notice({
   tone,

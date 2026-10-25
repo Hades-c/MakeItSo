@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Flag, LoaderCircle, RotateCcw, Sparkles } from "lucide-react";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/field";
 import { WRAP_CHIP } from "./wrap";
 import { Chip } from "@/components/ui/chip";
 import { SourceTag } from "@/components/ui/source-tag";
@@ -111,7 +112,7 @@ function ReportLink({ inputHash }: { inputHash: string }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-2">
+    <div className="inline-flex flex-wrap items-center gap-2">
       <Button
         variant="ghost"
         size="sm"
@@ -121,12 +122,11 @@ function ReportLink({ inputHash }: { inputHash: string }) {
         <Flag aria-hidden />
         Report this summary
       </Button>
+      {/* An icon and words, never the danger colour alone (red is also the accent). */}
       {state === "failed" ? (
-        <span role="status" className="text-xs text-danger">
-          Could not send the report. Try again.
-        </span>
+        <FieldError role="status">Could not send the report. Try again.</FieldError>
       ) : null}
-    </span>
+    </div>
   );
 }
 

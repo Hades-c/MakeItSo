@@ -94,6 +94,8 @@ describe("CourseAddToPlan", () => {
     ).toBeVisible();
     const notice = screen.getByTestId("add-to-plan-notice");
     expect(notice).toHaveTextContent("Added CSC 221 to Spring 2027.");
+    // Status green is an icon and words (Notice).
+    expect(notice.querySelector(".bg-success-wash svg[aria-hidden]")).not.toBeNull();
     expect(within(notice).getByRole("link", { name: "Open My plan" })).toHaveAttribute(
       "href",
       "/plan?tab=next",

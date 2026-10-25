@@ -90,6 +90,10 @@ describe("CourseAboutPanel", () => {
     renderPanel();
     await userEvent.click(await screen.findByRole("button", { name: "Report this summary" }));
     expect(await screen.findByText("Could not send the report. Try again.")).toBeVisible();
+    // An icon and words (FieldError), never the danger colour alone.
+    const status = screen.getByText("Could not send the report. Try again.").closest("p")!;
+    expect(status).toHaveAttribute("role", "status");
+    expect(status.querySelector("svg[aria-hidden]")).not.toBeNull();
   });
 
   it.each(AI_FAILURE_KINDS)("renders the %s result kind", async (kind) => {

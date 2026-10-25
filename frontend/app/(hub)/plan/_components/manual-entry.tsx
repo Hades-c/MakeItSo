@@ -6,6 +6,7 @@ import { notify } from "@/components/ui/notify";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input, controlClass } from "@/components/ui/input";
+import { Notice } from "@/components/ui/notice";
 import { callApi } from "@/lib/api/client";
 import { planApi, type AddPlanItemBody } from "@/lib/api/plan";
 import { termLabel } from "@/lib/term";
@@ -13,7 +14,6 @@ import { CourseCodeSchema } from "@/lib/types/common";
 import type { PlanStatus } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "../_lib/labels";
-import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
 /**

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CourseCode } from "@/components/ui/course-code";
 import { controlClass } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
 import { Switch } from "@/components/ui/switch";
 import { callApi } from "@/lib/api/client";
 import { planApi, type UpdatePlanItemBody } from "@/lib/api/plan";
@@ -23,7 +24,6 @@ import {
   STATUS_OPTIONS,
 } from "../_lib/labels";
 import { ConfirmButton } from "./confirm-button";
-import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
 /**

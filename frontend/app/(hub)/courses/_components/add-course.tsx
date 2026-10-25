@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Info, TriangleAlert } from "lucide-react";
 import { AddToPlanControl, type AddToPlanTerm } from "@/components/domain/add-to-plan-control";
+import { Notice } from "@/components/ui/notice";
 import { ApiClientError, callApi } from "@/lib/api/client";
 import { planApi } from "@/lib/api/plan";
-import { cn } from "@/lib/utils";
 
 /**
  * "Add to <term>" for one course (client island over AddToPlanControl; POST /api/plan/items through callApi with
@@ -199,14 +199,8 @@ export function AddCourse({
       </AddToPlanControl>
       <div aria-live="polite" data-testid="add-to-plan-notice">
         {notice ? (
-          <div
-            className={cn(
-              "mt-2 rounded-md px-3 py-2 text-sm",
-              notice.tone === "success" && "bg-success-wash text-success",
-              notice.tone === "info" && "bg-surface-2 text-fg-2",
-              notice.tone === "error" && "bg-danger-wash text-danger",
-            )}
-          >
+          // Each tone with its icon and words (Notice): never colour alone.
+          <Notice tone={notice.tone} className="mt-2">
             <p>
               {notice.text}{" "}
               {notice.tone === "success" ? (
@@ -227,7 +221,7 @@ export function AddCourse({
                 ))}
               </ul>
             ) : null}
-          </div>
+          </Notice>
         ) : null}
       </div>
     </div>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Input, controlClass } from "@/components/ui/input";
+import { Notice } from "@/components/ui/notice";
 import { SourceTag } from "@/components/ui/source-tag";
 import { Textarea } from "@/components/ui/textarea";
 import { callApi } from "@/lib/api/client";
@@ -16,7 +17,6 @@ import { termLabel } from "@/lib/term";
 import type { SummerActivity } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
 import { ConfirmButton } from "./confirm-button";
-import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
 /**

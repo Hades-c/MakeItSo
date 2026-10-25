@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ListOrdered, TriangleAlert } from "lucide-react";
 import { WeekGrid } from "@/components/domain/week-grid";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Notice } from "@/components/ui/notice";
 import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { planApi } from "@/lib/api/plan";
@@ -34,7 +35,6 @@ import {
 import { AddCourse, type AddTarget, type PickedSection } from "./add-course";
 import { ChoiceCard, type SectionDetail } from "./choice-card";
 import { CopyForWebTree } from "./copy-for-webtree";
-import { Notice } from "./notice";
 
 /**
  * The WebTree list (PLAN §5 "WebTree list", R1): ranked choices with alternates for the registration term. Every

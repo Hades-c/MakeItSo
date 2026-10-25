@@ -11,6 +11,7 @@ import { CourseCode } from "@/components/ui/course-code";
 import { EmptyState } from "@/components/ui/empty-state";
 import { controlClass } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
 import { SourceTag } from "@/components/ui/source-tag";
 import { aiApi } from "@/lib/api/ai";
 import { callApi } from "@/lib/api/client";
@@ -29,7 +30,6 @@ import {
   type SuggestionRow,
 } from "../_lib/suggestions";
 import { ConfirmButton } from "./confirm-button";
-import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
 /**

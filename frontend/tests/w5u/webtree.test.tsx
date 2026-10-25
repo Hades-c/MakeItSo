@@ -612,6 +612,16 @@ describe("WebTreeEditor", () => {
       "CRN 20478 is no longer in the schedule. Remove it or pick another section.",
     );
   });
+
+  it("says a search problem with an icon and words, never the danger colour alone", async () => {
+    const user = userEvent.setup();
+    render(<WebTreeEditor {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    const message = screen.getByText("Type a course code, title or instructor to search.");
+    const notice = message.closest("div.bg-danger-wash")!;
+    expect(notice).not.toBeNull();
+    expect(notice.querySelector("svg[aria-hidden]")).not.toBeNull();
+  });
 });
 
 describe("CopyForWebTree", () => {

@@ -41,7 +41,8 @@ export function Field({ id, label, hint, error, className, children }: FieldProp
 
 /**
  * A field's error line: the danger colour with an icon and words, never colour alone (red is also the accent).
- * For controls wired by hand (fieldsets, checkbox groups), give it the id their aria-describedby names.
+ * For controls wired by hand (fieldsets, checkbox groups), give it the id their aria-describedby names. Also the
+ * small error line beside a button (role="status": announced politely, the page goes on).
  */
 export function FieldError({
   id,
@@ -50,7 +51,7 @@ export function FieldError({
   children,
 }: {
   id?: string;
-  role?: "alert";
+  role?: "alert" | "status";
   className?: string;
   children: React.ReactNode;
 }) {

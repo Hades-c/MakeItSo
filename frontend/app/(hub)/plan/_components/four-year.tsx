@@ -2,6 +2,7 @@ import { History, TriangleAlert } from "lucide-react";
 import { PlanMap } from "@/components/domain/plan-map";
 import { RequirementSlots } from "@/components/domain/requirement-slots";
 import { ErrorState } from "@/components/ui/error-state";
+import { Notice } from "@/components/ui/notice";
 import { SectionCard } from "@/components/ui/section-card";
 import { SourceTagList } from "@/components/ui/source-tag";
 import { isSummer, termLabel } from "@/lib/term";
@@ -22,7 +23,6 @@ import { creditsText, formatNumber, plural } from "../_lib/labels";
 import type { FourYearData, Loaded } from "../_lib/load";
 import { ManualEntryForm } from "./manual-entry";
 import { ManualRequirements } from "./manual-requirements";
-import { Notice } from "./notice";
 import { PlanItemRow } from "./plan-item-row";
 
 /**
