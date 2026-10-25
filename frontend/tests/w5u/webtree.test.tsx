@@ -436,6 +436,56 @@ describe("WebTreeEditor", () => {
     });
   });
 
+  it("moves focus to the new choice, never a disabled button, when a one-press add fills the list", async () => {
+    const user = userEvent.setup();
+    // 19 choices: one more fills the list (MAX_CHOICES = 20), which disables every "Add as choice" button.
+    const nineteen: WebTreeList = {
+      termCode: "202602",
+      choices: Array.from({ length: 19 }, (_, i) => ({
+        rank: i + 1,
+        crn: String(21000 + i),
+        courseCode: `HIS ${100 + i}`,
+        alternates: [],
+      })),
+    };
+    const planned = (courseCode: string, crn: string) => ({
+      courseCode,
+      title: courseCode,
+      crn,
+      section: {
+        crn,
+        courseCode,
+        section: "A",
+        title: courseCode,
+        meetings: [meeting("10:30", "11:20")],
+        instructors: [],
+        enrollment: { current: 10, max: 24, remaining: 14 },
+      },
+    });
+    stubFetch(saved(nineteen));
+    render(
+      <WebTreeEditor
+        {...props({
+          list: nineteen,
+          details: {},
+          conflicts: [],
+          warnings: [],
+          planCourses: [planned("CSC 221", "20135"), planned("ENV 237", "20226")],
+        })}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /^Add as choice 20: CSC 221 section A/ }));
+    expect(screen.getAllByTestId("webtree-choice")).toHaveLength(20);
+    // The next planned course's button is disabled now: focus is on the new choice's heading instead.
+    expect(screen.getByRole("button", { name: /^Add as choice 21: ENV 237/ })).toBeDisabled();
+    const heading = document.getElementById("choice-20135")!;
+    expect(heading.tagName).toBe("H3");
+    expect(heading).toHaveTextContent(/^Choice 20: CSC 221/);
+    expect(heading).toHaveFocus();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(screen.getByText("The list already holds 20 choices.")).toBeVisible();
+  });
+
   it("adds a planned section as an alternate when the 'Add as' select says so", async () => {
     const user = userEvent.setup();
     const calls = stubFetch(saved(LIST));

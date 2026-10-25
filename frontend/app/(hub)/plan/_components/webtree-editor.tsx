@@ -21,6 +21,7 @@ import {
 import {
   addAlternate,
   addChoice,
+  MAX_CHOICES,
   moveChoice,
   normalizeRanks,
   promoteAlternate,
@@ -41,7 +42,7 @@ import { Notice } from "./notice";
  * saved as the whole list (PUT /api/plan/webtree); then the server components refresh with the plan service's
  * report: seats, slots, restriction flags, the conflict check across choices and alternates, and the "Copy for
  * WebTree" text. Saves run one after another, so quick presses never race. Moving a choice keeps keyboard focus
- * on the control that moved it.
+ * on the control that moved it; an add that fills the list moves it to the choice the section went into.
  */
 
 export interface WebTreeEditorProps {
@@ -129,7 +130,7 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
   const commit = (
     result: EditResult,
     message: string,
-    focus?: { move: string } | { id: string } | ((list: WebTreeList) => { id: string }),
+    focus?: { move: string } | { id: string } | ((list: WebTreeList) => { id: string } | null),
   ): boolean => {
     if (!result.ok) {
       setError(result.reason);
@@ -162,12 +163,19 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
         ? addChoice(list, { crn: section.crn, courseCode: section.courseCode })
         : addAlternate(list, where, section.crn);
     const label = `${section.courseCode} ${section.section}`;
+    // A full list disables every "Add as choice" button, the one just pressed among them: focus would fall to
+    // the page. It goes to the choice the section went into instead (its heading). Otherwise "Add a course"
+    // moves it on (to the next planned course).
+    const into = where === "new" ? section.crn : choices.find((c) => c.rank === where)?.crn;
+    const focusIfFull = (next: WebTreeList) =>
+      into && next.choices.length >= MAX_CHOICES ? { id: `choice-${into}` } : null;
     if (
       commit(
         result,
         where === "new"
           ? `Added ${label} as choice ${list.choices.length + 1}.`
           : `Added ${label} as an alternate for choice ${where}.`,
+        focusIfFull,
       )
     ) {
       setTarget("new");

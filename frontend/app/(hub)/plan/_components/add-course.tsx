@@ -121,15 +121,16 @@ export function AddCourse({
     }
   };
 
-  // The added row leaves the list: focus the next row's button (else the "Add as" select), never the page body.
-  // A refused add keeps its row, and focus stays on its button.
+  // The added row leaves the list: focus the next row's button (else the "Add as" select), never the page body
+  // and never a disabled button (an add that fills the list: the editor then focuses the new choice). A refused
+  // add keeps its row, and focus stays on its button.
   React.useLayoutEffect(() => {
     const request = focusAfterAdd.current;
     if (!request) return;
     focusAfterAdd.current = null;
     if (planButtons.current.has(request.added)) return;
     const next = request.next ? planButtons.current.get(request.next) : undefined;
-    (next ?? targetSelect.current)?.focus();
+    (next && !next.disabled ? next : targetSelect.current)?.focus();
   });
 
   const addLabel =
