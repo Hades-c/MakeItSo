@@ -8,10 +8,10 @@ import {
   audienceIncludes,
   buildDueSoon,
   calendarCategoryOf,
+  dueForYouCount,
   milestonesOn,
   mondayOf,
   nextUpLabel,
-  ownDeadlineCount,
   pickCampusEvents,
   safely,
   summaryInput,
@@ -160,7 +160,7 @@ describe("registration rows are not deadlines", () => {
     expect(kind(/^WebTree Closes/)).toBe("deadline");
   });
 
-  it("counts only the student's deadlines in the header: no windows, no optional applications", () => {
+  it("counts the rows for the student, the same rows the card lists first: never other years' or conditional ones", () => {
     const studentDeadlines: StudentDeadline[] = [
       {
         id: "64b7f0a1c2d3e4f5a6b7c8d9",
@@ -174,18 +174,22 @@ describe("registration rows are not deadlines", () => {
       contentDeadlines: deadlinesBetween("2026-09-30", "2026-10-13"),
       studentDeadlines,
     });
-    // The list has the WebTree window and program deadlines…
-    expect(items.some((i) => i.kind === "registration")).toBe(true);
-    expect(items.some((i) => i.kind === "program")).toBe(true);
-    // …but only the problem set is the first-year's deadline in the next two weeks.
-    expect(ownDeadlineCount(items)).toBe(1);
+    // The list also has the seniors' Watson nomination and program applications with conditions…
+    expect(items.some((i) => i.kind === "program" && !i.forYou)).toBe(true);
+    expect(items.find((i) => i.id.startsWith("program:thomas-j-watson"))?.forYou).toBe(false);
+    // …but for a first-year only the problem set and the WebTree window (all students) are due for them.
+    expect(items.filter((i) => i.forYou).map((i) => i.id)).toEqual([
+      "student:64b7f0a1c2d3e4f5a6b7c8d9",
+      "calendar:f26-webtree-spring27",
+    ]);
+    expect(dueForYouCount(items)).toBe(2);
     const senior = buildDueSoon({
       now: NOON,
       standing: "senior",
       contentDeadlines: deadlinesBetween("2026-09-30", "2026-10-13"),
       studentDeadlines,
     });
-    expect(ownDeadlineCount(senior)).toBe(2); // + Minor Declaration Deadline for Seniors
+    expect(dueForYouCount(senior)).toBe(3); // + Minor Declaration Deadline for Seniors
   });
 });
 

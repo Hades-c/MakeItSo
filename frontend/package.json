@@ -17,7 +17,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:ux": "playwright test tests/e2e/ux --project=desktop"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",

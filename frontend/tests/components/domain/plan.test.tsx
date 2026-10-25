@@ -330,6 +330,20 @@ describe("AddToPlanControl", () => {
     expect(screen.getByRole("button", { name: "Add to Fall 2026" })).toBeEnabled();
   });
 
+  it("marks the selected term with a 2px --primary outline, not a ring the dark theme cancels", async () => {
+    const user = userEvent.setup();
+    render(<Controlled />);
+    const [fall26, , fall27] = screen.getAllByRole("radio");
+    const tile = (radio: HTMLElement | undefined) => radio!.closest("label")!;
+    expect(tile(fall26)).toHaveClass("outline-2", "-outline-offset-2", "outline-primary");
+    // A ring is a box-shadow: `--elev-card: none` (dark) wiped it out together with the card shadow.
+    expect(tile(fall26).className).not.toMatch(/(^|\s)(ring-|shadow-)/);
+    expect(tile(fall27)).not.toHaveClass("outline-primary");
+    await user.click(tile(fall27));
+    expect(tile(fall27)).toHaveClass("outline-primary");
+    expect(tile(fall26)).not.toHaveClass("outline-primary");
+  });
+
   it("moves with the arrow keys, skipping terms that cannot be chosen", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

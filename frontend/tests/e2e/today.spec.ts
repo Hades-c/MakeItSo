@@ -16,7 +16,7 @@ import {
  * /today (W7) against the production build in fixtures mode: server "now" is Wed 2026-09-30 12:00 ET (current
  * Fall 2026, registration Spring 2027, WebTree opens Oct 12). A first-year with three Fall 2026 sections (CSC 221 A
  * MWF 10:30, ECO 232 A MWF 11:30, ENV 237 A MW 14:30) and one deadline sees the deterministic day summary, the
- * timeline with the now-line, the five-day strip, Due soon, degree progress (no Plan Spring 2027 yet: WebTree is
+ * timeline with the now-line, the five-day strip, Due for you, degree progress (no Plan Spring 2027 yet: WebTree is
  * not open), this week on campus, opportunities and quick links, every aggregated item tagged with its source. Runs at
  * desktop 1440 and phone 390, light and dark, with axe.
  */
@@ -105,10 +105,13 @@ test("today: the day summary, timeline, strip and panels for a student with sect
     );
     const main = page.getByRole("main");
     await expect(main.getByText("Wednesday, September 30", { exact: true })).toBeVisible();
-    // Only the student's own deadlines count: not the WebTree window or optional program applications.
+    // One count for what's due: the student's problem set and the WebTree window (all students), never the
+    // other class years' or conditional rows. The header, the card's count and its first list all agree.
     await expect(page.getByTestId("day-counts")).toContainText(
-      "3 classes today · 1 deadline in the next two weeks",
+      "3 classes today · 2 due for you in the next two weeks",
     );
+    const dueCard = page.getByRole("region", { name: "Due for you 2" });
+    await expect(dueCard.getByTestId("due-for-you").getByTestId("due-soon-item")).toHaveCount(2);
 
     // The strip: Monday to Friday, today shown.
     const week = strip(page);
@@ -122,11 +125,25 @@ test("today: the day summary, timeline, strip and panels for a student with sect
     await expect(timeline.locator('[data-kind="free"]').first()).toBeVisible();
     await expect(main.getByText(/^Fri 10:30 AM$/)).toBeVisible();
 
-    // No "Plan Spring 2027" before WebTree opens (PLAN §3: during the window); Due soon lists the window.
+    // No "Plan Spring 2027" before WebTree opens (PLAN §3: during the window); Due for you lists the window.
     await expect(page.getByTestId("plan-next-cta")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Browse courses" })).toBeVisible();
     const due = page.getByTestId("due-soon-item");
     expect(await due.count()).toBeGreaterThan(2);
+    // Red only for the student's own rows: the seniors' Watson nomination due today is not.
+    await expect(
+      page.locator('[data-testid="due-soon-item"][data-for-you="false"] .text-urgent'),
+    ).toHaveCount(0);
+    // Every row is one press away: "Show N more" reveals the rest in place.
+    const showMore = dueCard.getByTestId("show-more");
+    await expect(showMore).toHaveAccessibleName(/^Show \d+ more in the next two weeks$/);
+    await expect(showMore).toHaveAttribute("aria-expanded", "false");
+    const total = await due.count();
+    await expect(due.filter({ visible: true })).not.toHaveCount(total);
+    await showMore.click();
+    await expect(showMore).toHaveAttribute("aria-expanded", "true");
+    await expect(showMore).toHaveAccessibleName(/^Show fewer/);
+    await expect(due.filter({ visible: true })).toHaveCount(total);
     await expect(due.filter({ hasText: "Problem set" })).toContainText("Tomorrow 11:59p");
     const webtree = due.filter({ hasText: "WebTree Open" });
     await expect(webtree).toContainText("Oct 12 – Nov 3");
@@ -159,12 +176,12 @@ test("today: the day summary, timeline, strip and panels for a student with sect
       page.locator("section[aria-labelledby='quick-links-title'] a > span.flex-col"),
     ).toHaveCount(8);
     if (isMobile(page)) {
-      // Phone order (Lakeside home-390): Today, Due soon, This week on campus, then Degree progress.
+      // Phone order (Lakeside home-390): Today, Due for you, This week on campus, then Degree progress.
       const top = async (name: RegExp) =>
         (await page.getByRole("region", { name }).first().boundingBox())?.y ?? 0;
       const [timelineTop, dueTop, campusTop, degreeTop] = [
         await top(/^Today/),
-        await top(/^Due soon/),
+        await top(/^Due for you/),
         await top(/^This week on campus/),
         await top(/^Degree progress/),
       ];

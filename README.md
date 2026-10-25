@@ -174,6 +174,7 @@ server log naming the variable; it never fails the build.
 | `npm run format`    | Prettier (with the Tailwind class sorter); `npm run format:check` to verify only |
 | `npm test`          | Vitest unit + integration tests (`tests/**/*.test.ts[x]`)                        |
 | `npm run test:e2e`  | Playwright end-to-end tests against `next build && next start -p 3210`           |
+| `npm run test:ux`   | Only the UI budgets (`tests/e2e/ux`): target-versus-actual tables, axe, overflow |
 
 ### Tests
 
@@ -187,6 +188,12 @@ server log naming the variable; it never fails the build.
   and a throwaway secret; the server process blocks any outbound fetch to a non-local host. Install the browser once with
   `npx playwright install chromium`. Set `E2E_SKIP_BUILD=1` to reuse an existing build, `E2E_MONGODB_URI` to use
   your own database, or `PW_CHROMIUM_EXECUTABLE` to use a Chromium you already have.
+- **UI budgets** (`tests/e2e/ux`, part of `test:e2e`; `npm run test:ux` alone): a seeded junior's pages measured at
+  390, 768, 1024 and 1440 px against the UI-simplification targets (height, words, type, red, rail labels, tap
+  targets, focus behind fixed bars, h2 order, provenance in words). It prints a table per page (and writes it to
+  the CI job summary). Misses are warnings; axe serious/critical findings, sideways scrolling at 390, the budgets
+  of landed items and an h2 order that differs from screen order fail. The mismatches known today are listed in
+  `tests/e2e/ux/h2-order-baseline.ts` (KNOWN rows); a fix fails until its entry is removed.
 
 CI (`.github/workflows/ci.yml`) runs all of the above on every pull request and on pushes to `main`, plus
 `npm audit --omit=dev --audit-level=high`. It needs no secrets.

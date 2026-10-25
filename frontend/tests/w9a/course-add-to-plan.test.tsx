@@ -273,9 +273,10 @@ describe("CareerCourseItem", () => {
         },
       ],
       terms,
-      new Map([["CSC 221", new Set(["202601"])]]),
+      new Map([["CSC 221", new Map([["202601", "planned" as const]])]]),
     );
     expect(view.inPlanTerms).toEqual(["202601"]);
+    expect(view.status).toBeNull();
     stubFetch();
     render(
       <CareerCourseItem view={view} currentTerm="202601" planHref="/plan" loginHref="/login" />,
@@ -296,6 +297,45 @@ describe("CareerCourseItem", () => {
     expect(within(article).getByTestId("usually-offered")).toHaveTextContent(
       "Fall 2027 isn’t published yet. Usually offered in Fall (based on Fall 2024, Fall 2025 and Fall 2026)",
     );
+  });
+
+  it("says a course is completed or under way instead of offering Add, and flags a repeat", () => {
+    const history = [
+      { termCode: "202601", status: "offered" as const, sectionCount: 2 },
+      { termCode: "202602", status: "offered" as const, sectionCount: 2 },
+    ];
+    const cases = [
+      // CSC 121 for Avery: completed in Fall 2025.
+      [new Map([["202501", "completed" as const]]), "Completed Fall 2025", false],
+      // CSC 321: in progress this term.
+      [new Map([["202601", "in-progress" as const]]), "Taking now (Fall 2026)", false],
+      // CSC 221: completed in Spring 2026 and planned again for Spring 2027.
+      [
+        new Map([
+          ["202502", "completed" as const],
+          ["202602", "planned" as const],
+        ]),
+        "Completed Spring 2026 · in your Spring 2027 plan",
+        true,
+      ],
+    ] as const;
+    for (const [entries, text, warning] of cases) {
+      const view = courseView(course, history, terms, new Map([["CSC 221", entries]]));
+      expect(view.status).toEqual({ text, warning });
+      stubFetch();
+      const { unmount } = render(
+        <CareerCourseItem view={view} currentTerm="202601" planHref="/plan" loginHref="/login" />,
+      );
+      const status = screen.getByTestId("course-plan-status");
+      expect(status).toHaveTextContent(`Source: your plan. ${text}`);
+      expect(status).toHaveAttribute("data-source", "my-plan");
+      expect(status.querySelector("svg") !== null).toBe(warning);
+      // No Add control, no term choice: the course is taken.
+      expect(screen.queryByRole("button", { name: /^Add to/ })).toBeNull();
+      expect(screen.queryByRole("radio")).toBeNull();
+      expect(screen.queryByTestId("add-to-plan")).toBeNull();
+      unmount();
+    }
   });
 
   it("disables a term the course is not offered in, and never says offered for an unpublished one", () => {

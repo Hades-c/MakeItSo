@@ -28,6 +28,7 @@ import {
   removeChoice,
   sameList,
   type EditResult,
+  type PlanCourseOption,
 } from "../_lib/webtree-edit";
 import { AddCourse, type AddTarget, type PickedSection } from "./add-course";
 import { ChoiceCard, type SectionDetail } from "./choice-card";
@@ -52,7 +53,7 @@ export interface WebTreeEditorProps {
   conflicts: readonly ScheduleConflict[];
   warnings: readonly PlanWarning[];
   copyText: string;
-  planCourses: readonly { courseCode: string; title: string; crn: string | null }[];
+  planCourses: readonly PlanCourseOption[];
   slotLabels: Readonly<Record<RequirementSlot, string>>;
   slotFillers: Readonly<Partial<Record<RequirementSlot, SlotFiller>>>;
 }

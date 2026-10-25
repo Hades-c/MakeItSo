@@ -6,7 +6,8 @@ import { MissingFixtureError } from "@/server/http/fixtures";
 const plan = vi.hoisted(() => ({ getPlan: vi.fn() }));
 vi.mock("@/server/plan", () => ({ getPlan: plan.getPlan }));
 
-const { loadPlanPresence, planPresence } = await import("@/app/(hub)/careers/_lib/plan");
+const { courseStanding, loadPlanPresence, planPresence, standingText } =
+  await import("@/app/(hub)/careers/_lib/plan");
 
 const USER = "0123456789abcdef01234567";
 
@@ -55,10 +56,13 @@ describe("planPresence", () => {
         termCode: "202501",
       }),
     ]);
-    expect([...(presence.get("CSC 221") ?? [])].sort()).toEqual(["202601", "202602"]);
-    expect([...(presence.get("PSY 303") ?? [])]).toEqual(["202701"]);
-    expect([...(presence.get("BIO 331") ?? [])]).toEqual(["202701"]);
-    expect([...(presence.get("ECO 101") ?? [])]).toEqual(["202501"]);
+    expect(Object.fromEntries(presence.get("CSC 221") ?? [])).toEqual({
+      "202601": "in-progress",
+      "202602": "planned",
+    });
+    expect(Object.fromEntries(presence.get("PSY 303") ?? [])).toEqual({ "202701": "planned" });
+    expect(Object.fromEntries(presence.get("BIO 331") ?? [])).toEqual({ "202701": "planned" });
+    expect(Object.fromEntries(presence.get("ECO 101") ?? [])).toEqual({ "202501": "completed" });
   });
 
   it("ignores dropped, failed and withdrawn items and items without a term", () => {
@@ -72,12 +76,73 @@ describe("planPresence", () => {
   });
 });
 
+describe("courseStanding", () => {
+  const standing = (items: PlanItem[], current = "202601") =>
+    courseStanding(planPresence(items).get("CSC 221"), current);
+  const text = (items: PlanItem[], current?: string) => {
+    const s = standing(items, current);
+    return s ? standingText(s) : null;
+  };
+
+  it("is null for a course not taken yet, planned or not", () => {
+    expect(standing([])).toBeNull();
+    expect(standing([item({ status: "planned", termCode: "202602" })])).toBeNull();
+    // Registered for a later term: in the plan, not taken.
+    expect(standing([item({ status: "registered", termCode: "202602" })])).toBeNull();
+    // Dropped, failed and withdrawn items are history: the course can be added again.
+    expect(standing([item({ status: "failed", termCode: "202501" })])).toBeNull();
+  });
+
+  it("says completed (the latest term) and taking now in words", () => {
+    expect(text([item({ status: "completed", termCode: "202501" })])).toEqual({
+      text: "Completed Fall 2025",
+      warning: false,
+    });
+    expect(
+      text([
+        item({ status: "completed", termCode: "202401" }),
+        item({ id: "0123456789abcdef0123456b", status: "completed", termCode: "202502" }),
+      ]),
+    ).toEqual({ text: "Completed Spring 2026", warning: false });
+    expect(text([item({ status: "in-progress", termCode: "202601" })])).toEqual({
+      text: "Taking now (Fall 2026)",
+      warning: false,
+    });
+    // Registered for the current term before it starts counts as taking it now.
+    expect(text([item({ status: "registered", termCode: "202601" })])).toEqual({
+      text: "Taking now (Fall 2026)",
+      warning: false,
+    });
+  });
+
+  it("warns about a repeat: completed or under way, and in the plan again", () => {
+    expect(
+      text([
+        item({ status: "completed", termCode: "202502" }),
+        item({ id: "0123456789abcdef0123456b", status: "planned", termCode: "202602" }),
+      ]),
+    ).toEqual({ text: "Completed Spring 2026 · in your Spring 2027 plan", warning: true });
+    expect(
+      text([
+        item({ status: "completed", termCode: "202502" }),
+        item({ id: "0123456789abcdef0123456b", status: "in-progress", termCode: "202601" }),
+      ]),
+    ).toEqual({ text: "Completed Spring 2026 · taking now (Fall 2026)", warning: true });
+    expect(
+      text([
+        item({ status: "in-progress", termCode: "202601" }),
+        item({ id: "0123456789abcdef0123456b", status: "planned", termCode: "202602" }),
+      ]),
+    ).toEqual({ text: "Taking now (Fall 2026) · in your Spring 2027 plan", warning: true });
+  });
+});
+
 describe("loadPlanPresence", () => {
   it("reads the student's plan", async () => {
     plan.getPlan.mockResolvedValue(view([item({})]));
     const presence = await loadPlanPresence(USER);
     expect(plan.getPlan).toHaveBeenCalledWith(USER);
-    expect([...(presence?.get("CSC 221") ?? [])]).toEqual(["202602"]);
+    expect([...(presence?.get("CSC 221")?.keys() ?? [])]).toEqual(["202602"]);
   });
 
   it("is unknown (null), quietly, while the plan service is not implemented (501)", async () => {
