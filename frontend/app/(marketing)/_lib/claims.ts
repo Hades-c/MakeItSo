@@ -2,6 +2,7 @@ import "server-only";
 import { EVENT_SOURCE_IDS } from "@/app/(hub)/events/_lib/params";
 import type { Flags } from "@/lib/flags";
 import type { SourceId } from "@/lib/sources";
+import { loadAiAllowsUnverified } from "@/server/ai/access";
 import { isMailAvailable } from "@/server/auth";
 import { EnvError, readEnv } from "@/server/env";
 import { featureEnabled, loadFlags } from "@/server/features";
@@ -16,7 +17,9 @@ import { featureEnabled, loadFlags } from "@/server/features";
  *   alumni   the alumni directory is on (FEATURE_ALUMNI, which also needs Careers) AND a mail provider is set up:
  *            alumni are for verified @davidson.edu accounts only, and without mail nobody can verify (PLAN §1)
  *   events   the Events section is on (FEATURE_EVENTS)
- *   ai       AI_ENABLED, a configured provider, and a mail provider (AI is for verified accounts too, PLAN §1)
+ *   ai       AI_ENABLED, a configured provider, and a way in: a mail provider (AI is for verified accounts too,
+ *            PLAN §1) or, while the owner's temporary AI_ALLOW_UNVERIFIED switch is on, none (an @davidson.edu
+ *            account may use AI before it is verified: server/ai/access.ts)
  *   ratings  professor ratings are on (RMP_ENABLED)
  */
 
@@ -33,6 +36,8 @@ export interface LandingCapabilities {
   mailAvailable: boolean;
   /** An AI provider is configured (a key, or the mock provider in tests). */
   aiConfigured: boolean;
+  /** AI_ALLOW_UNVERIFIED: AI does not wait for a verified mailbox (default false). */
+  aiWithoutVerifying?: boolean;
 }
 
 /** Pure: the claims for these flags and capabilities. */
@@ -41,7 +46,10 @@ export function landingClaims(flags: Flags, capabilities: LandingCapabilities): 
     careers: featureEnabled(flags, "careers"),
     alumni: featureEnabled(flags, "alumni") && capabilities.mailAvailable,
     events: featureEnabled(flags, "events"),
-    ai: flags.ai && capabilities.aiConfigured && capabilities.mailAvailable,
+    ai:
+      flags.ai &&
+      capabilities.aiConfigured &&
+      (capabilities.mailAvailable || capabilities.aiWithoutVerifying === true),
     ratings: flags.rmp,
   };
 }
@@ -68,7 +76,11 @@ export function loadLandingClaims(): LandingClaims {
   } catch (error) {
     console.error("[landing] could not read the AI configuration:", error);
   }
-  return landingClaims(loadFlags(), { mailAvailable: isMailAvailable(), aiConfigured });
+  return landingClaims(loadFlags(), {
+    mailAvailable: isMailAvailable(),
+    aiConfigured,
+    aiWithoutVerifying: loadAiAllowsUnverified(),
+  });
 }
 
 /** "a, b and c". */

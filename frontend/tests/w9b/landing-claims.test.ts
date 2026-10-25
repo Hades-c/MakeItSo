@@ -54,6 +54,14 @@ describe("landingClaims", () => {
     });
   });
 
+  it("claims AI without mail while the temporary AI_ALLOW_UNVERIFIED switch is on (alumni still need mail)", () => {
+    const noMail = { ...READY, mailAvailable: false, aiWithoutVerifying: true };
+    expect(landingClaims(ON, noMail)).toMatchObject({ ai: true, alumni: false });
+    expect(landingClaims({ ...ON, ai: false }, noMail).ai).toBe(false);
+    expect(landingClaims(ON, { ...noMail, aiConfigured: false }).ai).toBe(false);
+    expect(landingClaims(ON, { ...noMail, aiWithoutVerifying: false }).ai).toBe(false);
+  });
+
   it("claims no AI while no provider is configured", () => {
     expect(landingClaims(ON, { ...READY, aiConfigured: false }).ai).toBe(false);
   });
@@ -90,6 +98,10 @@ describe("loadLandingClaims", () => {
     vi.stubEnv("FEATURE_EVENTS", "false");
     vi.stubEnv("MAIL_PROVIDER", "none");
     expect(loadLandingClaims()).toMatchObject({ events: false, alumni: false, ai: false });
+    // No mail, but the owner's temporary switch lets unverified Davidson accounts use AI: the claim is true again.
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    expect(loadLandingClaims()).toMatchObject({ alumni: false, ai: true });
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "false");
     // A malformed flag takes its default (logged once by loadFlags).
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubEnv("FEATURE_CAREERS", "sometimes");

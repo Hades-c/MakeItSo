@@ -3,8 +3,8 @@ import mongoose from "mongoose";
 import { getFlags, type Flags } from "@/lib/flags";
 import type { AiFeature, AiGateInput } from "@/lib/types/ai";
 import User from "@/models/User";
+import { aiAllowsUnverified, aiUnverifiedMessage, isAiVerified } from "@/server/ai/access";
 import { aiConfigured } from "@/server/ai/provider";
-import { isVerifiedDavidsonUser } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 import { featureEnabled } from "@/server/features";
 
@@ -15,7 +15,9 @@ import { featureEnabled } from "@/server/features";
  *               needs careers) for the cold e-mail, RMP_SUMMARIES_ENABLED (which needs RMP_ENABLED) for professor
  *               summaries;
  *   configured  server/ai/provider.ts aiConfigured();
- *   verified    a verified @davidson.edu mailbox (server/auth isVerifiedDavidsonUser on the stored account);
+ *   verified    server/ai/access.ts isAiVerified on the stored account: a verified @davidson.edu mailbox, or, while
+ *               the temporary AI_ALLOW_UNVERIFIED switch is on, any @davidson.edu address (not for cold e-mail);
+ *               `unverifiedMessage` says what the student is told otherwise, true in either switch state;
  *   consented   aiConsentAt AND adultAttestedAt (the 18+ attestation, until the owner decides on minors).
  */
 
@@ -43,6 +45,7 @@ export function aiFeatureEnabled(flags: Flags, feature: AiFeature): boolean {
 export async function aiGateInput(userId: string, feature: AiFeature): Promise<AiGateInput> {
   const enabled = aiFeatureEnabled(getFlags(), feature);
   const configured = enabled && aiConfigured();
+  const allowUnverified = aiAllowsUnverified();
   let verified = false;
   let consented = false;
   if (enabled && configured && mongoose.isValidObjectId(userId)) {
@@ -50,8 +53,14 @@ export async function aiGateInput(userId: string, feature: AiFeature): Promise<A
     const doc = await User.findById(userId)
       .select("email emailVerifiedAt aiConsentAt adultAttestedAt")
       .lean();
-    verified = isVerifiedDavidsonUser(doc ?? null);
+    verified = isAiVerified(doc ?? null, feature, allowUnverified);
     consented = !!doc && validDate(doc.aiConsentAt) && validDate(doc.adultAttestedAt);
   }
-  return { enabled, configured, verified, consented };
+  return {
+    enabled,
+    configured,
+    verified,
+    consented,
+    unverifiedMessage: aiUnverifiedMessage(feature, allowUnverified),
+  };
 }

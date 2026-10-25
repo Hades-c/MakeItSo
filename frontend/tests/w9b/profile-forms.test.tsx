@@ -566,6 +566,53 @@ describe("AiConsentPanel", () => {
     expect(await screen.findByRole("button", { name: "Turn on AI features" })).toHaveFocus();
   });
 
+  it("AI_ALLOW_UNVERIFIED on: an unverified Davidson student may consent, and is told only what still needs verifying", async () => {
+    stubFetch(profileAnswer({ aiConsentAt: NOW, adultAttestedAt: NOW }));
+    consent({
+      verifiedDavidson: false,
+      aiVerified: true,
+      allowUnverifiedAi: true,
+      mailAvailable: false,
+    });
+    const note = screen.getByText(
+      /AI features work before your @davidson.edu address is verified/,
+      {
+        selector: "div",
+      },
+    );
+    expect(note).toHaveTextContent(
+      "Cold-email drafts and the alumni network still need a verified address.",
+    );
+    expect(note).toHaveTextContent("Email verification is not available yet.");
+    expect(screen.queryByText(/limited to verified @davidson.edu accounts/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Verify your email" })).toBeNull();
+    // Consent and the 18+ attestation work as for anyone.
+    await userEvent.click(screen.getByRole("checkbox", { name: "I am 18 or older" }));
+    await userEvent.click(screen.getByRole("button", { name: "Turn on AI features" }));
+    expect(await screen.findByRole("button", { name: "Turn off AI features" })).toBeVisible();
+    expect(calls).toEqual([
+      { url: "/api/profile/ai-consent", method: "PUT", body: { adultAttested: true } },
+    ]);
+  });
+
+  it("AI_ALLOW_UNVERIFIED on: a non-Davidson account is told AI needs an @davidson.edu address", () => {
+    consent({
+      verifiedDavidson: false,
+      aiVerified: false,
+      allowUnverifiedAi: true,
+      davidson: false,
+    });
+    expect(
+      screen.getByText(
+        /^AI features are limited to @davidson.edu accounts, and the alumni network/,
+        {
+          selector: "div",
+        },
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Verify your email" })).toBeNull();
+  });
+
   it("offers no verify link while no mail provider can send the code", () => {
     consent({ verifiedDavidson: false, mailAvailable: false });
     expect(screen.queryByRole("link", { name: "Verify your email" })).toBeNull();

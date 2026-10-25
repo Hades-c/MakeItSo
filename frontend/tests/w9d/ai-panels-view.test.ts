@@ -6,6 +6,7 @@ import {
   type CareerAiViewInput,
 } from "@/app/(hub)/careers/[slug]/_components/ai-panels";
 import { getFlags, type Flags } from "@/lib/flags";
+import { ALUMNI_VERIFIED_ONLY_MESSAGE } from "@/lib/types/ai-constants";
 import { alumniForCareer } from "@/server/content/alumni";
 
 /**
@@ -119,6 +120,31 @@ describe("careerAiView", () => {
       }),
     )!;
     expect(noMail.links.verify).toBeNull();
+  });
+
+  it("AI_ALLOW_UNVERIFIED: an unverified student gets the career plan; the e-mail and the alumni stay closed", () => {
+    // What aiGateInput answers per feature with the switch on (server/ai/access.ts isAiVerified).
+    const view = careerAiView(
+      input({
+        user: { email: "sam@davidson.edu", name: "Sam", emailVerifiedAt: null },
+        gateInput: { enabled: true, configured: true, verified: true, consented: true },
+        emailGateInput: {
+          enabled: true,
+          configured: true,
+          verified: false,
+          consented: true,
+          unverifiedMessage: ALUMNI_VERIFIED_ONLY_MESSAGE,
+        },
+        mailAvailable: false,
+      }),
+    )!;
+    expect(view.sharedGate).toBeNull();
+    expect(view.plan).toEqual({ gate: null });
+    expect(view.email!.gate).toEqual({ kind: "unverified", message: ALUMNI_VERIFIED_ONLY_MESSAGE });
+    // Alumni only for verified viewers, whatever the switch says.
+    expect(view.email!.alumni).toEqual([]);
+    // No mail provider: nothing to verify with, so no link.
+    expect(view.links.verify).toBeNull();
   });
 
   it("never lists alumni the career does not have, and none at all for a career without contactable ones", () => {

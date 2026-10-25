@@ -48,6 +48,8 @@ export interface CourseAboutPanelProps {
   termCode: string;
   courseCode: string;
   gate: "ready" | "unverified" | "consent_required";
+  /** With gate "unverified": the server's message (it depends on the AI_ALLOW_UNVERIFIED switch). */
+  unverifiedMessage?: string;
   /** /verify?reason=davidson&next=… for an unverified @davidson.edu account, else null. */
   verifyHref?: string | null;
   timeZone?: string;
@@ -76,9 +78,12 @@ const GATE_LINK =
 
 function GateNotice({
   gate,
+  message,
   verifyHref,
 }: {
   gate: "unverified" | "consent_required";
+  /** The server's words for this gate; default AI_FAILURE_MESSAGES[gate]. */
+  message?: string;
   verifyHref: string | null;
 }) {
   const step =
@@ -93,7 +98,7 @@ function GateNotice({
     ) : null;
   return (
     <div className="text-sm text-fg-2" data-testid="about-gate">
-      <p>{AI_FAILURE_MESSAGES[gate]}</p>
+      <p>{message?.trim() || AI_FAILURE_MESSAGES[gate]}</p>
       {step ? <p className="mt-2">{step}</p> : null}
     </div>
   );
@@ -183,6 +188,7 @@ export function CourseAboutPanel({
   termCode,
   courseCode,
   gate,
+  unverifiedMessage,
   verifyHref = null,
   timeZone,
 }: CourseAboutPanelProps) {
@@ -225,7 +231,13 @@ export function CourseAboutPanel({
 
   let body: React.ReactNode;
   if (gate !== "ready") {
-    body = <GateNotice gate={gate} verifyHref={verifyHref} />;
+    body = (
+      <GateNotice
+        gate={gate}
+        message={gate === "unverified" ? unverifiedMessage : undefined}
+        verifyHref={verifyHref}
+      />
+    );
   } else if (state.status === "idle" || state.status === "loading") {
     body = (
       <p role="status" className="flex items-center gap-2 text-sm text-fg-2">
@@ -255,7 +267,7 @@ export function CourseAboutPanel({
         </p>
       );
     } else if (kind === "unverified" || kind === "consent_required") {
-      body = <GateNotice gate={kind} verifyHref={verifyHref} />;
+      body = <GateNotice gate={kind} message={message} verifyHref={verifyHref} />;
     } else {
       body = (
         <div

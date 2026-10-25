@@ -2,6 +2,11 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { startTestDb, type TestDb } from "../helpers/db";
 import { insertStudent } from "./helpers";
 import { aiGateFailure, AI_FEATURES, type AiFeature } from "@/lib/types/ai";
+import {
+  ALUMNI_VERIFIED_ONLY_MESSAGE,
+  UNVERIFIED_AI_ALLOWED_MESSAGE,
+  UNVERIFIED_MESSAGE,
+} from "@/lib/types/ai-constants";
 import { aiGateInput } from "@/server/ai/gate";
 import { aiConfigured } from "@/server/ai/provider";
 import { getDb } from "@/server/db";
@@ -59,6 +64,7 @@ describe("gate order", () => {
       configured: true,
       verified: true,
       consented: true,
+      unverifiedMessage: UNVERIFIED_MESSAGE,
     });
     expect(await gate(user.id)).toBeNull();
   });
@@ -118,5 +124,80 @@ describe("feature sections", () => {
     expect(await gate(user.id, "professor-summary")).toBeNull();
     vi.stubEnv("RMP_ENABLED", "false");
     expect(await gate(user.id, "professor-summary")).toBe("disabled");
+  });
+});
+
+describe("AI_ALLOW_UNVERIFIED (temporary owner switch)", () => {
+  async function failure(userId: string, feature: AiFeature) {
+    return aiGateFailure(await aiGateInput(userId, feature));
+  }
+
+  it("off (the default): an unverified @davidson.edu student is unverified for every feature", async () => {
+    vi.stubEnv("AI_PROVIDER", "mock");
+    const user = await insertStudent({ verified: false });
+    for (const feature of [
+      "course-about",
+      "plan-suggestions",
+      "career-plan",
+      "cold-email",
+    ] as const) {
+      expect(await failure(user.id, feature)).toEqual({
+        kind: "unverified",
+        message: UNVERIFIED_MESSAGE,
+      });
+    }
+  });
+
+  it("on: an unverified @davidson.edu student passes, but still needs consent and the 18+ attestation", async () => {
+    vi.stubEnv("AI_PROVIDER", "mock");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    vi.stubEnv("RMP_SUMMARIES_ENABLED", "true");
+    const user = await insertStudent({ verified: false });
+    for (const feature of [
+      "course-about",
+      "plan-suggestions",
+      "career-plan",
+      "professor-summary",
+    ] as const) {
+      expect(await failure(user.id, feature), feature).toBeNull();
+    }
+    const noConsent = await insertStudent({ verified: false, consent: false });
+    expect((await failure(noConsent.id, "course-about"))?.kind).toBe("consent_required");
+    const notAdult = await insertStudent({ verified: false, adult: false });
+    expect((await failure(notAdult.id, "plan-suggestions"))?.kind).toBe("consent_required");
+  });
+
+  it("on: cold e-mail (alumni data) stays verified-only", async () => {
+    vi.stubEnv("AI_PROVIDER", "mock");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    const user = await insertStudent({ verified: false });
+    expect(await failure(user.id, "cold-email")).toEqual({
+      kind: "unverified",
+      message: ALUMNI_VERIFIED_ONLY_MESSAGE,
+    });
+    const verified = await insertStudent();
+    expect(await failure(verified.id, "cold-email")).toBeNull();
+  });
+
+  it("on: legacy non-Davidson accounts stay locked, verified or not, and are told why", async () => {
+    vi.stubEnv("AI_PROVIDER", "mock");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    for (const options of [
+      { email: "legacy@gmail.com" },
+      { email: "unverified@gmail.com", verified: false },
+    ]) {
+      const user = await insertStudent(options);
+      expect(await failure(user.id, "course-about")).toEqual({
+        kind: "unverified",
+        message: UNVERIFIED_AI_ALLOWED_MESSAGE,
+      });
+    }
+  });
+
+  it("a malformed switch fails the gate loudly (a route 500), like a malformed flag", async () => {
+    vi.stubEnv("AI_PROVIDER", "mock");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "sometimes");
+    const user = await insertStudent({ verified: false });
+    await expect(aiGateInput(user.id, "course-about")).rejects.toThrow(/AI_ALLOW_UNVERIFIED/);
   });
 });

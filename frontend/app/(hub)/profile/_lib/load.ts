@@ -3,6 +3,7 @@ import type { Profile } from "@/lib/api/profile";
 import type { Flags } from "@/lib/flags";
 import type { CareerCluster } from "@/server/content/careers";
 import { CAREERS } from "@/server/content/careers";
+import { isAiVerified, loadAiAllowsUnverified } from "@/server/ai/access";
 import {
   getProfile,
   isMailAvailable,
@@ -36,8 +37,15 @@ export interface ProfilePageData {
   minors: string[];
   careers: CareerOption[];
   flags: Pick<Flags, "ai">;
-  /** Verified mailbox AND @davidson.edu: what AI (and alumni) need besides consent. */
+  /** Verified mailbox AND @davidson.edu: what alumni and cold e-mail need (and, switch off, every AI feature). */
   verifiedDavidson: boolean;
+  /**
+   * The temporary AI_ALLOW_UNVERIFIED switch (server/ai/access.ts): an unverified @davidson.edu account may use AI
+   * (consent and the 18+ attestation still needed), cold e-mail and alumni excepted.
+   */
+  allowUnverifiedAi: boolean;
+  /** Verified for AI (isAiVerified, as the AI routes decide it): all AI needs besides consent. */
+  aiVerified: boolean;
   /** A mail provider is configured, so /verify can send a code. */
   mailAvailable: boolean;
   now: string;
@@ -51,6 +59,7 @@ export async function loadProfilePage(userId: string): Promise<ProfilePageData> 
   ]);
   // ProfileView adds the derived `standing`; the islands derive it themselves from the editable fields.
   const { standing: _standing, ...profile } = view;
+  const allowUnverifiedAi = loadAiAllowsUnverified();
   return {
     profile,
     majors: majors.names,
@@ -58,6 +67,9 @@ export async function loadProfilePage(userId: string): Promise<ProfilePageData> 
     careers: CAREERS.map(({ slug, name, cluster }) => ({ slug, name, cluster })),
     flags: { ai: loadFlags().ai },
     verifiedDavidson: isVerifiedDavidsonUser(profile),
+    allowUnverifiedAi,
+    // course-about stands for every AI feature but cold e-mail (the verified-only one).
+    aiVerified: isAiVerified(profile, "course-about", allowUnverifiedAi),
     mailAvailable: isMailAvailable(),
     now: now().toISOString(),
   };

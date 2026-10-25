@@ -1,10 +1,20 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import PrivacyPage from "@/app/(marketing)/privacy/page";
 
+// connection() needs a request scope; the page only awaits it so the AI rule is read per request.
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  connection: async () => undefined,
+}));
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("/privacy", () => {
-  it("says what MakeItSo is, stores, sends to AI, keeps, and how to leave", () => {
-    render(<PrivacyPage />);
+  it("says what MakeItSo is, stores, sends to AI, keeps, and how to leave", async () => {
+    render(await PrivacyPage());
     expect(
       screen.getByRole("heading", { level: 1, name: "Privacy at MakeItSo" }),
     ).toBeInTheDocument();
@@ -41,8 +51,22 @@ describe("/privacy", () => {
     for (const id of ["what-we-store", "ai", "alumni", "retention", "your-data", "contact"]) {
       expect(document.getElementById(id)).not.toBeNull();
     }
+    // AI_ALLOW_UNVERIFIED off (the default): AI needs a verified address.
+    expect(text).toMatch(/they need a verified @davidson\.edu account\./);
     const contact = screen.getByRole("link", { name: /MakeItSo project on GitHub/ });
     expect(contact).toHaveAttribute("rel", "noopener noreferrer");
     expect(contact.getAttribute("href")).toMatch(/^https:\/\//);
+  });
+
+  it("says who AI is for while the temporary AI_ALLOW_UNVERIFIED switch is on", async () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    render(await PrivacyPage());
+    const ai = document.getElementById("ai")!.closest("section")!;
+    const text = (ai.textContent ?? "").replace(/\s+/g, " ");
+    expect(text).toMatch(/they need an @davidson\.edu account/);
+    expect(text).toMatch(/does not have to be verified yet, except for cold-email drafts/);
+    expect(text).not.toMatch(/need a verified @davidson\.edu account\./);
+    // The alumni directory is still for verified addresses only.
+    expect(document.body.textContent).toMatch(/visible only to signed-in students with a verified/);
   });
 });

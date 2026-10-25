@@ -59,10 +59,15 @@ export interface AiGateInput {
   enabled: boolean;
   /** A provider is configured (an API key, or AI_PROVIDER=mock outside Vercel production). */
   configured: boolean;
-  /** Signed in with a verified @davidson.edu mailbox (isVerifiedDavidson in server/http). */
+  /**
+   * Verified for this feature (server/ai/access.ts isAiVerified): a verified @davidson.edu mailbox; while the
+   * temporary AI_ALLOW_UNVERIFIED switch is on, any @davidson.edu address, except for cold e-mail.
+   */
   verified: boolean;
   /** aiConsentAt set (and the 18+ attestation, once the owner decides it is required). */
   consented: boolean;
+  /** What a student who fails `verified` is told (default UNVERIFIED_MESSAGE; verifiedOnlyMessage(switch)). */
+  unverifiedMessage?: string;
 }
 
 /**
@@ -73,7 +78,7 @@ export interface AiGateInput {
 export function aiGateFailure(input: AiGateInput): AiFailure | null {
   if (!input.enabled) return aiFailure("disabled");
   if (!input.configured) return aiFailure("not_configured");
-  if (!input.verified) return aiFailure("unverified");
+  if (!input.verified) return aiFailure("unverified", input.unverifiedMessage);
   if (!input.consented) return aiFailure("consent_required");
   return null;
 }

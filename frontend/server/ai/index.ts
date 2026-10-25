@@ -7,7 +7,8 @@ import "./account-data";
  * Import from "@/server/ai".
  *
  *   gate        aiGateInput(userId, feature) → pass to lib/types/ai.ts aiGateFailure (disabled → not_configured
- *               → unverified → consent_required); aiConfigured(); aiFeatureEnabled(flags, feature)
+ *               → unverified → consent_required); aiConfigured(); aiFeatureEnabled(flags, feature); who counts
+ *               as verified: access.ts isAiVerified (and the temporary AI_ALLOW_UNVERIFIED switch)
  *   features    generateCourseAbout, generatePlanSuggestions, generateCareerPlan, generateColdEmail,
  *               readProfessorSummary (each returns an AiResult; bad ids or terms throw ApiError 400/404)
  *   jobs        pregenerateCourseAbout (GET /api/cron/ai), runProfessorSummaryJob (GET /api/cron/ai/professor-
@@ -20,6 +21,13 @@ import "./account-data";
 
 export { aiConfigured, aiProvider } from "./provider";
 export { aiFeatureEnabled, aiGateInput } from "./gate";
+export {
+  aiAllowsUnverified,
+  aiUnverifiedMessage,
+  isAiVerified,
+  loadAiAllowsUnverified,
+  VERIFIED_ONLY_AI_FEATURES,
+} from "./access";
 export {
   AI_MODEL,
   AI_REPORT_RATE_LIMIT,

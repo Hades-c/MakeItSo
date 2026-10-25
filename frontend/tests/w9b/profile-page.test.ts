@@ -181,6 +181,23 @@ describe("ProfilePage", () => {
     expect(html.match(/Email verification is not available yet\./g)).toHaveLength(2);
   });
 
+  it("says what verifying still opens while AI_ALLOW_UNVERIFIED is on (no mail provider, as in production)", async () => {
+    vi.stubEnv("MAIL_PROVIDER", "none");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    await signIn();
+    const html = await renderPage();
+    expect(html).toContain("Not verified");
+    expect(html).toContain(
+      "A verified @davidson.edu address opens the alumni network and cold-email drafts.",
+    );
+    expect(html).toContain(
+      "For now, AI features work before your @davidson.edu address is verified.",
+    );
+    expect(html).not.toContain("limited to verified @davidson.edu accounts");
+    expect(html).not.toContain('href="/verify');
+    expect(html).toContain("Turn on AI features");
+  });
+
   it("promises no more deletion than the registry covers, and links to Privacy", async () => {
     await signIn();
     const html = await renderPage();

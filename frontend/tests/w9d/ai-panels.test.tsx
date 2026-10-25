@@ -1,7 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AiGateInput } from "@/lib/types/ai";
+import type { AiFeature, AiGateInput } from "@/lib/types/ai";
+import { ALUMNI_VERIFIED_ONLY_MESSAGE } from "@/lib/types/ai-constants";
 import type { SessionUser } from "@/server/auth/session";
 import { getCareer } from "@/server/content/careers";
 
@@ -13,6 +14,8 @@ import { getCareer } from "@/server/content/careers";
 const state = vi.hoisted(() => ({
   user: null as SessionUser | null,
   gate: { enabled: true, configured: true, verified: true, consented: true } as AiGateInput,
+  /** Per feature, when they differ (AI_ALLOW_UNVERIFIED); otherwise `gate`. */
+  gates: {} as Partial<Record<AiFeature, AiGateInput>>,
   gateError: null as Error | null,
   mail: true,
 }));
@@ -29,9 +32,9 @@ vi.mock("@/server/auth/mailer", async (importOriginal) => ({
 }));
 vi.mock("@/server/ai/gate", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  aiGateInput: async () => {
+  aiGateInput: async (_userId: string, feature: AiFeature) => {
     if (state.gateError) throw state.gateError;
-    return state.gate;
+    return state.gates[feature] ?? state.gate;
   },
 }));
 vi.mock("@/app/(hub)/careers/_lib/catalog", async (importOriginal) => ({
@@ -58,6 +61,7 @@ async function renderPanels(slug = "medicine") {
 beforeEach(() => {
   state.user = VERIFIED;
   state.gate = { enabled: true, configured: true, verified: true, consented: true };
+  state.gates = {};
   state.gateError = null;
   state.mail = true;
 });
@@ -108,6 +112,28 @@ describe("CareerAiPanels", () => {
     );
     expect(container.textContent).not.toContain("Rahael Borchers");
     expect(screen.queryByRole("button", { name: "Draft my career plan" })).toBeNull();
+  });
+
+  it("AI_ALLOW_UNVERIFIED: an unverified student drafts a career plan, but no alumni or cold e-mail reach the page", async () => {
+    state.user = { ...VERIFIED, emailVerifiedAt: null };
+    state.mail = false;
+    state.gates = {
+      "cold-email": {
+        enabled: true,
+        configured: true,
+        verified: false,
+        consented: true,
+        unverifiedMessage: ALUMNI_VERIFIED_ONLY_MESSAGE,
+      },
+    };
+    const { container } = await renderPanels();
+    expect(screen.queryByTestId("ai-shared-gate")).toBeNull();
+    expect(screen.getByRole("button", { name: "Draft my career plan" })).toBeVisible();
+    const email = screen.getByRole("region", { name: /Email an alumnus/ });
+    expect(email).toHaveTextContent(ALUMNI_VERIFIED_ONLY_MESSAGE);
+    expect(within(email).queryByRole("link", { name: "Verify your email" })).toBeNull();
+    expect(within(email).queryByRole("radio")).toBeNull();
+    expect(container.textContent).not.toContain("Rahael Borchers");
   });
 
   it("consent missing: one notice that leads to the profile's AI settings", async () => {

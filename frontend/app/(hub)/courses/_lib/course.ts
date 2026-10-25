@@ -177,6 +177,11 @@ export interface CoursePageData extends ResolvedCoursePage {
   };
   /** The About panel: null = hidden (AI off or not configured). */
   aboutGate: AboutGate | null;
+  /**
+   * With aboutGate "unverified": what the student is told (the gate's message, true in either state of the
+   * temporary AI_ALLOW_UNVERIFIED switch). Missing: the default message.
+   */
+  aboutUnverifiedMessage?: string;
 }
 
 async function loadRatings(course: Course): Promise<RatingsLookup | null> {
@@ -185,12 +190,15 @@ async function loadRatings(course: Course): Promise<RatingsLookup | null> {
   return ratings ? ratingsLookup(ratings) : null;
 }
 
-async function loadAboutGate(userId: string): Promise<AboutGate | null> {
+async function loadAboutGate(
+  userId: string,
+): Promise<{ gate: AboutGate; unverifiedMessage?: string } | null> {
   const input = await safe("the AI gate", () => aiGateInput(userId, "course-about"));
   if (!input) return null;
   const gate = aiGateFailure(input);
-  if (!gate) return "ready";
-  if (gate.kind === "unverified" || gate.kind === "consent_required") return gate.kind;
+  if (!gate) return { gate: "ready" };
+  if (gate.kind === "unverified") return { gate: gate.kind, unverifiedMessage: gate.message };
+  if (gate.kind === "consent_required") return { gate: gate.kind };
   return null;
 }
 
@@ -233,7 +241,7 @@ export async function loadCoursePage(
     : null;
   const codes = courseCodes(reference);
 
-  const [filters, ratings, programs, week, aboutGate, registerAs, regFor] = await Promise.all([
+  const [filters, ratings, programs, week, about, registerAs, regFor] = await Promise.all([
     safe("the departments", () => getCatalogFilters(reference.termCode)),
     course ? loadRatings(course) : Promise.resolve(null),
     loadCoursePrograms([...codes]),
@@ -289,6 +297,7 @@ export async function loadCoursePage(
       sectionLabels,
       unpublishedNote: unpublishedNote(history, window),
     },
-    aboutGate,
+    aboutGate: about?.gate ?? null,
+    ...(about?.unverifiedMessage ? { aboutUnverifiedMessage: about.unverifiedMessage } : {}),
   };
 }

@@ -141,6 +141,7 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `AI_PROVIDER`           | no           | `anthropic` (default) or `mock` (tests and e2e, answers as model `mock`; rejected on Vercel production)   |
 | `AI_ENABLED`            | no           | All AI features on/off. Default `true` (AI also needs a verified @davidson.edu account and consent)       |
 | `AI_DAILY_TOKEN_BUDGET` | no           | Tokens per day across all users before AI pauses. Default `2000000`                                       |
+| `AI_ALLOW_UNVERIFIED`   | no           | Temporary (remove once mail works): `true` lets unverified @davidson.edu accounts use AI. Default `false` |
 | `MAIL_PROVIDER`         | no           | `none`, `console` (codes in the server log; dev/test default) or `resend`. Default `none` in production   |
 | `MAIL_API_KEY`          | for `resend` | Mail provider API key                                                                                     |
 | `MAIL_FROM`             | for `resend` | Sender, e.g. `MakeItSo <noreply@example.org>`                                                             |
@@ -155,6 +156,12 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `APP_TIMEZONE`          | no           | IANA time zone for "today" logic. Default `America/New_York`                                              |
 | `RMP_ENABLED`           | no           | RateMyProfessors ratings on/off. Default `true`                                                           |
 | `RMP_SUMMARIES_ENABLED` | no           | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)                           |
+
+`AI_ALLOW_UNVERIFIED` exists only while email verification cannot work in production (no mail provider). With it
+on, an @davidson.edu account that has not verified its address may use AI after consenting (18+ attestation
+included); cold-email drafts and the alumni network stay verified-only, legacy non-Davidson accounts stay locked,
+quotas and the daily token budget are unchanged, and "Report this" from an unverified account never hides a shared
+answer (`frontend/server/ai/access.ts`, `frontend/docs/CONTRACTS.md`).
 
 Production (`next start` and every Vercel deployment) also checks that the Vercel production environment does not
 use `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures`, the console mailer or `FIXTURES_NOW`, and `RATE_LIMITS=off` is

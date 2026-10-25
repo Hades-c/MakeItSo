@@ -136,7 +136,8 @@ The frozen interfaces every workstream codes against. They change only through t
   use `requireApiUser()` or defineRoute's auth modes (401/403, never a redirect). `getSessionUser()` is memoised per
   request; a JWT is revoked by `sessionVersion` (sign out everywhere, password change or reset, deletion).
   `isEmailVerified(account)` (any address) and `isVerifiedDavidsonUser(account)` (verified AND @davidson.edu: the
-  alumni/AI gate) take a SessionUser, a lean User or a Profile.
+  alumni gate, and the AI gate while AI_ALLOW_UNVERIFIED is off) take a SessionUser, a lean User or a Profile. Who
+  is verified for AI is decided by `server/ai/access.ts isAiVerified` only (see "AI wire format").
 - **First run**: `SessionUser.onboardedAt` (ISO or null; `isOnboarded(user)`: a SessionUser without the field
   counts as onboarded). The hub layout sends an account with `onboardedAt` null to
   `routes.onboarding(undefined, { next: <requested path> })`, except on `/today` (its setup nudge and "not
@@ -147,7 +148,8 @@ The frozen interfaces every workstream codes against. They change only through t
 - **Return paths**: every untrusted path goes through `safeAppPath(value, fallback?)` / `isSafeAppPath(path)`
   (one leading "/", never "//" or "/\\" after normalising); `lib/routes.ts safeCallbackPath` applies the same rule.
 - **Verify banner**: `verifyBannerFor(user, now())` → `{ email, replaceable, hoursLeft }` or null (only unverified
-  @davidson.edu accounts, only while mail is available); the hub layout renders `<VerifyBanner {...state} />`.
+  @davidson.edu accounts, only while mail is available); the hub layout renders
+  `<VerifyBanner {...state} aiWithoutVerifying={loadAiAllowsUnverified()} />` (what verifying opens).
 - **Profile**: `getProfile(userId)` / `updateProfile(userId, patch)` (strict whitelist, `null` → `$unset` for
   firstTerm/standingOverride; `interests` are the 24 career-path slugs of server/content: 400 `interests.<i>`
   otherwise, unknown stored slugs dropped on read), `grantAiConsent` / `revokeAiConsent`, `defaultFirstTerm(gradYear)`,
@@ -184,22 +186,52 @@ The frozen interfaces every workstream codes against. They change only through t
 | ---------- | ------------------------------------------------------------------- | -------------------- |
 | `public`   | anyone; cookies never read (required for `cache: "public-catalog"`) | —                    |
 | `user`     | signed in                                                           | 401                  |
-| `verified` | signed in + `emailVerifiedAt` + `@davidson.edu` (alumni, AI report) | 401 / 403            |
+| `verified` | signed in + `emailVerifiedAt` + `@davidson.edu` (alumni)            | 401 / 403            |
 | `admin`    | verified mailbox + address in `ADMIN_EMAILS`                        | 401 / 403            |
 | `cron`     | `Authorization: Bearer $CRON_SECRET` (constant-time compare)        | 401; 503 while unset |
 
 Non-GET requests also need the app's `Origin` (or `Sec-Fetch-Site: same-origin`) → 403, a JSON body when the
-route takes one → 415, at most 16 KB → 413, and a body matching the strict schema → 400.
+route takes one → 415, at most 16 KB → 413, and a body matching the strict schema → 400. The `verified` 403
+message is `verifiedOnlyMessage(switch)` (lib/types/ai-constants.ts), true in either state of AI_ALLOW_UNVERIFIED.
+"Report this" (POST /api/ai/report) is `user`: `reportEntry` answers 403 unless `isAiVerified` (below).
 
 ## AI wire format (`lib/types/ai.ts`, `lib/api/ai.ts`)
 
 The generating AI routes are `auth: "user"` + `aiResult: true`. The handler returns an `AiResult` for every
-outcome it decides, failures included: first `const gate = aiGateFailure({ enabled, configured, verified,
-consented }); if (gate) return gate;` (disabled → not_configured → unverified → consent_required), then the
-generation result. defineRoute sends it with `AI_RESULT_STATUS[kind]` (quota 429, unverified 403, ...), and
-`callApi` returns it instead of throwing, so client code does `switch (result.kind)`. Only problems outside the
+outcome it decides, failures included: first
+`const gate = aiGateFailure(await aiGateInput(user.id, feature)); if (gate) return gate;` (disabled →
+not_configured → unverified → consent_required), then the generation result. `aiGateInput` (server/ai/gate.ts)
+reads the account once: `verified` is `isAiVerified(account, feature, switch)` and `unverifiedMessage` what a
+student who fails it is told (`aiUnverifiedMessage`). A page that shows or hides an AI panel decides it with
+`aiGateInput` too (plan suggestions, course About, the career panels: one input per feature), so a page and its
+route never disagree. defineRoute sends the result with `AI_RESULT_STATUS[kind]` (quota 429, unverified 403, ...),
+and `callApi` returns it instead of throwing, so client code does `switch (result.kind)`. Only problems outside the
 handler (401 signed out, 400 bad body, 429 route rate limit, 500) use the generic error body and throw
 `ApiClientError`.
+
+### Temporary: `AI_ALLOW_UNVERIFIED` (remove once mail works)
+
+An owner switch (server/env.ts, boolean, default `false`), there only because email verification cannot work in
+production without a mail provider. Read with `aiAllowsUnverified()` on route paths (a malformed value throws,
+like `getFlags()`) or `loadAiAllowsUnverified()` for pages and copy (never throws: malformed = off), both in
+`server/ai/access.ts`:
+
+- `isAiVerified(account, feature, allowUnverified)`: a verified @davidson.edu mailbox, always; an unverified
+  @davidson.edu address only while the switch is on and never for `VERIFIED_ONLY_AI_FEATURES` (`cold-email`: it
+  uses alumni data); legacy non-Davidson accounts, never. Alumni data stays verified-only whatever the switch
+  says: `alumniForCareer`, the alumni pages, the search provider and `defineRoute` `verified` use
+  `isVerifiedDavidsonUser`.
+- Consent and the 18+ attestation are still required (the Profile AI section lets any signed-in student consent);
+  per-user quotas, AI_DAILY_TOKEN_BUDGET and the payload allow-lists are unchanged.
+- "Report this": only reports from a verified @davidson.edu mailbox count toward `REPORTS_TO_HIDE`
+  (`reports.entries[].verified: false` is kept for the admin but left out of `REPORTER_COUNT`; reports from before
+  the switch have no `verified` field and count).
+- Copy says what is true in both states: `verifiedOnlyMessage(switch)` / `aiUnverifiedMessage(feature, switch)`,
+  `verificationUnavailableMessage(switch)`, the verify banner, the landing's AI claim (`landingClaims`: a mail
+  provider OR the switch) and /privacy (rendered per request). The verify links stay tied to the `unverified`
+  gate, so they are offered only where verifying still helps (cold e-mail, alumni).
+- e2e: a second server with the switch on (playwright.config.ts, `E2E_ALT_PORT`, helpers.ts `E2E_ALT_ORIGIN`)
+  runs `tests/e2e/ai-unverified.spec.ts`; remove both with the switch.
 
 ## Models (collections)
 

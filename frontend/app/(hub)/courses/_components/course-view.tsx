@@ -140,6 +140,7 @@ export function CourseView({
                 termCode={params.term}
                 courseCode={params.code}
                 gate={data.aboutGate}
+                unverifiedMessage={data.aboutUnverifiedMessage}
                 verifyHref={verifyHref}
                 timeZone={timeZone}
               />

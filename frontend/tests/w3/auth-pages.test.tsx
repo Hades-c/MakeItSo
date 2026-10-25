@@ -439,6 +439,27 @@ describe("VerifyBanner", () => {
     rerender(<VerifyBanner email="casey@davidson.edu" replaceable={false} hoursLeft={null} />);
     expect(screen.getByTestId("verify-banner")).not.toHaveTextContent(/replace/);
   });
+
+  it("says what verifying opens, in either state of the temporary AI_ALLOW_UNVERIFIED switch", () => {
+    const { rerender } = render(
+      <VerifyBanner email="casey@davidson.edu" replaceable={false} hoursLeft={null} />,
+    );
+    expect(screen.getByTestId("verify-banner")).toHaveTextContent(
+      "to open the alumni network and AI features.",
+    );
+    rerender(
+      <VerifyBanner
+        email="casey@davidson.edu"
+        replaceable={false}
+        hoursLeft={null}
+        aiWithoutVerifying
+      />,
+    );
+    expect(screen.getByTestId("verify-banner")).toHaveTextContent(
+      "to open the alumni network and cold-email drafts.",
+    );
+    expect(screen.getByTestId("verify-banner")).not.toHaveTextContent(/AI features/);
+  });
 });
 
 describe("FormAlert", () => {

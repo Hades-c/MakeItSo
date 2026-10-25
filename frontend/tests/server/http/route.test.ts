@@ -378,6 +378,20 @@ describe("defineRoute: auth modes", () => {
     expect(await (await get(verified)).json()).toEqual({ id: ok.id });
   });
 
+  it("verified: AI_ALLOW_UNVERIFIED never opens it (alumni data), and the 403 says what is still locked", async () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    try {
+      await signIn();
+      const unverified = await get(verified);
+      expect(unverified.status).toBe(403);
+      expect((await errorOf(unverified)).message).toBe(
+        "AI features are limited to @davidson.edu accounts, and the alumni network and cold-email drafts to verified ones.",
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("admin: e-mail in ADMIN_EMAILS with a verified mailbox", async () => {
     vi.stubEnv("ADMIN_EMAILS", "owner@davidson.edu");
     await signIn({ email: "owner@davidson.edu" });

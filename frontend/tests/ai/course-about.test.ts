@@ -12,6 +12,7 @@ import {
 } from "./helpers";
 import * as route from "@/app/api/ai/course-about/route";
 import { CourseAboutResultSchema } from "@/lib/api/ai";
+import { UNVERIFIED_AI_ALLOWED_MESSAGE, UNVERIFIED_MESSAGE } from "@/lib/types/ai-constants";
 import AiCache from "@/models/AiCache";
 import AiUsage from "@/models/AiUsage";
 import RateLimit from "@/models/RateLimit";
@@ -150,6 +151,38 @@ describe("the gate, in order (AiResult bodies with AI_RESULT_STATUS)", () => {
     const res = await post(CSC_221);
     expect(res.status).toBe(403);
     expect((await bodyOf(res)).kind).toBe("unverified");
+  });
+
+  it("AI_ALLOW_UNVERIFIED: an unverified, consenting @davidson.edu student gets the summary only while it is on", async () => {
+    await signIn({ verified: false });
+    // Off (the default): unverified, nothing generated.
+    const off = await post(CSC_221);
+    expect(off.status).toBe(403);
+    expect(await bodyOf(off)).toEqual({ kind: "unverified", message: UNVERIFIED_MESSAGE });
+    expect(mockAiRequests()).toHaveLength(0);
+
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    const on = await post(CSC_221);
+    expect(on.status).toBe(200);
+    const body = CourseAboutResultSchema.parse(await bodyOf(on));
+    expect(body.kind).toBe("ok");
+    expect(mockAiRequests()).toHaveLength(1);
+
+    // Consent is still needed, and a non-Davidson account stays locked, with a message true for the switch.
+    await signIn({ verified: false, consent: false });
+    expect((await bodyOf(await post(CSC_221))).kind).toBe("consent_required");
+    await signIn({ email: "legacy-unverified@gmail.com", verified: false });
+    const legacy = await post(CSC_221);
+    expect(legacy.status).toBe(403);
+    expect(await bodyOf(legacy)).toEqual({
+      kind: "unverified",
+      message: UNVERIFIED_AI_ALLOWED_MESSAGE,
+    });
+
+    // Switched off again: the same student is unverified again (nothing is remembered).
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "false");
+    await signIn({ verified: false });
+    expect((await post(CSC_221)).status).toBe(403);
   });
 });
 

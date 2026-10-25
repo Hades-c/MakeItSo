@@ -1,6 +1,7 @@
 import "server-only";
 import mongoose from "mongoose";
 import User from "@/models/User";
+import { loadAiAllowsUnverified } from "@/server/ai/access";
 import {
   CODE_SENDS_PER_HOUR,
   consumeCode,
@@ -19,7 +20,8 @@ import { ApiError } from "@/server/http/errors";
 /**
  * Mailbox verification (PLAN §1 compensating control, §6.1 W3, §9 "Account data"). Any existing account may
  * verify its own mailbox — legacy non-Davidson ones included, so the owner's address can satisfy ADMIN_EMAILS —
- * but only a verified @davidson.edu address counts as "verified" for alumni and AI (isVerifiedDavidsonUser).
+ * but only a verified @davidson.edu address counts as "verified" for alumni and AI (isVerifiedDavidsonUser; for
+ * AI, while the temporary AI_ALLOW_UNVERIFIED switch is on, any @davidson.edu address: server/ai/access.ts).
  *
  * The signed-in student asks for a code (3 per hour: consumeRateLimit("verify-resend:user:<id>", 3, 3600); the
  * first one sent at registration and, while unverified, password-reset codes count too) and enters it (5
@@ -43,6 +45,17 @@ export function tooManyWrongCodesMessage(retryAfterSec: number): string {
 
 export const VERIFICATION_UNAVAILABLE_MESSAGE =
   "Email verification is not available yet. You can use the catalog and your plan in the meantime; the alumni network and AI features need a verified @davidson.edu account.";
+
+/** The same while AI_ALLOW_UNVERIFIED is on: AI needs no verified address then, except for cold-email drafts. */
+export const VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE =
+  "Email verification is not available yet. You can use the catalog, your plan and, with an @davidson.edu account, the AI features in the meantime; the alumni network and cold-email drafts need a verified @davidson.edu account.";
+
+/** "Email verification is not available yet …", true in either state of AI_ALLOW_UNVERIFIED. */
+export function verificationUnavailableMessage(allowUnverifiedAi: boolean): string {
+  return allowUnverifiedAi
+    ? VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE
+    : VERIFICATION_UNAVAILABLE_MESSAGE;
+}
 
 export interface VerifyResult {
   verified: true;
@@ -119,7 +132,13 @@ export async function resendVerification(userId: string): Promise<{ sent: boolea
   const user = await loadAccount(userId);
   if (isEmailVerified(user)) return { sent: false };
   const mailer = getMailer(() => at);
-  if (!mailer) throw new ApiError(503, "unavailable", VERIFICATION_UNAVAILABLE_MESSAGE);
+  if (!mailer) {
+    throw new ApiError(
+      503,
+      "unavailable",
+      verificationUnavailableMessage(loadAiAllowsUnverified()),
+    );
+  }
   const budget = await codeGuessesExhausted(userId, at, "verify-email");
   if (budget.exhausted) throw lockedError(budget.retryAfterSec);
   const sends = await consumeAuthLimit(

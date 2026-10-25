@@ -43,6 +43,7 @@ export {
   resendVerification,
   verifyEmailCode,
   VERIFICATION_UNAVAILABLE_MESSAGE,
+  verificationUnavailableMessage,
 } from "./verification";
 export { verifyBannerFor, verifyStepFor, type VerifyBannerState } from "./banner";
 export {

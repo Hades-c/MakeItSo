@@ -3,7 +3,9 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import mongoose from "mongoose";
 import { isDavidsonEmail, UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import type { AuthMode } from "@/lib/api/spec";
+import { verifiedOnlyMessage } from "@/lib/types/ai-constants";
 import User from "@/models/User";
+import { loadAiAllowsUnverified } from "@/server/ai/access";
 import { requireApiUser, type SessionUser } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 import { readEnv } from "@/server/env";
@@ -14,6 +16,7 @@ import { ApiError } from "@/server/http/errors";
  *   public   → null (never touches cookies)
  *   user     → the session user (401 otherwise)
  *   verified → the session user whose mailbox is verified (emailVerifiedAt) AND whose address is @davidson.edu
+ *              (alumni data; the 403 message is true in either state of the temporary AI_ALLOW_UNVERIFIED switch)
  *   admin    → the session user with a verified mailbox whose address is in ADMIN_EMAILS
  *   cron     → null, after checking `Authorization: Bearer $CRON_SECRET` (503 while unset)
  *
@@ -87,7 +90,7 @@ export async function resolveRouteUser<A extends AuthMode>(
     case "verified": {
       const user = await requireApiUser();
       if (!(await isVerifiedDavidson(user.id)))
-        throw new ApiError(403, "forbidden", UNVERIFIED_MESSAGE);
+        throw new ApiError(403, "forbidden", verifiedOnlyMessage(loadAiAllowsUnverified()));
       return user as RouteUser<A>;
     }
     case "admin": {

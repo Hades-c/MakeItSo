@@ -1,8 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { alumniAccessFor, alumniGateCopy } from "@/app/(hub)/alumni/_lib/access";
 import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { getFlags } from "@/lib/flags";
-import { VERIFICATION_UNAVAILABLE_MESSAGE } from "@/server/auth/verification";
+import { UNVERIFIED_AI_ALLOWED_MESSAGE } from "@/lib/types/ai-constants";
+import {
+  VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE,
+  VERIFICATION_UNAVAILABLE_MESSAGE,
+} from "@/server/auth/verification";
 
 const ON = getFlags({});
 const VERIFIED_AT = "2026-09-01T12:00:00.000Z";
@@ -85,5 +89,34 @@ describe("alumniGateCopy", () => {
     const copy = alumniGateCopy({ kind: "davidson-only" }, "/careers/law");
     expect(copy.message).toBe(UNVERIFIED_MESSAGE);
     expect(copy.action).toBeNull();
+  });
+});
+
+describe("while AI_ALLOW_UNVERIFIED is on (temporary)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("never opens alumni: the switch is for AI only", () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    const mail = () => false;
+    expect(alumniAccessFor(unverified, ON, mail)).toEqual({ kind: "verify", mailAvailable: false });
+    expect(alumniAccessFor(legacy, ON, mail)).toEqual({ kind: "davidson-only" });
+    expect(alumniAccessFor(davidson, ON, mail)).toEqual({ kind: "open" });
+  });
+
+  it("explains the locks truthfully: AI needs a Davidson address, alumni a verified one", () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    expect(alumniGateCopy({ kind: "davidson-only" }, "/alumni").message).toBe(
+      UNVERIFIED_AI_ALLOWED_MESSAGE,
+    );
+    expect(alumniGateCopy({ kind: "verify", mailAvailable: false }, "/alumni").message).toBe(
+      VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE,
+    );
+    const verify = alumniGateCopy({ kind: "verify", mailAvailable: true }, "/alumni");
+    expect(verify.message).toContain(UNVERIFIED_AI_ALLOWED_MESSAGE);
+    // Verifying still opens alumni, so the verify step stays.
+    expect(verify.action?.label).toBe("Verify your email");
+    expect(VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE).not.toMatch(/AI features need/);
   });
 });

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import type { Session } from "next-auth";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { withCatalogDb } from "../catalog/db";
@@ -6,7 +7,9 @@ import * as courseAbout from "@/app/api/ai/course-about/route";
 import * as purge from "@/app/api/ai/admin/purge/route";
 import * as report from "@/app/api/ai/report/route";
 import { CourseAboutResultSchema } from "@/lib/api/ai";
+import { UNVERIFIED_AI_ALLOWED_MESSAGE, UNVERIFIED_MESSAGE } from "@/lib/types/ai-constants";
 import AiCache from "@/models/AiCache";
+import User from "@/models/User";
 import { readShared, writeShared } from "@/server/ai/cache";
 import { REPORTS_TO_HIDE, TTL_MS } from "@/server/ai/config";
 import { HIDDEN_MESSAGE } from "@/server/ai/features/course-about";
@@ -67,7 +70,10 @@ describe("POST /api/ai/report", () => {
     await signIn({ verified: false });
     const unverified = await reportIt({ feature: "course-about", key: "k" });
     expect(unverified.status).toBe(403);
-    expect((await errorOf(unverified)).code).toBe("forbidden");
+    expect(await errorOf(unverified)).toMatchObject({
+      code: "forbidden",
+      message: UNVERIFIED_MESSAGE,
+    });
     await signIn({ email: "legacy-reporter@gmail.com" });
     expect((await reportIt({ feature: "course-about", key: "k" })).status).toBe(403);
   });
@@ -190,6 +196,94 @@ describe("POST /api/ai/report", () => {
     expect(doc).toMatchObject({ hidden: false, reports: { count: 1 } });
     expect(doc!.reports!.entries).toHaveLength(3);
     expect((await about()).status).toBe(200);
+  });
+});
+
+describe("POST /api/ai/report while AI_ALLOW_UNVERIFIED is on", () => {
+  beforeEach(() => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+  });
+
+  it("takes reports from unverified students but never lets them hide an entry; verified ones count as before", async () => {
+    await signIn();
+    const key = await entryKey();
+    // Throwaway sign-ups (an unverified address can be anyone's): accepted, kept for the admin, never counted.
+    for (let i = 0; i < REPORTS_TO_HIDE + 2; i++) {
+      await signIn({ verified: false });
+      const res = await reportIt({ feature: "course-about", key, reason: `Throwaway ${i}` });
+      expect(res.status).toBe(204);
+    }
+    let doc = await AiCache.findOne({ key }).lean();
+    expect(doc).toMatchObject({ hidden: false, reports: { count: 0 } });
+    expect(doc!.reports!.entries).toHaveLength(REPORTS_TO_HIDE + 2);
+    expect(doc!.reports!.entries.every((entry) => entry.verified === false)).toBe(true);
+    expect(doc!.reports!.entries[0]!.reason).toBe("Throwaway 0");
+    expect((await about()).status).toBe(200);
+
+    // Verified reporters: hidden at the third, exactly as with the switch off.
+    for (let i = 0; i < REPORTS_TO_HIDE - 1; i++) {
+      await signIn();
+      expect((await reportIt({ feature: "course-about", key })).status).toBe(204);
+    }
+    doc = await AiCache.findOne({ key }).lean();
+    expect(doc).toMatchObject({ hidden: false, reports: { count: REPORTS_TO_HIDE - 1 } });
+    expect((await about()).status).toBe(200);
+    await signIn();
+    expect((await reportIt({ feature: "course-about", key })).status).toBe(204);
+    doc = await AiCache.findOne({ key }).lean();
+    expect(doc).toMatchObject({ hidden: true, reports: { count: REPORTS_TO_HIDE } });
+    expect((await about()).status).toBe(503);
+  });
+
+  it("an unverified student's report counts once they verify and report again (still once)", async () => {
+    await signIn();
+    const key = await entryKey();
+    const student = await signIn({ verified: false });
+    await reportIt({ feature: "course-about", key });
+    expect(await AiCache.findOne({ key }).lean()).toMatchObject({ reports: { count: 0 } });
+    await User.updateOne({ _id: student.id }, { $set: { emailVerifiedAt: new Date() } });
+    for (let i = 0; i < 2; i++) await reportIt({ feature: "course-about", key });
+    const doc = await AiCache.findOne({ key }).lean();
+    expect(doc).toMatchObject({ hidden: false, reports: { count: 1 } });
+    expect(doc!.reports!.entries).toHaveLength(1);
+    expect(doc!.reports!.entries[0]!.verified).toBe(true);
+  });
+
+  it("counts reports from before the switch (no `verified` field): only verified accounts could send them", async () => {
+    await signIn();
+    const key = await entryKey();
+    const earlier = new mongoose.Types.ObjectId();
+    await AiCache.collection.updateOne(
+      { key },
+      {
+        $set: {
+          "reports.entries": [
+            { userId: earlier, reporter: "mailbox:earlier", reason: null, at: new Date() },
+          ],
+          "reports.userIds": [earlier],
+          "reports.count": 1,
+        },
+      },
+    );
+    await signIn({ verified: false });
+    await reportIt({ feature: "course-about", key });
+    expect(await AiCache.findOne({ key }).lean()).toMatchObject({ reports: { count: 1 } });
+    await signIn();
+    await reportIt({ feature: "course-about", key });
+    expect(await AiCache.findOne({ key }).lean()).toMatchObject({ reports: { count: 2 } });
+  });
+
+  it("still refuses accounts that may not see AI answers (legacy non-Davidson), saying why", async () => {
+    await signIn();
+    const key = await entryKey();
+    await signIn({ email: "legacy-reporter@gmail.com", verified: false });
+    const res = await reportIt({ feature: "course-about", key });
+    expect(res.status).toBe(403);
+    expect(await errorOf(res)).toMatchObject({
+      code: "forbidden",
+      message: UNVERIFIED_AI_ALLOWED_MESSAGE,
+    });
+    expect(await AiCache.findOne({ key }).lean()).toMatchObject({ reports: { count: 0 } });
   });
 });
 

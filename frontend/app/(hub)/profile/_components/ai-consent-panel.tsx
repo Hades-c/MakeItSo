@@ -9,25 +9,29 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { callApi } from "@/lib/api/client";
 import { authExtraEndpoints } from "@/lib/api/endpoints";
 import { formatMediumDate } from "@/lib/format";
 import { queryString, routes } from "@/lib/routes";
+import { verifiedOnlyMessage } from "@/lib/types/ai-constants";
 import { describeFailure } from "../_lib/errors";
 
 /**
  * AI features are opt-in per student (PLAN §1 "AI"): this panel is the consent notice (what is sent, that it goes
  * to Anthropic, what is never sent), the 18+ attestation (until the owner decides on minors) and the on/off switch,
  * through W3's dedicated endpoint (PUT/DELETE /api/profile/ai-consent). Nothing is optimistic here: the state
- * shown is the server's answer. Consent alone does not open AI: the feature must be on for MakeItSo and the
- * account a verified @davidson.edu one, and the panel says which is missing (with a link to /verify only while a
- * mail provider can send the code). After turning AI on or off, focus moves to the button that replaced the one
- * pressed.
+ * shown is the server's answer. Any signed-in student may give consent; it alone does not open AI: the feature
+ * must be on for MakeItSo and the account a verified @davidson.edu one (while the temporary AI_ALLOW_UNVERIFIED
+ * switch is on, any @davidson.edu one, though cold-email drafts still need a verified address), and the panel says
+ * what is missing (with a link to /verify only for a Davidson address while a mail provider can send the code).
+ * After turning AI on or off, focus moves to the button that replaced the one pressed.
  */
 
 const ATTEST_ID = "ai-adult-attest";
 const ATTEST_MESSAGE = "Confirm that you are 18 or older to turn on AI features.";
+/** An unverified @davidson.edu account while AI_ALLOW_UNVERIFIED is on. */
+const AI_OPEN_UNVERIFIED_NOTE =
+  "For now, AI features work before your @davidson.edu address is verified. Cold-email drafts and the alumni network still need a verified address.";
 
 export interface AiConsentPanelProps {
   aiConsentAt: string | null;
@@ -35,6 +39,10 @@ export interface AiConsentPanelProps {
   /** AI_ENABLED for the whole app. */
   aiEnabled: boolean;
   verifiedDavidson: boolean;
+  /** Verified for AI as the routes decide it (server/ai/access.ts isAiVerified); default verifiedDavidson. */
+  aiVerified?: boolean;
+  /** The temporary AI_ALLOW_UNVERIFIED switch: decides what the lock notice says. */
+  allowUnverifiedAi?: boolean;
   davidson: boolean;
   /** A mail provider is configured, so /verify can send a code. */
   mailAvailable: boolean;
@@ -127,8 +135,12 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
         </FormAlert>
       ) : null}
       {!props.verifiedDavidson ? (
+        // Not a verified @davidson.edu account: what stays locked. With the switch on, an unverified Davidson
+        // student may use AI (aiVerified) and is told only what still needs a verified address.
         <FormAlert tone="info">
-          {UNVERIFIED_MESSAGE}{" "}
+          {(props.aiVerified ?? false)
+            ? AI_OPEN_UNVERIFIED_NOTE
+            : verifiedOnlyMessage(props.allowUnverifiedAi ?? false)}{" "}
           {!props.davidson ? null : props.mailAvailable ? (
             <Link
               href={`${routes.verify()}${queryString({ next: routes.profile() })}`}
