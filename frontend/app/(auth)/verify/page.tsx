@@ -28,8 +28,8 @@ export const metadata: Metadata = { title: "Verify your email" };
  * Any account may verify its own mailbox; only a verified @davidson.edu address unlocks alumni and AI (while the
  * temporary AI_ALLOW_UNVERIFIED switch is on, AI needs no verified address except for cold-email drafts, and the
  * page says so: the rule follows the switch, the "AI features in the meantime" offer also needs AI to be on and
- * set up, aiOpenWithoutVerifying), and requireUser({ verifiedDavidson: true }) sends other accounts here with ?reason=davidson.
- * `next` is where to go afterwards (same-origin only).
+ * set up, aiOpenWithoutVerifying), and requireUser({ verifiedDavidson: true }) sends other accounts here with
+ * ?reason=davidson. `next` is where to go afterwards (same-origin only).
  *
  * The page only says a code was sent when there is a live one (VerificationCode for verify-email: unused,
  * unexpired, attempts left). Otherwise (legacy accounts, an expired code, a first send skipped by the 3-per-hour
