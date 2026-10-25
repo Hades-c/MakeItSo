@@ -16,7 +16,9 @@ const sans = localFont({
   variable: "--font-inter",
   display: "swap",
 });
-// One static weight: Playfair is only ever set bold. Preloaded, since every page's h1 (and the wordmark) uses it.
+// One static weight: Playfair is only ever set bold. Preloaded, since every page's h1 (and the wordmark) uses it:
+// with the preload it arrives before first paint, without it the h1 (the LCP element) swaps from the fallback about
+// half a second later on a slow phone connection; the preload costs about 70-90ms of first paint there.
 const display = localFont({
   src: "../node_modules/@fontsource/playfair-display/files/playfair-display-latin-700-normal.woff2",
   weight: "700",
@@ -46,6 +48,9 @@ const mono = localFont({
   ],
   variable: "--font-plex-mono",
   display: "swap",
+  // Not preloaded: codes appear on some pages only, and preloading all three weights everywhere cost about 200ms of
+  // first paint on a slow phone connection (sign-in page, 150ms RTT, 1.6 Mbps) for a face most pages never use.
+  preload: false,
   // Metric overrides are computed against Arial, which only suits the proportional face.
   adjustFontFallback: false,
   fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
