@@ -65,7 +65,7 @@ function cellClasses(cell: PlanCell): string {
   }
   return cn(
     "border-[1.5px] border-dashed",
-    colors ? cn(colors.border, colors.text) : "border-primary text-primary",
+    colors ? cn(colors.border, colors.text) : "border-fg-2 text-fg",
   );
 }
 
@@ -292,7 +292,7 @@ export function PlanMap({
         <li className="flex items-center gap-1.5">
           <span
             aria-hidden
-            className="size-3 rounded-[3px] border-[1.5px] border-dashed border-primary"
+            className="size-3 rounded-[3px] border-[1.5px] border-dashed border-fg-2"
           />
           Planned
         </li>

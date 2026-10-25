@@ -267,7 +267,8 @@ describe("RequirementSlots", () => {
     ]);
     expect(items[0]).toHaveClass("bg-surface-2");
     expect(items[1]).toHaveClass("bg-primary-wash");
-    expect(items[3]).toHaveClass("border-dashed", "border-primary");
+    // Planned is a dark dashed outline (a red dashed box would read as an error).
+    expect(items[3]).toHaveClass("border-dashed", "border-fg-2");
     // An open tile's dashed outline is its shape: the strong line colour keeps it at 3:1.
     expect(items[4]).toHaveClass("border-dashed", "border-line-strong");
     expect(

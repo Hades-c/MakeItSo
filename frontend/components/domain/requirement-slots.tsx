@@ -40,7 +40,8 @@ const STATUS_TEXT: Record<RequirementStatus, string> = {
 const TILE: Record<RequirementStatus, string> = {
   done: "bg-surface-2 text-fg-3",
   "this-term": "bg-primary-wash text-primary",
-  planned: "border-[1.5px] border-dashed border-primary text-primary",
+  // Planned is a dark dashed outline, not red: a red dashed box reads as a validation error.
+  planned: "border-[1.5px] border-dashed border-fg-2 text-fg",
   // --line-strong: the dashed outline is the tile's shape, so it needs 3:1 like any graphic.
   open: "border-[1.5px] border-dashed border-line-strong text-fg-3",
 };
@@ -135,7 +136,7 @@ export function RequirementSlots({
           <li className="flex items-center gap-1.5">
             <span
               aria-hidden
-              className="size-2.5 rounded-[3px] border-[1.5px] border-dashed border-primary"
+              className="size-2.5 rounded-[3px] border-[1.5px] border-dashed border-fg-2"
             />
             Planned
           </li>
