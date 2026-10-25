@@ -27,7 +27,7 @@ export function PageHeader({ title, subtitle, kicker, actions, className }: Page
             {kicker}
           </p>
         ) : null}
-        <h1 className="text-xl font-strong text-fg md:text-2xl">{title}</h1>
+        <h1 className="font-display text-xl font-strong text-fg md:text-2xl">{title}</h1>
         {subtitle ? (
           <p className="mt-1.5 text-sm text-fg-2 md:text-base [&_b]:font-semibold [&_b]:text-fg">
             {subtitle}

@@ -31,7 +31,7 @@ export function ProfileSection({
         className,
       )}
     >
-      <h2 id={headingId} className="text-lg font-strong tracking-title text-fg">
+      <h2 id={headingId} className="font-display text-lg font-strong tracking-title text-fg">
         {title}
       </h2>
       {description ? <div className="mt-1 text-sm text-fg-2">{description}</div> : null}

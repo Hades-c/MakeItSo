@@ -51,7 +51,10 @@ export function CourseRow({
             {openSeatsLabel(summary.openSeats)}
           </span>
         </div>
-        <h3 id={titleId} className={cn("text-lg font-strong tracking-title text-fg", BREAK_TEXT)}>
+        <h3
+          id={titleId}
+          className={cn("font-display text-lg font-strong tracking-title text-fg", BREAK_TEXT)}
+        >
           <Link
             href={row.href}
             className="inline-flex min-h-11 items-center rounded-sm hover:underline md:inline md:min-h-0"

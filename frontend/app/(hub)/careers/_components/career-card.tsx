@@ -56,7 +56,7 @@ export function CareerCard({
       data-career={career.slug}
       className="relative flex h-full min-w-0 flex-col rounded-xl border border-line bg-surface p-4 shadow-card transition-colors focus-within:border-line-strong hover:border-line-strong md:px-5"
     >
-      <h3 id={titleId} className="text-lg font-strong tracking-title text-fg">
+      <h3 id={titleId} className="font-display text-lg font-strong tracking-title text-fg">
         <Link
           href={routes.career(career.slug)}
           className="rounded-sm after:absolute after:inset-0 after:rounded-xl hover:underline"

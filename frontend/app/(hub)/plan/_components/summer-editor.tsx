@@ -336,7 +336,7 @@ export function SummerEditor({
         <h2
           id="summer-add-title"
           tabIndex={-1}
-          className="text-lg font-strong tracking-title text-fg"
+          className="font-display text-lg font-strong tracking-title text-fg"
         >
           Add a summer plan
         </h2>

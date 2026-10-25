@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 import { COURSE_COLORS } from "@/lib/course-color";
 
 /**
- * Guards for the Lakeside token layer in app/globals.css: the two dark blocks stay identical, every token has a
- * dark value, and every text/background pair the components use meets WCAG AA.
+ * Guards for the token layer in app/globals.css (Davidson's official colours, the owner's choice of 2026-10-25): the
+ * two dark blocks stay identical, every token has a dark value, and every text/background pair the components use
+ * meets WCAG AA.
  */
 const css = readFileSync(fileURLToPath(new URL("../../app/globals.css", import.meta.url)), "utf8");
 
@@ -59,7 +60,7 @@ function contrast(a: string | undefined, b: string | undefined): number {
 
 const THEMES = { light, dark: darkExplicit } as const;
 
-describe("Lakeside tokens", () => {
+describe("design tokens", () => {
   it("defines the dark theme identically for the system preference and data-theme=dark", () => {
     expect(darkMedia).toEqual(darkExplicit);
   });
@@ -68,27 +69,39 @@ describe("Lakeside tokens", () => {
     expect(Object.keys(darkExplicit).sort()).toEqual(Object.keys(light).sort());
   });
 
-  it("uses the Lakeside palette from the mockups", () => {
+  it("uses Davidson's official colours: white ground, Davidson Black text, Davidson Red fills", () => {
     expect(light).toMatchObject({
-      bg: "#f4efe8",
-      surface: "#fffdfa",
-      "surface-2": "#efe7dc",
-      fg: "#152238",
-      primary: "#294878",
-      "primary-wash": "#e3eaf4",
+      bg: "#ffffff",
+      surface: "#ffffff",
+      "surface-2": "#f3f4f6",
+      fg: "#0f1012", // Davidson Black
+      primary: "#c21d1d",
+      "primary-fill": "#d42121", // Davidson Red, PMS 3546 C
+      "primary-wash": "#fdeeee",
       urgent: "#c21d1d",
+      "urgent-fill": "#d42121",
+      "nav-mark": "#d42121",
+      link: "#0f1012",
       taupe: "#7a6650",
     });
     expect(darkExplicit).toMatchObject({
       bg: "#0d131b",
       surface: "#141c27",
-      primary: "#93b6ee",
-      "primary-fill": "#3c68b0",
+      primary: "#ff6e66",
+      "primary-fill": "#d42121",
       urgent: "#ff6e66",
+      "nav-mark": "#ff6e66",
     });
     // PLAN §7: the control/source-tag border colour.
-    expect(light["line-strong"]).toBe("#8a7f70");
+    expect(light["line-strong"]).toBe("#80868f");
     expect(darkExplicit["line-strong"]).toBe("#66768e");
+  });
+
+  it("never makes a text link red: links are the text colour, underlined", () => {
+    for (const t of Object.values(THEMES)) {
+      expect(t.link).toBe(t.fg);
+      expect([t.primary, t["primary-fill"], t.urgent]).not.toContain(t.link);
+    }
   });
 
   it("keeps danger distinct from Davidson Red", () => {
@@ -109,7 +122,7 @@ describe("Lakeside tokens", () => {
   describe.each(Object.entries(THEMES))("%s theme contrast (WCAG AA)", (_name, t) => {
     const surfaces = ["bg", "surface", "surface-2"] as const;
 
-    it.each(["fg", "fg-2", "fg-3", "primary", "urgent", "success", "warning", "danger"])(
+    it.each(["fg", "fg-2", "fg-3", "primary", "urgent", "success", "warning", "danger", "link"])(
       "%s text ≥ 4.5:1 on every surface",
       (text) => {
         for (const s of surfaces) expect(contrast(t[text], t[s])).toBeGreaterThanOrEqual(4.5);
@@ -134,10 +147,22 @@ describe("Lakeside tokens", () => {
       expect(contrast(t[fg], t[bg])).toBeGreaterThanOrEqual(4.5);
     });
 
-    it("form-control borders and decor ≥ 3:1 (non-text)", () => {
+    it("form-control borders, link underlines and decor ≥ 3:1 (non-text)", () => {
       for (const s of surfaces) {
         expect(contrast(t["line-strong"], t[s])).toBeGreaterThanOrEqual(3);
+        expect(contrast(t["link-line"], t[s])).toBeGreaterThanOrEqual(3);
         expect(contrast(t.taupe, t[s])).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    it("current-page marker ≥ 3:1 on the nav pill and on the bars (the pill's tint alone is not a cue)", () => {
+      expect(contrast(t["nav-mark"], t["primary-wash"])).toBeGreaterThanOrEqual(3);
+      expect(contrast(t["nav-mark"], t.surface)).toBeGreaterThanOrEqual(3);
+    });
+
+    it("primary fill ≥ 3:1 against the page and the card (a filled control's own edge)", () => {
+      for (const s of ["bg", "surface"]) {
+        expect(contrast(t["primary-fill"], t[s])).toBeGreaterThanOrEqual(3);
       }
     });
 

@@ -157,7 +157,10 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
 
       {general.length > 0 ? (
         <section aria-labelledby="plan-warnings-title" data-testid="plan-warnings">
-          <h2 id="plan-warnings-title" className="text-lg font-strong tracking-title text-fg">
+          <h2
+            id="plan-warnings-title"
+            className="font-display text-lg font-strong tracking-title text-fg"
+          >
             Things to check
           </h2>
           <ul className="mt-2 flex flex-col gap-1.5">
@@ -178,7 +181,7 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
         <h2
           id="plan-terms-title"
           tabIndex={-1}
-          className="text-lg font-strong tracking-title text-fg"
+          className="font-display text-lg font-strong tracking-title text-fg"
         >
           Term by term
         </h2>

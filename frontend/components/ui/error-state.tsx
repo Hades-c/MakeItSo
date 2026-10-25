@@ -23,7 +23,7 @@ const LAYOUT = {
   page: {
     box: "items-center rounded-xl border-line bg-surface px-5 py-10 text-center shadow-card md:px-8 md:py-12",
     icon: "mb-4 size-11",
-    title: "text-lg",
+    title: "font-display text-lg",
     actions: "mt-5 justify-center",
   },
   inline: {

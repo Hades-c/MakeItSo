@@ -28,7 +28,7 @@ export function SectionCard({ title, count, link, id, className, children }: Sec
       <div className="mb-3.5 flex items-center justify-between gap-3">
         <h2
           id={headingId}
-          className="flex items-center gap-2 text-lg font-strong tracking-title text-fg"
+          className="flex items-center gap-2 font-display text-lg font-strong tracking-title text-fg"
         >
           {title}
           {count !== undefined && count !== null ? (

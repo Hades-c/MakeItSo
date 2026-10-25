@@ -104,7 +104,7 @@ export async function AlumniDirectory({ params }: { params: SearchParamsRecord }
             <section aria-labelledby="alumni-reachable-title">
               <h2
                 id="alumni-reachable-title"
-                className="mb-3 text-lg font-strong tracking-title text-fg"
+                className="mb-3 font-display text-lg font-strong tracking-title text-fg"
               >
                 Alumni{" "}
                 <span className="font-mono text-xs font-medium text-fg-3">{reachable.length}</span>
@@ -114,7 +114,10 @@ export async function AlumniDirectory({ params }: { params: SearchParamsRecord }
           ) : null}
           {notable.length > 0 ? (
             <section aria-labelledby="alumni-notable-title" data-testid="notable-alumni">
-              <h2 id="alumni-notable-title" className="text-lg font-strong tracking-title text-fg">
+              <h2
+                id="alumni-notable-title"
+                className="font-display text-lg font-strong tracking-title text-fg"
+              >
                 Notable alumni{" "}
                 <span className="font-mono text-xs font-medium text-fg-3">{notable.length}</span>
               </h2>

@@ -144,7 +144,7 @@ export default async function HomePage() {
             <p className="mb-4 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
               For Davidson College students
             </p>
-            <h1 className="text-xl font-strong md:text-3xl">
+            <h1 className="font-display text-xl font-strong md:text-3xl">
               {claims.events
                 ? "Your courses, your plan and your campus, in one place."
                 : "Your courses and your plan, in one place."}
@@ -192,7 +192,7 @@ export default async function HomePage() {
 
         <section aria-labelledby="features-title" className="border-y border-line bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
-            <h2 id="features-title" className="text-xl font-strong">
+            <h2 id="features-title" className="font-display text-xl font-strong">
               One place instead of many tabs
             </h2>
             <ul
@@ -203,7 +203,7 @@ export default async function HomePage() {
                   <span className="mb-4 grid size-10 place-items-center rounded-md bg-primary-wash text-primary">
                     <Icon aria-hidden strokeWidth={1.8} className="size-5" />
                   </span>
-                  <h3 className="text-lg font-strong tracking-title">{title}</h3>
+                  <h3 className="font-display text-lg font-strong tracking-title">{title}</h3>
                   <p className="mt-1.5 text-sm text-fg-2">{body}</p>
                 </li>
               ))}
@@ -216,7 +216,7 @@ export default async function HomePage() {
           className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16"
         >
           <div className="max-w-2xl">
-            <h2 id="sources-title" className="text-xl font-strong">
+            <h2 id="sources-title" className="font-display text-xl font-strong">
               Every item shows where it came from
             </h2>
             <p className="mt-3 text-base text-fg-2">

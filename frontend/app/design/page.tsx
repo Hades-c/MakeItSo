@@ -127,7 +127,10 @@ export default function DesignGalleryPage() {
               terms={PLAN_2029}
               requiredCredits={32}
               heading={
-                <h2 id="progress-title" className="text-lg font-strong tracking-title text-fg">
+                <h2
+                  id="progress-title"
+                  className="font-display text-lg font-strong tracking-title text-fg"
+                >
                   Degree progress
                 </h2>
               }
@@ -216,7 +219,10 @@ export default function DesignGalleryPage() {
             className="min-w-0 rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5"
           >
             <div className="mb-3.5 flex items-center justify-between gap-3">
-              <h2 id="week-title" className="text-lg font-strong tracking-title text-fg">
+              <h2
+                id="week-title"
+                className="font-display text-lg font-strong tracking-title text-fg"
+              >
                 Your week with HIS 357
               </h2>
               <Chip variant="done">

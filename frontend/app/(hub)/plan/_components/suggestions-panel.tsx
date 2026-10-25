@@ -135,7 +135,10 @@ function DraftCard({
       data-source="ai"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id={`draft-${draft.id}`} className="text-lg font-strong tracking-title text-fg">
+        <h3
+          id={`draft-${draft.id}`}
+          className="font-display text-lg font-strong tracking-title text-fg"
+        >
           Suggestions from {formatMediumDate(draft.createdAt, timeZone)}
         </h3>
         <span className="flex items-center gap-2">

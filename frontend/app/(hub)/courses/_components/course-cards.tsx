@@ -62,7 +62,7 @@ function CardHeading({
       <h2
         id={id}
         tabIndex={focusable ? -1 : undefined}
-        className="min-w-0 text-lg font-strong tracking-title break-words text-fg"
+        className="min-w-0 font-display text-lg font-strong tracking-title break-words text-fg"
       >
         {title}
       </h2>
@@ -132,7 +132,12 @@ export function CourseHeader({
             ))}
             <SourceTag source="course-schedule" asOf={asOf} />
           </p>
-          <h1 className={cn("text-2xl font-strong tracking-title text-fg md:text-3xl", BREAK_TEXT)}>
+          <h1
+            className={cn(
+              "font-display text-2xl font-strong tracking-title text-fg md:text-3xl",
+              BREAK_TEXT,
+            )}
+          >
             {title}
           </h1>
           {course.topics ? (

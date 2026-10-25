@@ -52,7 +52,7 @@ export function WebTreePrintView({
         </Link>
       </div>
       <div>
-        <h2 className="text-xl font-strong tracking-title text-fg">
+        <h2 className="font-display text-xl font-strong tracking-title text-fg">
           {data.termLabel} WebTree preferences
         </h2>
         <p className="mt-1 text-sm text-fg-2">

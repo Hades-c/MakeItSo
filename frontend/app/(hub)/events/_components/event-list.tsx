@@ -71,7 +71,7 @@ function EventGroupSection({
     >
       <h2
         id={headingId}
-        className="flex flex-wrap items-baseline gap-x-2 text-lg font-strong tracking-title"
+        className="flex flex-wrap items-baseline gap-x-2 font-display text-lg font-strong tracking-title"
       >
         {group.title}
         {group.detail ? (

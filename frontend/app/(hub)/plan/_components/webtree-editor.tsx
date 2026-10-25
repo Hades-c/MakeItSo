@@ -291,7 +291,7 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
         <h3
           id="webtree-add-title"
           tabIndex={-1}
-          className="text-lg font-strong tracking-title text-fg"
+          className="font-display text-lg font-strong tracking-title text-fg"
         >
           Add a course
         </h3>
@@ -316,7 +316,7 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
         >
           <h3
             id="webtree-conflicts-title"
-            className="flex items-center gap-2 text-lg font-strong tracking-title text-fg"
+            className="flex items-center gap-2 font-display text-lg font-strong tracking-title text-fg"
           >
             Conflict check <SourceTag source="course-schedule" />
           </h3>
@@ -373,7 +373,10 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
           aria-labelledby="webtree-copy-title"
           className="rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 print:hidden"
         >
-          <h3 id="webtree-copy-title" className="text-lg font-strong tracking-title text-fg">
+          <h3
+            id="webtree-copy-title"
+            className="font-display text-lg font-strong tracking-title text-fg"
+          >
             Take it to WebTree
           </h3>
           <p className="mt-1 text-sm text-fg-2">

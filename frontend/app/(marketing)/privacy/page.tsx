@@ -36,7 +36,7 @@ function Section({
 }) {
   return (
     <section aria-labelledby={id} className="border-t border-line pt-6">
-      <h2 id={id} className="text-lg font-strong tracking-title text-fg md:text-xl">
+      <h2 id={id} className="font-display text-lg font-strong tracking-title text-fg md:text-xl">
         {title}
       </h2>
       <div className="mt-3 flex flex-col gap-3 text-base text-fg-2 [&_b]:font-semibold [&_b]:text-fg [&_li]:mt-1.5 [&_ul]:list-disc [&_ul]:pl-5">
@@ -77,7 +77,9 @@ export default function PrivacyPage() {
         <p className="mb-3 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
           Last updated {LAST_UPDATED}
         </p>
-        <h1 className="text-xl font-strong text-fg md:text-2xl">Privacy at MakeItSo</h1>
+        <h1 className="font-display text-xl font-strong text-fg md:text-2xl">
+          Privacy at MakeItSo
+        </h1>
         <p className="mt-4 text-base text-fg-2 md:text-lg">
           MakeItSo is an <b className="font-semibold text-fg">independent student project</b> for
           Davidson College students. It is{" "}

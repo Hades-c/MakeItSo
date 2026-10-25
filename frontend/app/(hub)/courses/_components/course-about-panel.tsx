@@ -54,7 +54,7 @@ function Heading() {
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
       <h2
         id="about-ai-title"
-        className="flex items-center gap-2 text-lg font-strong tracking-title text-fg"
+        className="flex items-center gap-2 font-display text-lg font-strong tracking-title text-fg"
       >
         <Sparkles aria-hidden className="size-4.5 text-taupe" />
         About this course

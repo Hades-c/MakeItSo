@@ -26,7 +26,7 @@ export function StepHeading({ step, children }: { step: OnboardingStep; children
       ref={ref}
       id={STEP_HEADING_ID}
       tabIndex={-1}
-      className="rounded-sm text-xl font-strong text-fg md:text-2xl"
+      className="rounded-sm font-display text-xl font-strong text-fg md:text-2xl"
     >
       {children}
     </h1>

@@ -4,16 +4,27 @@ import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 import { Providers } from "./providers";
 
-// Lakeside type: Instrument Sans for UI and body, IBM Plex Mono for codes, times, rooms, CRNs and labels.
-// Self-hosted from the @fontsource packages through next/font/local (preloaded, size-adjusted fallbacks), so the
-// build needs no network (PLAN §4.1: build and CI never touch the network) and the browser never calls Google
-// (CSP font-src 'self'). Both fonts are SIL Open Font License 1.1.
+// Classic MakeItSo type (owner's decision, 2026-10-25): Inter for UI and body, Playfair Display (bold) for the
+// wordmark, page titles and card/section titles (the `font-display` utility), IBM Plex Mono only for course codes,
+// CRNs and the verification code. Self-hosted from the @fontsource packages through next/font/local (preloaded,
+// size-adjusted fallbacks), so the build needs no network (PLAN §4.1: build and CI never touch the network) and the
+// browser never calls Google (CSP font-src 'self'). All three fonts are SIL Open Font License 1.1.
 const sans = localFont({
-  src: "../node_modules/@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-normal.woff2",
-  weight: "400 700",
+  src: "../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+  weight: "100 900",
   style: "normal",
-  variable: "--font-instrument-sans",
+  variable: "--font-inter",
   display: "swap",
+});
+// One static weight: Playfair is only ever set bold. Preloaded, since every page's h1 (and the wordmark) uses it.
+const display = localFont({
+  src: "../node_modules/@fontsource/playfair-display/files/playfair-display-latin-700-normal.woff2",
+  weight: "700",
+  style: "normal",
+  variable: "--font-playfair",
+  display: "swap",
+  adjustFontFallback: "Times New Roman",
+  fallback: ["Georgia", "Times New Roman", "serif"],
 });
 const mono = localFont({
   src: [
@@ -56,7 +67,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // data-theme is set by THEME_INIT_SCRIPT before hydration, hence suppressHydrationWarning on <html> only.
-    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${sans.variable} ${display.variable} ${mono.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
