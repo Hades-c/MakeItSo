@@ -804,4 +804,20 @@ describe("the action row", () => {
       "/onboarding",
     );
   });
+
+  it("keeps one red button: setup first while it is due, then Plan Spring 2027", async () => {
+    const during = new Date("2026-10-20T12:00:00-04:00");
+    state.profile = ok({ ...PROFILE, onboardedAt: null });
+    const first = await show(TodayActions({ userId: USER, now: during, timeZone: TZ }));
+    const red = () =>
+      [...document.querySelectorAll("a, button")]
+        .filter((el) => el.classList.contains("bg-primary-fill"))
+        .map((el) => el.textContent?.trim());
+    expect(screen.getByTestId("plan-next-cta")).toBeVisible();
+    expect(red()).toEqual(["Set up my plan"]);
+    first.unmount();
+    state.profile = ok(PROFILE);
+    await show(TodayActions({ userId: USER, now: during, timeZone: TZ }));
+    expect(red()).toEqual(["Plan Spring 2027"]);
+  });
 });
