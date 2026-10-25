@@ -583,8 +583,22 @@ describe("Due for you", () => {
     state.curatedThrows = true;
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     await show(DueSoonPanel({ userId: USER, now: NOON }));
-    expect(screen.getByTestId("panel-error")).toHaveTextContent("Due soon could not load");
+    // The card's new name in every state: never "Due soon".
+    expect(screen.getByRole("region", { name: "Due for you" })).toBeVisible();
+    expect(screen.getByTestId("panel-error")).toHaveTextContent(
+      "Due for you could not load right now.",
+    );
+    expect(document.body).not.toHaveTextContent(/due soon/i);
+    expect(log).toHaveBeenCalledWith("[today] could not build Due for you:", expect.any(Error));
     log.mockRestore();
+  });
+
+  it("loads under the same name", async () => {
+    const { PanelSkeleton } = await import("@/app/(hub)/today/_components/panel-states");
+    const { DUE_SOON_TITLE } = await import("@/app/(hub)/today/_components/due-soon-panel");
+    render(<PanelSkeleton id="due-soon" title={DUE_SOON_TITLE} />);
+    expect(screen.getByRole("region", { name: "Due for you" })).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading due for you…");
   });
 });
 
@@ -719,7 +733,7 @@ describe("panel boundaries", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     render(
       <>
-        <PanelBoundary id="due-soon" title="Due soon" what="Due soon">
+        <PanelBoundary id="due-soon" title="Due for you" what="Due for you">
           <Boom />
         </PanelBoundary>
         <PanelBoundary id="quick-links" title="Quick links" what="Quick links">
@@ -727,7 +741,7 @@ describe("panel boundaries", () => {
         </PanelBoundary>
       </>,
     );
-    expect(screen.getByTestId("panel-error")).toHaveTextContent("Due soon could not load");
+    expect(screen.getByTestId("panel-error")).toHaveTextContent("Due for you could not load");
     expect(screen.getByRole("region", { name: /Quick links/ })).toBeVisible();
     expect(screen.getAllByRole("link").length).toBe(8);
     log.mockRestore();

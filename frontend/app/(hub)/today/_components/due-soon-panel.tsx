@@ -22,7 +22,10 @@ import { ShowMore } from "./show-more";
 /** Rows listed before "Show N more" (the student's own rows are always listed, however many). */
 export const DUE_SOON_SHOWN = 8;
 
-/** The card's title (the page's loading and error states for it say the same). */
+/**
+ * The card's name, in every state: its title, the page's loading and error cards for it, and its own error line
+ * ("Due for you could not load right now").
+ */
 export const DUE_SOON_TITLE = "Due for you";
 
 /**
@@ -39,7 +42,7 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
   const [plan, profile] = await Promise.all([loadPlan(userId), loadProfile(userId)]);
   const { from, to } = dueSoonRange(now);
   // The curated rows never depend on the plan: without it, they are still listed, with a note.
-  const built = safely("Due soon", () => {
+  const built = safely(DUE_SOON_TITLE, () => {
     const items = buildDueSoon({
       now,
       standing: standingOf(profile),
@@ -56,7 +59,7 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
       more: labelled(groups.more),
     };
   });
-  if (!built) return <PanelError id="due-soon" title={DUE_SOON_TITLE} what="Due soon" />;
+  if (!built) return <PanelError id="due-soon" title={DUE_SOON_TITLE} what={DUE_SOON_TITLE} />;
   const { total, forYou, also, more } = built;
   const rows = (list: typeof forYou) =>
     list.map(({ item, label }) => <DueSoonRow key={item.id} item={item} label={label} />);

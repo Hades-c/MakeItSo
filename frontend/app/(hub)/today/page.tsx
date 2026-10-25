@@ -8,7 +8,7 @@ import { featureEnabled, loadFlags } from "@/server/features";
 import { etDay, stripDays } from "@/server/today";
 import { CampusPanel } from "./_components/campus-panel";
 import { DegreePanel } from "./_components/degree-panel";
-import { DueSoonPanel } from "./_components/due-soon-panel";
+import { DUE_SOON_TITLE, DueSoonPanel } from "./_components/due-soon-panel";
 import { OpportunitiesPanel } from "./_components/opportunities-panel";
 import { PanelBoundary } from "./_components/panel-boundary";
 import { HeaderSkeleton, PanelSkeleton } from "./_components/panel-states";
@@ -101,8 +101,8 @@ export default async function TodayPage({
         </div>
         <div className={STACK}>
           <div className={cn(SLOT, "order-2")}>
-            <PanelBoundary id="due-soon" title="Due for you" what="Due soon">
-              <Suspense fallback={<PanelSkeleton id="due-soon" title="Due for you" />}>
+            <PanelBoundary id="due-soon" title={DUE_SOON_TITLE} what={DUE_SOON_TITLE}>
+              <Suspense fallback={<PanelSkeleton id="due-soon" title={DUE_SOON_TITLE} />}>
                 <DueSoonPanel userId={user.id} now={now} />
               </Suspense>
             </PanelBoundary>
