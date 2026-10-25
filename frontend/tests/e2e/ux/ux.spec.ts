@@ -95,8 +95,10 @@ const PAGES: UxPage[] = [
         { check: "small12", op: "==", target: 0 },
         { check: "sizes", op: "<=", target: 5 },
         { check: "boxed", op: "<=", target: 2 },
-        // The now indicator only: Avery has nothing of her own due today.
-        { check: "red", op: "==", target: 1 },
+        // Red marks "now": the now pill, today in the five-day strip and the plan map's current term (Avery has
+        // nothing of her own due today). Since 2026-10-25 Davidson Red is also the accent (the primary action, the
+        // current page, selection), so the measure counts those too; this keeps it from growing.
+        { check: "red", op: "<=", target: 3 },
         ...DUE_RED,
       ],
       1024: RAIL,
