@@ -2,7 +2,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import { STATUS_LABELS } from "@/app/(hub)/plan/_lib/labels";
 import { routes } from "@/lib/routes";
-import { compareTerms, termLabel, type TermCode } from "@/lib/term";
+import { compareTerms, currentTermFrom, termLabel, type TermCode } from "@/lib/term";
 import { ACTIVE_PLAN_STATUSES, type PlanItem } from "@/lib/types/plan";
 import { normalizeCourseCode } from "@/lib/types/common";
 import { MissingFixtureError } from "@/server/http/fixtures";
@@ -11,6 +11,8 @@ import { getPlan } from "@/server/plan";
 import {
   isTermResult,
   isUnfinishedTermResult,
+  termPhase,
+  type TermClock,
   type TermResultStatus,
 } from "@/server/plan/status-rules";
 
@@ -24,7 +26,7 @@ export type ActivePlanStatus = (typeof ACTIVE_PLAN_STATUSES)[number];
 
 /**
  * What a term holds for a course: an active item's status, or "failed" / "withdrawn" (kept only so a result
- * recorded for a term that is not over can be flagged; they never put the course in the plan).
+ * recorded before it can be true can be flagged; they never put the course in the plan).
  */
 export type PresenceStatus = ActivePlanStatus | Exclude<TermResultStatus, "completed">;
 
@@ -66,17 +68,20 @@ export function plannedTerms(
 }
 
 /**
- * Where a course stands for the student (spec P10, situation before catalog):
- *   - marked: its latest term result (completed, failed or withdrawn) is for the current term or later, which
- *     cannot be true yet (server/plan/status-rules.ts): the plan needs checking, and the course is neither taken
- *     nor offered an Add;
- *   - completed (the latest term), or taking now (in progress, or registered for the current term), and whether it
- *     is also in the plan again after that (a repeat, which credit counts once).
- * Null when none of these: the course is not taken yet and can be added. Failed and withdrawn items in past terms
- * are history and change nothing. Without a current term, nothing is flagged as marked.
+ * Where a course stands for the student (spec P10, situation before catalog), judged at `clock`:
+ *   - marked: a status that cannot be true yet (server/plan/status-rules.ts): completed or failed for a term that
+ *     is not over, withdrawn for one that has not begun, or in progress anywhere but the current term while it
+ *     runs (in progress never moves on by itself, so last Fall's rows still say it in Spring). The plan needs
+ *     checking, and the course is neither taken nor offered an Add. The latest such term is named;
+ *   - completed (the latest term), or taking now (in progress, or registered, for the current term until it is
+ *     over), and whether it is also in the plan again after that (a repeat, which credit counts once).
+ * Null when none of these: the course is not taken yet and can be added. Failed and withdrawn items in terms that
+ * are over (a withdrawal from the current term too) are history and change nothing.
  */
+export type MarkedStatus = TermResultStatus | "in-progress";
+
 export type CourseStanding =
-  | { kind: "marked"; term: TermCode; status: TermResultStatus }
+  | { kind: "marked"; term: TermCode; status: MarkedStatus }
   | {
       kind: "completed";
       term: TermCode;
@@ -86,22 +91,24 @@ export type CourseStanding =
 
 export function courseStanding(
   entries: ReadonlyMap<TermCode, PresenceStatus> | undefined,
-  currentTerm: TermCode | null,
+  clock: TermClock,
 ): CourseStanding | null {
   if (!entries) return null;
   const sorted = [...entries].sort(([a], [b]) => compareTerms(a, b));
-  const result = sorted.filter(([, status]) => isTermResult(status)).at(-1);
-  if (
-    result &&
-    currentTerm &&
-    isUnfinishedTermResult({ status: result[1], termCode: result[0] }, currentTerm)
-  ) {
-    return { kind: "marked", term: result[0], status: result[1] as TermResultStatus };
-  }
-  const taking = sorted.find(
-    ([term, status]) =>
-      status === "in-progress" || (status === "registered" && term === currentTerm),
-  )?.[0];
+  const current = currentTermFrom(clock.terms, { now: clock.at });
+  const isTakingNow = (term: TermCode, status: PresenceStatus) =>
+    (status === "in-progress" || status === "registered") &&
+    term === current &&
+    termPhase(term, clock) !== "over";
+  const marked = sorted
+    .filter(([term, status]) =>
+      status === "in-progress"
+        ? !isTakingNow(term, status)
+        : isUnfinishedTermResult({ status, termCode: term }, clock),
+    )
+    .at(-1);
+  if (marked) return { kind: "marked", term: marked[0], status: marked[1] as MarkedStatus };
+  const taking = sorted.find(([term, status]) => isTakingNow(term, status))?.[0];
   const plannedAfter = (after: TermCode) =>
     sorted.find(
       ([term, status]) =>
@@ -145,8 +152,8 @@ export const CHECK_YOUR_PLAN = "check your plan";
 /**
  * The standing in words (spec §5.10 vocabulary): "Completed Fall 2025", "Taking now (Fall 2026)"; with `warning`
  * (the warning icon and colour, spec §5.6) a repeat, "Completed Spring 2026 · in your Spring 2027 plan", and a
- * result marked too early, "In your Fall 2026 plan · marked Completed, check your plan", whose last words link the
- * 4-year plan, where the row is fixed.
+ * status that cannot be true yet, "In your Fall 2026 plan · marked Completed, check your plan", whose last words
+ * link the 4-year plan, where the row is fixed.
  */
 export function standingText(standing: CourseStanding): StandingText {
   if (standing.kind === "marked") {

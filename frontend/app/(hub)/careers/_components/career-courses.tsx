@@ -5,12 +5,13 @@ import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
 import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
-import { currentTermFrom, type TermCode } from "@/lib/term";
+import type { TermCode } from "@/lib/term";
 import type { Availability } from "@/lib/types/catalog";
 import type { Career } from "@/lib/types/content";
 import { cn } from "@/lib/utils";
 import { getSessionUser } from "@/server/auth/session";
 import { now } from "@/server/clock";
+import type { TermClock } from "@/server/plan/status-rules";
 import {
   addToPlanTerms,
   courseLinkTerm,
@@ -35,7 +36,8 @@ import { CourseAddToPlan } from "./course-add-to-plan";
  * when the catalog supports it. Availability comes from getCourseHistory() on every request; when it cannot be
  * read, the course is listed without it (never a guess). A course the student has not taken has an Add to plan
  * control; one completed or under way says so in words instead (with a warning when it is also planned again),
- * and one marked completed, failed or withdrawn for a term that is not over says to check the plan, with a link.
+ * and one with a status that cannot be true yet (Completed for a term that is not over, In progress for a term
+ * that has ended) says to check the plan, with a link.
  */
 
 export interface CareerCourseView {
@@ -47,8 +49,8 @@ export interface CareerCourseView {
   initialTerm: TermCode | null;
   inPlanTerms: string[];
   /**
-   * The course's place in the plan in words ("Completed Fall 2025", "Taking now (Fall 2026)", a repeat or a result
-   * marked too early with `warning`), or null when it is not taken yet. It shows instead of an Add control.
+   * The course's place in the plan in words ("Completed Fall 2025", "Taking now (Fall 2026)", a repeat or a status
+   * that cannot be true yet with `warning`), or null when it is not taken yet. It shows instead of an Add control.
    */
   status: StandingText | null;
   /** "Fall 2027 isn’t published yet. Usually offered in Fall (based on …)", or null. */
@@ -58,19 +60,19 @@ export interface CareerCourseView {
 }
 
 /**
- * Pure: one course row from its history (null = unknown), the terms and the plan presence. `currentTerm` judges
- * the plan's statuses (the terms' current term by default; the page passes a date-based one when the terms cannot
- * be read, so a result marked too early is flagged even then).
+ * Pure: one course row from its history (null = unknown), the terms and the plan presence. `clock` judges the
+ * plan's statuses: the terms list with its dates and now (an empty list when the terms cannot be read, so the
+ * date's term decides and a status that cannot be true yet is flagged even then).
  */
 export function courseView(
   course: Career["courses"][number],
   history: readonly Availability[] | null,
   terms: CareerTerms | null,
   presence: PlanPresence | null,
-  currentTerm: TermCode | null = terms?.current ?? null,
+  clock: TermClock,
 ): CareerCourseView {
   const entries = presence?.get(course.code);
-  const standing = courseStanding(entries, currentTerm);
+  const standing = courseStanding(entries, clock);
   const base = {
     code: course.code,
     title: course.title,
@@ -160,7 +162,7 @@ export function CareerCourseItem({
 
 /**
  * Situation before catalog: a course already taken never offers "Add" without saying so. A warning (a repeat, or
- * a result marked for a term that is not over) is the warning icon and words in the warning colour (spec §5.6
+ * a status that cannot be true yet) is the warning icon and words in the warning colour (spec §5.6
  * `.st-warn`); the marked state's "check your plan" links the 4-year plan.
  */
 function PlanStatusLine({ code, status }: { code: string; status: StandingText }) {
@@ -206,9 +208,9 @@ export async function CareerCourses({ career }: { career: Career }) {
   ]);
   const loginHref = routes.login(routes.career(career.slug));
   // Without the terms list, the date decides the current term (lib/term's own fallback).
-  const current = terms?.current ?? currentTermFrom([], { now: now() });
+  const clock: TermClock = { terms: terms?.schedule ?? [], at: now() };
   const views = career.courses.map((course) =>
-    courseView(course, histories.get(course.code) ?? null, terms, presence, current),
+    courseView(course, histories.get(course.code) ?? null, terms, presence, clock),
   );
   const planHref = routes.plan("next");
 

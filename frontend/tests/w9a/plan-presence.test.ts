@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlanItem, PlanView } from "@/lib/types/plan";
 import { ApiError, notImplemented } from "@/server/http/errors";
 import { MissingFixtureError } from "@/server/http/fixtures";
+import { fixtureClock } from "../helpers/terms";
 
 const plan = vi.hoisted(() => ({ getPlan: vi.fn() }));
 vi.mock("@/server/plan", () => ({ getPlan: plan.getPlan }));
@@ -92,10 +93,11 @@ describe("planPresence", () => {
 });
 
 describe("courseStanding", () => {
-  const standing = (items: PlanItem[], current = "202601") =>
-    courseStanding(planPresence(items).get("CSC 221"), current);
-  const text = (items: PlanItem[], current?: string) => {
-    const s = standing(items, current);
+  // Judged on the fixture terms; by default on the fixtures' day (Sep 30, 2026: Fall 2026 in session).
+  const standing = (items: PlanItem[], at?: string) =>
+    courseStanding(planPresence(items).get("CSC 221"), fixtureClock(at));
+  const text = (items: PlanItem[], at?: string) => {
+    const s = standing(items, at);
     return s ? standingText(s) : null;
   };
 
@@ -125,21 +127,79 @@ describe("courseStanding", () => {
       status: "completed",
     });
     // The same in Spring 2027 once it is the current term, and for a later term.
-    expect(text([item({ status: "completed", termCode: "202602" })], "202602")?.text).toBe(
-      "In your Spring 2027 plan · marked Completed, check your plan",
-    );
+    expect(
+      text([item({ status: "completed", termCode: "202602" })], "2027-02-01T12:00:00-05:00")?.text,
+    ).toBe("In your Spring 2027 plan · marked Completed, check your plan");
     expect(text([item({ status: "completed", termCode: "202701" })])?.text).toBe(
       "In your Fall 2027 plan · marked Completed, check your plan",
     );
   });
 
-  it("flags failed and withdrawn for a term that is not over, in the status's own word", () => {
+  it("flags failed for a term that is not over and withdrawn for one that has not begun, in the status's own word", () => {
     expect(text([item({ status: "failed", termCode: "202601" })])?.text).toBe(
       "In your Fall 2026 plan · marked Failed, check your plan",
     );
     expect(text([item({ status: "withdrawn", termCode: "202602" })])?.text).toBe(
       "In your Spring 2027 plan · marked Withdrawn, check your plan",
     );
+  });
+
+  it("takes a withdrawal from the term in session as history: no flag, and the course can be added again", () => {
+    const at = "2026-10-25T12:00:00-04:00";
+    expect(standing([item({ status: "withdrawn", termCode: "202601" })], at)).toBeNull();
+    // An earlier completion still says so.
+    expect(
+      text(
+        [
+          item({ status: "completed", termCode: "202501" }),
+          item({ id: "0123456789abcdef0123456b", status: "withdrawn", termCode: "202601" }),
+        ],
+        at,
+      ),
+    ).toEqual({ text: "Completed Fall 2025", warning: false });
+  });
+
+  it("goes by the term's end date, not the current term: a finished term's result is real", () => {
+    // Dec 20: Fall 2026 is over (Dec 15) but stays the current term until Spring 2027 starts (Jan 19).
+    expect(
+      text([item({ status: "completed", termCode: "202601" })], "2026-12-20T12:00:00-05:00"),
+    ).toEqual({ text: "Completed Fall 2026", warning: false });
+    // Jun 15: Spring 2027 is over (May 12) and stays current until Fall 2027.
+    expect(
+      text([item({ status: "completed", termCode: "202602" })], "2027-06-15T12:00:00-04:00"),
+    ).toEqual({ text: "Completed Spring 2027", warning: false });
+    // Summer 2026 by its own dates (May 19 to Aug 14), though Spring 2026 is current all summer.
+    expect(
+      text([item({ status: "completed", termCode: "202503" })], "2026-07-01T12:00:00-04:00")?.text,
+    ).toBe("In your Summer 2026 plan · marked Completed, check your plan");
+    expect(
+      text([item({ status: "completed", termCode: "202503" })], "2026-08-20T12:00:00-04:00"),
+    ).toEqual({ text: "Completed Summer 2026", warning: false });
+  });
+
+  it("says Taking now only for the current term while it runs; other in-progress rows need a check", () => {
+    const at = "2026-10-25T12:00:00-04:00";
+    expect(text([item({ status: "in-progress", termCode: "202601" })], at)).toEqual({
+      text: "Taking now (Fall 2026)",
+      warning: false,
+    });
+    for (const [termCode, label] of [
+      ["202501", "Fall 2025"],
+      ["202602", "Spring 2027"],
+    ] as const) {
+      expect(text([item({ status: "in-progress", termCode })], at)).toEqual({
+        text: `In your ${label} plan · marked In progress, check your plan`,
+        warning: true,
+        check: { words: "check your plan", href: "/plan?tab=four-year" },
+      });
+    }
+    // Fall 2026 has ended, though it is still the current term: in progress needs a check, and so does a
+    // registration (which then is no longer "taking now" either).
+    const dec20 = "2026-12-20T12:00:00-05:00";
+    expect(text([item({ status: "in-progress", termCode: "202601" })], dec20)?.text).toBe(
+      "In your Fall 2026 plan · marked In progress, check your plan",
+    );
+    expect(standing([item({ status: "registered", termCode: "202601" })], dec20)).toBeNull();
   });
 
   it("judges the latest result: a real completion before a result marked too early still needs a check", () => {
@@ -157,14 +217,22 @@ describe("courseStanding", () => {
     ).toBe("Completed Fall 2025");
   });
 
-  it("flags nothing without a current term", () => {
-    expect(
-      courseStanding(
-        planPresence([item({ status: "completed", termCode: "202601" })]).get("CSC 221"),
-        null,
-      ),
-    ).toEqual({
+  it("judges by the date's term without a terms list", () => {
+    const clock = { terms: [], at: new Date("2026-10-25T12:00:00-04:00") };
+    const presence = (status: PlanItem["status"], termCode: string) =>
+      planPresence([item({ status, termCode })]).get("CSC 221");
+    expect(courseStanding(presence("completed", "202601"), clock)).toEqual({
+      kind: "marked",
+      term: "202601",
+      status: "completed",
+    });
+    expect(courseStanding(presence("completed", "202502"), clock)).toEqual({
       kind: "completed",
+      term: "202502",
+      then: null,
+    });
+    expect(courseStanding(presence("in-progress", "202601"), clock)).toEqual({
+      kind: "taking-now",
       term: "202601",
       then: null,
     });
@@ -185,7 +253,7 @@ describe("courseStanding", () => {
       text: "Taking now (Fall 2026)",
       warning: false,
     });
-    // Registered for the current term before it starts counts as taking it now.
+    // Registered for the current term counts as taking it now.
     expect(text([item({ status: "registered", termCode: "202601" })])).toEqual({
       text: "Taking now (Fall 2026)",
       warning: false,

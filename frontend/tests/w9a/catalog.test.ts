@@ -56,10 +56,12 @@ function reset() {
 describe("loadCareerTerms", () => {
   it("is Fall 2026 / Spring 2027 / Fall 2027 on the fixtures' day", async () => {
     reset();
-    await expect(loadCareerTerms()).resolves.toEqual({
-      current: "202601",
-      registration: "202602",
-      next: "202701",
+    const terms = await loadCareerTerms();
+    expect(terms).toMatchObject({ current: "202601", registration: "202602", next: "202701" });
+    // With the terms list, which the plan statuses are judged by.
+    expect(terms?.schedule.find((term) => term.code === "202601")).toMatchObject({
+      code: "202601",
+      isActive: true,
     });
   });
 

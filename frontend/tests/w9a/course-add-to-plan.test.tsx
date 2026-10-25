@@ -13,6 +13,7 @@ import { planPresence } from "@/app/(hub)/careers/_lib/plan";
 import { ApiClientError } from "@/lib/api/client";
 import { getCareer } from "@/server/content/careers";
 import { convertLegacyPlan, type LegacyCatalogLookup } from "@/server/plan/legacy-core";
+import { fixtureClock } from "../helpers/terms";
 
 const TERMS: AddToPlanTerm[] = [
   { code: "202601", label: "Fall 2026", availability: "offered", sectionCount: 2 },
@@ -262,6 +263,8 @@ describe("noticeForError", () => {
 describe("CareerCourseItem", () => {
   const course = { code: "CSC 221", title: "Data Structures", why: "A core course." };
   const terms = { current: "202601", registration: "202602", next: "202701" };
+  // The fixtures' day: Fall 2026 in session.
+  const clock = fixtureClock();
 
   it("shows the course, its catalog link and the live availability control", () => {
     const view = courseView(
@@ -277,6 +280,7 @@ describe("CareerCourseItem", () => {
       ],
       terms,
       new Map([["CSC 221", new Map([["202601", "planned" as const]])]]),
+      clock,
     );
     expect(view.inPlanTerms).toEqual(["202601"]);
     expect(view.status).toBeNull();
@@ -323,7 +327,7 @@ describe("CareerCourseItem", () => {
       ],
     ] as const;
     for (const [entries, text, warning] of cases) {
-      const view = courseView(course, history, terms, new Map([["CSC 221", entries]]));
+      const view = courseView(course, history, terms, new Map([["CSC 221", entries]]), clock);
       expect(view.status).toEqual({ text, warning });
       stubFetch();
       const { unmount } = render(
@@ -355,7 +359,7 @@ describe("CareerCourseItem", () => {
       [new Map([["202601", "completed" as const]]), "marked Completed", ["202601"]],
       [new Map([["202601", "failed" as const]]), "marked Failed", []],
     ] as const) {
-      const view = courseView(course, history, terms, new Map([["CSC 221", entries]]));
+      const view = courseView(course, history, terms, new Map([["CSC 221", entries]]), clock);
       expect(view.status?.text).toBe(`In your Fall 2026 plan · ${words}, check your plan`);
       expect(view.inPlanTerms).toEqual(inPlan);
       stubFetch();
@@ -385,7 +389,7 @@ describe("CareerCourseItem", () => {
       null,
       null,
       new Map([["CSC 221", new Map([["202601", "completed" as const]])]]),
-      "202601",
+      { terms: [], at: clock.at },
     );
     expect(unknown.status?.text).toBe("In your Fall 2026 plan · marked Completed, check your plan");
   });
@@ -400,6 +404,7 @@ describe("CareerCourseItem", () => {
       ],
       terms,
       null,
+      clock,
     );
     // Offered this term, not in Spring 2027 (CSC 351 on Software Engineering): the next term, never Fall 2026.
     expect(view.initialTerm).toBe("202701");
@@ -427,6 +432,7 @@ describe("CareerCourseItem", () => {
       ],
       terms,
       null,
+      clock,
     );
     expect(view.initialTerm).toBeNull();
     stubFetch();
@@ -438,9 +444,15 @@ describe("CareerCourseItem", () => {
 
   it("lists the course without availability when the catalog cannot answer (no guess)", () => {
     for (const view of [
-      courseView(course, null, terms, null),
-      courseView(course, [], terms, null),
-      courseView(course, [{ termCode: "202602", status: "offered", sectionCount: 1 }], null, null),
+      courseView(course, null, terms, null, clock),
+      courseView(course, [], terms, null, clock),
+      courseView(
+        course,
+        [{ termCode: "202602", status: "offered", sectionCount: 1 }],
+        null,
+        null,
+        clock,
+      ),
     ]) {
       const { unmount } = render(
         <CareerCourseItem view={view} currentTerm="202601" planHref="/plan" loginHref="/login" />,
@@ -509,7 +521,7 @@ describe("a v1 (hackathon) plan, converted, on the Investment Banking page", () 
     const presence = planPresence(conversion.items);
     const ib = getCareer("investment-banking")!;
     expect(ib.courses.map((c) => c.code)).toContain("ECO 101");
-    const views = ib.courses.map((c) => courseView(c, history, terms, presence));
+    const views = ib.courses.map((c) => courseView(c, history, terms, presence, fixtureClock()));
     for (const view of views) expect(view.status?.text ?? "").not.toMatch(/Completed Fall 2026/);
     const eco101 = views.find((v) => v.code === "ECO 101")!;
     expect(eco101.status).toMatchObject({
@@ -528,5 +540,47 @@ describe("a v1 (hackathon) plan, converted, on the Investment Banking page", () 
     );
     expect(screen.queryByTestId("add-to-plan")).toBeNull();
     expect(document.body).not.toHaveTextContent(/Completed Fall 2026/);
+  });
+
+  it("never says Taking now for a v1 In progress row once its term is over: it says to check the plan", async () => {
+    const { conversion } = await convertLegacyPlan(
+      {
+        plannedCourses: [
+          v1("ECO 101", "Introductory Economics", "Fall", 2025, "in-progress"),
+          v1("ECO 202", "Intermed Microeconomic Theory", "Fall", 2026, "in-progress"),
+        ],
+        summerActivities: [],
+      },
+      { userId: "650000000000000000000001", lookup },
+    );
+    // The conversion keeps v1's In progress as it is, and nothing moves it on later.
+    expect(conversion.items.map((i) => [i.courseCode, i.termCode, i.status])).toEqual([
+      ["ECO 101", "202501", "in-progress"],
+      ["ECO 202", "202601", "in-progress"],
+    ]);
+    const presence = planPresence(conversion.items);
+    const status = (code: string, at: string) =>
+      courseView(
+        { code, title: code, why: "A core course." },
+        history,
+        terms,
+        presence,
+        fixtureClock(at),
+      ).status;
+    const marked = (term: string) => ({
+      text: `In your ${term} plan · marked In progress, check your plan`,
+      warning: true,
+      check: { words: "check your plan", href: "/plan?tab=four-year" },
+    });
+    // On the fixtures' day: Fall 2025 is long over; Fall 2026 is the term in session.
+    expect(status("ECO 101", "2026-09-30T12:00:00-04:00")).toEqual(marked("Fall 2025"));
+    expect(status("ECO 202", "2026-09-30T12:00:00-04:00")).toEqual({
+      text: "Taking now (Fall 2026)",
+      warning: false,
+    });
+    // After Fall 2026's last day (still the current term until Spring starts) and during Spring 2027.
+    for (const at of ["2026-12-20T12:00:00-05:00", "2027-02-01T12:00:00-05:00"]) {
+      expect(status("ECO 202", at)).toEqual(marked("Fall 2026"));
+    }
   });
 });
