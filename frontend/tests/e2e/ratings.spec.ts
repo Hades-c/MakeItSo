@@ -129,9 +129,13 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   await expect(arianna.getByTestId("rating-tags")).toContainText("Get ready to read (3)");
   await expect(arianna.getByTestId("rating-tags")).toContainText("Beware of pop quizzes (2)");
   await expect(arianna.getByTestId("rating-tags")).not.toContainText("Amazing lectures");
-  await expect(arianna.getByTestId("rating-source")).toHaveText(
-    /^as of Sep 30, 2026\s*·\s*RateMyProfessors/,
-  );
+  // What a sighted reader sees on that line (the "Source:" and new-tab words are for screen readers).
+  const seen = await arianna.getByTestId("rating-source").evaluate((line) => {
+    const copy = line.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll(".sr-only").forEach((hidden) => hidden.remove());
+    return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
+  });
+  expect(seen).toBe("as of Sep 30, 2026 · RateMyProfessors");
   await expect(arianna.getByText("as of Sep 30, 2026")).toBeVisible();
   await expect(arianna.locator("[data-source]")).toHaveCount(1);
   await expect(arianna.getByRole("link")).toHaveCount(1);

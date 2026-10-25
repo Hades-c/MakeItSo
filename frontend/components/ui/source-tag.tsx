@@ -70,8 +70,8 @@ export interface SourceLinkProps {
 /**
  * The source named once, as the link to the item's own page there ("RateMyProfessors ↗"), for an item that links
  * its source page: a SourceTag beside a separately worded link would say the source twice. It keeps the SourceTag
- * contract, `data-source` and the "Source: <label>" accessible name (expectAllTagged, expectAllAttributed), and a
- * new-tab link says so. Without a link it is the same words as plain text.
+ * contract, `data-source` and the "Source: <label>" accessible name (expectAllTagged, expectAllAttributed), and the
+ * link's name ends with the new-tab cue. Without a link it is the same words as plain text.
  */
 export function SourceLink({ source, href, what, className }: SourceLinkProps) {
   const label = SOURCES[source].label;
@@ -89,15 +89,16 @@ export function SourceLink({ source, href, what, className }: SourceLinkProps) {
       target="_blank"
       rel="noopener noreferrer"
       data-source={source}
+      // The name in one string: browsers join hidden spans with or without spaces ("RateMyProfessors , …").
+      aria-label={`Source: ${label}${what ? `, ${what}` : ""} (opens in a new tab)`}
       className={cn(
         "inline-flex min-h-11 items-center gap-1 rounded-xs font-semibold text-primary hover:underline md:min-h-0",
         className,
       )}
     >
-      {/* The space outside the hidden span: accessible-name algorithms trim each element's own text. */}
-      <span className="sr-only">Source:</span> {label}
+      <span className="sr-only">Source: </span>
+      {label}
       <ArrowUpRight aria-hidden className="size-3.5" />
-      <span className="sr-only">{what ? `, ${what}` : ""} (opens in a new tab)</span>
     </a>
   );
 }

@@ -584,8 +584,13 @@ describe("RatingSummary", () => {
       "Rating 3.7 out of 5 21 ratings for Daniel Aldridge, Difficulty 2.6 of 5, 67% would take again " +
         "Most common tags (from 21 ratings, as of Oct 25, 2026): Participation matters (12 ratings), " +
         "Get ready to read (9 ratings), Caring (8 ratings) as of Sep 30, 2026, " +
-        "Source: RateMyProfessors, Daniel Aldridge’s page (opens in a new tab)",
+        "Source: RateMyProfessors",
     );
+    expect(
+      screen.getByRole("link", {
+        name: "Source: RateMyProfessors, Daniel Aldridge’s page (opens in a new tab)",
+      }),
+    ).toBeVisible();
     // The source is said once: no "via" on the tags line, no tag beside the link.
     expect(seenText(block).match(/RateMyProfessors/g)).toHaveLength(1);
     // Sentence case text, no chips or boxes for the new parts.

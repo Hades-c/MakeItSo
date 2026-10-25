@@ -204,15 +204,16 @@ describe("SectionItem", () => {
       "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, 80% would take again " +
         "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12 ratings), " +
         "Get ready to read (9 ratings), Caring (8 ratings) as of Sep 28, 2026, " +
-        "Source: RateMyProfessors, Katy Williams’s page (opens in a new tab)",
+        "Source: RateMyProfessors",
     );
     expect(within(item).getByText("as of Sep 28, 2026")).toBeVisible();
     expect(item.querySelectorAll('[data-source="ratemyprofessors"]')).toHaveLength(1);
     expect(within(item).getAllByRole("link")).toHaveLength(1);
-    expect(within(item).getByRole("link", { name: /Katy Williams’s page/ })).toHaveAttribute(
-      "href",
-      rmp.url,
-    );
+    expect(
+      within(item).getByRole("link", {
+        name: "Source: RateMyProfessors, Katy Williams’s page (opens in a new tab)",
+      }),
+    ).toHaveAttribute("href", rmp.url);
     // Both sections are hers, and the rating appears once on the page, in the block.
     expect(document.querySelectorAll("[data-rating]")).toHaveLength(1);
     expect(screen.getAllByText(/would take again/)).toHaveLength(1);
