@@ -199,19 +199,59 @@ test("the WebTree list: search, alternates, conflicts, keyboard reorder, copy an
   expect(errors).toEqual([]);
 });
 
-test("the WebTree list adds a course straight from the plan", async ({ page, request }) => {
+test("the WebTree list adds the plan's own sections in one press each", async ({
+  page,
+  request,
+}) => {
   await newPlanner(page, request, "e2e-webtree-plan");
-  await addItem(page, { termCode: "202602", courseCode: "CSC 221", crn: "20136" });
+  // The seeded Spring 2027 plan: three sections chosen in the plan, and one course without a section yet.
+  await addItem(page, { termCode: "202602", courseCode: "CSC 221", crn: "20135" });
+  await addItem(page, { termCode: "202602", courseCode: "ENV 237", crn: "20226" });
+  await addItem(page, { termCode: "202602", courseCode: "MAT 140", crn: "20300" });
+  await addItem(page, { termCode: "202602", courseCode: "SPA 201" });
+  await page.goto("/plan?tab=next");
+  const panel = page.getByTestId("webtree-add");
+  await expect(panel.getByTestId("plan-course").first()).toContainText("CSC 221 A");
+  await expect(panel.getByTestId("plan-course").first()).toContainText("CRN 20135");
+  // Only the course without a section still asks for one.
+  await expect(panel.getByRole("button", { name: /^Choose a section/ })).toHaveCount(1);
+  await expect(panel.getByRole("button", { name: "Choose a section of SPA 201" })).toBeVisible();
+
+  // Three presses put the three planned sections on the list, in order, with no picker.
+  for (const [rank, name] of [
+    [1, "Add CSC 221 section A, CRN 20135, as choice 1"],
+    [2, "Add ENV 237 section B, CRN 20226, as choice 2"],
+    [3, "Add MAT 140 section A, CRN 20300, as choice 3"],
+  ] as const) {
+    const add = panel.getByRole("button", { name });
+    await expect(add).toHaveText(`Add as choice ${rank}`);
+    await add.click();
+    await expect(page.getByTestId("webtree-choice")).toHaveCount(rank);
+  }
+  await expect(page.getByTestId("section-picker")).toHaveCount(0);
+  await expect(page.getByTestId("webtree-status")).toHaveText(/Saved\./);
+  await page.reload();
+  const choices = page.getByTestId("webtree-choice");
+  await expect(choices).toHaveCount(3);
+  await expect(choices.nth(0)).toContainText("CRN 20135");
+  await expect(choices.nth(1)).toContainText("CRN 20226");
+  await expect(choices.nth(2)).toContainText("CRN 20300");
+  await checkPage(page, "next semester, added from the plan");
+});
+
+test("the WebTree list still offers the section picker for a planned course", async ({
+  page,
+  request,
+}) => {
+  await newPlanner(page, request, "e2e-webtree-plan-pick");
+  await addItem(page, { termCode: "202602", courseCode: "CSC 221" });
   await page.goto("/plan?tab=next");
   const panel = page.getByTestId("webtree-add");
   await panel.getByRole("button", { name: "Choose a section of CSC 221" }).click();
-  // The plan's own section is preselected.
-  await expect(page.getByRole("radio", { name: /CRN 20136/ })).toBeChecked();
+  await page.getByRole("radio", { name: /CRN 20136/ }).check();
   await page.getByRole("button", { name: "Add as choice 1" }).click();
   await expect(page.getByTestId("webtree-choice")).toHaveCount(1);
-  await expect(page.getByTestId("webtree-choice")).toContainText(
-    "Fills Mathematical and Quantitative Thought in your plan",
-  );
+  await expect(page.getByTestId("webtree-choice")).toContainText("CRN 20136");
 });
 
 test("the 4-year plan: map, statuses, P/F, move, manual entries, requirements", async ({
