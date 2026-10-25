@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { Field, FieldError } from "@/components/ui/field";
 import { callApi } from "@/lib/api/client";
 import { profileApi } from "@/lib/api/profile";
 import { termLabel, type TermCode } from "@/lib/term";
@@ -321,11 +321,7 @@ function ProgramRows({
           </div>
         );
       })}
-      {error ? (
-        <p id={errorId} className="text-xs font-semibold text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
       {canAdd ? (
         <div>
           <Button

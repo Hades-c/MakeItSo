@@ -9,6 +9,7 @@ import { AiChip } from "@/components/ui/ai-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FieldError } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { callApi } from "@/lib/api/client";
@@ -132,7 +133,7 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
           {!props.davidson ? null : props.mailAvailable ? (
             <Link
               href={`${routes.verify()}${queryString({ next: routes.profile() })}`}
-              className="font-semibold text-primary underline"
+              className="font-semibold link"
             >
               Verify your email
             </Link>
@@ -167,7 +168,7 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
           </b>
           . AI answers are marked &quot;AI · verify with your advisor&quot;. You can turn AI
           features off again at any time.{" "}
-          <Link href={`${routes.privacy()}#ai`} className="font-semibold text-primary underline">
+          <Link href={`${routes.privacy()}#ai`} className="font-semibold link">
             More in the privacy notice
           </Link>
         </p>
@@ -207,13 +208,9 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
               </Label>
             </div>
             {attestError ? (
-              <p
-                id={`${ATTEST_ID}-error`}
-                role="alert"
-                className="text-xs font-semibold text-danger"
-              >
+              <FieldError id={`${ATTEST_ID}-error`} role="alert">
                 {attestError}
-              </p>
+              </FieldError>
             ) : null}
           </div>
           <div>
