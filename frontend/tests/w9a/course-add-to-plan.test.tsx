@@ -9,7 +9,10 @@ import {
   SIGNED_OUT_MESSAGE,
 } from "@/app/(hub)/careers/_components/course-add-to-plan";
 import { CareerCourseItem, courseView } from "@/app/(hub)/careers/_components/career-courses";
+import { planPresence } from "@/app/(hub)/careers/_lib/plan";
 import { ApiClientError } from "@/lib/api/client";
+import { getCareer } from "@/server/content/careers";
+import { convertLegacyPlan, type LegacyCatalogLookup } from "@/server/plan/legacy-core";
 
 const TERMS: AddToPlanTerm[] = [
   { code: "202601", label: "Fall 2026", availability: "offered", sectionCount: 2 },
@@ -330,12 +333,61 @@ describe("CareerCourseItem", () => {
       expect(status).toHaveTextContent(`Source: your plan. ${text}`);
       expect(status).toHaveAttribute("data-source", "my-plan");
       expect(status.querySelector("svg") !== null).toBe(warning);
+      // Spec §5.6 .st-warn: a repeat's icon and words are in the warning colour; plain statuses are not.
+      expect(status.classList.contains("text-warning")).toBe(warning);
+      expect(status.classList.contains("text-fg")).toBe(!warning);
       // No Add control, no term choice: the course is taken.
       expect(screen.queryByRole("button", { name: /^Add to/ })).toBeNull();
       expect(screen.queryByRole("radio")).toBeNull();
       expect(screen.queryByTestId("add-to-plan")).toBeNull();
       unmount();
     }
+  });
+
+  it("says a result marked for a term that is not over needs a check, links the 4-year plan, and offers no Add", () => {
+    const history = [
+      { termCode: "202601", status: "offered" as const, sectionCount: 2 },
+      { termCode: "202602", status: "offered" as const, sectionCount: 2 },
+    ];
+    // The fixtures clock: Fall 2026 (202601) is the current term, and a 202601 Completed entry is impossible.
+    // A completed item is in the plan (its term is listed); a failed one never puts the course there.
+    for (const [entries, words, inPlan] of [
+      [new Map([["202601", "completed" as const]]), "marked Completed", ["202601"]],
+      [new Map([["202601", "failed" as const]]), "marked Failed", []],
+    ] as const) {
+      const view = courseView(course, history, terms, new Map([["CSC 221", entries]]));
+      expect(view.status?.text).toBe(`In your Fall 2026 plan · ${words}, check your plan`);
+      expect(view.inPlanTerms).toEqual(inPlan);
+      stubFetch();
+      const { unmount } = render(
+        <CareerCourseItem view={view} currentTerm="202601" planHref="/plan" loginHref="/login" />,
+      );
+      const status = screen.getByTestId("course-plan-status");
+      expect(status).toHaveTextContent(
+        `Source: your plan. In your Fall 2026 plan · ${words}, check your plan`,
+      );
+      expect(status).not.toHaveTextContent(/Completed Fall 2026/);
+      expect(status).toHaveAttribute("data-warning", "true");
+      expect(status).toHaveClass("text-warning");
+      expect(status.querySelector("svg")).not.toBeNull();
+      const link = within(status).getByRole("link", {
+        name: "check your plan: CSC 221 in your 4-year plan",
+      });
+      expect(link).toHaveAttribute("href", "/plan?tab=four-year");
+      expect(screen.queryByRole("button", { name: /^(Add to|Choose a term)/ })).toBeNull();
+      expect(screen.queryByRole("radio")).toBeNull();
+      expect(screen.queryByTestId("add-to-plan")).toBeNull();
+      unmount();
+    }
+    // The page's date-based current term applies when the terms list cannot be read.
+    const unknown = courseView(
+      course,
+      null,
+      null,
+      new Map([["CSC 221", new Map([["202601", "completed" as const]])]]),
+      "202601",
+    );
+    expect(unknown.status?.text).toBe("In your Fall 2026 plan · marked Completed, check your plan");
   });
 
   it("disables a term the course is not offered in, and never says offered for an unpublished one", () => {
@@ -399,5 +451,82 @@ describe("CareerCourseItem", () => {
       expect(screen.queryByRole("radio")).toBeNull();
       unmount();
     }
+  });
+});
+
+describe("a v1 (hackathon) plan, converted, on the Investment Banking page", () => {
+  // The audit's "legacy" account (audit2/scripts/legacy-seed.cjs): the old add dialog's defaults (Fall of the
+  // current calendar year) with the status dropdown set to Completed and a grade, and one Spring 2027 plan.
+  const v1 = (
+    courseCode: string,
+    courseName: string,
+    semester: string,
+    year: number,
+    status: string,
+    grade?: string,
+  ) => ({
+    courseCode,
+    courseName,
+    credits: 4,
+    semester,
+    year,
+    status,
+    ...(grade ? { grade } : {}),
+  });
+  const doc = {
+    plannedCourses: [
+      v1("ECO 101", "Introductory Economics", "Fall", 2026, "completed", "A"),
+      v1("CSC 108", "Exploring Computer Science", "Fall", 2026, "completed", "A-"),
+      v1("CSC 250", "Computer Organization", "Fall", 2026, "completed", "B+"),
+      v1("BIO 393", "Advances in Genome Editing", "Fall", 2026, "completed", "A"),
+      v1("ECO 202", "Intermed Microeconomic Theory", "Spring", 2027, "planned"),
+    ],
+    summerActivities: [],
+  };
+  const lookup: LegacyCatalogLookup = async (_term, code) => ({
+    courseCode: code,
+    canonicalCode: code,
+    title: code,
+    credits: 1,
+    reqCodes: null,
+  });
+  const terms = { current: "202601", registration: "202602", next: "202701" };
+  const history = [
+    { termCode: "202601", status: "offered" as const, sectionCount: 2 },
+    { termCode: "202602", status: "offered" as const, sectionCount: 2 },
+  ];
+
+  it("never shows Completed Fall 2026: ECO 101 says to check the plan, with no Add", async () => {
+    const { conversion } = await convertLegacyPlan(doc, {
+      userId: "650000000000000000000001",
+      lookup,
+    });
+    // The conversion keeps v1's status: Fall 2026 Completed (the grade only maps F and W).
+    expect(conversion.items.find((i) => i.courseCode === "ECO 101")).toMatchObject({
+      termCode: "202601",
+      status: "completed",
+    });
+    const presence = planPresence(conversion.items);
+    const ib = getCareer("investment-banking")!;
+    expect(ib.courses.map((c) => c.code)).toContain("ECO 101");
+    const views = ib.courses.map((c) => courseView(c, history, terms, presence));
+    for (const view of views) expect(view.status?.text ?? "").not.toMatch(/Completed Fall 2026/);
+    const eco101 = views.find((v) => v.code === "ECO 101")!;
+    expect(eco101.status).toMatchObject({
+      text: "In your Fall 2026 plan · marked Completed, check your plan",
+      warning: true,
+    });
+    stubFetch();
+    render(
+      <CareerCourseItem view={eco101} currentTerm="202601" planHref="/plan" loginHref="/login" />,
+    );
+    const status = screen.getByTestId("course-plan-status");
+    expect(status).toHaveTextContent("In your Fall 2026 plan · marked Completed, check your plan");
+    expect(within(status).getByRole("link", { name: /^check your plan/ })).toHaveAttribute(
+      "href",
+      "/plan?tab=four-year",
+    );
+    expect(screen.queryByTestId("add-to-plan")).toBeNull();
+    expect(document.body).not.toHaveTextContent(/Completed Fall 2026/);
   });
 });

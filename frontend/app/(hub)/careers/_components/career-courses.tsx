@@ -5,10 +5,12 @@ import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
 import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
-import type { TermCode } from "@/lib/term";
+import { currentTermFrom, type TermCode } from "@/lib/term";
 import type { Availability } from "@/lib/types/catalog";
 import type { Career } from "@/lib/types/content";
+import { cn } from "@/lib/utils";
 import { getSessionUser } from "@/server/auth/session";
+import { now } from "@/server/clock";
 import {
   addToPlanTerms,
   courseLinkTerm,
@@ -17,7 +19,14 @@ import {
   type CareerTerms,
 } from "../_lib/availability";
 import { loadCareerTerms, loadCourseHistories } from "../_lib/catalog";
-import { courseStanding, loadPlanPresence, standingText, type PlanPresence } from "../_lib/plan";
+import {
+  courseStanding,
+  loadPlanPresence,
+  plannedTerms,
+  standingText,
+  type PlanPresence,
+  type StandingText,
+} from "../_lib/plan";
 import { CourseAddToPlan } from "./course-add-to-plan";
 
 /**
@@ -25,7 +34,8 @@ import { CourseAddToPlan } from "./course-add-to-plan";
  * term, the registration term (the default for Add to plan) and the next, unpublished one with "usually offered"
  * when the catalog supports it. Availability comes from getCourseHistory() on every request; when it cannot be
  * read, the course is listed without it (never a guess). A course the student has not taken has an Add to plan
- * control; one completed or under way says so in words instead (with a warning when it is also planned again).
+ * control; one completed or under way says so in words instead (with a warning when it is also planned again),
+ * and one marked completed, failed or withdrawn for a term that is not over says to check the plan, with a link.
  */
 
 export interface CareerCourseView {
@@ -37,30 +47,35 @@ export interface CareerCourseView {
   initialTerm: TermCode | null;
   inPlanTerms: string[];
   /**
-   * The course's place in the plan in words ("Completed Fall 2025", "Taking now (Fall 2026)", a repeat with
-   * `warning`), or null when it is not taken yet. A taken course shows this instead of an Add control.
+   * The course's place in the plan in words ("Completed Fall 2025", "Taking now (Fall 2026)", a repeat or a result
+   * marked too early with `warning`), or null when it is not taken yet. It shows instead of an Add control.
    */
-  status: { text: string; warning: boolean } | null;
+  status: StandingText | null;
   /** "Fall 2027 isn’t published yet. Usually offered in Fall (based on …)", or null. */
   usually: string | null;
   /** The course page to link, or null when the course ran in no known term. */
   href: string | null;
 }
 
-/** Pure: one course row from its history (null = unknown), the terms and the plan presence. */
+/**
+ * Pure: one course row from its history (null = unknown), the terms and the plan presence. `currentTerm` judges
+ * the plan's statuses (the terms' current term by default; the page passes a date-based one when the terms cannot
+ * be read, so a result marked too early is flagged even then).
+ */
 export function courseView(
   course: Career["courses"][number],
   history: readonly Availability[] | null,
   terms: CareerTerms | null,
   presence: PlanPresence | null,
+  currentTerm: TermCode | null = terms?.current ?? null,
 ): CareerCourseView {
   const entries = presence?.get(course.code);
-  const standing = courseStanding(entries, terms?.current ?? null);
+  const standing = courseStanding(entries, currentTerm);
   const base = {
     code: course.code,
     title: course.title,
     why: course.why,
-    inPlanTerms: [...(entries?.keys() ?? [])],
+    inPlanTerms: plannedTerms(entries),
     status: standing ? standingText(standing) : null,
   };
   if (!history || !terms) {
@@ -117,20 +132,7 @@ export function CareerCourseItem({
       <p className="mt-1 text-sm text-fg-2">{view.why}</p>
       <div className="mt-auto pt-3">
         {view.status ? (
-          // Situation before catalog: a course already taken never offers "Add" without saying so.
-          <p
-            className="flex items-start gap-1.5 text-sm font-semibold text-fg"
-            data-testid="course-plan-status"
-            data-source="my-plan"
-          >
-            {view.status.warning ? (
-              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-            ) : null}
-            <span>
-              <span className="sr-only">Source: your plan. </span>
-              {view.status.text}
-            </span>
-          </p>
+          <PlanStatusLine code={view.code} status={view.status} />
         ) : view.terms && currentTerm ? (
           <CourseAddToPlan
             courseCode={view.code}
@@ -156,6 +158,46 @@ export function CareerCourseItem({
   );
 }
 
+/**
+ * Situation before catalog: a course already taken never offers "Add" without saying so. A warning (a repeat, or
+ * a result marked for a term that is not over) is the warning icon and words in the warning colour (spec §5.6
+ * `.st-warn`); the marked state's "check your plan" links the 4-year plan.
+ */
+function PlanStatusLine({ code, status }: { code: string; status: StandingText }) {
+  const check = status.check && status.text.endsWith(status.check.words) ? status.check : null;
+  return (
+    <p
+      className={cn(
+        "flex items-start gap-1.5 text-sm font-semibold",
+        status.warning ? "text-warning" : "text-fg",
+      )}
+      data-testid="course-plan-status"
+      data-source="my-plan"
+      data-warning={status.warning ? "true" : undefined}
+    >
+      {status.warning ? <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" /> : null}
+      <span>
+        <span className="sr-only">Source: your plan. </span>
+        {check ? (
+          <>
+            {status.text.slice(0, -check.words.length)}
+            <Link
+              href={check.href}
+              // Inline in the sentence (WCAG 2.5.8's inline exception), like the page's other text links.
+              className="text-primary underline underline-offset-2"
+            >
+              {check.words}
+              <span className="sr-only">: {code} in your 4-year plan</span>
+            </Link>
+          </>
+        ) : (
+          status.text
+        )}
+      </span>
+    </p>
+  );
+}
+
 export async function CareerCourses({ career }: { career: Career }) {
   const user = await getSessionUser();
   const [terms, histories, presence] = await Promise.all([
@@ -164,8 +206,10 @@ export async function CareerCourses({ career }: { career: Career }) {
     user ? loadPlanPresence(user.id) : null,
   ]);
   const loginHref = routes.login(routes.career(career.slug));
+  // Without the terms list, the date decides the current term (lib/term's own fallback).
+  const current = terms?.current ?? currentTermFrom([], { now: now() });
   const views = career.courses.map((course) =>
-    courseView(course, histories.get(course.code) ?? null, terms, presence),
+    courseView(course, histories.get(course.code) ?? null, terms, presence, current),
   );
   const planHref = routes.plan("next");
 

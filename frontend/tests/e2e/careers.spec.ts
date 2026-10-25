@@ -250,6 +250,13 @@ test("a career page says which courses the student has taken instead of offering
     await expect(card.getByRole("button", { name: /^Add to/ }), code).toHaveCount(0);
     await expect(card.getByRole("radio"), code).toHaveCount(0);
   }
+  // Only the repeat is a warning (spec §5.6: the icon and words in the warning colour).
+  await expect(
+    page.locator('[data-course="CSC 221"]').getByTestId("course-plan-status"),
+  ).toHaveAttribute("data-warning", "true");
+  await expect(
+    page.locator('[data-course="CSC 121"]').getByTestId("course-plan-status"),
+  ).not.toHaveAttribute("data-warning");
   // A course not taken yet keeps its Add to plan control.
   await expect(
     page
@@ -258,6 +265,83 @@ test("a career page says which courses the student has taken instead of offering
   ).toBeVisible();
   expect(await expectAllTagged(page)).toBeGreaterThanOrEqual(8);
   expect(await seriousViolations(page)).toEqual([]);
+});
+
+test("a v1 plan's Fall 2026 'Completed' rows never read Completed Fall 2026 on Investment Banking", async ({
+  page,
+  request,
+}) => {
+  const uri = process.env.E2E_MONGODB_URI;
+  test.skip(!uri, "needs E2E_MONGODB_URI to write the v1 plan");
+  const email = await newSignedInAccount(page, request, "e2e-career-legacy");
+  // The audit's legacy account: the hackathon app's add dialog defaults (Fall of this year) with the status set
+  // to Completed and a grade, as the owner's own plan had them, plus one Spring 2027 course.
+  const { MongoClient, ObjectId } = await import("mongodb");
+  const client = new MongoClient(uri!);
+  try {
+    await client.connect();
+    const db = client.db();
+    const user = await db.collection("users").findOne({ email });
+    expect(user).not.toBeNull();
+    const v1 = (
+      courseCode: string,
+      semester: string,
+      year: number,
+      status: string,
+      grade?: string,
+    ) => ({
+      _id: new ObjectId(),
+      courseId: new ObjectId(),
+      courseCode,
+      courseName: courseCode,
+      credits: 4,
+      semester,
+      year,
+      status,
+      ...(grade ? { grade } : {}),
+    });
+    await db.collection("courseplans").insertOne({
+      userId: new ObjectId(String(user!._id)),
+      plannedCourses: [
+        v1("ECO 101", "Fall", 2026, "completed", "A"),
+        v1("CSC 108", "Fall", 2026, "completed", "A-"),
+        v1("ECO 202", "Spring", 2027, "planned"),
+      ],
+      summerActivities: [],
+      createdAt: new Date("2026-09-20T15:00:00Z"),
+      updatedAt: new Date("2026-09-21T15:00:00Z"),
+    });
+  } finally {
+    await client.close();
+  }
+
+  await page.goto("/careers/investment-banking");
+  const card = page.locator('[data-course="ECO 101"]');
+  const status = card.getByTestId("course-plan-status");
+  await expect(status).toHaveText(
+    "Source: your plan. In your Fall 2026 plan · marked Completed, check your plan: ECO 101 in your 4-year plan",
+  );
+  await expect(status).toHaveAttribute("data-warning", "true");
+  await expect(status.locator("svg")).toBeVisible();
+  await expect(
+    status.getByRole("link", { name: "check your plan: ECO 101 in your 4-year plan" }),
+  ).toHaveAttribute("href", "/plan?tab=four-year");
+  await expect(card.getByRole("button", { name: /^(Add to|Choose a term)/ })).toHaveCount(0);
+  await expect(card.getByRole("radio")).toHaveCount(0);
+  await expect(page.getByRole("main")).not.toContainText("Completed Fall 2026");
+  // A course the v1 plan does not hold keeps its Add to plan control.
+  await expect(
+    page
+      .locator('[data-course="ECO 211"]')
+      .getByRole("button", { name: /^(Add to|Choose a term)/ }),
+  ).toBeVisible();
+  expect(await expectAllTagged(page)).toBeGreaterThanOrEqual(8);
+  expect(await seriousViolations(page)).toEqual([]);
+  if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
+
+  // The link lands on the 4-year plan, where the row is fixed.
+  await status.getByRole("link", { name: /^check your plan/ }).click();
+  await expect(page).toHaveURL(/\/plan\?tab=four-year$/);
 });
 
 test("office programs on a career page: published deadlines and amounts, tagged", async ({

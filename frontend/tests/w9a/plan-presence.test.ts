@@ -6,7 +6,7 @@ import { MissingFixtureError } from "@/server/http/fixtures";
 const plan = vi.hoisted(() => ({ getPlan: vi.fn() }));
 vi.mock("@/server/plan", () => ({ getPlan: plan.getPlan }));
 
-const { courseStanding, loadPlanPresence, planPresence, standingText } =
+const { courseStanding, loadPlanPresence, planPresence, plannedTerms, standingText } =
   await import("@/app/(hub)/careers/_lib/plan");
 
 const USER = "0123456789abcdef01234567";
@@ -65,14 +65,29 @@ describe("planPresence", () => {
     expect(Object.fromEntries(presence.get("ECO 101") ?? [])).toEqual({ "202501": "completed" });
   });
 
-  it("ignores dropped, failed and withdrawn items and items without a term", () => {
+  it("ignores dropped items and items without a term", () => {
     const presence = planPresence([
       item({ status: "dropped" }),
-      item({ status: "failed", termCode: "202601" }),
-      item({ status: "withdrawn", termCode: "202501" }),
       item({ termCode: null, source: "ap" }),
     ]);
     expect(presence.size).toBe(0);
+  });
+
+  it("keeps failed and withdrawn items, behind an active item in the same term, never as planned terms", () => {
+    const presence = planPresence([
+      item({ status: "failed", termCode: "202601" }),
+      item({ status: "withdrawn", termCode: "202501" }),
+      item({ id: "0123456789abcdef0123456b", status: "failed", termCode: "202602" }),
+      item({ id: "0123456789abcdef0123456c", status: "planned", termCode: "202602" }),
+    ]);
+    const entries = presence.get("CSC 221");
+    expect(Object.fromEntries(entries ?? [])).toEqual({
+      "202501": "withdrawn",
+      "202601": "failed",
+      "202602": "planned",
+    });
+    // Add to plan's "In your plan for …" counts active items only.
+    expect(plannedTerms(entries)).toEqual(["202602"]);
   });
 });
 
@@ -89,8 +104,70 @@ describe("courseStanding", () => {
     expect(standing([item({ status: "planned", termCode: "202602" })])).toBeNull();
     // Registered for a later term: in the plan, not taken.
     expect(standing([item({ status: "registered", termCode: "202602" })])).toBeNull();
-    // Dropped, failed and withdrawn items are history: the course can be added again.
+    // Dropped, failed and withdrawn items in past terms are history: the course can be added again.
     expect(standing([item({ status: "failed", termCode: "202501" })])).toBeNull();
+    expect(standing([item({ status: "withdrawn", termCode: "202502" })])).toBeNull();
+    expect(standing([item({ status: "dropped", termCode: "202601" })])).toBeNull();
+  });
+
+  it("never says Completed for the current term: marked Completed, check your plan", () => {
+    // The fixtures clock (Sep 30, 2026): Fall 2026 is the current term and is not over.
+    const marked = text([item({ status: "completed", termCode: "202601" })]);
+    expect(marked).toEqual({
+      text: "In your Fall 2026 plan · marked Completed, check your plan",
+      warning: true,
+      check: { words: "check your plan", href: "/plan?tab=four-year" },
+    });
+    expect(marked?.text).not.toMatch(/^Completed/);
+    expect(standing([item({ status: "completed", termCode: "202601" })])).toEqual({
+      kind: "marked",
+      term: "202601",
+      status: "completed",
+    });
+    // The same in Spring 2027 once it is the current term, and for a later term.
+    expect(text([item({ status: "completed", termCode: "202602" })], "202602")?.text).toBe(
+      "In your Spring 2027 plan · marked Completed, check your plan",
+    );
+    expect(text([item({ status: "completed", termCode: "202701" })])?.text).toBe(
+      "In your Fall 2027 plan · marked Completed, check your plan",
+    );
+  });
+
+  it("flags failed and withdrawn for a term that is not over, in the status's own word", () => {
+    expect(text([item({ status: "failed", termCode: "202601" })])?.text).toBe(
+      "In your Fall 2026 plan · marked Failed, check your plan",
+    );
+    expect(text([item({ status: "withdrawn", termCode: "202602" })])?.text).toBe(
+      "In your Spring 2027 plan · marked Withdrawn, check your plan",
+    );
+  });
+
+  it("judges the latest result: a real completion before a result marked too early still needs a check", () => {
+    const items = [
+      item({ status: "completed", termCode: "202501" }),
+      item({ id: "0123456789abcdef0123456b", status: "completed", termCode: "202601" }),
+    ];
+    expect(text(items)?.text).toBe("In your Fall 2026 plan · marked Completed, check your plan");
+    // A term that is over is a real result: Completed Fall 2025, then Taking now.
+    expect(
+      text([
+        item({ status: "completed", termCode: "202501" }),
+        item({ id: "0123456789abcdef0123456b", status: "failed", termCode: "202502" }),
+      ])?.text,
+    ).toBe("Completed Fall 2025");
+  });
+
+  it("flags nothing without a current term", () => {
+    expect(
+      courseStanding(
+        planPresence([item({ status: "completed", termCode: "202601" })]).get("CSC 221"),
+        null,
+      ),
+    ).toEqual({
+      kind: "completed",
+      term: "202601",
+      then: null,
+    });
   });
 
   it("says completed (the latest term) and taking now in words", () => {
