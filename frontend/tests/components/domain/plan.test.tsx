@@ -599,6 +599,45 @@ describe("RatingSummary", () => {
     expect(tags.querySelector("[class*=border], [class*=uppercase]")).toBeNull();
   });
 
+  it("prints each date once: the tags line leaves out a date the provenance line already shows", () => {
+    const props = {
+      status: "matched" as const,
+      avgRating: 4.5,
+      numRatings: 8,
+      topTags: [{ tag: "Amazing lectures", count: 4 }],
+      tagRatingsCounted: 8,
+      url: RMP,
+      instructorName: "Matt Samson",
+      nameShown: true,
+      timeZone: "America/New_York",
+    };
+    // Counted the evening of the roster sync's day in Davidson (already the next day in UTC): one date.
+    const { container, rerender } = render(
+      <RatingSummary {...props} tagsAsOf="2026-10-23T02:30:00Z" asOf="2026-10-22T13:00:00Z" />,
+    );
+    expect(seenText(container)).toBe(
+      "4.5 / 5 8 ratings Most common tags (from 8 ratings): Amazing lectures (4) " +
+        "as of Oct 22, 2026 · RateMyProfessors",
+    );
+    expect(seenText(container).match(/Oct 22, 2026/g)).toHaveLength(1);
+    expect(spokenText(screen.getByTestId("rating-tags"))).toBe(
+      "Most common tags (from 8 ratings): Amazing lectures (4 ratings)",
+    );
+    // Another day: the tags keep their own date.
+    rerender(
+      <RatingSummary {...props} tagsAsOf="2026-10-25T10:00:00Z" asOf="2026-10-22T13:00:00Z" />,
+    );
+    expect(seenText(screen.getByTestId("rating-tags"))).toBe(
+      "Most common tags (from 8 ratings, as of Oct 25, 2026): Amazing lectures (4)",
+    );
+    // No roster date to print below: the tags line keeps its date.
+    rerender(<RatingSummary {...props} tagsAsOf="2026-10-22T13:00:00Z" asOf={null} />);
+    expect(seenText(container)).toBe(
+      "4.5 / 5 8 ratings Most common tags (from 8 ratings, as of Oct 22, 2026): Amazing lectures (4) " +
+        "RateMyProfessors",
+    );
+  });
+
   it("leaves out what RMP does not have", () => {
     const { container, rerender } = render(
       <RatingSummary

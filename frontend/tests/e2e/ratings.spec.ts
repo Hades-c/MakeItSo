@@ -137,6 +137,10 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   });
   expect(seen).toBe("as of Sep 30, 2026 · RateMyProfessors");
   await expect(arianna.getByText("as of Sep 30, 2026")).toBeVisible();
+  // Each date once in the entry (a tags count on the roster's day would leave its date out).
+  const entryText = (await arianna.textContent()) ?? "";
+  expect(entryText.match(/Sep 29, 2026/g)).toHaveLength(1);
+  expect(entryText.match(/Sep 30, 2026/g)).toHaveLength(1);
   await expect(arianna.locator("[data-source]")).toHaveCount(1);
   await expect(arianna.getByRole("link")).toHaveCount(1);
   await expect(

@@ -106,7 +106,8 @@ The frozen interfaces every workstream codes against. They change only through t
   `components/domain/rating-summary.tsx`: with one or two they read 0% or 100% about a named professor); the most
   common tags, from three counted ratings, each used at least twice, at most three, on a line with its own freshness,
   "Most common tags (from 39 ratings, as of Oct 25, 2026): …" (`rmp.tagRatingsCounted` and `rmp.tagsAsOf`, the
-  daily count); then ONE provenance line, the roster's `asOf` and the source named once as the profile link, "as of
+  daily count; the date is left out, "Most common tags (from 39 ratings): …", when it is the day the provenance line
+  prints, so an entry never shows one date twice); then ONE provenance line, the roster's `asOf` and the source named once as the profile link, "as of
   Oct 22, 2026 · RateMyProfessors ↗" (`SourceLink` in `components/ui/source-tag.tsx`: `data-source` and the
   "Source: RateMyProfessors" name, like a SourceTag; never a tag beside a separately worded link). All of it once
   per instructor, in "Instructors on RateMyProfessors": the section rows list instructors by name only. No review
