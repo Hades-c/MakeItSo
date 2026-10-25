@@ -6,8 +6,9 @@ import { HttpsUrlSchema, IsoDateTimeSchema } from "@/lib/types/common";
  * Professor ratings (PLAN §4.1.7, §5 "Ratings (RMP)"). server/rmp (W2) matches catalog instructors against the
  * weekly RateMyProfessors roster (models/RmpTeacher.ts). Matching needs a normalised surname AND a first-name /
  * nickname match — never surname-only. Show rating, count, difficulty, "would take again", the most common tags,
- * "as of" and the RMP link; nothing when unmatched. No review text unless RMP_SUMMARIES_ENABLED (tags are RMP's
- * fixed labels, counted per rating, not review text).
+ * "as of" and the RMP link; nothing when unmatched. Difficulty, "would take again" and the tags need at least
+ * three ratings (components/domain/rating-summary.tsx MIN_DETAIL_RATINGS); the tags carry their own "as of". No
+ * review text unless RMP_SUMMARIES_ENABLED (tags are RMP's fixed labels, counted per rating, not review text).
  *
  * status:
  *   matched    one Davidson profile matched (rmp present)
@@ -82,6 +83,8 @@ export const RmpRatingSchema = z.object({
   topTags: z.array(RmpTagCountSchema).max(RMP_TOP_TAGS),
   /** How many ratings the tag counts were taken from (0 until counted). */
   tagRatingsCounted: z.number().int().min(0),
+  /** When the tags were counted (the daily cron; the roster's `asOf` is weekly); null until counted. */
+  tagsAsOf: IsoDateTimeSchema.nullable(),
 });
 export type RmpRating = z.infer<typeof RmpRatingSchema>;
 

@@ -49,7 +49,30 @@ const ARIANNA = {
   ],
   tagRatingsCounted: 8,
   tagsNumRatings: 8,
-  tagsFetchedAt: new Date("2026-09-30T16:05:00Z"),
+  // The daily tag count ran a day before this roster row was fetched: the tags line says its own date.
+  tagsFetchedAt: new Date("2026-09-29T16:05:00Z"),
+};
+
+/**
+ * A second BIO 115 instructor (sections E and F) with two ratings: the rating and its count show, but not the
+ * difficulty, "would take again" or the tags, which need three ratings. Not in the synthetic roster.
+ */
+const BRYAN = {
+  ...ARIANNA,
+  rmpId: "VGVhY2hlci05MTAwMDAy",
+  legacyId: 9100002,
+  firstName: "Bryan",
+  lastName: "Thurtle-Schmidt",
+  normalizedFirst: "bryan",
+  normalizedLast: "thurtle schmidt",
+  nameTokens: ["bryan", "thurtle", "schmidt", "thurtleschmidt"],
+  avgRating: 1.2,
+  avgDifficulty: 1,
+  numRatings: 2,
+  wouldTakeAgainPct: 0,
+  topTags: [{ tag: "Caring", count: 2 }],
+  tagRatingsCounted: 2,
+  tagsNumRatings: 2,
 };
 
 test("the course page shows a matched rating's difficulty, would-take-again and most common tags", async ({
@@ -60,9 +83,11 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   test.skip(!uri, "needs E2E_MONGODB_URI: the roster row is written to the database");
   const conn = await mongoose.createConnection(uri!).asPromise();
   try {
-    await conn
-      .collection("rmpteachers")
-      .updateOne({ legacyId: ARIANNA.legacyId }, { $set: ARIANNA }, { upsert: true });
+    for (const row of [ARIANNA, BRYAN]) {
+      await conn
+        .collection("rmpteachers")
+        .updateOne({ legacyId: row.legacyId }, { $set: row }, { upsert: true });
+    }
   } finally {
     await conn.close();
   }
@@ -92,17 +117,29 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
       .locator('[data-aggregated="ratemyprofessors"]'),
   ).toHaveCount(0);
 
-  // The details once, under the sections.
+  // Two ratings: the rating and its count, nothing more (the details need three ratings).
+  for (const name of [/^Section E,/, /^Section F,/]) {
+    const row = sections
+      .getByRole("article", { name })
+      .locator('[data-aggregated="ratemyprofessors"]');
+    await expect(row).toContainText("1.2");
+    await expect(row).toContainText("2 ratings");
+    await expect(row).not.toContainText("Difficulty");
+  }
+
+  // The details once per instructor, under the sections.
   const instructors = sections.getByRole("list", { name: "Instructors on RateMyProfessors" });
-  await expect(instructors.getByRole("listitem")).toHaveCount(1);
-  const arianna = instructors.getByRole("listitem").first();
+  await expect(instructors.getByRole("listitem")).toHaveCount(2);
+  const arianna = instructors.getByRole("listitem").filter({ hasText: "Arianna Smith" });
   await expect(arianna.getByText("Arianna Smith", { exact: true })).toBeVisible();
   await expect(arianna).toContainText("8 ratings");
   await expect(arianna).toContainText("Difficulty 2.4 of 5");
   await expect(arianna).toContainText("14% would take again");
+  // The tags' own freshness: how many ratings they were counted from, and when (not the roster's date).
   await expect(arianna.getByTestId("rating-tags")).toContainText(
-    "Most common tags: Extra credit (4)",
+    "Most common tags (from 8 ratings, as of Sep 29): Extra credit (4)",
   );
+  await expect(arianna.getByTestId("rating-tags")).toContainText("· via RateMyProfessors");
   await expect(arianna.getByTestId("rating-tags")).toContainText("Get ready to read (3)");
   await expect(arianna.getByTestId("rating-tags")).toContainText("Beware of pop quizzes (2)");
   await expect(arianna.getByTestId("rating-tags")).not.toContainText("Amazing lectures");
@@ -110,6 +147,13 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   await expect(arianna.getByRole("link", { name: /Arianna Smith’s page/ })).toHaveAttribute(
     "href",
     "https://www.ratemyprofessors.com/professor/9000004",
+  );
+  const bryan = instructors.getByRole("listitem").filter({ hasText: "Bryan Thurtle-Schmidt" });
+  await expect(bryan).toContainText("2 ratings");
+  await expect(bryan).not.toContainText(/Difficulty|would take again|Most common tags/);
+  await expect(bryan.getByRole("link", { name: /Bryan Thurtle-Schmidt’s page/ })).toHaveAttribute(
+    "href",
+    "https://www.ratemyprofessors.com/professor/9100002",
   );
   await expect(sections).toContainText(
     "ratings only where a RateMyProfessors profile matches the instructor’s full name.",

@@ -5,8 +5,7 @@ import { SeatBar } from "@/components/domain/seat-bar";
 import { Chip } from "@/components/ui/chip";
 import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
-import type { Course, Instructor, Section } from "@/lib/types/catalog";
-import type { InstructorRating, RmpRating } from "@/lib/types/ratings";
+import type { Course, Section } from "@/lib/types/catalog";
 import { cn } from "@/lib/utils";
 import {
   instructorName,
@@ -17,6 +16,7 @@ import {
 } from "../_lib/format";
 import { instructorKeyOf, type RatingsLookup } from "../_lib/ratings";
 import type { RegisterAs } from "../_lib/sections";
+import { InstructorRatings, ratedInstructors, shownRating } from "./instructor-ratings";
 import { WRAP_CHIP } from "./wrap";
 import { ShowInWeekLink } from "./week-focus";
 
@@ -27,38 +27,9 @@ import { ShowInWeekLink } from "./week-focus";
  * max), the notes verbatim, restriction flags, "Register as <sibling>" for a max-0 cross-listing, the hidden
  * registration-only listings ("Also registrable as …") and "Registration section for …". "Show in my week" picks
  * the section the week grid and the header show (?crn= in the URL). Under the sections, each rated instructor once
- * with the rest of what RMP says (would take again, most common tags), however many sections they teach.
+ * with the rest of what RMP says (would take again, most common tags), however many sections they teach
+ * (InstructorRatings, its own component, so it can move).
  */
-
-type MatchedRating = InstructorRating & { rmp: RmpRating };
-
-/** A rating worth showing: a matched profile with at least one rating. */
-function shownRating(rating: InstructorRating | null | undefined): MatchedRating | null {
-  return rating?.status === "matched" && rating.rmp && rating.rmp.numRatings > 0
-    ? (rating as MatchedRating)
-    : null;
-}
-
-/** Each instructor with a shown rating, once, in section order. */
-export function ratedInstructors(
-  sections: readonly Section[],
-  ratings: RatingsLookup | null,
-): { instructor: Instructor; rating: MatchedRating }[] {
-  if (!ratings) return [];
-  const seen = new Set<string>();
-  const rated: { instructor: Instructor; rating: MatchedRating }[] = [];
-  for (const section of sections) {
-    for (const instructor of section.instructors) {
-      if (instructor.isStaff) continue;
-      const key = instructorKeyOf(instructor);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const rating = shownRating(ratings.get(key));
-      if (rating) rated.push({ instructor, rating });
-    }
-  }
-  return rated;
-}
 
 export function SectionItem({
   section,
@@ -271,7 +242,6 @@ export function CourseSections({
   registerAs?: Readonly<Record<string, RegisterAs>>;
   regForTitles?: Readonly<Record<string, string>>;
 }) {
-  const rated = ratedInstructors(course.sections, ratings);
   return (
     <section
       id="sections"
@@ -304,40 +274,10 @@ export function CourseSections({
           </li>
         ))}
       </ul>
-      {rated.length > 0 ? (
-        <div className="mt-4 border-t border-line pt-4" data-testid="instructor-ratings">
-          <h3 id="instructor-ratings-title" className="text-base font-strong text-fg">
-            Instructors on RateMyProfessors
-          </h3>
-          <ul aria-labelledby="instructor-ratings-title" className="mt-3 flex flex-col gap-5">
-            {rated.map(({ instructor, rating: { rmp } }) => {
-              const name = instructorName(instructor);
-              return (
-                <li
-                  key={instructorKeyOf(instructor)}
-                  data-aggregated="ratemyprofessors"
-                  className="flex min-w-0 flex-col gap-2"
-                >
-                  <p className="text-sm font-semibold text-fg">{name}</p>
-                  <RatingSummary
-                    status="matched"
-                    avgRating={rmp.avgRating}
-                    numRatings={rmp.numRatings}
-                    avgDifficulty={rmp.avgDifficulty}
-                    wouldTakeAgainPct={rmp.wouldTakeAgainPct}
-                    topTags={rmp.topTags}
-                    tagRatingsCounted={rmp.tagRatingsCounted}
-                    asOf={rmp.asOf}
-                    url={rmp.url}
-                    instructorName={name}
-                    nameShown
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
+      <InstructorRatings
+        instructors={ratedInstructors(course.sections, ratings)}
+        className="mt-4 border-t border-line pt-4"
+      />
       <p className="mt-3 text-xs text-fg-3">
         Seats and notes as the Registrar publishes them
         {ratings

@@ -3,6 +3,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { describe, expect, it, vi } from "vitest";
 import { CourseSections, SectionItem } from "@/app/(hub)/courses/_components/course-sections";
 import {
+  InstructorRatings,
+  ratedInstructors,
+} from "@/app/(hub)/courses/_components/instructor-ratings";
+import {
   CourseAboutCard,
   CourseHeader,
   CourseWeekCard,
@@ -145,6 +149,8 @@ describe("SectionItem", () => {
       { tag: "Respected", count: 5 },
     ],
     tagRatingsCounted: 17,
+    // Counted the day after the roster's asOf: the tags line says its own date.
+    tagsAsOf: "2026-09-29T10:05:00.000Z",
   } as const;
 
   it("shows a matched rating and its difficulty with its tag, and nothing for an unmatched one", () => {
@@ -221,13 +227,14 @@ describe("SectionItem", () => {
     expect(within(item).getByText(`${instructor.first} ${instructor.last}`)).toBeVisible();
     expect(seenText(item)).toBe(
       "Katy Williams 4.2 / 5 17 ratings · Difficulty 3.0 of 5 · 80% would take again " +
-        "Most common tags: Participation matters (12), Get ready to read (9), Caring (8) " +
+        "Most common tags (from 17 ratings, as of Sep 29): Participation matters (12), " +
+        "Get ready to read (9), Caring (8) · via RateMyProfessors " +
         "RateMyProfessors as of Sep 28, 2026 RateMyProfessors",
     );
     expect(spokenText(item)).toContain(
       "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, 80% would take again " +
-        "Most common tags: Participation matters (12 ratings), Get ready to read (9 ratings), " +
-        "Caring (8 ratings)",
+        "Most common tags (from 17 ratings, as of Sep 29): Participation matters (12 ratings), " +
+        "Get ready to read (9 ratings), Caring (8 ratings), via RateMyProfessors",
     );
     expect(within(item).getByText("as of Sep 28, 2026")).toBeVisible();
     expect(item.querySelector('[data-source="ratemyprofessors"]')).not.toBeNull();
@@ -237,6 +244,33 @@ describe("SectionItem", () => {
     );
     // The section rows keep the short form; the details appear once.
     expect(screen.getAllByText(/would take again/)).toHaveLength(1);
+  });
+
+  it("is its own block, fed a de-duplicated instructor list, so the page can move it", () => {
+    // Two sections taught by the same instructor, one by a second, one by Staff: two entries, in section order.
+    const katy = csc.sections[0]!.instructors[0]!;
+    const sam = { first: "Sam", last: "Okafor", isStaff: false };
+    const staff = { first: "Staff", last: "", isStaff: true };
+    const sections = [
+      { ...csc.sections[0]!, instructors: [katy] },
+      { ...csc.sections[1]!, instructors: [sam, katy] },
+      { ...csc.sections[0]!, crn: "20999", instructors: [staff] },
+    ];
+    const lookup = ratingsLookup([
+      { instructor: katy, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
+      { instructor: sam, status: "matched", rmp: { ...rmp, legacyId: 99, topTags: [] } },
+    ]);
+    const rated = ratedInstructors(sections, lookup);
+    expect(rated.map((r) => r.instructor.last)).toEqual([katy.last, "Okafor"]);
+    expect(ratedInstructors(sections, null)).toEqual([]);
+    const { container } = render(<InstructorRatings instructors={rated} className="mt-9" />);
+    const block = screen.getByTestId("instructor-ratings");
+    expect(block).toHaveClass("mt-9");
+    expect(within(block).getAllByRole("listitem")).toHaveLength(2);
+    // Nothing at all without a rated instructor.
+    container.remove();
+    const empty = render(<InstructorRatings instructors={[]} />);
+    expect(empty.container).toBeEmptyDOMElement();
   });
 
   it("lists no instructors without a shown rating", () => {

@@ -172,6 +172,7 @@ export default function DesignGalleryPage() {
                 { tag: "Caring", count: 5 },
               ]}
               tagRatingsCounted={21}
+              tagsAsOf="2026-09-30T13:05:00Z"
               asOf="2026-09-30T13:00:00Z"
               url="https://www.ratemyprofessors.com/search/professors/3965?q=Aldridge"
               instructorName="Daniel Aldridge"

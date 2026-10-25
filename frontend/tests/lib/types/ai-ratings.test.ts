@@ -72,13 +72,18 @@ describe("ratings (PLAN §4.1.7)", () => {
     asOf: "2026-09-30T12:00:00.000Z",
     topTags: [{ tag: "Tough grader", count: 13 }],
     tagRatingsCounted: 41,
+    tagsAsOf: "2026-09-30T12:05:00.000Z",
   };
 
   it("carries RMP's tags from its fixed list only, at most five, and no difficulty under 1", () => {
     const parse = (patch: Record<string, unknown>) =>
       RmpRatingSchema.safeParse({ ...rmp, ...patch }).success;
     expect(parse({})).toBe(true);
-    expect(parse({ avgDifficulty: null, topTags: [], tagRatingsCounted: 0 })).toBe(true);
+    expect(parse({ avgDifficulty: null, topTags: [], tagRatingsCounted: 0, tagsAsOf: null })).toBe(
+      true,
+    );
+    expect(parse({ tagsAsOf: "Sep 30" })).toBe(false);
+    expect(parse({ tagsAsOf: undefined })).toBe(false);
     expect(parse({ topTags: [{ tag: "Great professor", count: 2 }] })).toBe(false);
     expect(parse({ topTags: [{ tag: "Caring", count: 0 }] })).toBe(false);
     expect(parse({ topTags: RMP_TAGS.slice(0, 6).map((tag) => ({ tag, count: 1 })) })).toBe(false);

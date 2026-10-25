@@ -113,6 +113,7 @@ describe("getRatings", () => {
         // Not counted yet (the daily cron counts them after the roster).
         topTags: [],
         tagRatingsCounted: 0,
+        tagsAsOf: null,
       },
     });
     // RMP's 0 difficulty and -1 ("nobody answered") of an unrated teacher are served as null; zero ratings still
@@ -149,6 +150,8 @@ describe("getRatings", () => {
         { tag: "Respected", count: 3 },
       ],
       tagRatingsCounted: 30,
+      // The tags' own freshness, apart from the roster's asOf.
+      tagsAsOf: now().toISOString(),
     });
   });
 
@@ -161,6 +164,7 @@ describe("getRatings", () => {
           avgDifficulty: 0,
           topTags: [{ tag: "Caring", count: 7 }],
           tagRatingsCounted: 30,
+          tagsFetchedAt: now(),
         },
       },
     );
@@ -171,6 +175,7 @@ describe("getRatings", () => {
       wouldTakeAgainPct: null,
       topTags: [],
       tagRatingsCounted: 0,
+      tagsAsOf: null,
     });
   });
 

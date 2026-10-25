@@ -9,7 +9,12 @@ import {
 } from "@/components/domain/add-to-plan-control";
 import { PlanMap, compactColumns, type PlanMapTerm } from "@/components/domain/plan-map";
 import { layoutTerm } from "@/components/domain/plan-layout";
-import { RatingSummary, safeRmpUrl, shownTags } from "@/components/domain/rating-summary";
+import {
+  MIN_DETAIL_RATINGS,
+  RatingSummary,
+  safeRmpUrl,
+  shownTags,
+} from "@/components/domain/rating-summary";
 import { RequirementSlots, type RequirementSlot } from "@/components/domain/requirement-slots";
 import { SeatBar, seatSummary } from "@/components/domain/seat-bar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -581,6 +586,7 @@ describe("RatingSummary", () => {
           { tag: "Respected", count: 7 },
         ]}
         tagRatingsCounted={21}
+        tagsAsOf="2026-10-25T10:00:00Z"
         asOf="2026-09-30T13:00:00Z"
         url={RMP}
         instructorName="Daniel Aldridge"
@@ -590,14 +596,16 @@ describe("RatingSummary", () => {
     const block = container.firstElementChild!;
     expect(seenText(block)).toBe(
       "3.7 / 5 21 ratings for Daniel Aldridge · Difficulty 2.6 of 5 · 67% would take again " +
-        "Most common tags: Participation matters (12), Get ready to read (9), Caring (8) " +
+        "Most common tags (from 21 ratings, as of Oct 25): Participation matters (12), " +
+        "Get ready to read (9), Caring (8) · via RateMyProfessors " +
         "RateMyProfessors as of Sep 30, 2026 RateMyProfessors",
     );
     // The two numbers out of 5 are told apart: "Rating" is read out, "Difficulty" is printed.
     expect(spokenText(block)).toContain(
       "Rating 3.7 out of 5 21 ratings for Daniel Aldridge, Difficulty 2.6 of 5, 67% would take again " +
-        "Most common tags: Participation matters (12 ratings), Get ready to read (9 ratings), " +
-        "Caring (8 ratings) Source: RateMyProfessors",
+        "Most common tags (from 21 ratings, as of Oct 25): Participation matters (12 ratings), " +
+        "Get ready to read (9 ratings), Caring (8 ratings), via RateMyProfessors " +
+        "Source: RateMyProfessors",
     );
     // Sentence case text, no chips or boxes for the new parts.
     const tags = screen.getByTestId("rating-tags");
@@ -662,7 +670,37 @@ describe("RatingSummary", () => {
         tagRatingsCounted={3}
       />,
     );
-    expect(seenText(screen.getByTestId("rating-tags"))).toBe("Most common tags: Caring (2)");
+    // Without a count date, the line still says how many ratings it is from.
+    expect(seenText(screen.getByTestId("rating-tags"))).toBe(
+      "Most common tags (from 3 ratings): Caring (2) · via RateMyProfessors",
+    );
+  });
+
+  it("shows difficulty and would take again only from 3 ratings; the rating itself from 1", () => {
+    const props = {
+      status: "matched" as const,
+      avgRating: 1.2,
+      avgDifficulty: 1,
+      wouldTakeAgainPct: 0,
+      topTags: [{ tag: "Caring", count: 2 }],
+      instructorName: "Bryan Thurtle-Schmidt",
+      nameShown: true,
+    };
+    const { container, rerender } = render(
+      <RatingSummary {...props} numRatings={2} tagRatingsCounted={2} />,
+    );
+    // Two ratings: "0% would take again" or "Difficulty 1.0" would be about two students.
+    expect(seenText(container)).toBe("1.2 / 5 2 ratings RateMyProfessors");
+    rerender(<RatingSummary {...props} numRatings={2} size="sm" />);
+    expect(seenText(container)).toBe("1.2 2 ratings RateMyProfessors");
+    rerender(<RatingSummary {...props} numRatings={3} tagRatingsCounted={3} />);
+    expect(seenText(container)).toBe(
+      "1.2 / 5 3 ratings · Difficulty 1.0 of 5 · 0% would take again " +
+        "Most common tags (from 3 ratings): Caring (2) · via RateMyProfessors RateMyProfessors",
+    );
+    rerender(<RatingSummary {...props} numRatings={3} size="sm" />);
+    expect(seenText(container)).toBe("1.2 3 ratings · Difficulty 1.0 of 5 RateMyProfessors");
+    expect(MIN_DETAIL_RATINGS).toBe(3);
   });
 
   it("compact form: the rating and the difficulty only", () => {

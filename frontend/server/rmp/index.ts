@@ -88,12 +88,16 @@ const StoredTeacherSchema = z.object({
     .min(0)
     .nullish()
     .transform((value) => value ?? 0),
+  tagsFetchedAt: z
+    .date()
+    .nullish()
+    .transform((value) => value ?? null),
 });
 type StoredTeacher = z.output<typeof StoredTeacherSchema>;
 
 const TEACHER_FIELDS =
   "legacyId firstName lastName department numRatings avgRating avgDifficulty wouldTakeAgainPct fetchedAt " +
-  "topTags tagRatingsCounted";
+  "topTags tagRatingsCounted tagsFetchedAt";
 
 function isStaff(instructor: Instructor): boolean {
   return instructor.isStaff || isStaffName(instructor.first, instructor.last);
@@ -157,6 +161,7 @@ function toRating(instructor: Instructor, outcome: MatchOutcome<StoredTeacher>):
     asOf: teacher.fetchedAt.toISOString(),
     topTags: rated ? teacher.topTags : [],
     tagRatingsCounted: rated ? teacher.tagRatingsCounted : 0,
+    tagsAsOf: rated && teacher.tagsFetchedAt ? teacher.tagsFetchedAt.toISOString() : null,
   });
   if (!rmp.success) {
     console.warn(`[rmp] stored teacher ${teacher.legacyId} is invalid; showing no rating`);

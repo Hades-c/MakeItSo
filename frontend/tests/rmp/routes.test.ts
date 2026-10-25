@@ -329,6 +329,7 @@ describe("GET /api/cron/rmp", () => {
         { tag: "Accessible outside class", count: 1 },
       ],
       tagRatingsCounted: 22,
+      tagsAsOf: expect.any(String),
     });
   });
 
