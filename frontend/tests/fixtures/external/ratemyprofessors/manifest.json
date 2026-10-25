@@ -1,12 +1,18 @@
 {
   "source": "ratemyprofessors",
-  "description": "SYNTHETIC roster in the shape of the RateMyProfessors GraphQL response to newSearch.teachers(query: {text: '', schoolID: 'U2Nob29sLTM5NjU='}, first: 1000). Names reproduce the real name forms that break naive matching (PLAN §5 Ratings; see cases.json); every id, legacyId and number is invented, and there is no review text.",
+  "description": "SYNTHETIC roster in the shape of the RateMyProfessors GraphQL response to newSearch.teachers(query: {text: '', schoolID: 'U2Nob29sLTM5NjU='}, first: 1000). Names reproduce the real name forms that break naive matching (PLAN §5 Ratings; see cases.json); every id, legacyId and number is invented, and there is no review text. tags-davidson.json answers the tag counts' DavidsonTeacherTags query: one alias per Davidson teacher with ratings (t<legacyId>), each with as many ratings as the roster's numRatings and only the ratingTags field, made up from RMP's fixed tags. Teacher 9000001's first five ratings carry the normalisation cases: a duplicate in one rating, upper case, padding, an unknown tag (dropped), null, collapsed spaces and separators only. Every alias is served to every batch; the app reads only the aliases it asked for.",
   "routes": [
     {
       "method": "POST",
       "url": "https://www.ratemyprofessors.com/graphql",
       "bodyIncludes": "U2Nob29sLTM5NjU=",
       "file": "teachers-davidson.json"
+    },
+    {
+      "method": "POST",
+      "url": "https://www.ratemyprofessors.com/graphql",
+      "bodyIncludes": "DavidsonTeacherTags",
+      "file": "tags-davidson.json"
     }
   ]
 }

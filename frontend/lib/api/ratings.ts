@@ -1,11 +1,11 @@
 import * as z from "zod";
 import { apiRoute } from "@/lib/api/spec";
 import { CourseCodeSchema, TermCodeSchema } from "@/lib/types/common";
-import { InstructorRatingSchema, RosterSyncResultSchema } from "@/lib/types/ratings";
+import { InstructorRatingSchema, RmpCronResultSchema } from "@/lib/types/ratings";
 
 /**
- * Ratings (W2: app/api/ratings/**, app/api/cron/rmp/**). Ratings come from the stored weekly roster only: no
- * per-view RMP calls and no proxy route. Rate-limited. With RMP_ENABLED off every instructor has status
+ * Ratings (W2: app/api/ratings/**, app/api/cron/rmp/**). Ratings come from the stored roster and tag counts only:
+ * no per-view RMP calls and no proxy route. Rate-limited. With RMP_ENABLED off every instructor has status
  * "disabled". Server components call server/rmp directly; this route serves client islands.
  */
 
@@ -26,11 +26,14 @@ export const ratingsApi = {
     query: RatingsQuerySchema,
     response: RatingsResponseSchema,
   }),
-  /** GET /api/cron/rmp (weekly, Bearer CRON_SECRET) → roster sync. */
+  /**
+   * GET /api/cron/rmp (daily, Bearer CRON_SECRET) → the roster sync (weekly: skipped while the last good one is
+   * under six days old) and the tag counts.
+   */
   cronRoster: apiRoute({
     method: "GET",
     path: "/api/cron/rmp",
     auth: "cron",
-    response: RosterSyncResultSchema,
+    response: RmpCronResultSchema,
   }),
 } as const;

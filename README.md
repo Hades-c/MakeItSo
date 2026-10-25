@@ -211,7 +211,7 @@ stale data in the background, so the jobs only keep data warm. On the Pro plan y
 | Route                | Schedule (UTC) | Job                                                                                                     |
 | -------------------- | -------------- | ------------------------------------------------------------------------------------------------------- |
 | `/api/cron/feeds`    | daily 10:23    | campus feeds (WildcatSync, Hurt Hub…)                                                                   |
-| `/api/cron/rmp`      | Mondays 07:17  | RateMyProfessors roster                                                                                 |
+| `/api/cron/rmp`      | daily 07:17    | RateMyProfessors: the roster (weekly: skipped while under 6 days old), then tag counts (up to 4 minutes) |
 | `/api/cron/catalog`  | daily 07:13    | course schedule: the terms list, past terms and the first-run backfill from Fall 2022 (up to 5 minutes) |
 | `/api/cron/programs` | Mondays 06:23  | majors and minors from the Acalog catalog                                                               |
 
