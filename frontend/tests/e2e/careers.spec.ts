@@ -319,12 +319,12 @@ test("a v1 plan's Fall 2026 'Completed' rows never read Completed Fall 2026 on I
   const card = page.locator('[data-course="ECO 101"]');
   const status = card.getByTestId("course-plan-status");
   await expect(status).toHaveText(
-    "Source: your plan. In your Fall 2026 plan · marked Completed, check your plan: ECO 101 in your 4-year plan",
+    "Source: your plan. In your Fall 2026 plan · marked Completed, check your plan for ECO 101 in your 4-year plan",
   );
   await expect(status).toHaveAttribute("data-warning", "true");
   await expect(status.locator("svg")).toBeVisible();
   await expect(
-    status.getByRole("link", { name: "check your plan: ECO 101 in your 4-year plan" }),
+    status.getByRole("link", { name: "check your plan for ECO 101 in your 4-year plan" }),
   ).toHaveAttribute("href", "/plan?tab=four-year");
   await expect(card.getByRole("button", { name: /^(Add to|Choose a term)/ })).toHaveCount(0);
   await expect(card.getByRole("radio")).toHaveCount(0);

@@ -371,7 +371,7 @@ describe("CareerCourseItem", () => {
       expect(status).toHaveClass("text-warning");
       expect(status.querySelector("svg")).not.toBeNull();
       const link = within(status).getByRole("link", {
-        name: "check your plan: CSC 221 in your 4-year plan",
+        name: "check your plan for CSC 221 in your 4-year plan",
       });
       expect(link).toHaveAttribute("href", "/plan?tab=four-year");
       expect(screen.queryByRole("button", { name: /^(Add to|Choose a term)/ })).toBeNull();

@@ -186,8 +186,7 @@ function PlanStatusLine({ code, status }: { code: string; status: StandingText }
               // Inline in the sentence (WCAG 2.5.8's inline exception), like the page's other text links.
               className="text-primary underline underline-offset-2"
             >
-              {check.words}
-              <span className="sr-only">: {code} in your 4-year plan</span>
+              {check.words} <span className="sr-only">for {code} in your 4-year plan</span>
             </Link>
           </>
         ) : (
