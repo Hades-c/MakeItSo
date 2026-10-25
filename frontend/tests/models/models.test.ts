@@ -10,6 +10,7 @@ import CoursePlanV1 from "@/models/legacy/CoursePlanV1";
 import Plan from "@/models/Plan";
 import Program from "@/models/Program";
 import RateLimit from "@/models/RateLimit";
+import RmpTagSync from "@/models/RmpTagSync";
 import RmpTeacher from "@/models/RmpTeacher";
 import SourceSync from "@/models/SourceSync";
 import VerificationCode from "@/models/VerificationCode";
@@ -44,9 +45,10 @@ const NEW_MODELS: [string, AnyModel, string, string[], string | null][] = [
     "RmpTeacher",
     RmpTeacher as unknown as AnyModel,
     "rmpteachers",
-    ["!legacyId", "!rmpId", "normalizedLast,normalizedFirst"],
+    ["!legacyId", "!rmpId", "normalizedLast,normalizedFirst", "tagsFetchedAt,legacyId"],
     null,
   ],
+  ["RmpTagSync", RmpTagSync as unknown as AnyModel, "rmptagsyncs", ["!key"], null],
   [
     "FeedItem",
     FeedItem as unknown as AnyModel,

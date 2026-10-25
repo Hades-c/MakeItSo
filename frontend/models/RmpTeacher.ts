@@ -4,12 +4,14 @@ import mongoose, {
   type Model,
   Schema,
 } from "mongoose";
+import { RMP_TAGS } from "@/lib/types/ratings";
 
 /**
  * One RateMyProfessors teacher from the weekly Davidson roster (PLAN §5 "Ratings (RMP)"; owner W2). Collection
- * `rmpteachers`, written only by `syncRoster()` (server/rmp/roster.ts), which replaces the whole roster per run
- * and keeps the old one when a run fails or shrinks below half. Only Davidson nodes are stored (school.id checked
- * at ingest). No review text is ever stored.
+ * `rmpteachers`. The roster fields are written only by `syncRoster()` (server/rmp/roster.ts), which replaces the
+ * whole roster per run and keeps the old one when a run fails or shrinks below half; the tag fields only by the
+ * tag counts (server/rmp/tags.ts), which the roster sync leaves alone. Only Davidson nodes are stored (school.id
+ * checked at ingest). No review text is ever stored: tags are RMP's fixed labels, stored as counts.
  *
  * - `firstName`/`lastName`/`department`: RMP's values, trimmed (display and matching both re-normalise them).
  * - `normalizedFirst`/`normalizedLast`: normalizeName() of the names (NFKD accent strip, lower case, apostrophes
@@ -17,6 +19,9 @@ import mongoose, {
  * - `nameTokens`: every token of both names plus the surname written as one word; getRatings() pulls candidates
  *   with `{ nameTokens: { $in: <instructor surname tokens> } }`. Recomputed on every sync.
  * - `fetchedAt`: the roster run that stored the row; shown as the rating's "as of".
+ * - `topTags`: the five tags (lib/types/ratings.ts RMP_TAGS) most used on the teacher's ratings, most used first,
+ *   counted from `tagRatingsCounted` ratings at `tagsFetchedAt` (null: never counted), when RMP listed
+ *   `tagsNumRatings` ratings; a different numRatings makes the teacher due for a recount.
  */
 const RmpTeacherSchema = new Schema(
   {
@@ -36,6 +41,19 @@ const RmpTeacherSchema = new Schema(
     /** null when RMP sends -1 (no answers yet). */
     wouldTakeAgainPct: { type: Number, default: null, min: 0, max: 100 },
     fetchedAt: { type: Date, required: true },
+    topTags: {
+      type: [
+        {
+          _id: false,
+          tag: { type: String, enum: RMP_TAGS, required: true },
+          count: { type: Number, required: true, min: 1 },
+        },
+      ],
+      default: [],
+    },
+    tagRatingsCounted: { type: Number, default: 0, min: 0 },
+    tagsNumRatings: { type: Number, default: null, min: 0 },
+    tagsFetchedAt: { type: Date, default: null },
   },
   { collection: "rmpteachers", timestamps: true },
 );
@@ -44,6 +62,8 @@ RmpTeacherSchema.index({ legacyId: 1 }, { unique: true });
 RmpTeacherSchema.index({ rmpId: 1 }, { unique: true });
 RmpTeacherSchema.index({ normalizedLast: 1, normalizedFirst: 1 });
 RmpTeacherSchema.index({ nameTokens: 1 });
+// The tag counts' work order: never counted first, then the oldest count.
+RmpTeacherSchema.index({ tagsFetchedAt: 1, legacyId: 1 });
 
 export type RmpTeacherDoc = InferSchemaType<typeof RmpTeacherSchema>;
 export type RmpTeacherDocument = HydratedDocument<RmpTeacherDoc>;

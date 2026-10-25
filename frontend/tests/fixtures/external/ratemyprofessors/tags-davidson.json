@@ -1,0 +1,2689 @@
+{
+ "data": {
+  "t9000001": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Tough grader--TOUGH GRADER --Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "  Caring  --Synthetic tag outside the vocabulary"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": null
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Skip class?   You won't pass."
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "--"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers--Hilarious--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Graded by few things "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader --Get ready to read--Caring "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--So many papers--Lots of homework "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--So many papers"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy --Graded by few things --Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers--Get ready to read "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected --Test heavy--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes--Tough grader --So many papers"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--So many papers --Respected "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things --So many papers--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000001"
+    }
+   }
+  },
+  "t9000002": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Lecture heavy--Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Graded by few things--Lots of homework"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lots of homework --Accessible outside class "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria --Test heavy "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy--Participation matters--Extra credit"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lots of homework --Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lots of homework--Inspirational--So many papers "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Gives good feedback--Extra credit--Lots of homework "
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000002"
+    }
+   }
+  },
+  "t9000003": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Amazing lectures"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Amazing lectures "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes--Amazing lectures--Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Lots of homework"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters--Tough grader "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Amazing lectures--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader --Graded by few things--Amazing lectures"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers--Amazing lectures--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Amazing lectures"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Amazing lectures"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected --Graded by few things --Amazing lectures "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational--Amazing lectures--Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious --Tough grader --Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected--Gives good feedback--Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader --Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy--Amazing lectures "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000003"
+    }
+   }
+  },
+  "t9000004": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Extra credit--Group projects--Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit --Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit--Tough grader--Beware of pop quizzes "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Amazing lectures "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit --Get ready to read "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Lots of homework"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000004"
+    }
+   }
+  },
+  "t9000006": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects --Lecture heavy "
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000006"
+    }
+   }
+  },
+  "t9000008": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers --Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Hilarious--Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria --Lecture heavy--Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers --Lecture heavy--Caring "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--So many papers"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--So many papers"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000008"
+    }
+   }
+  },
+  "t9000009": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Respected--Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected --Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected--Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Beware of pop quizzes--Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lots of homework--Lecture heavy --Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy --Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Respected--Amazing lectures"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected--Gives good feedback"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Lots of homework --Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000009"
+    }
+   }
+  },
+  "t9000011": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Accessible outside class--Get ready to read--Lecture heavy "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Beware of pop quizzes --Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Graded by few things--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected--Extra credit--Group projects"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read --So many papers--Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Extra credit "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000011"
+    }
+   }
+  },
+  "t9000012": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Hilarious --So many papers"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Get ready to read--Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Lots of homework --Get ready to read "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Graded by few things --Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring --Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Clear grading criteria"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Gives good feedback --Get ready to read--Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Graded by few things "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read --Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Respected "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Gives good feedback"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers--Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Hilarious--Get ready to read"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000012"
+    }
+   }
+  },
+  "t9000013": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Group projects--Extra credit--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects--Lots of homework --Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Accessible outside class --Group projects"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters --Caring--Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters--Extra credit--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers--Respected--Caring "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Extra credit--Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lots of homework--Get ready to read --Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things--Clear grading criteria "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy--Caring "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational--Extra credit --So many papers "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring --Extra credit "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Lecture heavy"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000013"
+    }
+   }
+  },
+  "t9000014": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Lots of homework "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things--Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters--Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Test heavy--Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational--Graded by few things --Accessible outside class "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters --Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters--Lecture heavy--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Accessible outside class"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000014"
+    }
+   }
+  },
+  "t9000015": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "So many papers--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers --Clear grading criteria"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--Clear grading criteria"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--Lecture heavy --Participation matters "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers--Clear grading criteria --Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--Clear grading criteria--Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers --Clear grading criteria --Tough grader "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers --Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000015"
+    }
+   }
+  },
+  "t9000016": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes--Clear grading criteria"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria --Amazing lectures--Lots of homework"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes--Tough grader--Gives good feedback"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria --Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--So many papers --Beware of pop quizzes "
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000016"
+    }
+   }
+  },
+  "t9000017": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes --Test heavy--Gives good feedback"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--Gives good feedback--Test heavy"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000017"
+    }
+   }
+  },
+  "t9000018": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers--Test heavy "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria --Lecture heavy --Test heavy "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Extra credit "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read --Test heavy "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy --Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things --Tough grader--Caring "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Respected--Tough grader"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000018"
+    }
+   }
+  },
+  "t9000019": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Lots of homework"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000019"
+    }
+   }
+  },
+  "t9000020": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy --Inspirational--Group projects"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "So many papers--Inspirational --Graded by few things "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects--Extra credit --Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Amazing lectures "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters --Amazing lectures--Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Gives good feedback--Clear grading criteria "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Graded by few things "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000020"
+    }
+   }
+  },
+  "t9000022": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Gives good feedback--Graded by few things --So many papers"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters--Respected--Lots of homework "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000022"
+    }
+   }
+  },
+  "t9000023": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Group projects--Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit --Group projects--Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Gives good feedback--Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects --Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class--Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects--Lots of homework --Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects--Accessible outside class--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000023"
+    }
+   }
+  },
+  "t9000025": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Group projects "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things--Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects --Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class --Group projects--Graded by few things "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Gives good feedback --Clear grading criteria--Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects--Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--Beware of pop quizzes--Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader --Accessible outside class--Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes--Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes--Get ready to read--Gives good feedback"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Group projects"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes--Group projects--Accessible outside class "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lots of homework"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects--Beware of pop quizzes--Graded by few things "
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000025"
+    }
+   }
+  },
+  "t9000026": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Amazing lectures--Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000026"
+    }
+   }
+  },
+  "t9000027": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Respected "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--Hilarious--Respected "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected --Hilarious --Amazing lectures "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Respected --Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit--Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Extra credit --Respected --Caring "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious --Lots of homework"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Lots of homework--Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Respected--Beware of pop quizzes "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Get ready to read--Graded by few things "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected --Extra credit"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected --Accessible outside class--Extra credit"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000027"
+    }
+   }
+  },
+  "t9000028": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Amazing lectures"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--Lots of homework"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects --Graded by few things--Inspirational "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Extra credit --Gives good feedback"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected--Tough grader "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader --Graded by few things--Extra credit"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Tough grader--Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational--Accessible outside class --Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lecture heavy--Hilarious --Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters--Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Tough grader"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters--Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Hilarious--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Amazing lectures--Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Caring "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Lots of homework--Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Gives good feedback--Hilarious--Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected "
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000028"
+    }
+   }
+  },
+  "t9000029": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Accessible outside class--Caring --Beware of pop quizzes"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000029"
+    }
+   }
+  },
+  "t9000030": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy--Participation matters--Amazing lectures"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy--Tough grader--Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected--Group projects--Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy--Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters--Inspirational --Group projects"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational--Group projects --So many papers"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters--Test heavy--Hilarious "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Gives good feedback"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes --Group projects --Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Group projects "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy --Inspirational"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy--Extra credit --Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Graded by few things --Inspirational--Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected--Group projects"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000030"
+    }
+   }
+  },
+  "t9000031": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes--Inspirational "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class --Inspirational--Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Clear grading criteria--Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Inspirational--Beware of pop quizzes"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000031"
+    }
+   }
+  },
+  "t9000032": {
+   "ratings": {
+    "edges": [
+     {
+      "node": {
+       "ratingTags": "Gives good feedback--Accessible outside class--Clear grading criteria "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Beware of pop quizzes--Hilarious--Lecture heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--Caring"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected --Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Test heavy"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Participation matters --Lecture heavy--Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Test heavy--Participation matters--Graded by few things"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class--Test heavy "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Participation matters"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Amazing lectures--Accessible outside class "
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Caring--Lecture heavy --Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Respected"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Accessible outside class --Hilarious --Get ready to read"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Tough grader--Amazing lectures--Accessible outside class"
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": ""
+      }
+     },
+     {
+      "node": {
+       "ratingTags": "Hilarious--Accessible outside class--Caring"
+      }
+     }
+    ],
+    "pageInfo": {
+     "hasNextPage": false,
+     "endCursor": "synthetic-end-9000032"
+    }
+   }
+  }
+ }
+}
