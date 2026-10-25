@@ -46,7 +46,7 @@ describe("runRmpCron", () => {
     const result = RmpCronResultSchema.parse(await runRmpCron());
     expect(result).toEqual({
       roster: { ok: true, count: 31, rejectedOtherSchool: 2, skipped: false },
-      tags: { ok: true, updated: 27, remaining: 0, requests: 3, outOfTime: false },
+      tags: { ok: true, updated: 27, skipped: 0, remaining: 0, requests: 3, outOfTime: false },
     });
     expect(rosterRequests()).toBe(1);
   });
@@ -59,7 +59,7 @@ describe("runRmpCron", () => {
     vi.stubEnv("FIXTURES_NOW", new Date(synced.getTime() + 5.9 * DAY_MS).toISOString());
     expect(await runRmpCron()).toEqual({
       roster: { skipped: true, lastSuccessAt: synced.toISOString() },
-      tags: { ok: true, updated: 0, remaining: 0, requests: 0, outOfTime: false },
+      tags: { ok: true, updated: 0, skipped: 0, remaining: 0, requests: 0, outOfTime: false },
     });
     expect(fetchExternal).not.toHaveBeenCalled();
 
@@ -93,6 +93,7 @@ describe("runRmpCron", () => {
     expect((await runRmpCron({ clock, budgetMs: 240_000 })).tags).toEqual({
       ok: true,
       updated: 0,
+      skipped: 0,
       remaining: 27,
       requests: 0,
       outOfTime: true,
@@ -113,6 +114,7 @@ describe("runRmpCron", () => {
       tags: {
         ok: false,
         updated: 0,
+        skipped: 0,
         remaining: 0,
         requests: 0,
         outOfTime: false,

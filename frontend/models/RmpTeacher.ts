@@ -22,6 +22,8 @@ import { RMP_TAGS } from "@/lib/types/ratings";
  * - `topTags`: the five tags (lib/types/ratings.ts RMP_TAGS) most used on the teacher's ratings, most used first,
  *   counted from `tagRatingsCounted` ratings at `tagsFetchedAt` (null: never counted), when RMP listed
  *   `tagsNumRatings` ratings; a different numRatings makes the teacher due for a recount.
+ * - `tagsFailures` / `tagsRetryAt`: unusable tag answers in a row, and when the teacher is next asked (null: when
+ *   due). A good count resets both; until `tagsRetryAt` the teacher is not due, so it never blocks the queue.
  */
 const RmpTeacherSchema = new Schema(
   {
@@ -54,6 +56,8 @@ const RmpTeacherSchema = new Schema(
     tagRatingsCounted: { type: Number, default: 0, min: 0 },
     tagsNumRatings: { type: Number, default: null, min: 0 },
     tagsFetchedAt: { type: Date, default: null },
+    tagsFailures: { type: Number, default: 0, min: 0 },
+    tagsRetryAt: { type: Date, default: null },
   },
   { collection: "rmpteachers", timestamps: true },
 );

@@ -29,7 +29,8 @@ import { RMP_GRAPHQL_URL } from "@/server/rmp/roster";
  *   }
  *
  * - Due: numRatings ≥ 1 and never counted, counted when RMP listed a different numRatings, or counted more than
- *   TAGS_MAX_AGE_DAYS ago. Work order: never counted first, then the oldest count, then legacyId.
+ *   TAGS_MAX_AGE_DAYS ago; and not waiting out a backoff (below). Work order: never counted first, then the oldest
+ *   count, then legacyId.
  * - Up to TAG_BATCH_SIZE teachers per request, TAG_CONCURRENCY requests at a time with a short pause between a
  *   worker's requests; each teacher is paged with its own cursor until RMP reports no next page (TAG_MAX_PAGES at
  *   most: the newest TAG_MAX_PAGES × TAG_PAGE_SIZE ratings are counted).
@@ -40,8 +41,14 @@ import { RMP_GRAPHQL_URL } from "@/server/rmp/roster";
  *   starts with them (they are still the oldest).
  * - Time budget: no request starts unless it can time out and be stored before the deadline.
  * - An upstream failure (HTTP error, timeout, a GraphQL error without data, an unexpected shape) stops the run, with
- *   no retries against a failing upstream; the stored counts stay. A teacher whose own answer is missing or
- *   malformed is skipped for this run. Every run is recorded in rmptagsyncs (recordTagSync).
+ *   no retries against a failing upstream; the stored counts stay. Every run is recorded in rmptagsyncs
+ *   (recordTagSync).
+ * - A teacher whose own answer is missing, null, malformed or stuck (a cursor that does not move) is skipped and
+ *   marked: tagsFailures + 1 and tagsRetryAt = the run's time + TAG_RETRY_BASE_DAYS × 2^(failures − 1), at most
+ *   TAG_RETRY_MAX_DAYS. Until then it is not due, so a few bad teachers at the front of the work order (they stay
+ *   "never counted") cannot hold back the rest of the queue run after run; a good count clears both fields. The run
+ *   goes on after a batch in which no teacher was usable, and stops only after TAG_MAX_EMPTY_BATCHES of them in a
+ *   row (then the upstream, not the teachers, is the problem; those teachers are marked too).
  */
 
 export const TAGS_QUERY_NAME = "DavidsonTeacherTags";
@@ -60,6 +67,12 @@ export const TAG_REQUEST_TIMEOUT_MS = 15_000;
 export const TAG_STORE_RESERVE_MS = 5_000;
 /** A count older than this is redone even when the number of ratings did not change. */
 export const TAGS_MAX_AGE_DAYS = 30;
+/** A teacher with an unusable answer waits this long before it is asked again, doubled per failure in a row... */
+export const TAG_RETRY_BASE_DAYS = 1;
+/** ...and never longer than this. */
+export const TAG_RETRY_MAX_DAYS = TAGS_MAX_AGE_DAYS;
+/** Requests in a row without one usable teacher that stop the run. */
+export const TAG_MAX_EMPTY_BATCHES = 3;
 const TAG_MAX_BYTES = 4 * 1024 * 1024;
 const DAY_MS = 24 * 60 * 60_000;
 
@@ -195,7 +208,8 @@ export class TagsError extends Error {
 
 /**
  * Validate one batch answer. Per teacher: its page, or null when its alias is missing, null (a GraphQL error on that
- * node) or malformed. Throws TagsError when the answer as a whole is unusable.
+ * node) or malformed, even when that is every teacher (the run marks them and goes on). Throws TagsError when the
+ * answer as a whole is unusable: not JSON of the GraphQL shape, or no `data` at all.
  */
 export function parseTagsResponse(
   data: unknown,
@@ -234,9 +248,6 @@ export function parseTagsResponse(
       endCursor: pageInfo.endCursor || null,
     });
   }
-  if (items.length > 0 && [...pages.values()].every((page) => page === null)) {
-    throw new TagsError("RateMyProfessors answered without any of the requested teachers.");
-  }
   return pages;
 }
 
@@ -246,24 +257,43 @@ export function parseTagsResponse(
 function dueFilter(at: Date): Record<string, unknown> {
   return {
     numRatings: trusted({ $gte: 1 }),
-    $or: [
-      { tagsFetchedAt: null },
-      { tagsFetchedAt: trusted({ $lt: new Date(at.getTime() - TAGS_MAX_AGE_DAYS * DAY_MS) }) },
-      { $expr: trusted({ $ne: ["$tagsNumRatings", "$numRatings"] }) },
+    $and: [
+      {
+        $or: [
+          { tagsFetchedAt: null },
+          { tagsFetchedAt: trusted({ $lt: new Date(at.getTime() - TAGS_MAX_AGE_DAYS * DAY_MS) }) },
+          { $expr: trusted({ $ne: ["$tagsNumRatings", "$numRatings"] }) },
+        ],
+      },
+      { $or: [{ tagsRetryAt: null }, { tagsRetryAt: trusted({ $lte: at }) }] },
     ],
   };
+}
+
+/** When a teacher with `failures` unusable answers in a row (this one included) is asked again. */
+export function tagRetryAt(at: Date, failures: number): Date {
+  const days = Math.min(TAG_RETRY_MAX_DAYS, TAG_RETRY_BASE_DAYS * 2 ** Math.max(0, failures - 1));
+  return new Date(at.getTime() + days * DAY_MS);
 }
 
 const DueTeacherSchema = z.object({
   legacyId: z.number().int().positive(),
   rmpId: z.string().min(1).max(200),
   numRatings: z.number().int().min(1),
+  tagsFailures: z
+    .number()
+    .int()
+    .min(0)
+    .nullish()
+    .transform((value) => value ?? 0),
 });
 
 interface Work {
   legacyId: number;
   rmpId: string;
   numRatings: number;
+  /** Unusable answers in a row before this run. */
+  tagsFailures: number;
   after: string | null;
   pages: number;
   ratings: number;
@@ -302,10 +332,17 @@ function failureMessage(error: ExternalFetchError | TagsError): string {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-/** Write each finished teacher's whole count (one $set per teacher). */
-async function storeCounts(done: readonly Work[], at: Date): Promise<void> {
-  if (done.length === 0) return;
-  const writes = done.map((work) => ({
+/**
+ * Write each finished teacher's whole count (one $set per teacher, which clears any backoff), and mark each
+ * teacher whose answer was unusable (its stored count, if any, stays).
+ */
+async function storeCounts(
+  done: readonly Work[],
+  unusable: readonly Work[],
+  at: Date,
+): Promise<void> {
+  if (done.length === 0 && unusable.length === 0) return;
+  const counted = done.map((work) => ({
     updateOne: {
       filter: { legacyId: work.legacyId, rmpId: work.rmpId },
       update: {
@@ -314,10 +351,24 @@ async function storeCounts(done: readonly Work[], at: Date): Promise<void> {
           tagRatingsCounted: work.ratings,
           tagsNumRatings: work.numRatings,
           tagsFetchedAt: at,
+          tagsFailures: 0,
+          tagsRetryAt: null,
         },
       },
     },
   }));
+  const marked = unusable.map((work) => ({
+    updateOne: {
+      filter: { legacyId: work.legacyId, rmpId: work.rmpId },
+      update: {
+        $set: {
+          tagsFailures: work.tagsFailures + 1,
+          tagsRetryAt: tagRetryAt(at, work.tagsFailures + 1),
+        },
+      },
+    },
+  }));
+  const writes = [...counted, ...marked];
   // Mongoose types an array $set as a DocumentArray; a plain array of {tag, count} is what it casts and stores.
   await RmpTeacher.bulkWrite(writes as unknown as Parameters<typeof RmpTeacher.bulkWrite>[0], {
     ordered: false,
@@ -330,6 +381,7 @@ export async function recordTagSync(result: TagSyncResult, at: Date): Promise<vo
   const counts = {
     lastAttemptAt: at,
     lastUpdated: result.updated,
+    lastSkipped: result.skipped,
     lastRequests: result.requests,
     remaining: result.remaining,
     outOfTime: result.outOfTime,
@@ -373,7 +425,7 @@ export async function runTagSync(options: TagSyncOptions): Promise<TagSyncResult
     await getDb();
     const docs: unknown[] = await RmpTeacher.find(dueFilter(runAt))
       .sort({ tagsFetchedAt: 1, legacyId: 1 })
-      .select("legacyId rmpId numRatings")
+      .select("legacyId rmpId numRatings tagsFailures")
       .lean();
     for (const doc of docs) {
       const teacher = DueTeacherSchema.safeParse(doc);
@@ -392,6 +444,8 @@ export async function runTagSync(options: TagSyncOptions): Promise<TagSyncResult
   let updated = 0;
   let skipped = 0;
   let dropped = 0;
+  /** Requests in a row whose answer had no usable teacher (TAG_MAX_EMPTY_BATCHES stops the run). */
+  let emptyBatches = 0;
   let outOfTime = false;
   let failure: string | null = null;
   /** A database failure (recorded) or anything unexpected, e.g. a MissingFixtureError (not recorded): rethrown. */
@@ -434,12 +488,15 @@ export async function runTagSync(options: TagSyncOptions): Promise<TagSyncResult
       }
 
       const done: Work[] = [];
+      const unusable: Work[] = [];
+      emptyBatches = batch.some((work) => pages.get(work.legacyId)) ? 0 : emptyBatches + 1;
       for (const work of batch) {
         const page = pages.get(work.legacyId);
-        // A cursor that does not move would page forever: skip the teacher for this run.
+        // A cursor that does not move would page forever: skip the teacher, like a missing answer.
         const stuck = page?.hasNextPage && (!page.endCursor || page.endCursor === work.after);
         if (!page || stuck) {
           skipped++;
+          unusable.push(work);
           continue;
         }
         work.pages++;
@@ -454,10 +511,14 @@ export async function runTagSync(options: TagSyncOptions): Promise<TagSyncResult
         } else done.push(work);
       }
       try {
-        await storeCounts(done, runAt);
+        await storeCounts(done, unusable, runAt);
         updated += done.length;
       } catch (error) {
         fatal ??= { error, store: true };
+        return;
+      }
+      if (emptyBatches >= TAG_MAX_EMPTY_BATCHES) {
+        failure ??= `RateMyProfessors answered without any of the requested teachers (${emptyBatches} requests in a row).`;
         return;
       }
     }
@@ -470,8 +531,11 @@ export async function runTagSync(options: TagSyncOptions): Promise<TagSyncResult
     throw error;
   }
 
-  if (skipped > 0)
-    console.warn(`[rmp] tags: skipped ${skipped} teacher(s) with an unusable answer`);
+  if (skipped > 0) {
+    console.warn(
+      `[rmp] tags: skipped ${skipped} teacher(s) with an unusable answer; each is asked again after a backoff`,
+    );
+  }
   if (dropped > 0) console.warn(`[rmp] tags: dropped ${dropped} tag(s) outside RMP's fixed list`);
 
   let remaining: number;
@@ -484,6 +548,7 @@ export async function runTagSync(options: TagSyncOptions): Promise<TagSyncResult
   const result: TagSyncResult = {
     ok: failure === null,
     updated,
+    skipped,
     remaining,
     requests,
     outOfTime: outOfTime && remaining > 0,
@@ -495,7 +560,15 @@ export async function runTagSync(options: TagSyncOptions): Promise<TagSyncResult
 
 async function recordStoreFailure(at: Date): Promise<void> {
   await recordTagSync(
-    { ok: false, updated: 0, remaining: 0, requests: 0, outOfTime: false, error: STORE_FAILURE },
+    {
+      ok: false,
+      updated: 0,
+      skipped: 0,
+      remaining: 0,
+      requests: 0,
+      outOfTime: false,
+      error: STORE_FAILURE,
+    },
     at,
   ).catch(() => undefined);
 }

@@ -288,7 +288,7 @@ describe("GET /api/cron/rmp", () => {
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(RmpCronResultSchema.parse(await res.json())).toEqual({
       roster: { ok: true, count: 31, rejectedOtherSchool: 2, skipped: false },
-      tags: { ok: true, updated: 27, remaining: 0, requests: 3, outOfTime: false },
+      tags: { ok: true, updated: 27, skipped: 0, remaining: 0, requests: 3, outOfTime: false },
     });
     expect(await RmpTeacher.countDocuments()).toBe(31);
     expect(await RmpTeacher.countDocuments({ tagsFetchedAt: trusted({ $type: "date" }) })).toBe(27);

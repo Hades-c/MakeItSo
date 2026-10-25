@@ -112,6 +112,11 @@ export const TagSyncResultSchema = z.object({
   ok: z.boolean(),
   /** Teachers whose tags were counted and stored in this run. */
   updated: z.number().int().min(0),
+  /**
+   * Teachers whose answer was unusable in this run (missing, null, malformed or stuck): each is asked again after
+   * a backoff, and is not in `remaining` until then.
+   */
+  skipped: z.number().int().min(0),
   /** Rated teachers still due for a count after this run (0: every rated teacher is current). */
   remaining: z.number().int().min(0),
   /** GraphQL requests this run sent. */

@@ -31,7 +31,10 @@ import {
   parseTagsResponse,
   runTagSync,
   TAG_BATCH_SIZE,
+  TAG_MAX_EMPTY_BATCHES,
   TAG_PAGE_SIZE,
+  TAG_RETRY_MAX_DAYS,
+  tagRetryAt,
   TAGS_MAX_AGE_DAYS,
   TagsError,
   tagsRequestBody,
@@ -201,15 +204,23 @@ describe("parseTagsResponse", () => {
     expect([pages.get(2), pages.get(3), pages.get(4)]).toEqual([null, null, null]);
   });
 
+  it("answers null for every teacher when none is usable, so the run can mark them and go on", () => {
+    const pages = parseTagsResponse(
+      { data: { t1: null, t2: null }, errors: [{ message: "not found" }] },
+      [{ legacyId: 1 }, { legacyId: 2 }],
+    );
+    expect([...pages]).toEqual([
+      [1, null],
+      [2, null],
+    ]);
+  });
+
   it("throws TagsError when the answer as a whole is unusable", () => {
     expect(() =>
       parseTagsResponse({ errors: [{ message: "Too many requests" }] }, [{ legacyId: 1 }]),
     ).toThrow("RateMyProfessors answered with an error: Too many requests");
     expect(() => parseTagsResponse({ data: null }, [{ legacyId: 1 }])).toThrow(TagsError);
     expect(() => parseTagsResponse("<html>", [{ legacyId: 1 }])).toThrow(TagsError);
-    expect(() => parseTagsResponse({ data: { t1: null } }, [{ legacyId: 1 }])).toThrow(
-      "without any of the requested teachers",
-    );
   });
 });
 
@@ -250,6 +261,10 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
       .lean();
   }
 
+  async function backoff(legacyId: number) {
+    return RmpTeacher.findOne({ legacyId }).select("tagsFailures tagsRetryAt -_id").lean();
+  }
+
   /** Rated teachers written straight to the collection, for the hand-made fixture answers. */
   async function seedTeachers(legacyIds: number[], numRatings = 5) {
     await RmpTeacher.insertMany(
@@ -283,6 +298,7 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
     expect(TagSyncResultSchema.parse(result)).toEqual({
       ok: true,
       updated: RATED,
+      skipped: 0,
       remaining: 0,
       requests: Math.ceil(RATED / TAG_BATCH_SIZE),
       outOfTime: false,
@@ -362,6 +378,7 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
     expect(await run()).toEqual({
       ok: true,
       updated: 0,
+      skipped: 0,
       remaining: 0,
       requests: 0,
       outOfTime: false,
@@ -370,14 +387,14 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
 
     // A new rating on RMP (the roster sync stores the new numRatings; it never touches the tag fields).
     await RmpTeacher.updateOne({ legacyId: 9000004 }, { $set: { numRatings: 9 } });
-    expect(await run()).toMatchObject({ updated: 1, remaining: 0, requests: 1 });
+    expect(await run()).toMatchObject({ updated: 1, skipped: 0, remaining: 0, requests: 1 });
     expect(await storedTags(9000004)).toMatchObject({ tagsNumRatings: 9, tagRatingsCounted: 8 });
 
     vi.stubEnv(
       "FIXTURES_NOW",
       new Date(now().getTime() + (TAGS_MAX_AGE_DAYS + 1) * 864e5).toISOString(),
     );
-    expect(await run()).toMatchObject({ updated: RATED, remaining: 0 });
+    expect(await run()).toMatchObject({ updated: RATED, skipped: 0, remaining: 0 });
   });
 
   it("keeps the tag fields when the roster is synced again", async () => {
@@ -433,6 +450,7 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
     expect(await run({ budgetMs: 19_000 })).toEqual({
       ok: true,
       updated: 0,
+      skipped: 0,
       remaining: RATED,
       requests: 0,
       outOfTime: true,
@@ -474,7 +492,7 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
     });
   });
 
-  it("skips a teacher whose cursor does not advance or whose answer is missing; stores the rest", async () => {
+  it("skips and backs off a teacher whose cursor does not advance or whose answer is missing; stores the rest", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     await seedTeachers([201, 202, 203]);
     fixtures = serveRosterFixtures([
@@ -491,11 +509,128 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
         },
       },
     ]);
-    expect(await run()).toMatchObject({ ok: true, updated: 1, remaining: 2 });
+    // 201 and 203 wait out a day's backoff: not counted, and not due (so not in `remaining`) until then.
+    expect(await run()).toMatchObject({ ok: true, updated: 1, skipped: 2, remaining: 0 });
     expect((await storedTags(201))?.tagsFetchedAt).toBeNull();
     expect((await storedTags(202))?.topTags).toEqual([{ tag: "Hilarious", count: 1 }]);
     expect((await storedTags(203))?.tagsFetchedAt).toBeNull();
+    expect(await backoff(201)).toEqual({ tagsFailures: 1, tagsRetryAt: tagRetryAt(now(), 1) });
+    expect(await backoff(203)).toEqual({ tagsFailures: 1, tagsRetryAt: tagRetryAt(now(), 1) });
+    expect(await backoff(202)).toEqual({ tagsFailures: 0, tagsRetryAt: null });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("skipped 2 teacher(s)"));
+    expect(await RmpTagSync.findOne({ key: "tags" }).lean()).toMatchObject({
+      ok: true,
+      lastUpdated: 1,
+      lastSkipped: 2,
+    });
+  });
+
+  it("never lets a full batch of bad teachers at the front hold back the rest of the queue", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    // Ten teachers whose node answers null come first in the work order (never counted, lowest ids): before the
+    // backoff, every run asked for them first, got nothing usable and stopped, run after run.
+    const bad = Array.from({ length: TAG_BATCH_SIZE }, (_, i) => 101 + i);
+    const good = Array.from({ length: TAG_BATCH_SIZE }, (_, i) => 201 + i);
+    await seedTeachers([...bad, ...good]);
+    const data: Record<string, unknown> = {};
+    for (const id of bad) data[`t${id}`] = null;
+    for (const id of good) data[`t${id}`] = ratingsPage(["Caring", "Caring--Hilarious"]);
+    fixtures = serveRosterFixtures([
+      {
+        file: "tags.json",
+        bodyIncludes: "DavidsonTeacherTags",
+        body: { data, errors: [{ message: "not found" }] },
+      },
+    ]);
+    const first = await run({ concurrency: 1 });
+    expect(first).toEqual({
+      ok: true,
+      updated: TAG_BATCH_SIZE,
+      skipped: TAG_BATCH_SIZE,
+      remaining: 0,
+      requests: 2,
+      outOfTime: false,
+    });
+    for (const id of good) {
+      expect(await storedTags(id), String(id)).toMatchObject({
+        topTags: [
+          { tag: "Caring", count: 2 },
+          { tag: "Hilarious", count: 1 },
+        ],
+        tagRatingsCounted: 2,
+      });
+    }
+    for (const id of bad) expect((await backoff(id))?.tagsFailures, String(id)).toBe(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("skipped 10 teacher(s)"));
+
+    // The next day the bad ones are due again: still bad, so they wait twice as long. Nothing else is asked.
+    vi.mocked(fetchExternal).mockClear();
+    vi.stubEnv("FIXTURES_NOW", new Date(now().getTime() + 864e5).toISOString());
+    expect(await run()).toMatchObject({
+      ok: true,
+      updated: 0,
+      skipped: TAG_BATCH_SIZE,
+      requests: 1,
+    });
+    expect(await backoff(101)).toEqual({ tagsFailures: 2, tagsRetryAt: tagRetryAt(now(), 2) });
+    expect(tagRetryAt(now(), 2).getTime() - now().getTime()).toBe(2 * 864e5);
+    // A day later they wait; a good answer then clears the backoff.
+    vi.stubEnv("FIXTURES_NOW", new Date(now().getTime() + 864e5).toISOString());
+    expect(await run()).toMatchObject({ updated: 0, skipped: 0, requests: 0, remaining: 0 });
+    fixtures.cleanup();
+    for (const id of bad) data[`t${id}`] = ratingsPage(["Respected"]);
+    fixtures = serveRosterFixtures([
+      { file: "tags.json", bodyIncludes: "DavidsonTeacherTags", body: { data } },
+    ]);
+    vi.stubEnv("FIXTURES_NOW", new Date(now().getTime() + 864e5).toISOString());
+    expect(await run()).toMatchObject({ ok: true, updated: TAG_BATCH_SIZE, skipped: 0 });
+    expect(await backoff(101)).toEqual({ tagsFailures: 0, tagsRetryAt: null });
+    expect((await storedTags(101))?.topTags).toEqual([{ tag: "Respected", count: 1 }]);
+  });
+
+  it("stops after TAG_MAX_EMPTY_BATCHES requests in a row with no usable teacher, marking them all", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const ids = Array.from(
+      { length: TAG_BATCH_SIZE * (TAG_MAX_EMPTY_BATCHES + 1) },
+      (_, i) => 601 + i,
+    );
+    await seedTeachers(ids);
+    fixtures = serveRosterFixtures([
+      {
+        file: "tags.json",
+        bodyIncludes: "DavidsonTeacherTags",
+        body: { data: Object.fromEntries(ids.map((id) => [`t${id}`, null])) },
+      },
+    ]);
+    const result = await run({ concurrency: 1 });
+    expect(result).toEqual({
+      ok: false,
+      updated: 0,
+      skipped: TAG_BATCH_SIZE * TAG_MAX_EMPTY_BATCHES,
+      // The last batch was never asked for: still due.
+      remaining: TAG_BATCH_SIZE,
+      requests: TAG_MAX_EMPTY_BATCHES,
+      outOfTime: false,
+      error: `RateMyProfessors answered without any of the requested teachers (${TAG_MAX_EMPTY_BATCHES} requests in a row).`,
+    });
+    // The next run starts with the teachers not asked yet.
+    vi.mocked(fetchExternal).mockClear();
+    await run({ concurrency: 1 });
+    const asked = vi
+      .mocked(fetchExternal)
+      .mock.calls.flatMap(([, , options]) =>
+        Object.keys((options?.body as { variables: Record<string, unknown> }).variables),
+      )
+      .filter((key) => key.startsWith("id"))
+      .map((key) => Number(key.slice(2)));
+    expect(asked).toEqual(ids.slice(TAG_BATCH_SIZE * TAG_MAX_EMPTY_BATCHES));
+  });
+
+  it("doubles the backoff per failure in a row, up to TAG_RETRY_MAX_DAYS", () => {
+    const at = new Date("2026-09-30T16:00:00Z");
+    const days = (failures: number) => (tagRetryAt(at, failures).getTime() - at.getTime()) / 864e5;
+    expect([1, 2, 3, 4, 5, 6, 7, 20].map(days)).toEqual([1, 2, 4, 8, 16, 30, 30, 30]);
+    expect(TAG_RETRY_MAX_DAYS).toBe(30);
   });
 
   it("stores the first maxPages pages of a teacher with more", async () => {
@@ -526,6 +661,7 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
     expect(result).toEqual({
       ok: false,
       updated: 0,
+      skipped: 0,
       remaining: RATED,
       requests: 1,
       outOfTime: false,
@@ -553,6 +689,7 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
     expect(await run()).toMatchObject({
       ok: false,
       updated: 0,
+      skipped: 0,
       remaining: 1,
       error: "RateMyProfessors answered with an error: Rate limited",
     });
@@ -580,6 +717,7 @@ describe("runTagSync (fixtures + in-memory MongoDB)", () => {
     expect(await run()).toEqual({
       ok: true,
       updated: 0,
+      skipped: 0,
       remaining: 0,
       requests: 0,
       outOfTime: false,

@@ -52,6 +52,7 @@ export async function runRmpCron(options: RmpCronOptions = {}): Promise<RmpCronR
     const tags: TagSyncResult = {
       ok: false,
       updated: 0,
+      skipped: 0,
       remaining: 0,
       requests: 0,
       outOfTime: false,

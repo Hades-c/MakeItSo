@@ -21,6 +21,8 @@ const RmpTagSyncSchema = new Schema(
     consecutiveFailures: { type: Number, default: 0 },
     /** Teachers counted and stored by the last run. */
     lastUpdated: { type: Number, default: 0 },
+    /** Teachers the last run skipped (an unusable answer): each waits out a backoff. */
+    lastSkipped: { type: Number, default: 0 },
     /** GraphQL requests the last run sent. */
     lastRequests: { type: Number, default: 0 },
     /** Rated teachers still due after the last run. */

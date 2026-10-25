@@ -96,6 +96,15 @@ The frozen interfaces every workstream codes against. They change only through t
 - Every course code content quotes exists in the fixture terms (gate (a), no exemptions).
 - The alumni search result links `routes.alumnus(id)`: the directory renders each card with `id={alumnus.id}`.
 
+## Ratings (`lib/types/ratings.ts`, `server/rmp`)
+
+- Tag counts (`server/rmp/tags.ts`, the daily cron): a teacher whose own answer is unusable (missing, null,
+  malformed, or a cursor that does not move) is skipped and marked, `tagsFailures` + 1 and `tagsRetryAt` (1 day,
+  doubling per failure in a row, at most 30), and is not due until then, so a few bad teachers at the front of the
+  work order never hold back the rest of the queue; a good count clears both. The run goes on after a request with
+  no usable teacher and stops after `TAG_MAX_EMPTY_BATCHES` (3) of them in a row. `TagSyncResult.skipped` counts the
+  skipped teachers (they are not in `remaining` while they wait); `rmptagsyncs.lastSkipped` keeps the last run's.
+
 ## Auth (`server/auth`, W3)
 
 - **Sessions**: `requireUser({ verifiedDavidson?, returnTo? })` for pages and layouts: signed out →
