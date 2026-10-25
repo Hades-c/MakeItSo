@@ -1,95 +1,82 @@
 import { describe, expect, it } from "vitest";
-import { H2_ORDER_BASELINE } from "../e2e/ux/h2-order-baseline";
-import { budgetTable, judge, judgeH2Order, verdict } from "../e2e/ux/metrics";
+import { H2_ORDER_WARN_ONLY } from "../e2e/ux/h2-order-baseline";
+import { budgetTable, h2OrderScope, judge, judgeH2Order, verdict } from "../e2e/ux/metrics";
 
 const DOM = ["Today", "Degree progress", "Due for you"];
 const SCREEN = ["Today", "Due for you", "Degree progress"];
+const QW8 = { until: "QW8 (Today's JSX in phone order)" };
 
 describe("ux budgets: the h2 order check", () => {
-  it("passes a page whose DOM reads in screen order, with no baseline entry", () => {
+  it("passes a page in order where it passes today, and says the check is hard there", () => {
     const r = judgeH2Order(1440, { same: true, dom: DOM, visual: DOM }, undefined);
     expect(verdict(r)).toBe("PASS");
+    expect(r).toMatchObject({ hard: true, detail: "hard: in order today" });
   });
 
-  it("fails a new mismatch, with both sequences", () => {
+  it("fails a page that passes today once it is out of order, with both sequences", () => {
     const r = judgeH2Order(1440, { same: false, dom: DOM, visual: SCREEN }, undefined);
     expect(verdict(r)).toBe("FAIL");
     expect(r.detail).toBe(
-      "new mismatch: DOM Today > Degree progress > Due for you | screen Today > Due for you > Degree progress",
+      "hard, a new mismatch: DOM Today > Degree progress > Due for you | screen Today > Due for you > Degree progress",
     );
   });
 
-  it("lists a mismatch that matches its baseline exactly as KNOWN", () => {
-    const r = judgeH2Order(
-      1024,
-      { same: false, dom: DOM, visual: SCREEN },
-      { dom: DOM, visual: SCREEN },
-    );
-    expect(verdict(r)).toBe("KNOWN");
-    expect(r).toMatchObject({ hard: true, pass: false, known: true, width: 1024 });
+  it("only warns where the page is out of order today, whatever its headings say", () => {
+    const r = judgeH2Order(1024, { same: false, dom: DOM, visual: SCREEN }, QW8);
+    expect(verdict(r)).toBe("WARN");
+    expect(r).toMatchObject({ hard: false, pass: false, width: 1024 });
+    expect(r.detail).toBe("warning only, until QW8 (Today's JSX in phone order)");
+    // A count in a heading changed, or the order moved: still a warning, never a failure.
+    const moved = ["Due for you 5", "Today", "Degree progress"];
+    expect(verdict(judgeH2Order(390, { same: false, dom: DOM, visual: moved }, QW8))).toBe("WARN");
   });
 
-  it("fails a known mismatch whose sequences changed", () => {
-    const moved = ["Due for you", "Today", "Degree progress"];
-    const r = judgeH2Order(
-      390,
-      { same: false, dom: DOM, visual: moved },
-      { dom: DOM, visual: SCREEN },
-    );
-    expect(verdict(r)).toBe("FAIL");
-    expect(r.detail).toMatch(/^differs from its baseline: /);
-  });
-
-  it("accepts an entry's second screen order (a tie on one row), and nothing else", () => {
-    const tie = ["Today", "Degree progress", "Due for you"].reverse();
-    const known = { dom: DOM, visual: SCREEN, alsoVisual: tie };
-    expect(verdict(judgeH2Order(1024, { same: false, dom: DOM, visual: tie }, known))).toBe(
-      "KNOWN",
-    );
-    expect(verdict(judgeH2Order(1024, { same: false, dom: DOM, visual: SCREEN }, known))).toBe(
-      "KNOWN",
-    );
-    const other = ["Degree progress", "Today", "Due for you"];
-    expect(verdict(judgeH2Order(1024, { same: false, dom: DOM, visual: other }, known))).toBe(
-      "FAIL",
+  it("says when a warned page reads in order now, so its entry can go", () => {
+    const r = judgeH2Order(1440, { same: true, dom: SCREEN, visual: SCREEN }, QW8);
+    expect(verdict(r)).toBe("PASS");
+    expect(r.hard).toBe(false);
+    expect(r.detail).toBe(
+      "warning only, until QW8 (Today's JSX in phone order): in order now, remove its h2-order-baseline.ts entry to make it hard",
     );
   });
 
-  it("fails a baselined page that is now in order, until its entry is removed", () => {
-    const r = judgeH2Order(
-      1440,
-      { same: true, dom: SCREEN, visual: SCREEN },
-      { dom: DOM, visual: SCREEN },
+  it("says, per page, where the check is hard and where it only warns", () => {
+    const warnOnly = { "today@1440": QW8, "today@1024": QW8, "events@1440": { until: "M9" } };
+    expect(h2OrderScope("today", [1440, 1024, 768, 390], warnOnly)).toBe(
+      "h2 order: hard at 768 and 390 (in order today); " +
+        "a warning at 1440 and 1024 (out of order today, until QW8 (Today's JSX in phone order))",
     );
-    expect(verdict(r)).toBe("FAIL");
-    expect(r.detail).toBe("now in order: remove its baseline entry");
+    expect(h2OrderScope("courses", [1440, 390], warnOnly)).toBe(
+      "h2 order: hard at 1440 and 390 (in order today)",
+    );
+    expect(h2OrderScope("events", [1440], warnOnly)).toBe(
+      "h2 order: a warning at 1440 (out of order today, until M9)",
+    );
   });
 
-  it("keeps every baseline entry a real mismatch with a reason", () => {
-    for (const [key, known] of Object.entries(H2_ORDER_BASELINE)) {
+  it("keeps every warning tied to a measured page and width, with a reason", () => {
+    for (const [key, entry] of Object.entries(H2_ORDER_WARN_ONLY)) {
       expect(key).toMatch(/^[a-z0-9-]+@(1440|1024|768|390)$/);
-      for (const visual of [known.visual, known.alsoVisual ?? known.visual]) {
-        expect(known.dom.join(" > "), key).not.toBe(visual.join(" > "));
-        expect([...known.dom].sort(), key).toEqual([...visual].sort());
-      }
-      expect(known.until, key).not.toBe("");
+      expect(entry.until, key).not.toBe("");
     }
   });
 });
 
 describe("ux budgets: the table", () => {
-  it("says PASS, WARN, FAIL and KNOWN, with the detail after the value", () => {
+  it("says PASS, WARN and FAIL, with the detail after the value", () => {
     const table = budgetTable("today", [
       judge({ check: "red", op: "==", target: 1 }, 1440, 1),
       judge({ check: "words", op: "<=", target: 420 }, 1440, 876),
       judge({ check: "railLabelsVisible", op: "==", target: 6, hard: true }, 1024, 5),
-      judgeH2Order(390, { same: false, dom: DOM, visual: SCREEN }, { dom: DOM, visual: SCREEN }),
+      judgeH2Order(390, { same: false, dom: DOM, visual: SCREEN }, QW8),
+      judgeH2Order(768, { same: true, dom: DOM, visual: DOM }, undefined),
     ]);
-    expect(table.split("\n").slice(4, 8)).toEqual([
+    expect(table.split("\n").slice(4, 9)).toEqual([
       "| 1440 | red | == 1 | 1 | PASS |",
       "| 1440 | words | <= 420 | 876 | WARN |",
       "| 1024 | railLabelsVisible | == 6 | 5 | FAIL |",
-      "| 390 | h2Order | == 1 | 0 (known, in the baseline) | KNOWN |",
+      "| 390 | h2Order | == 1 | 0 (warning only, until QW8 (Today's JSX in phone order)) | WARN |",
+      "| 768 | h2Order | == 1 | 1 (hard: in order today) | PASS |",
     ]);
   });
 

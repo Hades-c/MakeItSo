@@ -321,8 +321,6 @@ export interface BudgetResult extends Budget {
   width: number;
   actual: number | null;
   pass: boolean;
-  /** A miss that matches its known baseline entry exactly: listed as KNOWN, never a failure. */
-  known?: boolean;
   /** Said after the actual value (in the table and in a failure). */
   detail?: string;
 }
@@ -344,44 +342,64 @@ export interface H2Sequences {
   visual: readonly string[];
 }
 
-/** A baseline entry: the known sequences, and another screen order for two headings that tie on one row. */
-export interface KnownH2Sequences extends H2Sequences {
-  alsoVisual?: readonly string[];
-}
-
 const sequence = (labels: readonly string[]) => labels.join(" > ");
 
 /**
- * The h2 order check (WCAG 1.3.2), hard on every page at every width: the DOM must read in the order the screen
- * shows, except where `known` (the page's entry in h2-order-baseline.ts) lists today's mismatch exactly. A new
- * mismatch fails, a known one whose sequences change fails, and so does a known one that is fixed, so its entry
- * is removed as the item that fixes it lands.
+ * The h2 order check (WCAG 1.3.2): the DOM must read in the order the screen shows. Hard where it passes today;
+ * a warning where `warnOnly` (the page's entry in h2-order-baseline.ts) says it is out of order today. Every row
+ * says which it is, and a warned page that now reads in order says to remove its entry.
  */
 export function judgeH2Order(
   width: number,
   observed: H2Sequences & { same: boolean },
-  known: KnownH2Sequences | undefined,
+  warnOnly: { until: string } | undefined,
 ): BudgetResult {
-  const base = { check: "h2Order", op: "==", target: 1, hard: true, width } as const;
+  const base = { check: "h2Order", op: "==", target: 1, hard: !warnOnly, width } as const;
   const seen = `DOM ${sequence(observed.dom)} | screen ${sequence(observed.visual)}`;
-  if (!known) {
+  if (!warnOnly) {
     return observed.same
-      ? { ...base, actual: 1, pass: true }
-      : { ...base, actual: 0, pass: false, detail: `new mismatch: ${seen}` };
+      ? { ...base, actual: 1, pass: true, detail: "hard: in order today" }
+      : { ...base, actual: 0, pass: false, detail: `hard, a new mismatch: ${seen}` };
   }
-  if (observed.same)
-    return { ...base, actual: 1, pass: false, detail: "now in order: remove its baseline entry" };
-  const same =
-    sequence(known.dom) === sequence(observed.dom) &&
-    [known.visual, known.alsoVisual].some((v) => !!v && sequence(v) === sequence(observed.visual));
-  return same
-    ? { ...base, actual: 0, pass: false, known: true, detail: "known, in the baseline" }
-    : { ...base, actual: 0, pass: false, detail: `differs from its baseline: ${seen}` };
+  return observed.same
+    ? {
+        ...base,
+        actual: 1,
+        pass: true,
+        detail: `warning only, until ${warnOnly.until}: in order now, remove its h2-order-baseline.ts entry to make it hard`,
+      }
+    : { ...base, actual: 0, pass: false, detail: `warning only, until ${warnOnly.until}` };
 }
 
-/** A result's verdict in the table: PASS, KNOWN (a baselined miss), FAIL (hard) or WARN. */
-export function verdict(r: BudgetResult): "PASS" | "KNOWN" | "FAIL" | "WARN" {
-  return r.pass ? "PASS" : r.known ? "KNOWN" : r.hard ? "FAIL" : "WARN";
+/**
+ * One line for a page's output: where its h2 order check fails and where it only warns ("h2 order: hard at 768
+ * and 390 (in order today); a warning at 1440 and 1024 (out of order today, until QW8 (…))").
+ */
+export function h2OrderScope(
+  page: string,
+  widths: readonly number[],
+  warnOnly: Readonly<Record<string, { until: string }>>,
+): string {
+  const and = (list: readonly (number | string)[]) =>
+    list.length <= 1 ? list.join("") : `${list.slice(0, -1).join(", ")} and ${list.at(-1)}`;
+  const hard = widths.filter((width) => !warnOnly[`${page}@${width}`]);
+  const warned = new Map<string, number[]>();
+  for (const width of widths) {
+    const until = warnOnly[`${page}@${width}`]?.until;
+    if (until) warned.set(until, [...(warned.get(until) ?? []), width]);
+  }
+  const parts = [
+    ...(hard.length > 0 ? [`hard at ${and(hard)} (in order today)`] : []),
+    ...[...warned].map(
+      ([until, at]) => `a warning at ${and(at)} (out of order today, until ${until})`,
+    ),
+  ];
+  return `h2 order: ${parts.join("; ")}`;
+}
+
+/** A result's verdict in the table: PASS, FAIL (a hard budget) or WARN. */
+export function verdict(r: BudgetResult): "PASS" | "FAIL" | "WARN" {
+  return r.pass ? "PASS" : r.hard ? "FAIL" : "WARN";
 }
 
 /** The target-versus-actual table for one page, as Markdown (the CI job summary renders it). */

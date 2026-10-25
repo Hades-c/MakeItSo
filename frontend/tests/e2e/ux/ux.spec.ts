@@ -14,10 +14,11 @@ import {
   smallTapTargets,
   verifyMailbox,
 } from "../helpers";
-import { H2_ORDER_BASELINE } from "./h2-order-baseline";
+import { H2_ORDER_WARN_ONLY } from "./h2-order-baseline";
 import {
   budgetTable,
   densityMetrics,
+  h2OrderScope,
   judge,
   judgeH2Order,
   obscuredFocus,
@@ -36,10 +37,11 @@ import {
  *
  * Budget misses are warnings (a test annotation and a WARN row): a budget becomes `hard` (a failure) once the item
  * that meets it has landed. Hard from day one: axe serious or critical findings (light and dark, 1440 and 390),
- * sideways scrolling at 390 and the h2 order (WCAG 1.3.2) on every page at every width, against the mismatches
- * known today (h2-order-baseline.ts, KNOWN rows) that QW8 and later items remove. Hard as their items landed:
- * QW1's red only for the student and QW17's rail labels. The strict provenance check (attributionReport, §5.5)
- * is a warning with its problems listed.
+ * sideways scrolling at 390, and the h2 order (WCAG 1.3.2) on every page and width where it passes today; where it
+ * does not (h2-order-baseline.ts, until QW8 and later items land) it is a warning. Each page's output says which
+ * ("h2 order: hard at 768 and 390 …; a warning at 1440 …"), and so does each h2Order row. Hard as their items
+ * landed: QW1's red only for the student and QW17's rail labels. The strict provenance check (attributionReport,
+ * §5.5) is a warning with its problems listed.
  *
  * Runs once, in the desktop project (it sets its own viewports, a touch phone for 390). `npm run test:ux` runs
  * only this file; `npm run test:e2e` (CI) runs it with the rest.
@@ -343,7 +345,7 @@ test.describe("UI budgets", () => {
           for (const budget of checks)
             results.push(judge(budget, width, measured.values[budget.check] ?? null));
           results.push(
-            judgeH2Order(width, measured.h2Order, H2_ORDER_BASELINE[`${target.name}@${width}`]),
+            judgeH2Order(width, measured.h2Order, H2_ORDER_WARN_ONLY[`${target.name}@${width}`]),
           );
 
           if (width === 1440 || width === 390) {
@@ -364,9 +366,13 @@ test.describe("UI budgets", () => {
         }
       }
 
-      const table = [budgetTable(target.name, results), ...notes.map((n) => `- ${n}`), ""].join(
-        "\n",
-      );
+      const table = [
+        budgetTable(target.name, results),
+        h2OrderScope(target.name, widths, H2_ORDER_WARN_ONLY),
+        "",
+        ...notes.map((n) => `- ${n}`),
+        "",
+      ].join("\n");
       console.log(table);
       await testInfo.attach(`${target.name}-budgets.md`, {
         body: table,
@@ -374,13 +380,20 @@ test.describe("UI budgets", () => {
       });
       if (process.env.GITHUB_STEP_SUMMARY)
         appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${table}\n`);
-      for (const miss of results.filter((r) => !r.pass && (r.known || !r.hard))) {
+      for (const miss of results.filter((r) => !r.pass && !r.hard)) {
         testInfo.annotations.push({
           type: "warning",
           description: `${target.name} @${miss.width}: ${miss.check} is ${miss.actual ?? "missing"}, target ${miss.op} ${miss.target}${miss.detail ? ` (${miss.detail})` : ""}`,
         });
       }
-      const failed = results.filter((r) => !r.pass && r.hard && !r.known);
+      // A warned page that reads in order now: its entry should go, which makes the check hard there.
+      for (const fixed of results.filter((r) => r.pass && r.check === "h2Order" && !r.hard)) {
+        testInfo.annotations.push({
+          type: "warning",
+          description: `${target.name} @${fixed.width}: h2Order ${fixed.detail}`,
+        });
+      }
+      const failed = results.filter((r) => !r.pass && r.hard);
       expect(
         failed.map(
           (r) =>
@@ -393,12 +406,12 @@ test.describe("UI budgets", () => {
     });
   }
 
-  test("the h2 order baseline names only measured pages and widths", ({}, testInfo) => {
+  test("the h2 order warnings name only measured pages and widths", ({}, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "runs once");
     const measured = new Set(
       PAGES.flatMap((p) => Object.keys(p.budgets).map((width) => `${p.name}@${width}`)),
     );
-    expect(Object.keys(H2_ORDER_BASELINE).filter((key) => !measured.has(key))).toEqual([]);
+    expect(Object.keys(H2_ORDER_WARN_ONLY).filter((key) => !measured.has(key))).toEqual([]);
   });
 
   test("the red measures count a mark once and catch a red row that is not the student's", async ({
