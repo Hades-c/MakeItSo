@@ -82,7 +82,11 @@ const SWATCHES: { swatch: string; name: string; job: string }[] = [
     name: "Red tint and red text",
     job: "the current page and what is selected",
   },
-  { swatch: "bg-fg", name: "Davidson Black", job: "text, and links (always underlined)" },
+  {
+    swatch: "bg-fg",
+    name: "The text colour",
+    job: "Davidson Black in light; links are text-coloured and always underlined",
+  },
   {
     swatch: "bg-surface-2 ring-1 ring-line-strong",
     name: "Cool grey",
