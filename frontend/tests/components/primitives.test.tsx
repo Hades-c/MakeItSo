@@ -26,6 +26,10 @@ describe("Field", () => {
     expect(input).toHaveAttribute("id", "email");
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAccessibleDescription("Use your Davidson email. Enter a valid email");
+    // The error is an icon and words, never the danger colour alone (red is also the accent).
+    const error = screen.getByText("Enter a valid email").closest("p")!;
+    expect(error).toHaveClass("text-danger");
+    expect(error.querySelector("svg[aria-hidden]")).not.toBeNull();
   });
 });
 

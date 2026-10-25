@@ -520,9 +520,15 @@ describe("Due for you", () => {
     expect(watson?.dataset.forYou).toBe("false");
     expect(watson).not.toHaveAttribute("data-urgent");
     expect(watson?.querySelector(".text-urgent")).toBeNull();
+    expect(within(watson!).queryByTestId("due-urgent-icon")).toBeNull();
     const own = items.find((li) => li.dataset.kind === "student");
     expect(own).toHaveAttribute("data-urgent", "true");
     expect(own?.querySelector(".text-urgent")).toHaveTextContent("Today 5:00p");
+    // Never colour alone (red is also the accent): an alarm icon beside the words.
+    expect(own?.querySelector(".text-urgent")).toContainElement(
+      within(own!).getByTestId("due-urgent-icon"),
+    );
+    expect(screen.getAllByTestId("due-urgent-icon")).toHaveLength(1);
     expect(items.filter((li) => li.dataset.urgent === "true")).toEqual([own]);
   });
 

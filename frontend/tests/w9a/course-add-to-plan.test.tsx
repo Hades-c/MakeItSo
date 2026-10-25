@@ -87,6 +87,10 @@ describe("CourseAddToPlan", () => {
     const user = userEvent.setup();
     renderControl();
     expect(screen.getByRole("radio", { name: "Spring 2027" })).toBeChecked();
+    // A career lists many courses, each with this button: outlined, so the page keeps one red button.
+    const add = screen.getByRole("button", { name: "Add to Spring 2027" });
+    expect(add.className).not.toMatch(/\bbg-primary-fill\b/);
+    expect(add).toHaveClass("border-line-strong");
     await user.click(screen.getByRole("button", { name: "Add to Spring 2027" }));
 
     expect(

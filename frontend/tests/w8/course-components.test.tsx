@@ -680,6 +680,10 @@ describe("/courses parts", () => {
     ).toBeVisible();
     expect(within(article).getByText("+ 4 sections more on the course page")).toBeVisible();
     expect(within(article).getByTestId("add-warnings")).toHaveTextContent("plan a retake?");
+    // A button on every row: outlined (emphasis="secondary"), so the list keeps one red button.
+    const add = within(article).getByRole("button", { name: "Add to Spring 2027" });
+    expect(add.className).not.toMatch(/\bbg-primary-fill\b/);
+    expect(add).toHaveClass("border-line-strong");
     expect(within(article).getByRole("link", { name: /Writing Program/ })).toHaveAttribute(
       "href",
       "/courses/202602/WRI-101",
@@ -733,6 +737,11 @@ describe("/courses parts", () => {
     expect(screen.getByRole("checkbox", { name: "Monday" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Open seats only" })).toBeChecked();
     expect(form.querySelector("details")).toHaveAttribute("open");
+    // One red button: Search; Apply filters submits the same form, outlined.
+    expect(screen.getByRole("button", { name: "Search" })).toHaveClass("bg-primary-fill");
+    expect(screen.getByRole("button", { name: "Apply filters" }).className).not.toMatch(
+      /\bbg-primary-fill\b/,
+    );
     const active = screen.getByTestId("active-filters");
     expect(within(active).getByRole("link", { name: /Mathematics/ })).toHaveAttribute(
       "href",
