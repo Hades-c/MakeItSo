@@ -216,6 +216,19 @@ export async function seriousViolations(page: Page, include?: string): Promise<s
     .map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
 
+/**
+ * Controls whose aria-label leaves out their visible words (WCAG 2.5.3 Label in Name: a speech-input user says
+ * what they see). axe's rule for it is experimental, so seriousViolations' tag sets never run it: a spec calls
+ * this on the part of the page it owns (`include`, a CSS selector).
+ */
+export async function labelInNameMismatches(page: Page, include: string): Promise<string[]> {
+  const results = await new AxeBuilder({ page })
+    .include(include)
+    .withRules(["label-content-name-mismatch"])
+    .analyze();
+  return results.violations.flatMap((v) => v.nodes.map((n) => n.target.join(" ")));
+}
+
 /** How far the page scrolls sideways (PLAN §6.2: scrollWidth ≤ innerWidth on every route); ≤ 0 passes. */
 export async function horizontalOverflow(page: Page): Promise<number> {
   return page.evaluate(

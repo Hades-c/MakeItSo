@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectErrors, SAME_ORIGIN } from "./helpers";
+import { collectErrors, labelInNameMismatches, SAME_ORIGIN } from "./helpers";
 import {
   addItem,
   horizontalOverflow,
@@ -216,12 +216,14 @@ test("the WebTree list adds the plan's own sections in one press each", async ({
   // Only the course without a section still asks for one.
   await expect(panel.getByRole("button", { name: /^Choose a section/ })).toHaveCount(1);
   await expect(panel.getByRole("button", { name: "Choose a section of SPA 201" })).toBeVisible();
+  // Each button's name starts with its visible words ("Add as choice 1"), so speech input can press it.
+  expect(await labelInNameMismatches(page, '[data-testid="webtree-add"]')).toEqual([]);
 
   // Three presses put the three planned sections on the list, in order, with no picker.
   for (const [rank, name] of [
-    [1, "Add CSC 221 section A, CRN 20135, as choice 1"],
-    [2, "Add ENV 237 section B, CRN 20226, as choice 2"],
-    [3, "Add MAT 140 section A, CRN 20300, as choice 3"],
+    [1, "Add as choice 1: CSC 221 section A, CRN 20135"],
+    [2, "Add as choice 2: ENV 237 section B, CRN 20226"],
+    [3, "Add as choice 3: MAT 140 section A, CRN 20300"],
   ] as const) {
     const add = panel.getByRole("button", { name });
     await expect(add).toHaveText(`Add as choice ${rank}`);

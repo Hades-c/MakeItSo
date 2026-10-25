@@ -240,11 +240,8 @@ export function AddCourse({
                       variant="secondary"
                       size="sm"
                       disabled={disabled || full}
-                      aria-label={`Add ${entry.courseCode} section ${own.section}, CRN ${own.crn}, ${
-                        target === "new"
-                          ? `as choice ${list.choices.length + 1}`
-                          : `as an alternate for choice ${target}`
-                      }`}
+                      // The visible words come first (WCAG 2.5.3): saying "click Add as choice 1" finds it.
+                      aria-label={`${addLabel}: ${entry.courseCode} section ${own.section}, CRN ${own.crn}`}
                       onClick={() => addDirect(index, own)}
                     >
                       <Plus aria-hidden />

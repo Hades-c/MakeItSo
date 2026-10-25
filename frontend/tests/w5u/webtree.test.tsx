@@ -397,20 +397,25 @@ describe("WebTreeEditor", () => {
     expect(rows[0]).toHaveTextContent("CSC 221 A· CRN 20135");
     expect(screen.queryByRole("button", { name: /^Choose a section/ })).toBeNull();
     const first = screen.getByRole("button", {
-      name: "Add CSC 221 section A, CRN 20135, as choice 1",
+      name: "Add as choice 1: CSC 221 section A, CRN 20135",
     });
     expect(first).toHaveTextContent("Add as choice 1");
+    // Label in Name (WCAG 2.5.3): each row's name starts with the words on its button.
+    for (const row of rows) {
+      const button = within(row).getByRole("button");
+      expect(button.getAttribute("aria-label")?.startsWith(button.textContent ?? "-")).toBe(true);
+    }
     await user.click(first);
     expect(screen.queryByTestId("section-picker")).toBeNull();
     expect(screen.getAllByTestId("webtree-choice")).toHaveLength(1);
     // Its row is gone; the next planned course's button has focus and the next rank.
     const second = screen.getByRole("button", {
-      name: "Add ENV 237 section A, CRN 20226, as choice 2",
+      name: "Add as choice 2: ENV 237 section A, CRN 20226",
     });
     expect(second).toHaveFocus();
     await user.keyboard("{Enter}");
     await user.click(
-      screen.getByRole("button", { name: "Add MAT 140 section B, CRN 20300, as choice 3" }),
+      screen.getByRole("button", { name: "Add as choice 3: MAT 140 section B, CRN 20300" }),
     );
     // Three presses, three choices: the plan's own sections, in order.
     await waitFor(() => expect(calls.length).toBeGreaterThanOrEqual(1));
@@ -462,7 +467,7 @@ describe("WebTreeEditor", () => {
     await user.selectOptions(screen.getByLabelText("Add as"), "2");
     await user.click(
       screen.getByRole("button", {
-        name: "Add MAT 140 section B, CRN 20300, as an alternate for choice 2",
+        name: "Add as an alternate for choice 2: MAT 140 section B, CRN 20300",
       }),
     );
     await waitFor(() => expect(calls).toHaveLength(1));
