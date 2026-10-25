@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { RatingSummary } from "@/components/domain/rating-summary";
 import type { Instructor, Section } from "@/lib/types/catalog";
 import type { InstructorRating, RmpRating } from "@/lib/types/ratings";
@@ -46,7 +47,7 @@ export function ratedInstructors(
   return rated;
 }
 
-/** Nothing without a rated instructor. */
+/** Nothing without a rated instructor. The heading's id is per instance, so a layout may place it more than once. */
 export function InstructorRatings({
   instructors,
   className,
@@ -54,13 +55,14 @@ export function InstructorRatings({
   instructors: readonly RatedInstructor[];
   className?: string;
 }) {
+  const titleId = useId();
   if (instructors.length === 0) return null;
   return (
     <div className={className} data-testid="instructor-ratings">
-      <h3 id="instructor-ratings-title" className="text-base font-strong text-fg">
+      <h3 id={titleId} className="text-base font-strong text-fg">
         Instructors on RateMyProfessors
       </h3>
-      <ul aria-labelledby="instructor-ratings-title" className="mt-3 flex flex-col gap-5">
+      <ul aria-labelledby={titleId} className="mt-3 flex flex-col gap-5">
         {instructors.map(({ instructor, rating: { rmp } }) => {
           const name = instructorName(instructor);
           return (

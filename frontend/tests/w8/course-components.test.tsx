@@ -267,6 +267,22 @@ describe("SectionItem", () => {
     const block = screen.getByTestId("instructor-ratings");
     expect(block).toHaveClass("mt-9");
     expect(within(block).getAllByRole("listitem")).toHaveLength(2);
+    // Placed twice (per section row, say), each list is named by its own heading.
+    const twice = render(
+      <>
+        <InstructorRatings instructors={rated.slice(0, 1)} />
+        <InstructorRatings instructors={rated.slice(1)} />
+      </>,
+    );
+    const lists = within(twice.container).getAllByRole("list", {
+      name: "Instructors on RateMyProfessors",
+    });
+    expect(lists).toHaveLength(2);
+    expect(lists[0]!.getAttribute("aria-labelledby")).not.toBe(
+      lists[1]!.getAttribute("aria-labelledby"),
+    );
+    expect(within(lists[1]!).getAllByRole("listitem")).toHaveLength(1);
+    twice.unmount();
     // Nothing at all without a rated instructor.
     container.remove();
     const empty = render(<InstructorRatings instructors={[]} />);
