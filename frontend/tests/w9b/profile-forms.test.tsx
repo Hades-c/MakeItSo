@@ -126,7 +126,10 @@ describe("NameForm", () => {
     expect(calls).toEqual([
       { url: "/api/profile", method: "PATCH", body: { name: "Casey Q. Wildcat" } },
     ]);
-    expect(await screen.findByText("Name saved.")).toHaveAttribute("role", "status");
+    const saved = await screen.findByText("Name saved.");
+    expect(saved).toHaveAttribute("role", "status");
+    // Status green is icon + words, never colour alone.
+    expect(saved.querySelector("svg[aria-hidden]")).not.toBeNull();
     expect(router.refresh).toHaveBeenCalled();
     expect(save).toHaveAttribute("aria-disabled", "true");
   });
@@ -720,9 +723,9 @@ describe("PasswordForm", () => {
         redirect: false,
       }),
     );
-    expect(
-      await screen.findByText(/Password changed\. Every other device was signed out/),
-    ).toBeInTheDocument();
+    const changed = await screen.findByText(/Password changed\. Every other device was signed out/);
+    expect(changed).toHaveAttribute("role", "status");
+    expect(changed.querySelector("svg[aria-hidden]")).not.toBeNull();
     expect(router.refresh).toHaveBeenCalled();
     expect(screen.getByLabelText("Current password")).toHaveValue("");
     expect(nav.hardNavigate).not.toHaveBeenCalled();

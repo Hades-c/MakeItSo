@@ -8,7 +8,7 @@ import { AiChip } from "@/components/ui/ai-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FieldError } from "@/components/ui/field";
+import { FieldError, SuccessStatus } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { callApi } from "@/lib/api/client";
 import { authExtraEndpoints } from "@/lib/api/endpoints";
@@ -244,9 +244,7 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
           </div>
         </div>
       )}
-      <p role="status" className="text-sm font-medium text-success">
-        {status}
-      </p>
+      <SuccessStatus>{status}</SuccessStatus>
     </div>
   );
 }

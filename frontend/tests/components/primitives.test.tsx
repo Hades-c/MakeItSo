@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Chip, ToggleChip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
-import { Field } from "@/components/ui/field";
+import { Field, SuccessStatus } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
@@ -30,6 +30,18 @@ describe("Field", () => {
     const error = screen.getByText("Enter a valid email").closest("p")!;
     expect(error).toHaveClass("text-danger");
     expect(error.querySelector("svg[aria-hidden]")).not.toBeNull();
+  });
+
+  it("keeps a form's success line in the page, empty, and gives its message an icon", () => {
+    const { rerender } = render(<SuccessStatus>{""}</SuccessStatus>);
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+    rerender(<SuccessStatus>Name saved.</SuccessStatus>);
+    // The same live region, now with the success colour, an icon and words.
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent("Name saved.");
+    expect(status).toHaveClass("text-success");
+    expect(status.querySelector("svg[aria-hidden]")).not.toBeNull();
   });
 });
 

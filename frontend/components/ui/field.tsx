@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "./label";
 
@@ -63,6 +63,23 @@ export function FieldError({
     >
       <CircleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
       <span className="min-w-0">{children}</span>
+    </p>
+  );
+}
+
+/**
+ * A form's success line beside or under its button ("Name saved."): the success colour with an icon and words,
+ * never colour alone. role="status" and always rendered, so the message is announced when it appears; empty, it
+ * takes no space.
+ */
+export function SuccessStatus({ className, children }: { className?: string; children?: string }) {
+  return (
+    <p
+      role="status"
+      className={cn("flex items-start gap-1.5 text-sm font-medium text-success", className)}
+    >
+      {children ? <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0" /> : null}
+      {children}
     </p>
   );
 }
