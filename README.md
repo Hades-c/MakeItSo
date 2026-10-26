@@ -93,8 +93,9 @@ Red marks exactly four things: the one primary action on a screen, the current p
 item, not only a tint), selection, and "now". Text links are near-black and underlined, never red. Since red is
 the accent, urgency and danger never rely on colour: the now pill has a clock icon beside the time, an item due
 today an alarm icon and its words, errors an icon, and destructive buttons are outlined (crimson, never a red
-fill) with a trash icon and words, and ask first. Planned, in progress and the next term are never red. Focus
-rings are Lake Blue, never red.
+fill) with a trash icon and words, and ask first. Planned work and the next term are never red, and courses in
+progress keep their course colour; only this term's own marks (its "now" label, its credits on the progress bar,
+a requirement it fills) are red, as "now". Focus rings are Lake Blue, never red.
 
 - **Tokens** live in `frontend/app/globals.css` as CSS variables for light and dark. With no `data-theme` on
   `<html>` the theme follows the system; the toggle stores an explicit choice in `localStorage` (`mis-theme`),

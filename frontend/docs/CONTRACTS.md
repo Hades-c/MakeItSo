@@ -214,9 +214,11 @@ Lakeside palette and Instrument Sans named in PLAN §1 ("Visual") and §7 ("Colo
 - Colour: Davidson Red fills (`bg-primary-fill`, white text) for the one primary action per screen (the whole
   page: a second action beside it, a jump link to it, a header or banner button, is `variant="secondary"`) and
   selected fills; red text and tint (`text-primary`, `bg-primary-wash`) for the current page and selection;
-  `--urgent` for "now" and the student's own items due today. Red is never a status: planned, in progress and the
-  registration term are neutral. Text links use the `link` utility, never `text-primary`. Info notices and icons
-  are neutral (`bg-surface-2`, `text-fg-2`); status green and amber are icon + words.
+  `--urgent` for "now" and the student's own items due today. Red is never a status: planned work and the
+  registration term are neutral and courses in progress keep their course colour; only this term's own marks (its
+  "now" label, its credits on the progress bar, a requirement it fills) are red, as "now". Text links use the
+  `link` utility, never `text-primary`. Info notices and icons are neutral (`bg-surface-2`, `text-fg-2`); status
+  green and amber are icon + words.
 - Never colour alone: the now pill has a clock icon beside the time (the 56px gutter has no room for the word
   too: "now" is in the current block's "now · 20 m left" and the screen-reader line "Now: 12:00p"), urgent due
   labels an alarm icon, errors an icon (`FieldError` from `components/ui/field` for a field or a line beside a
