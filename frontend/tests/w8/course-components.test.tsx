@@ -214,6 +214,12 @@ describe("SectionItem", () => {
         name: "Source: RateMyProfessors, Katy Williams’s page (opens in a new tab)",
       }),
     ).toHaveAttribute("href", rmp.url);
+    // The rating dots are neutral ink, never the red fill (red is never a status): 4.2 is four full dots and a
+    // fifth at 20%.
+    const fills = Array.from(item.querySelectorAll<HTMLElement>(".bg-line-2 > span"));
+    expect(fills.map((fill) => fill.style.width)).toEqual(["100%", "100%", "100%", "100%", "20%"]);
+    for (const fill of fills) expect(fill).toHaveClass("bg-fg-2");
+    expect(item.querySelector(".bg-primary-fill, .bg-primary-wash, .text-primary")).toBeNull();
     // Both sections are hers, and the rating appears once on the page, in the block.
     expect(document.querySelectorAll("[data-rating]")).toHaveLength(1);
     expect(screen.getAllByText(/would take again/)).toHaveLength(1);

@@ -21,8 +21,9 @@ export const KEY_ROUTES = ["/today", "/courses", "/courses/[term]/[code]", "/pla
 /** @type {Record<string, number>} */
 export const TEMPORARY_CEILINGS_KB = {
   // Oct 25, 2026: the registration-week fixes (one-press "Add as choice" and its focus handling) put /plan
-  // 112 bytes over 200 KB during the open WebTree window. The Next semester rework (spec M8) pays it back;
-  // delete this entry then.
+  // 112 bytes over 200 KB during the open WebTree window. Oct 26, with the new look and main merged, it is 851
+  // bytes over and 173 bytes under this ceiling: up-front /plan code has no room left to grow. The Next semester
+  // rework (spec M8) pays it back; delete this entry then.
   "/plan": 201,
 };
 
