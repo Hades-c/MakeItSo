@@ -70,8 +70,10 @@ describe("SourceLink", () => {
     expect(link.textContent?.startsWith("Source:")).toBe(true);
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    // Sentence case, not a boxed uppercase tag.
+    // Sentence case, not a boxed uppercase tag, and a text link: near-black and underlined, never red text.
     expect(link).not.toHaveClass("uppercase");
+    expect(link).toHaveClass("link");
+    expect(link).not.toHaveClass("text-primary");
   });
 
   it("is the same words as plain text without a link", () => {

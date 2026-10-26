@@ -93,7 +93,7 @@ export function SourceLink({ source, href, what, className }: SourceLinkProps) {
       // The name in one string: browsers join hidden spans with or without spaces ("RateMyProfessors , …").
       aria-label={`Source: ${label}${what ? `, ${what}` : ""} (opens in a new tab)`}
       className={cn(
-        "inline-flex min-h-11 items-center gap-1 rounded-xs font-semibold text-primary hover:underline md:min-h-0",
+        "inline-flex min-h-11 items-center gap-1 rounded-xs font-semibold link md:min-h-0",
         className,
       )}
     >

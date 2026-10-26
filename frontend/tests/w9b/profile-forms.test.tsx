@@ -201,12 +201,16 @@ describe("AcademicsForm", () => {
     expect(majors.getByTestId("unlisted-major")).toHaveTextContent(
       "Student-designed major (Center for Interdisciplinary Studies): A major through the Center for Interdisciplinary Studies is applied for and approved there",
     );
-    expect(
-      majors.getByRole("link", { name: "Center for Interdisciplinary Studies in the catalog" }),
-    ).toHaveAttribute(
+    const cis = majors.getByRole("link", {
+      name: "Center for Interdisciplinary Studies in the catalog",
+    });
+    expect(cis).toHaveAttribute(
       "href",
       "https://catalog.davidson.edu/preview_program.php?catoid=28&poid=1794",
     );
+    // A text link: near-black and underlined (the `link` utility), never red text.
+    expect(cis).toHaveClass("link");
+    expect(cis).not.toHaveClass("text-primary");
     const minors = within(screen.getByRole("group", { name: "Minors" }));
     expect(minors.getByRole("link", { name: "Arab Studies in the catalog" })).toHaveAttribute(
       "href",
