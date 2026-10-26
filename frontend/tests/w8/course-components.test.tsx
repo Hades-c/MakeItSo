@@ -37,7 +37,7 @@ describe("SectionItem", () => {
 
   it("shows CRN, meetings, room, instructors, seats and the notes verbatim", () => {
     const a = csc.sections[0]!;
-    render(<SectionItem section={a} course={csc} chosen={false} ratings={null} sectionHref="/x" />);
+    render(<SectionItem section={a} course={csc} chosen={false} sectionHref="/x" />);
     const item = screen.getByRole("article", { name: "Section A, CRN 20135" });
     expect(within(item).getByText("Mon · Wed · Fri 10:30a–11:20a")).toBeVisible();
     expect(within(item).getByText("Watson Life Sciences Building 247")).toBeVisible();
@@ -50,15 +50,7 @@ describe("SectionItem", () => {
   });
 
   it("marks the chosen section and drops its link", () => {
-    render(
-      <SectionItem
-        section={csc.sections[0]!}
-        course={csc}
-        chosen
-        ratings={null}
-        sectionHref="/x"
-      />,
-    );
+    render(<SectionItem section={csc.sections[0]!} course={csc} chosen sectionHref="/x" />);
     expect(screen.getByText("Shown in your week")).toBeVisible();
     expect(screen.queryByRole("link", { name: /Show in my week/ })).toBeNull();
   });
@@ -69,7 +61,7 @@ describe("SectionItem", () => {
       meetings: [],
       enrollment: { current: 14, max: 12, remaining: -2 },
     });
-    render(<SectionItem section={s} course={rus} chosen={false} ratings={null} sectionHref="/x" />);
+    render(<SectionItem section={s} course={rus} chosen={false} sectionHref="/x" />);
     expect(screen.getByText("Time TBA")).toBeVisible();
     expect(screen.getByText("Staff (TBA)")).toBeVisible();
     expect(screen.getByText("Over-enrolled")).toBeVisible();
@@ -84,7 +76,6 @@ describe("SectionItem", () => {
         section={a}
         course={env}
         chosen={false}
-        ratings={null}
         sectionHref="/x"
         registerAs={registerAsLink(phy)}
       />,
@@ -101,15 +92,7 @@ describe("SectionItem", () => {
 
   it("lists the hidden registration sections (CHE 430 A → BIO 395 A)", () => {
     const che = course("202602", "CHE 430");
-    render(
-      <SectionItem
-        section={che.sections[0]!}
-        course={che}
-        chosen={false}
-        ratings={null}
-        sectionHref="/x"
-      />,
-    );
+    render(<SectionItem section={che.sections[0]!} course={che} chosen={false} sectionHref="/x" />);
     expect(screen.getByTestId("registration-sections")).toHaveTextContent(
       "Also registrable as BIO 395 A (CRN 20083)",
     );
@@ -117,15 +100,7 @@ describe("SectionItem", () => {
 
   it("shows restriction flags from the notes", () => {
     const art = course("202602", "ART 101");
-    render(
-      <SectionItem
-        section={art.sections[0]!}
-        course={art}
-        chosen={false}
-        ratings={null}
-        sectionHref="/x"
-      />,
-    );
+    render(<SectionItem section={art.sections[0]!} course={art} chosen={false} sectionHref="/x" />);
     expect(
       within(screen.getByRole("list", { name: "Restrictions" })).getByText(
         "First-years and sophomores only until the first day of class",
@@ -153,33 +128,27 @@ describe("SectionItem", () => {
     tagsAsOf: "2026-09-29T10:05:00.000Z",
   } as const;
 
-  it("shows a matched rating and its difficulty with its tag, and nothing for an unmatched one", () => {
-    const a = csc.sections[0]!;
-    const instructor = a.instructors[0]!;
-    const ratings = ratingsLookup([
-      { instructor, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
-    ]);
-    const { unmount } = render(
-      <SectionItem section={a} course={csc} chosen={false} ratings={ratings} sectionHref="/x" />,
-    );
-    const rated = document.querySelector('[data-aggregated="ratemyprofessors"]')!;
-    expect(rated).toHaveTextContent("4.2");
-    expect(rated).toHaveTextContent("17 ratings");
-    expect(rated).toHaveTextContent("Difficulty 3.0 of 5");
-    // The section row is the short form: no "would take again", no tags.
-    expect(rated).not.toHaveTextContent(/would take again|Most common tags/);
-    expect(rated.querySelector('[data-source="ratemyprofessors"]')).not.toBeNull();
-    unmount();
+  it("lists a section's instructors by name only, even with a matched rating", () => {
+    const instructor = csc.sections[0]!.instructors[0]!;
     render(
-      <SectionItem
-        section={a}
+      <CourseSections
         course={csc}
-        chosen={false}
-        ratings={ratingsLookup([{ instructor, status: "review" }])}
-        sectionHref="/x"
+        chosenCrn={null}
+        ratings={ratingsLookup([
+          { instructor, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
+        ])}
+        sectionHref={(crn) => `/c?crn=${crn}`}
+        asOf={null}
       />,
     );
-    expect(document.querySelector('[data-aggregated="ratemyprofessors"]')).toBeNull();
+    for (const row of screen.getAllByRole("article")) {
+      const names = within(row).getByRole("list", { name: "Instructors" });
+      expect(seenText(names)).toBe("Katy Williams");
+      // No rating, difficulty, RMP tag or link on the row: all of it is in the block, once.
+      expect(row.querySelector('[data-aggregated="ratemyprofessors"]')).toBeNull();
+      expect(row.querySelector('[data-source="ratemyprofessors"]')).toBeNull();
+      expect(row).not.toHaveTextContent(/ratings|Difficulty|RateMyProfessors|RMP/);
+    }
   });
 
   it("renders every section in a tagged card", () => {
@@ -225,25 +194,32 @@ describe("SectionItem", () => {
     const item = items[0]!;
     expect(item).toHaveAttribute("data-aggregated", "ratemyprofessors");
     expect(within(item).getByText(`${instructor.first} ${instructor.last}`)).toBeVisible();
+    // The source is said once per instructor: one provenance line, the date and the profile link.
     expect(seenText(item)).toBe(
       "Katy Williams 4.2 / 5 17 ratings · Difficulty 3.0 of 5 · 80% would take again " +
         "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12), " +
-        "Get ready to read (9), Caring (8) · via RateMyProfessors " +
-        "RateMyProfessors as of Sep 28, 2026 RateMyProfessors",
+        "Get ready to read (9), Caring (8) as of Sep 28, 2026 · RateMyProfessors",
     );
     expect(spokenText(item)).toContain(
       "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, 80% would take again " +
         "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12 ratings), " +
-        "Get ready to read (9 ratings), Caring (8 ratings), via RateMyProfessors",
+        "Get ready to read (9 ratings), Caring (8 ratings) as of Sep 28, 2026, " +
+        "Source: RateMyProfessors",
     );
     expect(within(item).getByText("as of Sep 28, 2026")).toBeVisible();
-    expect(item.querySelector('[data-source="ratemyprofessors"]')).not.toBeNull();
-    expect(within(item).getByRole("link", { name: /on RateMyProfessors|’s page/ })).toHaveAttribute(
-      "href",
-      rmp.url,
-    );
-    // The section rows keep the short form; the details appear once.
+    expect(item.querySelectorAll('[data-source="ratemyprofessors"]')).toHaveLength(1);
+    expect(within(item).getAllByRole("link")).toHaveLength(1);
+    expect(
+      within(item).getByRole("link", {
+        name: "Source: RateMyProfessors, Katy Williams’s page (opens in a new tab)",
+      }),
+    ).toHaveAttribute("href", rmp.url);
+    // Both sections are hers, and the rating appears once on the page, in the block.
+    expect(document.querySelectorAll("[data-rating]")).toHaveLength(1);
     expect(screen.getAllByText(/would take again/)).toHaveLength(1);
+    expect(document.querySelectorAll('[data-aggregated="ratemyprofessors"]')).toHaveLength(1);
+    // The matching rule, once, under the sections.
+    expect(screen.getAllByText(/matches the instructor’s full name/)).toHaveLength(1);
   });
 
   it("is its own block, fed a de-duplicated instructor list, so the page can move it", () => {
@@ -616,7 +592,6 @@ describe("review fixes: course page parts", () => {
         section={reg}
         course={csc}
         chosen={false}
-        ratings={null}
         sectionHref="/x"
         regForTitle="Advanced Biochemistry"
       />,

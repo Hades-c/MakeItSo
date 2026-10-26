@@ -14,7 +14,7 @@ import "./account-data";
  *   profile        getProfile, updateProfile, grantAiConsent, revokeAiConsent, defaultFirstTerm, ...
  *   passwords      passwordProblem (the new-password policy), hashPassword, verifyPassword
  *   mail           getMailer, isMailAvailable (ConsoleMailer / ResendMailer; null = none)
- *   reset          requestPasswordReset, confirmPasswordReset
+ *   reset          requestPasswordReset, confirmPasswordReset (code), confirmPasswordResetLink (e-mailed link)
  */
 
 export {
@@ -43,8 +43,9 @@ export {
   resendVerification,
   verifyEmailCode,
   VERIFICATION_UNAVAILABLE_MESSAGE,
+  verificationUnavailableMessage,
 } from "./verification";
-export { verifyBannerFor, type VerifyBannerState } from "./banner";
+export { verifyBannerFor, verifyStepFor, type VerifyBannerState } from "./banner";
 export {
   changePassword,
   clearSessionCookies,
@@ -61,6 +62,7 @@ export {
   getProfile,
   grantAiConsent,
   officialNames,
+  profileProgramNames,
   revokeAiConsent,
   updateProfile,
   type ProfileView,
@@ -70,6 +72,7 @@ export { isSafeAppPath, safeAppPath } from "./paths";
 export { getMailer, isMailAvailable, type Mailer, type MailMessage } from "./mailer";
 export {
   confirmPasswordReset,
+  confirmPasswordResetLink,
   requestPasswordReset,
   RESET_UNAVAILABLE_MESSAGE,
 } from "./password-reset";

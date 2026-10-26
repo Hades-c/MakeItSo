@@ -9,6 +9,11 @@ export interface VerifyBannerProps {
   replaceable: boolean;
   /** Hours left of those 24 (null when not replaceable). */
   hoursLeft: number | null;
+  /**
+   * The temporary AI_ALLOW_UNVERIFIED switch is on (server/ai/access.ts): AI works without verifying, so verifying
+   * opens the alumni network and cold-email drafts only.
+   */
+  aiWithoutVerifying?: boolean;
 }
 
 /**
@@ -18,7 +23,12 @@ export interface VerifyBannerProps {
  *   const banner = await verifyBannerFor(user, now());   // server/auth
  *   {banner ? <VerifyBanner {...banner} /> : null}
  */
-export function VerifyBanner({ email, replaceable, hoursLeft }: VerifyBannerProps) {
+export function VerifyBanner({
+  email,
+  replaceable,
+  hoursLeft,
+  aiWithoutVerifying = false,
+}: VerifyBannerProps) {
   return (
     <section
       aria-labelledby="verify-banner-title"
@@ -33,7 +43,8 @@ export function VerifyBanner({ email, replaceable, hoursLeft }: VerifyBannerProp
           </h2>
           <p className="mt-0.5 text-fg-2">
             Confirm that <span className="font-semibold break-all text-fg">{email}</span> is yours
-            with a 6-digit code by email to open the alumni network and AI features.
+            with a 6-digit code by email to open the alumni network and{" "}
+            {aiWithoutVerifying ? "cold-email drafts" : "AI features"}.
             {replaceable ? (
               <>
                 {" "}

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CourseAboutPanel, RETRYABLE } from "@/app/(hub)/courses/_components/course-about-panel";
 import { AI_FAILURE_KINDS, AI_FAILURE_MESSAGES, AI_RESULT_STATUS } from "@/lib/types/ai";
+import { UNVERIFIED_AI_ALLOWED_MESSAGE } from "@/lib/types/ai-constants";
 
 /** The AI "About this course" panel: every AiResult kind rendered, the gate, Retry and Report this. */
 
@@ -49,8 +50,15 @@ const OK = {
   cached: true,
 };
 
-const renderPanel = (gate: "ready" | "unverified" | "consent_required" = "ready") =>
-  render(<CourseAboutPanel termCode="202602" courseCode="CSC 221" gate={gate} />);
+const VERIFY_HREF = "/verify?reason=davidson&next=%2Fcourses%2F202602%2FCSC-221";
+
+const renderPanel = (
+  gate: "ready" | "unverified" | "consent_required" = "ready",
+  verifyHref: string | null = VERIFY_HREF,
+) =>
+  render(
+    <CourseAboutPanel termCode="202602" courseCode="CSC 221" gate={gate} verifyHref={verifyHref} />,
+  );
 
 describe("CourseAboutPanel", () => {
   it("requests the summary by ids only and renders it as text with the AI chip and tag", async () => {
@@ -107,7 +115,7 @@ describe("CourseAboutPanel", () => {
     if (kind === "unverified") {
       expect(screen.getByRole("link", { name: "Verify your Davidson email" })).toHaveAttribute(
         "href",
-        "/verify",
+        VERIFY_HREF,
       );
     }
     if (kind === "consent_required") {
@@ -144,5 +152,40 @@ describe("CourseAboutPanel", () => {
       AI_FAILURE_MESSAGES.consent_required,
     );
     expect(calls).toHaveLength(0);
+  });
+
+  it("only explains the gate when verifying cannot help (a legacy non-Davidson account)", async () => {
+    stubFetch([403, { kind: "unverified", message: AI_FAILURE_MESSAGES.unverified }]);
+    const { unmount } = renderPanel("unverified", null);
+    expect(screen.getByTestId("about-gate")).toHaveTextContent(AI_FAILURE_MESSAGES.unverified);
+    expect(screen.queryByRole("link")).toBeNull();
+    unmount();
+    // The same when the route answers "unverified" after the page rendered.
+    renderPanel("ready", null);
+    expect(await screen.findByTestId("about-gate")).toHaveTextContent(
+      AI_FAILURE_MESSAGES.unverified,
+    );
+    expect(screen.queryByRole("link", { name: "Verify your Davidson email" })).toBeNull();
+  });
+
+  it("says the server's words for the gate (they depend on the temporary AI_ALLOW_UNVERIFIED switch)", async () => {
+    stubFetch([403, { kind: "unverified", message: UNVERIFIED_AI_ALLOWED_MESSAGE }]);
+    const { unmount } = render(
+      <CourseAboutPanel
+        termCode="202602"
+        courseCode="CSC 221"
+        gate="unverified"
+        unverifiedMessage={UNVERIFIED_AI_ALLOWED_MESSAGE}
+        verifyHref={null}
+      />,
+    );
+    expect(screen.getByTestId("about-gate")).toHaveTextContent(UNVERIFIED_AI_ALLOWED_MESSAGE);
+    expect(screen.getByTestId("about-gate")).not.toHaveTextContent(/limited to verified/);
+    unmount();
+    // The route's answer after the page rendered carries the same words.
+    renderPanel("ready", null);
+    expect(await screen.findByTestId("about-gate")).toHaveTextContent(
+      UNVERIFIED_AI_ALLOWED_MESSAGE,
+    );
   });
 });

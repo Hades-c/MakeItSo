@@ -59,7 +59,8 @@ const TITLES: Readonly<Record<AiFailureKind, string>> = {
   not_configured: "AI isn’t set up yet",
   disabled: "AI features are turned off",
   consent_required: "Turn on AI features first",
-  unverified: "AI is for verified Davidson accounts",
+  // The message says which account it needs, which differs while AI_ALLOW_UNVERIFIED is on (server/ai/access.ts).
+  unverified: "Not available to this account",
 };
 
 const RETRY_KINDS: ReadonlySet<AiFailureKind> = new Set([

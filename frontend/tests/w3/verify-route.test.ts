@@ -20,6 +20,11 @@ import RateLimit from "@/models/RateLimit";
 import User from "@/models/User";
 import VerificationCode from "@/models/VerificationCode";
 import { clearConsoleOutbox, lastConsoleMessage } from "@/server/auth/mailer";
+import {
+  VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE,
+  VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
+  VERIFICATION_UNAVAILABLE_MESSAGE,
+} from "@/server/auth/verification";
 import { getDb } from "@/server/db";
 import { defineRoute, isVerifiedDavidson } from "@/server/http";
 
@@ -259,6 +264,22 @@ describe("POST /api/account/verify/resend", () => {
     const res = await postResend();
     expect(res.status).toBe(503);
     expect((await errorOf(res)).message).toMatch(/not available yet/);
+  });
+
+  it("offers AI in the meantime only while AI_ALLOW_UNVERIFIED is on AND AI works", async () => {
+    await registerAndSignIn();
+    vi.stubEnv("MAIL_PROVIDER", "none");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    vi.stubEnv("AI_PROVIDER", "mock");
+    expect((await errorOf(await postResend())).message).toBe(
+      VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE,
+    );
+    vi.stubEnv("AI_ENABLED", "false");
+    expect((await errorOf(await postResend())).message).toBe(
+      VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
+    );
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "false");
+    expect((await errorOf(await postResend())).message).toBe(VERIFICATION_UNAVAILABLE_MESSAGE);
   });
 
   it("says sent: false for an account that is already verified", async () => {

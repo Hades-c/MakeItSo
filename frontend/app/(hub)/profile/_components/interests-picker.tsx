@@ -3,7 +3,7 @@
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { ToggleChip } from "@/components/ui/chip";
 import { callApi } from "@/lib/api/client";
-import { profileApi } from "@/lib/api/profile";
+import { profileEndpoints } from "@/lib/api/endpoints";
 import { describeFailure } from "../_lib/errors";
 import type { CareerOption } from "../_lib/load";
 import { useSerialSave } from "../_lib/use-serial-save";
@@ -14,7 +14,7 @@ import { useSerialSave } from "../_lib/use-serial-save";
  */
 
 async function saveInterests(next: string[]): Promise<string[]> {
-  const { profile } = await callApi(profileApi.update, { body: { interests: next } });
+  const { profile } = await callApi(profileEndpoints.update, { body: { interests: next } });
   return profile.interests;
 }
 

@@ -10,10 +10,12 @@ import {
   jsonRequest,
   sessionFor,
   stubAuthEnv,
+  stubNowPlus,
   storedSessionVersion,
 } from "./helpers";
 import { POST as resend } from "@/app/api/account/verify/resend/route";
 import { POST as confirm } from "@/app/api/auth/password-reset/confirm/route";
+import { POST as confirmLink } from "@/app/api/auth/password-reset/link/route";
 import { POST as request } from "@/app/api/auth/password-reset/route";
 import { GET as me } from "@/app/api/me/route";
 import { PUT as grantConsent } from "@/app/api/profile/ai-consent/route";
@@ -28,6 +30,7 @@ import {
   nameFromEmail,
   RESET_CHECK_INBOX_MESSAGE,
   RESET_CODE_MESSAGE,
+  RESET_LINK_MESSAGE,
   RESET_UNAVAILABLE_MESSAGE,
 } from "@/server/auth/password-reset";
 import { isVerifiedDavidsonUser } from "@/server/auth/session";
@@ -74,6 +77,16 @@ const postRequest = (email: unknown) =>
   request(jsonRequest("/api/auth/password-reset", { body: { email } }));
 const postConfirm = (body: unknown) =>
   confirm(jsonRequest("/api/auth/password-reset/confirm", { body }));
+const postLink = (body: unknown) =>
+  confirmLink(jsonRequest("/api/auth/password-reset/link", { body }));
+
+/** The token of the reset link in the last e-mail to `email` (/forgot-password#token=…). */
+function linkTokenOf(email: string): string {
+  const text = lastConsoleMessage(email)?.text ?? "";
+  const match = /\/forgot-password#token=(\S+)/.exec(text);
+  if (!match) throw new Error(`no reset link in the last e-mail to ${email}`);
+  return decodeURIComponent(match[1]!);
+}
 
 async function answer(res: Response) {
   return { status: res.status, body: (await res.json()) as unknown };
@@ -270,7 +283,7 @@ describe("a reset that verifies an unverified account is a change of owner (revi
         method: "PATCH",
         body: {
           name: "Not The Victim",
-          interests: ["finance"],
+          interests: ["financial-planning"],
           standingOverride: "senior",
           adultAttested: true,
           aiConsent: true,
@@ -359,7 +372,7 @@ describe("a reset that verifies an unverified account is a change of owner (revi
         emailVerifiedAt: verifiedAt,
         aiConsentAt: verifiedAt,
         adultAttestedAt: verifiedAt,
-        interests: ["finance"],
+        interests: ["financial-planning"],
       },
     });
     await postRequest(user.email);
@@ -372,7 +385,7 @@ describe("a reset that verifies an unverified account is a change of owner (revi
       emailVerifiedAt: verifiedAt,
       aiConsentAt: verifiedAt,
       adultAttestedAt: verifiedAt,
-      interests: ["finance"],
+      interests: ["financial-planning"],
     });
   });
 
@@ -424,9 +437,134 @@ describe("the reset wrong-code budget (review regression: slow brute force)", ()
     const counter = await RateLimit.collection.findOne({ key: `reset-fail:user:${owner.id}` });
     // Only 10 guesses were actually compared; the rest were refused unchecked (same 400).
     expect(counter?.count).toBeGreaterThanOrEqual(10);
-    const mailsBefore = consoleOutbox().length;
+    // The next e-mail carries the link alone: codes stay locked, and the link still resets.
     await RateLimit.deleteMany({ key: /^(reset-(request|confirm):ip|reset-send)/ });
     await postRequest(owner.email);
-    expect(consoleOutbox()).toHaveLength(mailsBefore);
+    const locked = lastConsoleMessage(owner.email)!;
+    expect(locked.code).toBeUndefined();
+    expect(locked.text).toContain("This e-mail has no code");
+    await RateLimit.deleteMany({ key: /^reset-(request|confirm):ip/ });
+    expect(
+      (
+        await postLink({
+          token: linkTokenOf(owner.email),
+          newPassword: "the owner's new passphrase",
+        })
+      ).status,
+    ).toBe(200);
+  });
+});
+
+describe("the e-mailed reset link (abuse fix: someone else's wrong codes cannot block the owner)", () => {
+  it("comes with the code, resets once, signs out everywhere and answers the address", async () => {
+    const user = await insertUser({
+      email: "casey@davidson.edu",
+      raw: { emailVerifiedAt: new Date("2026-09-01"), sessionVersion: 3 },
+    });
+    await postRequest(user.email);
+    const message = lastConsoleMessage(user.email)!;
+    expect(message.code).toMatch(/^\d{6}$/);
+    const token = linkTokenOf(user.email);
+    expect(token).toMatch(new RegExp(`^${user.id}\\.[A-Za-z0-9_-]{22}$`));
+    // Only the link's HMAC is stored.
+    const stored = await VerificationCode.collection.findOne({ purpose: "reset-password" });
+    expect(stored?.linkHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(stored)).not.toContain(token.split(".")[1]);
+
+    const res = await postLink({ token, newPassword: "brand new passphrase" });
+    expect(await answer(res)).toEqual({ status: 200, body: { email: "casey@davidson.edu" } });
+    const after = await User.collection.findOne({ email: user.email });
+    expect(await bcrypt.compare("brand new passphrase", String(after?.password))).toBe(true);
+    expect(after?.sessionVersion).toBe(4);
+    // Once: the link and the code are both used up.
+    expect((await postLink({ token, newPassword: "another new passphrase" })).status).toBe(400);
+    expect(
+      (await postConfirm({ email: user.email, code: message.code, newPassword: "x passphrase 2" }))
+        .status,
+    ).toBe(400);
+  });
+
+  it("works after an attacker has burned the code's attempts and the day's wrong codes", async () => {
+    const owner = await insertUser({
+      email: "casey@davidson.edu",
+      raw: { emailVerifiedAt: new Date("2026-09-01") },
+    });
+    await postRequest(owner.email);
+    const code = lastConsoleMessage(owner.email)!.code!;
+    const token = linkTokenOf(owner.email);
+    for (let i = 0; i < 5; i++) {
+      await RateLimit.deleteMany({ key: /^reset-confirm:ip/ });
+      await postConfirm({
+        email: owner.email,
+        code: code === "000000" ? "111111" : "000000",
+        newPassword: "attacker passphrase",
+      });
+    }
+    // The code itself is dead now (5 attempts), but the link is not.
+    await RateLimit.deleteMany({ key: /^reset-confirm:ip/ });
+    expect(
+      (await postConfirm({ email: owner.email, code, newPassword: "owner passphrase one" })).status,
+    ).toBe(400);
+    const res = await postLink({ token, newPassword: "owner passphrase one" });
+    expect(res.status).toBe(200);
+  });
+
+  it("refuses a wrong, replaced or expired link with the same 400, and keeps it after a weak password", async () => {
+    const user = await insertUser({
+      email: "casey@davidson.edu",
+      raw: { emailVerifiedAt: new Date("2026-09-01") },
+    });
+    await postRequest(user.email);
+    const first = linkTokenOf(user.email);
+    const linkError = {
+      status: 400,
+      body: { error: { issues: [{ path: "token", message: RESET_LINK_MESSAGE }] } },
+    };
+    const wrong = `${user.id}.${"A".repeat(22)}`;
+    expect(
+      await answer(await postLink({ token: wrong, newPassword: "a fine passphrase" })),
+    ).toMatchObject(linkError);
+    const otherUser = `${"0".repeat(24)}.${first.split(".")[1]}`;
+    expect(
+      await answer(await postLink({ token: otherUser, newPassword: "a fine passphrase" })),
+    ).toMatchObject(linkError);
+    // A malformed token never reaches the lookup.
+    expect((await postLink({ token: "nope", newPassword: "a fine passphrase" })).status).toBe(400);
+
+    // A weak password is refused on its own field, and the link stays usable.
+    const weak = await answer(await postLink({ token: first, newPassword: "password123" }));
+    expect(weak).toMatchObject({
+      status: 400,
+      body: { error: { issues: [{ path: "newPassword" }] } },
+    });
+
+    // A newer e-mail replaces the link.
+    await postRequest(user.email);
+    const second = linkTokenOf(user.email);
+    expect(second).not.toBe(first);
+    expect(
+      await answer(await postLink({ token: first, newPassword: "a fine passphrase" })),
+    ).toMatchObject(linkError);
+
+    // 15 minutes later it has expired.
+    stubNowPlus(15 * 60_000 + 1);
+    expect(
+      await answer(await postLink({ token: second, newPassword: "a fine passphrase" })),
+    ).toMatchObject(linkError);
+  });
+
+  it("verifies an unverified legacy account like a code does, clearing its AI consent", async () => {
+    const legacy = await insertUser({
+      email: "owner.legacy@gmail.com",
+      raw: { aiConsentAt: new Date("2026-01-01"), adultAttestedAt: new Date("2026-01-01") },
+    });
+    await postRequest(legacy.email);
+    expect(
+      (await postLink({ token: linkTokenOf(legacy.email), newPassword: "legacy owner passphrase" }))
+        .status,
+    ).toBe(200);
+    const doc = await User.collection.findOne({ email: legacy.email });
+    expect(doc?.emailVerifiedAt).toBeInstanceOf(Date);
+    expect(doc).not.toHaveProperty("aiConsentAt");
   });
 });

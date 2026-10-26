@@ -12,7 +12,8 @@ import { ForgotPasswordForm } from "./_components/forgot-password-form";
 export const metadata: Metadata = { title: "Forgot password" };
 
 /**
- * /forgot-password: with a mail provider, a reset code by e-mail (server/auth/password-reset.ts); without one,
+ * /forgot-password: with a mail provider, a reset link and code by e-mail (server/auth/password-reset.ts; the
+ * link opens this page with #token=…, which the form reads in the browser); without one,
  * how to reach the maintainers (nobody can prove they own an address without mail, so there is no self-service
  * reset until the owner configures a provider).
  */

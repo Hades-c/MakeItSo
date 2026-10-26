@@ -12,15 +12,18 @@ export const MAX_FIRST_LOAD_GZIP_BYTES = 200 * 1024;
 export const KEY_ROUTES = ["/today", "/courses", "/courses/[term]/[code]", "/plan"];
 
 /**
- * Temporary ceilings (KB gzipped) for key pages still over the budget, so they cannot grow while the remaining gap
- * is closed: their client islands call our API through the shared zod contracts (lib/api specs), which puts about
- * 33 KB of zod on these pages. Lower or delete an entry when its page shrinks; the target stays 200 KB.
+ * Temporary ceilings (KB gzipped) for key pages over the budget, so they cannot grow while the gap is closed: a
+ * page with a ceiling only warns while it stays under it. Client islands carry no zod (they
+ * call the API through lib/api/endpoints.ts), and /plan loads only its default view's islands up front
+ * (app/(hub)/plan/_components/lazy-islands.tsx), which put it just under 200 KB: growth in the Next semester view
+ * or in code it shares has to be paid for there. Delete an entry as soon as its page is back under the budget.
  */
 /** @type {Record<string, number>} */
 export const TEMPORARY_CEILINGS_KB = {
-  "/courses": 215,
-  "/courses/[term]/[code]": 235,
-  "/plan": 255,
+  // Oct 25, 2026: the registration-week fixes (one-press "Add as choice" and its focus handling) put /plan
+  // 112 bytes over 200 KB during the open WebTree window. The Next semester rework (spec M8) pays it back;
+  // delete this entry then.
+  "/plan": 201,
 };
 
 const gzipCache = new Map();

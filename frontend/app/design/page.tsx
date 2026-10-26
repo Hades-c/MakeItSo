@@ -327,7 +327,6 @@ export default function DesignGalleryPage() {
                   avgRating={4.6}
                   numRatings={1}
                   avgDifficulty={2}
-                  size="sm"
                   url="https://www.ratemyprofessors.com/search/professors/3965"
                   asOf="2026-09-29T09:00:00Z"
                   timeZone={TIME_ZONE}

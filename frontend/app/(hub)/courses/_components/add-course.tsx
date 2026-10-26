@@ -7,7 +7,7 @@ import { Info, TriangleAlert } from "lucide-react";
 import { AddToPlanControl, type AddToPlanTerm } from "@/components/domain/add-to-plan-control";
 import { Notice } from "@/components/ui/notice";
 import { ApiClientError, callApi } from "@/lib/api/client";
-import { planApi } from "@/lib/api/plan";
+import { planEndpoints } from "@/lib/api/endpoints";
 
 /**
  * "Add to <term>" for one course (client island over AddToPlanControl; POST /api/plan/items through callApi with
@@ -107,7 +107,7 @@ export function AddCourse({
     const label = labelOf(terms, termCode);
     const crn = crns[termCode];
     try {
-      const result = await callApi(planApi.addItem, {
+      const result = await callApi(planEndpoints.addItem, {
         body: {
           termCode,
           courseCode,

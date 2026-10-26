@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { Switch } from "@/components/ui/switch";
 import { callApi } from "@/lib/api/client";
-import { planApi, type UpdatePlanItemBody } from "@/lib/api/plan";
+import { planEndpoints } from "@/lib/api/endpoints";
+import type { UpdatePlanItemBody } from "@/lib/api/plan";
 import { termLabel } from "@/lib/term";
 import type { PlanItem, PlanStatus, PlanWarning } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
@@ -98,7 +99,7 @@ export function PlanItemRow({
     }
     setNotice(null);
     const result = await action.run(
-      () => callApi(planApi.updateItem, { params: { id: item.id }, body: patch }),
+      () => callApi(planEndpoints.updateItem, { params: { id: item.id }, body: patch }),
       { fallback: `Could not update ${item.courseCode}. Please try again.` },
     );
     if (result.ok) {
@@ -114,7 +115,7 @@ export function PlanItemRow({
 
   const remove = async () => {
     const result = await action.run(
-      () => callApi(planApi.removeItem, { params: { id: item.id } }),
+      () => callApi(planEndpoints.removeItem, { params: { id: item.id } }),
       { fallback: `Could not remove ${item.courseCode}. Please try again.` },
     );
     // The row leaves the page with the refresh: say it in a toast (announced, outside the row), and move focus
@@ -130,7 +131,7 @@ export function PlanItemRow({
     if (!retakeTerm) return;
     const result = await action.run(
       () =>
-        callApi(planApi.addItem, {
+        callApi(planEndpoints.addItem, {
           body: {
             termCode: retakeTerm,
             courseCode: item.courseCode,

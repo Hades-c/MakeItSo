@@ -21,9 +21,8 @@ import {
 } from "../_lib/four-year";
 import { creditsText, formatNumber, plural } from "../_lib/labels";
 import type { FourYearData, Loaded } from "../_lib/load";
-import { ManualEntryForm } from "./manual-entry";
-import { ManualRequirements } from "./manual-requirements";
-import { PlanItemRow } from "./plan-item-row";
+// The view's client islands load on demand (lazy-islands.tsx).
+import { ManualEntryForm, ManualRequirements, PlanItemRow } from "./lazy-islands";
 
 /**
  * The 4-year plan (PLAN §3): the degree map, every term's courses with their status, P/F, move, retake and

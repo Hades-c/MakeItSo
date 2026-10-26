@@ -15,6 +15,7 @@ import {
 import * as route from "@/app/api/ai/cold-email/route";
 import { ColdEmailResultSchema } from "@/lib/api/ai";
 import { STUDENT_NAME_PLACEHOLDER } from "@/lib/types/ai";
+import { ALUMNI_VERIFIED_ONLY_MESSAGE } from "@/lib/types/ai-constants";
 import { readDataBlocks } from "@/server/ai/blocks";
 import { cleanColdEmail } from "@/server/ai/features/cold-email";
 import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
@@ -89,6 +90,21 @@ describe("POST /api/ai/cold-email", () => {
     }
     expect((await post({ alumnusId: "neil-patel", careerSlug: "astronaut" })).status).toBe(404);
     expect(mockAiRequests()).toHaveLength(0);
+  });
+
+  it("stays verified-only while AI_ALLOW_UNVERIFIED is on (it uses alumni data)", async () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    await signIn({ verified: false });
+    const res = await post({ alumnusId: "neil-patel", careerSlug: "software-engineering" });
+    expect(res.status).toBe(403);
+    expect(await bodyOf(res)).toEqual({
+      kind: "unverified",
+      message: ALUMNI_VERIFIED_ONLY_MESSAGE,
+    });
+    expect(mockAiRequests()).toHaveLength(0);
+    // A verified student drafts as before.
+    await signIn();
+    expect((await post({ alumnusId: "neil-patel" })).status).toBe(200);
   });
 
   it("is disabled while the alumni section is off", async () => {

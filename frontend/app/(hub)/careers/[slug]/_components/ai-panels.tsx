@@ -33,9 +33,13 @@ import { AiNotice, aiFailureCopy, type AiStepLinks } from "./ai-result";
  *     panel is not rendered at all;
  *   - otherwise the first gate failure (lib/types/ai.ts aiGateFailure: not_configured → unverified →
  *     consent_required) is shown in place of the button, with its next step (verify / AI settings); the client
- *     still handles every AiResult kind the route may answer later (quota, budget, refused, ...);
- *   - the alumni list reaches the browser only for a verified @davidson.edu account while the Alumni section is on,
- *     and only CONTACTABLE alumni (contactable=false: public figures, trustees, college officers — never offered).
+ *     still handles every AiResult kind the route may answer later (quota, budget, refused, ...). Each panel has
+ *     its own gate (aiGateInput per feature), because "verified" differs while the temporary AI_ALLOW_UNVERIFIED
+ *     switch is on: an unverified @davidson.edu student gets the career plan, but the cold e-mail stays
+ *     verified-only (server/ai/access.ts);
+ *   - the alumni list reaches the browser only for a verified @davidson.edu account while the Alumni section is on
+ *     (whatever the switch says), and only CONTACTABLE alumni (contactable=false: public figures, trustees, college
+ *     officers — never offered).
  *
  * The AI chip ("AI · verify with your advisor") marks AI output only, so it sits on each answer, not on the panel
  * headings or the gate notices.
@@ -57,8 +61,10 @@ export interface CareerAiViewInput {
   careerSlug: string;
   user: Pick<SessionUser, "email" | "name" | "emailVerifiedAt"> | null;
   flags: Flags;
-  /** aiGateInput(user, "career-plan"): the account's verified/consented state. */
+  /** aiGateInput(user, "career-plan"): the account's verified/consented state for the career plan. */
   gateInput: AiGateInput;
+  /** aiGateInput(user, "cold-email"), for the e-mail panel (default: gateInput). */
+  emailGateInput?: AiGateInput;
   mailAvailable: boolean;
   /** alumniForCareer(careerSlug). */
   alumni: readonly Alumnus[];
@@ -97,7 +103,9 @@ export function careerAiView(input: CareerAiViewInput): CareerAiView | null {
   };
 
   const planGate = planEnabled ? aiGateFailure({ ...gateInput, enabled: true }) : null;
-  const emailGate = emailEnabled ? aiGateFailure({ ...gateInput, enabled: true }) : null;
+  const emailGate = emailEnabled
+    ? aiGateFailure({ ...(input.emailGateInput ?? gateInput), enabled: true })
+    : null;
   // Alumni data only for verified @davidson.edu accounts while the Alumni section is on (PLAN §1).
   const alumniOpen = featureEnabled(flags, "alumni") && isVerifiedDavidsonUser(user);
   const alumni = emailEnabled && alumniOpen ? coldEmailAlumni(input.alumni) : [];
@@ -138,8 +146,12 @@ export async function CareerAiPanels({ career }: { career: Career }) {
   }
 
   let gateInput: AiGateInput;
+  let emailGateInput: AiGateInput;
   try {
-    gateInput = await aiGateInput(user.id, "career-plan");
+    [gateInput, emailGateInput] = await Promise.all([
+      aiGateInput(user.id, "career-plan"),
+      aiGateInput(user.id, "cold-email"),
+    ]);
   } catch (error) {
     // A bad AI env (getFlags in the gate) or an unreachable DB: no AI panels, the rest of the page stays up.
     unstable_rethrow(error);
@@ -153,6 +165,7 @@ export async function CareerAiPanels({ career }: { career: Career }) {
     user,
     flags,
     gateInput,
+    emailGateInput,
     mailAvailable: isMailAvailable(),
     alumni: alumniForCareer(career.slug),
   });

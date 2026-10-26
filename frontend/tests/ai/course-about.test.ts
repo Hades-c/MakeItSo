@@ -12,6 +12,7 @@ import {
 } from "./helpers";
 import * as route from "@/app/api/ai/course-about/route";
 import { CourseAboutResultSchema } from "@/lib/api/ai";
+import { UNVERIFIED_AI_ALLOWED_MESSAGE, UNVERIFIED_MESSAGE } from "@/lib/types/ai-constants";
 import AiCache from "@/models/AiCache";
 import AiUsage from "@/models/AiUsage";
 import RateLimit from "@/models/RateLimit";
@@ -22,7 +23,13 @@ import {
   REMEMBERED_INVALID_MESSAGE,
   REMEMBERED_REFUSAL_MESSAGE,
 } from "@/server/ai/features/course-about";
-import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
+import {
+  MOCK_FALLBACK_MODEL,
+  MOCK_MODEL,
+  mockAiRequests,
+  resetMockAi,
+  setMockAiScenario,
+} from "@/server/ai/mock";
 import { SYSTEM } from "@/server/ai/prompts/course-about";
 import {
   consumeGenerationQuota,
@@ -145,6 +152,38 @@ describe("the gate, in order (AiResult bodies with AI_RESULT_STATUS)", () => {
     expect(res.status).toBe(403);
     expect((await bodyOf(res)).kind).toBe("unverified");
   });
+
+  it("AI_ALLOW_UNVERIFIED: an unverified, consenting @davidson.edu student gets the summary only while it is on", async () => {
+    await signIn({ verified: false });
+    // Off (the default): unverified, nothing generated.
+    const off = await post(CSC_221);
+    expect(off.status).toBe(403);
+    expect(await bodyOf(off)).toEqual({ kind: "unverified", message: UNVERIFIED_MESSAGE });
+    expect(mockAiRequests()).toHaveLength(0);
+
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    const on = await post(CSC_221);
+    expect(on.status).toBe(200);
+    const body = CourseAboutResultSchema.parse(await bodyOf(on));
+    expect(body.kind).toBe("ok");
+    expect(mockAiRequests()).toHaveLength(1);
+
+    // Consent is still needed, and a non-Davidson account stays locked, with a message true for the switch.
+    await signIn({ verified: false, consent: false });
+    expect((await bodyOf(await post(CSC_221))).kind).toBe("consent_required");
+    await signIn({ email: "legacy-unverified@gmail.com", verified: false });
+    const legacy = await post(CSC_221);
+    expect(legacy.status).toBe(403);
+    expect(await bodyOf(legacy)).toEqual({
+      kind: "unverified",
+      message: UNVERIFIED_AI_ALLOWED_MESSAGE,
+    });
+
+    // Switched off again: the same student is unverified again (nothing is remembered).
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "false");
+    await signIn({ verified: false });
+    expect((await post(CSC_221)).status).toBe(403);
+  });
 });
 
 describe("generation and the shared cache", () => {
@@ -156,14 +195,15 @@ describe("generation and the shared cache", () => {
     const body = CourseAboutResultSchema.parse(await bodyOf(first));
     expect(body).toMatchObject({
       kind: "ok",
-      servedModel: "claude-sonnet-5-5",
+      servedModel: MOCK_MODEL,
       fallbackUsed: false,
       cached: false,
     });
     if (body.kind !== "ok") throw new Error("expected ok");
     expect(body.data.about.summary).toMatch(/abstract data types/);
+    // The mock provider's own id in the stored provenance, never a Claude model's.
     expect(body.data.provenance).toMatchObject({
-      model: "claude-sonnet-5-5",
+      model: MOCK_MODEL,
       promptVersion: "course-about/1",
       inputHash: expect.stringMatching(/^[a-f0-9]{64}$/),
       generatedAt: "2026-09-30T16:00:00.000Z",
@@ -192,6 +232,9 @@ describe("generation and the shared cache", () => {
     const usage = await AiUsage.findOne({ userId: usageSubject(user.id) }).lean();
     expect(usage).toMatchObject({ feature: "course-about", generations: 1, cacheHits: 1 });
     expect(usage!.inputTokens).toBeGreaterThan(0);
+    expect(usage!.models).toEqual([MOCK_MODEL]);
+    const stored = await AiCache.findOne({ feature: "course-about" }).lean();
+    expect(stored?.provenance?.model).toBe(MOCK_MODEL);
   });
 
   it("shares one entry across terms when the official text is the same", async () => {
@@ -274,9 +317,9 @@ describe("generation and the shared cache", () => {
     const body = CourseAboutResultSchema.parse(await bodyOf(await post(CSC_221)));
     expect(body).toMatchObject({
       kind: "ok",
-      servedModel: "claude-sonnet-5",
+      servedModel: MOCK_FALLBACK_MODEL,
       fallbackUsed: true,
-      data: { provenance: { model: "claude-sonnet-5" } },
+      data: { provenance: { model: MOCK_FALLBACK_MODEL } },
     });
   });
 });
@@ -381,6 +424,23 @@ describe("quota and budget", () => {
       message: "You have used today's AI requests. They reset tomorrow.",
     });
     expect(mockAiRequests()).toHaveLength(0);
+  });
+
+  it("AI_ALLOW_UNVERIFIED on: each unverified account has its own quota, and the one shared budget is what stops them all (the documented cost risk)", async () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    // A throwaway sign-up uses its whole quota...
+    const first = await signIn({ verified: false });
+    for (let i = 0; i < DAILY_GENERATION_QUOTA; i++) await consumeGenerationQuota(first.id);
+    expect((await post(CSC_221)).status).toBe(429);
+    // ...and the next one at another unproven address starts with a full quota of its own.
+    await signIn({ verified: false });
+    expect((await post(CSC_221)).status).toBe(200);
+    // Their tokens count toward AI_DAILY_TOKEN_BUDGET, which then pauses verified students too.
+    vi.stubEnv("AI_DAILY_TOKEN_BUDGET", String(await tokensUsedToday()));
+    await signIn();
+    const paused = await post({ termCode: "202602", courseCode: "CSC 121" });
+    expect(paused.status).toBe(503);
+    expect((await bodyOf(paused)).kind).toBe("budget");
   });
 
   it("answers budget (503) once the day's tokens reach AI_DAILY_TOKEN_BUDGET, but still serves cached entries", async () => {

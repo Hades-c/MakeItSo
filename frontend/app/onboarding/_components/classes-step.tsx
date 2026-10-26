@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CourseCode } from "@/components/ui/course-code";
 import { courseSlug } from "@/lib/routes";
 import { callApi } from "@/lib/api/client";
-import { catalogApi } from "@/lib/api/catalog";
+import { catalogEndpoints } from "@/lib/api/endpoints";
 import { termLabel, type TermCode } from "@/lib/term";
 import type { Course, CourseSummary, Section } from "@/lib/types/catalog";
 import type { PlanItem, PlanWarning } from "@/lib/types/plan";
@@ -141,7 +141,7 @@ export function ClassesStep(props: ClassesStepProps) {
     setError(null);
     setPicker({ code: summary.code, course: null, loading: true, error: null, crn: "" });
     try {
-      const { course } = await callApi(catalogApi.course, {
+      const { course } = await callApi(catalogEndpoints.course, {
         params: { term, code: courseSlug(summary.code) },
       });
       const only = autoSection(course);

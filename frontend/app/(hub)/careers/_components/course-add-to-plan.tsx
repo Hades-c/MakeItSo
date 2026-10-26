@@ -6,7 +6,7 @@ import { Info } from "lucide-react";
 import { AddToPlanControl, type AddToPlanTerm } from "@/components/domain/add-to-plan-control";
 import { Notice } from "@/components/ui/notice";
 import { ApiClientError, callApi } from "@/lib/api/client";
-import { planApi } from "@/lib/api/plan";
+import { planEndpoints } from "@/lib/api/endpoints";
 
 /**
  * Add a career's course to the plan (client island over AddToPlanControl). The term choice shows the live
@@ -99,7 +99,7 @@ export function CourseAddToPlan({
     setNotice(null);
     const label = labelOf(terms, termCode);
     try {
-      const result = await callApi(planApi.addItem, {
+      const result = await callApi(planEndpoints.addItem, {
         body: {
           termCode,
           courseCode,

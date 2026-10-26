@@ -9,6 +9,7 @@ import {
 import type { ClassStanding } from "@/lib/term";
 import type { FeedItem } from "@/lib/types/feeds";
 import type { DaySchedule, StudentDeadline } from "@/lib/types/plan";
+import { mergeListings } from "@/server/feeds/merge";
 import { isTimedEventOn } from "@/server/today/agenda";
 import { breakOn, calendarDeadlineRows, milestonesOn } from "@/server/today/calendar";
 import { addDaysToKey, etDay, TODAY_TIME_ZONE, zonedInstant } from "@/server/today/time";
@@ -24,7 +25,8 @@ import { addDaysToKey, etDay, TODAY_TIME_ZONE, zonedInstant } from "@/server/tod
  * - milestones: calendar rows for the student that open today (WebTree opens), from calendar milestonesOn.
  * - events: timed campus events today (agenda isTimedEventOn, the timeline's rule: each one is drawn there or
  *   counted in its "N more campus events" link); only while FEATURE_EVENTS is on (the caller passes none
- *   otherwise). Feed deadlines are campus notices for anyone, not the student's deadlines: left out.
+ *   otherwise). Distinct events: one listed by several sources counts once (server/feeds/merge.ts). Feed
+ *   deadlines are campus notices for anyone, not the student's deadlines: left out.
  */
 
 export interface SummaryParts {
@@ -72,7 +74,7 @@ export function summaryInput(parts: SummaryParts): DaySummaryInput {
       end: new Date(entry.endsAt),
     })),
     deadlines,
-    events: parts.feedItems
+    events: mergeListings(parts.feedItems, TODAY_TIME_ZONE)
       .filter((item) => isTimedEventOn(item, today))
       .map((item) => ({ title: item.title, start: new Date(item.startsAt as string) })),
     milestones: milestonesOn(today, parts.standing),

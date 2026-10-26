@@ -14,8 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { accountApi } from "@/lib/api/account";
+
 import { callApi } from "@/lib/api/client";
+import { accountEndpoints } from "@/lib/api/endpoints";
 import { routes } from "@/lib/routes";
 import { describeFailure } from "../_lib/errors";
 import { hardNavigate } from "../_lib/navigate";
@@ -36,7 +37,7 @@ export function SignOutEverywhere() {
     setBusy(true);
     setError(null);
     try {
-      await callApi(accountApi.signOutEverywhere);
+      await callApi(accountEndpoints.signOutEverywhere);
     } catch (caught) {
       const failure = describeFailure(caught);
       if (!failure.signedOut) {

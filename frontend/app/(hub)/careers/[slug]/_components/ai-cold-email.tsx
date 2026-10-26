@@ -5,8 +5,8 @@ import { Check, Copy, Sparkles } from "lucide-react";
 import { ProvenanceLine } from "@/app/(hub)/alumni/_components/provenance-line";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
-import { aiApi } from "@/lib/api/ai";
 import { callApi } from "@/lib/api/client";
+import { aiEndpoints } from "@/lib/api/endpoints";
 import type { AiFailure, AiOk, ColdEmail } from "@/lib/types/ai";
 import { cn } from "@/lib/utils";
 import { FOCUS_TARGET, useAiRequest, useSettleFocus } from "./ai-request";
@@ -176,7 +176,7 @@ export function AiColdEmailPanel({
     if (busy || !alumnusId) return;
     lastRequest.current = { alumnusId, regenerate };
     void run(async () => {
-      const result = await callApi(aiApi.coldEmail, {
+      const result = await callApi(aiEndpoints.coldEmail, {
         body: { alumnusId, careerSlug, regenerate },
       });
       if (result.kind !== "ok") return result;

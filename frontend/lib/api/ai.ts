@@ -74,7 +74,7 @@ export const ProfessorSummaryResultSchema = aiResultSchema(
   z.object({ summary: ProfessorSummarySchema, provenance: AiProvenanceSchema }),
 );
 
-/** "Report this" on a shared entry; hidden after 3 distinct reports. */
+/** "Report this" on a shared entry; hidden after 3 distinct reports from verified @davidson.edu mailboxes. */
 export const ReportBodySchema = z
   .object({
     feature: z.enum(["course-about", "professor-summary"]),
@@ -129,10 +129,11 @@ export const aiApi = {
     body: ProfessorSummaryBodySchema,
     response: ProfessorSummaryResultSchema,
   }),
+  /** Whoever may see the entry (server/ai/access.ts isAiVerified; 403 otherwise); verified reporters count. */
   report: apiRoute({
     method: "POST",
     path: "/api/ai/report",
-    auth: "verified",
+    auth: "user",
     body: ReportBodySchema,
     response: null,
   }),

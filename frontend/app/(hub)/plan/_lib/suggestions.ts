@@ -1,6 +1,7 @@
 import { compareTerms, termLabel, type TermCode } from "@/lib/term";
-import { normalizeCourseCode } from "@/lib/types/common";
-import { ACTIVE_PLAN_STATUSES, type PlanDraft, type PlanItem } from "@/lib/types/plan";
+import { normalizeCourseCode } from "@/lib/course-code";
+import type { PlanDraft, PlanItem } from "@/lib/types/plan";
+import { ACTIVE_PLAN_STATUSES } from "@/lib/types/plan-constants";
 
 /**
  * AI suggestion drafts, arranged for the Suggestions tab (pure, isomorphic). PLAN §6.1 W5s: "draft items already

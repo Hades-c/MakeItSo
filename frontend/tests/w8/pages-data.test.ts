@@ -9,6 +9,7 @@ import {
 import { parseCoursesQuery } from "@/app/(hub)/courses/_lib/query";
 import { loadSearch, termOptions } from "@/app/(hub)/courses/_lib/search";
 import { loadStudentPlan } from "@/app/(hub)/courses/_lib/student";
+import { UNVERIFIED_AI_ALLOWED_MESSAGE } from "@/lib/types/ai-constants";
 import { now } from "@/server/clock";
 import { resolveTerms } from "@/server/catalog";
 import { addItem } from "@/server/plan";
@@ -208,6 +209,21 @@ describe("/courses/[term]/[code] data", () => {
     expect((await loadCoursePage(page, { userId, requestedCrn: null, plan: null })).aboutGate).toBe(
       null,
     );
+  });
+
+  it("decides the AI panel like the route while AI_ALLOW_UNVERIFIED is on (consent next; non-Davidson stays locked)", async () => {
+    vi.stubEnv("AI_PROVIDER", "mock");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    const page = (await resolveCoursePage({ term: "202602", code: "CSC 221" }))!;
+    // An unverified @davidson.edu student is past the verification step: consent is what is left.
+    const davidson = await insertStudent();
+    const open = await loadCoursePage(page, { userId: davidson, requestedCrn: null, plan: null });
+    expect(open.aboutGate).toBe("consent_required");
+    expect(open.aboutUnverifiedMessage).toBeUndefined();
+    const legacy = await insertStudent({ email: "legacy-student@gmail.com" });
+    const locked = await loadCoursePage(page, { userId: legacy, requestedCrn: null, plan: null });
+    expect(locked.aboutGate).toBe("unverified");
+    expect(locked.aboutUnverifiedMessage).toBe(UNVERIFIED_AI_ALLOWED_MESSAGE);
   });
 
   it("reads no ratings while RMP is off", async () => {

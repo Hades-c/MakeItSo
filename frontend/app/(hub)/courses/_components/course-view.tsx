@@ -19,7 +19,16 @@ import { requirementGroups } from "../_lib/format";
 
 const CRUMB = "inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0";
 
-export function CourseView({ data, timeZone }: { data: CoursePageData; timeZone?: string }) {
+export function CourseView({
+  data,
+  timeZone,
+  verifyHref = null,
+}: {
+  data: CoursePageData;
+  timeZone?: string;
+  /** The AI panel's "Verify your Davidson email" link (server/auth verifyStepFor), or null. */
+  verifyHref?: string | null;
+}) {
   const { params, course, reference, chosen, add } = data;
   const subject = reference.sections[0]?.subject ?? params.code.split(" ")[0]!;
   const pageHref = routes.course(params.term, params.code);
@@ -133,6 +142,8 @@ export function CourseView({ data, timeZone }: { data: CoursePageData; timeZone?
                 termCode={params.term}
                 courseCode={params.code}
                 gate={data.aboutGate}
+                unverifiedMessage={data.aboutUnverifiedMessage}
+                verifyHref={verifyHref}
                 timeZone={timeZone}
               />
             ) : null}

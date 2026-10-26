@@ -6,6 +6,7 @@ import type { NavCounts } from "@/components/app/sidebar-nav";
 import type { SourceLink, SourceSync } from "@/components/app/sources-panel";
 import { RETURN_PATH_HEADER, routes } from "@/lib/routes";
 import { sourcesOfKind } from "@/lib/sources";
+import { loadAiAllowsUnverified } from "@/server/ai/access";
 import { verifyBannerFor, type VerifyBannerState } from "@/server/auth/banner";
 import { safeAppPath } from "@/server/auth/paths";
 import { isOnboarded, requireUser, type SessionUser } from "@/server/auth/session";
@@ -77,7 +78,7 @@ export default async function HubLayout({ children }: { children: React.ReactNod
       now={at}
       timeZone={timeZone}
     >
-      {banner ? <VerifyBanner {...banner} /> : null}
+      {banner ? <VerifyBanner {...banner} aiWithoutVerifying={loadAiAllowsUnverified()} /> : null}
       {children}
     </AppShell>
   );

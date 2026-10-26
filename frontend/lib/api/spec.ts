@@ -64,6 +64,26 @@ export function apiRoute<const S extends ApiRouteSpec>(spec: S): S {
   return spec;
 }
 
+/**
+ * A route as client islands call it (lib/api/endpoints.ts): its spec's method, path and AI flag, typed by the spec
+ * but without the zod schemas, so a page's first-load JavaScript carries no zod. `callApi` takes an endpoint or a
+ * full spec; with an endpoint it checks the response against the spec outside production only (the server
+ * already checked it). The method, path and flag must equal the spec's, which the compiler enforces.
+ */
+export type ApiEndpoint<S extends ApiRouteSpec = ApiRouteSpec> = {
+  readonly method: S["method"];
+  readonly path: S["path"];
+  /** Type only, never set: the spec this endpoint calls. */
+  readonly __spec?: S;
+} & (S extends { aiResult: true }
+  ? { readonly aiResult: true }
+  : { readonly aiResult?: undefined });
+
+/** The endpoints of a spec family (`ApiEndpoints<typeof planApi>`): one per route, nothing else. */
+export type ApiEndpoints<F extends Readonly<Record<string, ApiRouteSpec>>> = {
+  readonly [K in keyof F]: ApiEndpoint<F[K]>;
+};
+
 export type QueryInput<S extends ApiRouteSpec> = S["query"] extends z.ZodType
   ? z.input<S["query"]>
   : never;

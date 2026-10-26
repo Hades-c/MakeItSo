@@ -43,7 +43,10 @@ const AiCacheSchema = new Schema(
       generatedAt: { type: Date, required: true },
     },
     fallbackUsed: { type: Boolean, default: false },
-    /** "Report this" on shared entries: reporters (the count is the number of distinct reporting mailboxes). */
+    /**
+     * "Report this" on shared entries: reporters (the count is the number of distinct reporting mailboxes whose
+     * reports count: verified ones).
+     */
     reports: {
       count: { type: Number, default: 0 },
       userIds: { type: [Schema.Types.ObjectId], default: [] },
@@ -56,6 +59,14 @@ const AiCacheSchema = new Schema(
               reporter: { type: String, default: null },
               reason: { type: String, default: null },
               at: { type: Date, required: true },
+              /**
+               * false: an account without a verified @davidson.edu mailbox reported it (AI_ALLOW_UNVERIFIED), which
+               * is kept but not counted toward hiding (server/ai/reports.ts). Missing on reports from before the
+               * switch, which only verified accounts could send: they count. Permanent: keep this field (and
+               * REPORTER_COUNT's filter on it) when the switch is removed, unless a migration first deletes the
+               * `verified: false` entries.
+               */
+              verified: { type: Boolean },
             },
             { _id: false },
           ),

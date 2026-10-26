@@ -3,7 +3,7 @@ import type { Profile } from "@/lib/api/profile";
 import { currentTermFrom, termLabel, type TermCode } from "@/lib/term";
 import type { TermInfo } from "@/lib/types/catalog";
 import type { PlanItem } from "@/lib/types/plan";
-import { getProfile, officialNames } from "@/server/auth";
+import { getProfile, profileProgramNames } from "@/server/auth";
 import { resolveTerms } from "@/server/catalog";
 import { now } from "@/server/clock";
 import { CAREERS, type CareerCluster } from "@/server/content/careers";
@@ -24,7 +24,8 @@ import { stepProgress, type StepProgress } from "./steps";
  * island gets plain, serialisable props and keeps its own copy of what it edits.
  *
  *   profile       getProfile (W3): official names already mapped; firstTerm null until saved
- *   majors/...    official Acalog names (W3 officialNames: server/programs, else the checked-in snapshot)
+ *   majors/...    official Acalog names (W3 officialNames: server/programs, else the checked-in snapshot), then
+ *                 the unlisted programs (W3 profileProgramNames: a CIS major, the Middle East Studies minor)
  *   careers       the interests taxonomy (career-path slugs, server/content)
  *   terms         the current term (step 2 "Your Fall 2026 classes"), the status its classes get, and the
  *                 terms a completed course can come from (first term → the term before the current one)
@@ -97,8 +98,8 @@ export async function loadOnboarding(userId: string): Promise<OnboardingData> {
   const at = now();
   const [view, majors, minors, plan, current] = await Promise.all([
     getProfile(userId),
-    officialNames("major"),
-    officialNames("minor"),
+    profileProgramNames("major"),
+    profileProgramNames("minor"),
     getPlan(userId),
     loadCurrentTerm(at),
   ]);

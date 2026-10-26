@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
-import { catalogApi } from "@/lib/api/catalog";
+import { catalogEndpoints } from "@/lib/api/endpoints";
 import { courseSlug } from "@/lib/routes";
 import type { CourseSummary, Section } from "@/lib/types/catalog";
-import { normalizeCourseCode } from "@/lib/types/common";
+import { normalizeCourseCode } from "@/lib/course-code";
 import type { WebTreeList } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "../_lib/errors";
@@ -112,7 +112,9 @@ export function AddCourse({
     }
     setResults({ state: "loading" });
     try {
-      const found = await callApi(catalogApi.search, { query: { term: termCode, q, pageSize: 8 } });
+      const found = await callApi(catalogEndpoints.search, {
+        query: { term: termCode, q, pageSize: 8 },
+      });
       setResults({ state: "done", items: found.items, total: found.total });
     } catch (error) {
       setResults({
@@ -152,7 +154,7 @@ export function AddCourse({
     setCrn(null);
     setSections({ state: "loading" });
     try {
-      const found = await callApi(catalogApi.course, {
+      const found = await callApi(catalogEndpoints.course, {
         params: { term: termCode, code: courseSlug(code) },
       });
       const open = found.course.sections;

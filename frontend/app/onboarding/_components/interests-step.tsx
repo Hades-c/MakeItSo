@@ -6,7 +6,7 @@ import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { Button } from "@/components/ui/button";
 import { ToggleChip } from "@/components/ui/chip";
 import { callApi } from "@/lib/api/client";
-import { profileApi } from "@/lib/api/profile";
+import { profileEndpoints } from "@/lib/api/endpoints";
 import { describeFailure } from "../_lib/errors";
 import type { CareerOption } from "../_lib/load";
 import { afterSetupHref } from "../_lib/steps";
@@ -42,7 +42,7 @@ export function InterestsStep({ initial, careers }: InterestsStepProps) {
     setSaving(true);
     setError(null);
     try {
-      await callApi(profileApi.update, { body: { interests: chosen, onboarded: true } });
+      await callApi(profileEndpoints.update, { body: { interests: chosen, onboarded: true } });
       router.push(afterSetupHref(after));
       router.refresh();
     } catch (caught) {

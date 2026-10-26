@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { COURSE_CODE_PATTERN, normalizeCourseCode } from "@/lib/course-code";
 import { SOURCE_IDS, SYNCED_SOURCE_IDS } from "@/lib/sources";
 import { TERM_CODE_PATTERN } from "@/lib/term";
 
@@ -13,19 +14,8 @@ export const TermCodeSchema = z
   .regex(TERM_CODE_PATTERN, "must be a term code such as 202602");
 export type TermCodeValue = z.infer<typeof TermCodeSchema>;
 
-/** A catalog course code: department (2–4 capitals), one space, three digits, optional suffix letter: "HIS 357". */
-export const COURSE_CODE_PATTERN = /^[A-Z]{2,4} \d{3}[A-Z]?$/;
-
-/**
- * Normalise user or upstream input to the course-code form: upper case, trimmed, one space between department and
- * number ("csc121" / " CSC  121 " → "CSC 121"). Returns the input upper-cased and whitespace-collapsed when it does
- * not look like a course code (so validation can still reject it with a useful message).
- */
-export function normalizeCourseCode(input: string): string {
-  const compact = input.normalize("NFKC").trim().toUpperCase().replace(/\s+/g, " ");
-  const match = /^([A-Z]{2,4}) ?(\d{3}[A-Z]?)$/.exec(compact);
-  return match ? `${match[1]} ${match[2]}` : compact;
-}
+// The course-code rules live in lib/course-code.ts (zod-free, for client islands); re-exported for schema users.
+export { COURSE_CODE_PATTERN, normalizeCourseCode };
 
 /** Accepts "CSC121", "csc 121", " CSC  121 " and outputs the canonical "CSC 121". */
 export const CourseCodeSchema = z

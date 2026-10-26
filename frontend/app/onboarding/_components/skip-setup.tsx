@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { callApi } from "@/lib/api/client";
-import { profileApi } from "@/lib/api/profile";
+import { profileEndpoints } from "@/lib/api/endpoints";
 import { describeFailure } from "../_lib/errors";
 import { afterSetupHref } from "../_lib/steps";
 import { useSetupNext } from "./parts";
@@ -25,7 +25,7 @@ export function SkipSetup() {
     setSaving(true);
     setError(null);
     try {
-      await callApi(profileApi.update, { body: { onboarded: true } });
+      await callApi(profileEndpoints.update, { body: { onboarded: true } });
       router.push(afterSetupHref(after));
       router.refresh();
     } catch (caught) {

@@ -18,6 +18,8 @@ vi.mock("@/server/auth/session", () => ({
     email: "s@davidson.edu",
   })),
 }));
+// The Suggestions tab's "Verify your Davidson email" step (tests/w3/banner.test.ts covers the rule).
+vi.mock("@/server/auth/banner", () => ({ verifyStepFor: () => null }));
 vi.mock("@/server/clock", () => ({ now: () => new Date("2026-09-30T16:00:00Z") }));
 vi.mock("@/server/env", () => ({ readEnv: () => "America/New_York" }));
 vi.mock("@/app/(hub)/plan/_lib/load", () => loaders);

@@ -8,9 +8,10 @@ import { Field } from "@/components/ui/field";
 import { Input, controlClass } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { callApi } from "@/lib/api/client";
-import { planApi, type AddPlanItemBody } from "@/lib/api/plan";
+import { planEndpoints } from "@/lib/api/endpoints";
+import type { AddPlanItemBody } from "@/lib/api/plan";
 import { termLabel } from "@/lib/term";
-import { CourseCodeSchema } from "@/lib/types/common";
+import { COURSE_CODE_PATTERN, normalizeCourseCode } from "@/lib/course-code";
 import type { PlanStatus } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "../_lib/labels";
@@ -47,8 +48,9 @@ export function manualEntryBody(form: {
   termCode: string;
   status: PlanStatus;
 }): { ok: true; body: AddPlanItemBody } | { ok: false; field: string; message: string } {
-  const code = CourseCodeSchema.safeParse(form.courseCode);
-  if (!code.success) {
+  // lib/types/common CourseCodeSchema's rule, without zod in the page's JavaScript.
+  const courseCode = normalizeCourseCode(form.courseCode);
+  if (form.courseCode.length > 20 || !COURSE_CODE_PATTERN.test(courseCode)) {
     return { ok: false, field: "courseCode", message: "Enter a course code such as CHE 115." };
   }
   const title = form.title.trim();
@@ -74,7 +76,7 @@ export function manualEntryBody(form: {
     ok: true,
     body: {
       termCode: form.termCode === "" ? null : form.termCode,
-      courseCode: code.data,
+      courseCode,
       source: form.kind,
       status: form.status,
       manualTitle: title,
@@ -115,7 +117,7 @@ export function ManualEntryForm({ terms }: { terms: readonly string[] }) {
       return;
     }
     setProblem(null);
-    const result = await action.run(() => callApi(planApi.addItem, { body: built.body }), {
+    const result = await action.run(() => callApi(planEndpoints.addItem, { body: built.body }), {
       fallback: "Could not add that course. Please try again.",
     });
     if (result.ok) {

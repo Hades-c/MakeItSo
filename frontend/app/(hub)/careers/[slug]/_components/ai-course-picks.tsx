@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { CourseCode } from "@/components/ui/course-code";
 import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
-import { catalogApi } from "@/lib/api/catalog";
+import { catalogEndpoints } from "@/lib/api/endpoints";
 import { courseSlug, routes } from "@/lib/routes";
 import { compareTerms, termLabel, type TermCode } from "@/lib/term";
 import type { Availability } from "@/lib/types/catalog";
@@ -100,11 +100,11 @@ interface PickFacts {
 }
 
 async function loadPickFacts(code: string, pickTerm: TermCode): Promise<PickFacts> {
-  const { availability } = await callApi(catalogApi.availability, { query: { code } });
+  const { availability } = await callApi(catalogEndpoints.availability, { query: { code } });
   const titleTerm = titleTermOf(availability, pickTerm);
   if (!titleTerm) return { history: availability, title: null, titleTerm: null };
   try {
-    const { course } = await callApi(catalogApi.course, {
+    const { course } = await callApi(catalogEndpoints.course, {
       params: { term: titleTerm, code: courseSlug(code) },
     });
     return { history: availability, title: course.title, titleTerm };

@@ -1,6 +1,11 @@
 import * as z from "zod";
-import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { PlanDraftSchema } from "@/lib/types/plan";
+import {
+  AI_FAILURE_KINDS,
+  AI_FAILURE_MESSAGES,
+  AI_RESULT_STATUS,
+  type AiFailureKind,
+} from "@/lib/types/ai-constants";
 import { CourseCodeSchema, IsoDateTimeSchema, TermCodeSchema } from "@/lib/types/common";
 
 /**
@@ -30,75 +35,18 @@ export const AI_FEATURES = [
 export const AiFeatureSchema = z.enum(AI_FEATURES);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
 
-/**
- * Failure kinds:
- *   refused          the model declined (stop_reason "refusal")
- *   truncated        hit max_tokens
- *   invalid          output failed schema/grounding validation (> 30% of suggestions dropped counts as invalid)
- *   quota            the student's daily generation quota is used up
- *   budget           the global AI_DAILY_TOKEN_BUDGET circuit breaker is open ("AI is paused for today")
- *   timeout          the provider timed out
- *   unavailable      provider busy / connection error
- *   not_configured   no API key / provider configured
- *   disabled         AI_ENABLED is off (or RMP_SUMMARIES_ENABLED for professor summaries)
- *   consent_required the student has not opted in (aiConsentAt unset, or no 18+ attestation)
- *   unverified       not a verified @davidson.edu account
- */
-export const AI_FAILURE_KINDS = [
-  "refused",
-  "truncated",
-  "invalid",
-  "quota",
-  "budget",
-  "timeout",
-  "unavailable",
-  "not_configured",
-  "disabled",
-  "consent_required",
-  "unverified",
-] as const;
-export const AiFailureKindSchema = z.enum(AI_FAILURE_KINDS);
-export type AiFailureKind = z.infer<typeof AiFailureKindSchema>;
+// AI_FAILURE_KINDS, AI_RESULT_STATUS and AI_FAILURE_MESSAGES live in ./ai-constants (zod-free, for callApi and
+// client islands); the kinds are documented there.
+export { AI_FAILURE_KINDS, AI_FAILURE_MESSAGES, AI_RESULT_STATUS };
 
-/**
- * HTTP status defineRoute sends for each result kind of an `aiResult` route (the body is the AiResult itself;
- * callApi returns it rather than throwing).
- */
-export const AI_RESULT_STATUS: Readonly<Record<"ok" | AiFailureKind, number>> = {
-  ok: 200,
-  refused: 422,
-  truncated: 502,
-  invalid: 502,
-  quota: 429,
-  budget: 503,
-  timeout: 504,
-  unavailable: 503,
-  not_configured: 503,
-  disabled: 404,
-  consent_required: 403,
-  unverified: 403,
-};
+export const AiFailureKindSchema = z.enum(AI_FAILURE_KINDS);
+export type { AiFailureKind };
 
 export const AiFailureSchema = z.object({
   kind: AiFailureKindSchema,
   message: z.string(),
 });
 export type AiFailure = z.infer<typeof AiFailureSchema>;
-
-/** Default student-facing message per failure kind (W6 may pass a more specific one). */
-export const AI_FAILURE_MESSAGES: Readonly<Record<AiFailureKind, string>> = {
-  refused: "The AI declined to answer this request.",
-  truncated: "The AI's answer was cut off. Please try again.",
-  invalid: "The AI's answer did not pass MakeItSo's checks, so it is not shown. Please try again.",
-  quota: "You have used today's AI requests. They reset tomorrow.",
-  budget: "AI is paused for today.",
-  timeout: "The AI took too long to answer. Please try again.",
-  unavailable: "AI is busy right now. Please try again in a minute.",
-  not_configured: "AI features are not set up on this server yet.",
-  disabled: "AI features are turned off.",
-  consent_required: "Turn on AI features in your profile to use this.",
-  unverified: UNVERIFIED_MESSAGE,
-};
 
 /** A failure result with the default message for its kind unless one is given. */
 export function aiFailure(kind: AiFailureKind, message?: string): AiFailure {
@@ -111,10 +59,15 @@ export interface AiGateInput {
   enabled: boolean;
   /** A provider is configured (an API key, or AI_PROVIDER=mock outside Vercel production). */
   configured: boolean;
-  /** Signed in with a verified @davidson.edu mailbox (isVerifiedDavidson in server/http). */
+  /**
+   * Verified for this feature (server/ai/access.ts isAiVerified): a verified @davidson.edu mailbox; while the
+   * temporary AI_ALLOW_UNVERIFIED switch is on, any @davidson.edu address, except for cold e-mail.
+   */
   verified: boolean;
   /** aiConsentAt set (and the 18+ attestation, once the owner decides it is required). */
   consented: boolean;
+  /** What a student who fails `verified` is told (default UNVERIFIED_MESSAGE; verifiedOnlyMessage(switch)). */
+  unverifiedMessage?: string;
 }
 
 /**
@@ -125,7 +78,7 @@ export interface AiGateInput {
 export function aiGateFailure(input: AiGateInput): AiFailure | null {
   if (!input.enabled) return aiFailure("disabled");
   if (!input.configured) return aiFailure("not_configured");
-  if (!input.verified) return aiFailure("unverified");
+  if (!input.verified) return aiFailure("unverified", input.unverifiedMessage);
   if (!input.consented) return aiFailure("consent_required");
   return null;
 }

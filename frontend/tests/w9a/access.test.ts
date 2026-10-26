@@ -1,8 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { alumniAccessFor, alumniGateCopy } from "@/app/(hub)/alumni/_lib/access";
 import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { getFlags } from "@/lib/flags";
-import { VERIFICATION_UNAVAILABLE_MESSAGE } from "@/server/auth/verification";
+import { UNVERIFIED_AI_ALLOWED_MESSAGE } from "@/lib/types/ai-constants";
+import {
+  VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE,
+  VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
+  VERIFICATION_UNAVAILABLE_MESSAGE,
+  verificationUnavailableMessage,
+} from "@/server/auth/verification";
 
 const ON = getFlags({});
 const VERIFIED_AT = "2026-09-01T12:00:00.000Z";
@@ -85,5 +91,73 @@ describe("alumniGateCopy", () => {
     const copy = alumniGateCopy({ kind: "davidson-only" }, "/careers/law");
     expect(copy.message).toBe(UNVERIFIED_MESSAGE);
     expect(copy.action).toBeNull();
+  });
+});
+
+describe("while AI_ALLOW_UNVERIFIED is on (temporary)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("never opens alumni: the switch is for AI only", () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    const mail = () => false;
+    expect(alumniAccessFor(unverified, ON, mail)).toEqual({ kind: "verify", mailAvailable: false });
+    expect(alumniAccessFor(legacy, ON, mail)).toEqual({ kind: "davidson-only" });
+    expect(alumniAccessFor(davidson, ON, mail)).toEqual({ kind: "open" });
+  });
+
+  it("explains the locks truthfully: AI needs a Davidson address, alumni a verified one", () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    vi.stubEnv("AI_PROVIDER", "mock");
+    expect(alumniGateCopy({ kind: "davidson-only" }, "/alumni").message).toBe(
+      UNVERIFIED_AI_ALLOWED_MESSAGE,
+    );
+    expect(alumniGateCopy({ kind: "verify", mailAvailable: false }, "/alumni").message).toBe(
+      VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE,
+    );
+    const verify = alumniGateCopy({ kind: "verify", mailAvailable: true }, "/alumni");
+    expect(verify.message).toContain(UNVERIFIED_AI_ALLOWED_MESSAGE);
+    // Verifying still opens alumni, so the verify step stays.
+    expect(verify.action?.label).toBe("Verify your email");
+    expect(VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE).not.toMatch(/AI features need/);
+  });
+
+  it("offers AI in the meantime only while AI works: not with AI off or not set up", () => {
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    const noMail = { kind: "verify", mailAvailable: false } as const;
+    // No provider configured (no key), as on a server where AI is not set up yet.
+    vi.stubEnv("AI_PROVIDER", "anthropic");
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    expect(alumniGateCopy(noMail, "/alumni").message).toBe(
+      VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
+    );
+    vi.stubEnv("AI_PROVIDER", "mock");
+    vi.stubEnv("AI_ENABLED", "false");
+    expect(alumniGateCopy(noMail, "/alumni").message).toBe(
+      VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
+    );
+    // The switch's rule all the same (only alumni and cold-email drafts need a verified address), no promise.
+    expect(VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE).toMatch(
+      /alumni network and cold-email drafts need a verified/,
+    );
+    expect(VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE).not.toMatch(/AI features/);
+    // The lock states the rule, which the switch decides whether AI is on or not.
+    expect(alumniGateCopy({ kind: "davidson-only" }, "/alumni").message).toBe(
+      UNVERIFIED_AI_ALLOWED_MESSAGE,
+    );
+  });
+});
+
+describe("verificationUnavailableMessage", () => {
+  it("states the switch's rule, and offers AI only while it works without verifying", () => {
+    expect(verificationUnavailableMessage(false, false)).toBe(VERIFICATION_UNAVAILABLE_MESSAGE);
+    expect(verificationUnavailableMessage(true, true)).toBe(
+      VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE,
+    );
+    expect(verificationUnavailableMessage(true, false)).toBe(
+      VERIFICATION_UNAVAILABLE_AI_CLOSED_MESSAGE,
+    );
+    expect(VERIFICATION_UNAVAILABLE_AI_ALLOWED_MESSAGE).toMatch(/the AI features in the meantime/);
   });
 });

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { expect, test } from "@playwright/test";
 import {
+  attributionReport,
   expectAllTagged,
   horizontalOverflow,
   isMobile,
@@ -16,7 +17,8 @@ import {
  * Professor ratings (W2) in the production build: the routes are wired, signed-in only, validated, never cached,
  * and never reach RateMyProfessors (the e2e server blocks outbound fetches; the roster job needs CRON_SECRET,
  * which the e2e server does not set). The course page test writes one synthetic roster row with its tag counts
- * straight to the database, as the daily cron would store it.
+ * straight to the database, as the daily cron would store it. A course page says what RMP says once per
+ * instructor, in "Instructors on RateMyProfessors"; the section rows give names only.
  */
 
 /**
@@ -97,34 +99,17 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   expect(res?.status()).toBe(200);
   const sections = page.getByRole("region", { name: /Sections/ });
 
-  // Each of her section rows: the short form, rating and difficulty.
-  for (const name of [/^Section C,/, /^Section D,/]) {
-    const row = sections
-      .getByRole("article", { name })
-      .locator('[data-aggregated="ratemyprofessors"]');
-    await expect(row).toContainText("4.1");
-    await expect(row).toContainText("8 ratings");
-    await expect(row).toContainText("Difficulty 2.4 of 5");
-    await expect(row).not.toContainText(/would take again|Most common tags/);
-    await expect(
-      row.getByRole("link", { name: /Arianna Smith on RateMyProfessors/ }),
-    ).toHaveAttribute("href", "https://www.ratemyprofessors.com/professor/9000004");
-  }
-  // Unmatched instructors get nothing.
-  await expect(
-    sections
-      .getByRole("article", { name: /^Section A,/ })
-      .locator('[data-aggregated="ratemyprofessors"]'),
-  ).toHaveCount(0);
-
-  // Two ratings: the rating and its count, nothing more (the details need three ratings).
-  for (const name of [/^Section E,/, /^Section F,/]) {
-    const row = sections
-      .getByRole("article", { name })
-      .locator('[data-aggregated="ratemyprofessors"]');
-    await expect(row).toContainText("1.2");
-    await expect(row).toContainText("2 ratings");
-    await expect(row).not.toContainText("Difficulty");
+  // The section rows name the instructors and nothing more: no rating, difficulty, RMP tag or link.
+  for (const [name, instructor] of [
+    [/^Section C,/, "Arianna Smith"],
+    [/^Section D,/, "Arianna Smith"],
+    [/^Section E,/, "Bryan Thurtle-Schmidt"],
+  ] as const) {
+    const row = sections.getByRole("article", { name });
+    await expect(row.getByRole("list", { name: "Instructors" })).toContainText(instructor);
+    await expect(row.locator('[data-aggregated="ratemyprofessors"], [data-source]')).toHaveCount(0);
+    await expect(row).not.toContainText(/\d ratings?\b|Difficulty|RateMyProfessors|RMP/);
+    await expect(row.getByRole("link", { name: /RateMyProfessors|RMP/ })).toHaveCount(0);
   }
 
   // The details once per instructor, under the sections.
@@ -139,15 +124,30 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   await expect(arianna.getByTestId("rating-tags")).toContainText(
     "Most common tags (from 8 ratings, as of Sep 29, 2026): Extra credit (4)",
   );
-  await expect(arianna.getByTestId("rating-tags")).toHaveText(/ via RateMyProfessors$/);
+  // The source once per instructor: no "via" on the tags line, one provenance line with the profile link.
+  await expect(arianna.getByTestId("rating-tags")).not.toContainText("RateMyProfessors");
   await expect(arianna.getByTestId("rating-tags")).toContainText("Get ready to read (3)");
   await expect(arianna.getByTestId("rating-tags")).toContainText("Beware of pop quizzes (2)");
   await expect(arianna.getByTestId("rating-tags")).not.toContainText("Amazing lectures");
+  // What a sighted reader sees on that line (the "Source:" and new-tab words are for screen readers).
+  const seen = await arianna.getByTestId("rating-source").evaluate((line) => {
+    const copy = line.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll(".sr-only").forEach((hidden) => hidden.remove());
+    return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
+  });
+  expect(seen).toBe("as of Sep 30, 2026 · RateMyProfessors");
   await expect(arianna.getByText("as of Sep 30, 2026")).toBeVisible();
-  await expect(arianna.getByRole("link", { name: /Arianna Smith’s page/ })).toHaveAttribute(
-    "href",
-    "https://www.ratemyprofessors.com/professor/9000004",
-  );
+  // Each date once in the entry (a tags count on the roster's day would leave its date out).
+  const entryText = (await arianna.textContent()) ?? "";
+  expect(entryText.match(/Sep 29, 2026/g)).toHaveLength(1);
+  expect(entryText.match(/Sep 30, 2026/g)).toHaveLength(1);
+  await expect(arianna.locator("[data-source]")).toHaveCount(1);
+  await expect(arianna.getByRole("link")).toHaveCount(1);
+  await expect(
+    arianna.getByRole("link", {
+      name: "Source: RateMyProfessors, Arianna Smith’s page (opens in a new tab)",
+    }),
+  ).toHaveAttribute("href", "https://www.ratemyprofessors.com/professor/9000004");
   const bryan = instructors.getByRole("listitem").filter({ hasText: "Bryan Thurtle-Schmidt" });
   await expect(bryan).toContainText("2 ratings");
   await expect(bryan).not.toContainText(/Difficulty|would take again|Most common tags/);
@@ -158,8 +158,16 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   await expect(sections).toContainText(
     "ratings only where a RateMyProfessors profile matches the instructor’s full name.",
   );
+  // Each number once on the page: Arianna Smith teaches two sections, and her rating shows in the block only.
+  await expect(sections.getByText("Difficulty 2.4 of 5")).toHaveCount(1);
+  await expect(page.locator("[data-rating]")).toHaveCount(2);
 
   expect(await expectAllTagged(page)).toBeGreaterThan(0);
+  expect(
+    (await attributionReport(page)).problems.filter((p) =>
+      /ratemyprofessors|RateMyProfessors/.test(p),
+    ),
+  ).toEqual([]);
   expect(await seriousViolations(page, "#sections")).toEqual([]);
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);

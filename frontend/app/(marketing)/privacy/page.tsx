@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import type * as React from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { SUPPORT_CONTACT } from "@/app/(auth)/_lib/support";
 import { Wordmark } from "@/components/app/wordmark";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/lib/routes";
+import { loadAiAllowsUnverified } from "@/server/ai/access";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -13,10 +15,12 @@ export const metadata: Metadata = {
 };
 
 /** When this notice last changed (update it with every change to the text). */
-const LAST_UPDATED = "September 30, 2026";
+const LAST_UPDATED = "October 25, 2026";
 
 /**
- * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Static. Every statement here must stay true: the
+ * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Rendered per request only because of the owner's
+ * temporary AI_ALLOW_UNVERIFIED switch (server/ai/access.ts), which changes who may use AI: the notice says which
+ * accounts the AI features need in either state. Every statement here must stay true: the
  * retention periods match the models (verification codes valid 15 min and deleted after 24 h, per-user AI cache
  * 30 days, feed items 60 days, rate limits by window), the AI payload allow-list (server/ai/payloads.ts), the
  * account data registry (server/account/erasers.ts: the built-in legacy erasers cover `courseplans`,
@@ -55,7 +59,10 @@ function Retention({ what, how }: { what: string; how: string }) {
   );
 }
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  // Read per request, never at build time.
+  await connection();
+  const aiWithoutVerifying = loadAiAllowsUnverified();
   return (
     <div className="min-h-dvh bg-bg">
       <header className="border-b border-line bg-surface">
@@ -125,9 +132,9 @@ export default function PrivacyPage() {
                 enter, and plan suggestions you asked for. We never store grades.
               </li>
               <li>
-                <b>Security records:</b> one-time email codes (stored only as a hash), and
-                short-lived counters that limit sign-in and sign-up attempts. Those counters hold
-                your IP address or a hash of your email address.
+                <b>Security records:</b> one-time email codes and password-reset links (stored only
+                as a hash), and short-lived counters that limit sign-in and sign-up attempts. Those
+                counters hold your IP address or a hash of your email address.
               </li>
               <li>
                 <b>From the earlier version of MakeItSo:</b> if you used the hackathon version, the
@@ -160,7 +167,7 @@ export default function PrivacyPage() {
                 Resend
               </a>
               , an email delivery service, which receives your email address and the message
-              (including its one-time code). MakeItSo sends no other email.
+              (including its one-time code or reset link). MakeItSo sends no other email.
             </p>
             <p>
               MakeItSo is not an approved Davidson tool for Internal or Restricted college data.
@@ -179,8 +186,17 @@ export default function PrivacyPage() {
               MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans and
               cold-email drafts) use <b>Claude, a model made by Anthropic</b>. They are{" "}
               <b>off until you turn them on</b> in your profile, which asks you to confirm that you
-              are 18 or older, and they need a verified @davidson.edu account. You can turn them off
-              again at any time.
+              are 18 or older, and they need{" "}
+              {aiWithoutVerifying ? (
+                <>
+                  an @davidson.edu account. For now, while email verification is being set up, the
+                  address does not have to be verified yet, except for cold-email drafts, which need
+                  a verified one.
+                </>
+              ) : (
+                "a verified @davidson.edu account."
+              )}{" "}
+              You can turn them off again at any time.
             </p>
             <p>
               When you use an AI feature, MakeItSo sends Anthropic only what that feature needs:
@@ -236,8 +252,8 @@ export default function PrivacyPage() {
                 how="Saved for you for 30 days, then deleted. Shared course summaries contain no personal information."
               />
               <Retention
-                what="Email codes"
-                how="Work for 15 minutes. The record (only a hash of the code) is deleted automatically 24 hours after it was sent."
+                what="Email codes and reset links"
+                how="Work for 15 minutes (a reset link once). The record (only a hash of the code and link) is deleted automatically 24 hours after it was sent."
               />
               <Retention
                 what="Unverified sign-ups"

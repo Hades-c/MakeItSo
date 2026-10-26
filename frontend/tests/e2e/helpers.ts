@@ -18,6 +18,14 @@ import { E2E_UNTAGGED_EXEMPTIONS } from "./untagged";
 export const E2E_ORIGIN = `http://localhost:${process.env.E2E_PORT ?? 3210}`;
 
 /**
+ * The second e2e server (playwright.config.ts): the same build and database with the owner's temporary
+ * AI_ALLOW_UNVERIFIED switch on. Only ai-unverified.spec.ts uses it; remove both with the switch.
+ */
+export const E2E_ALT_ORIGIN = `http://localhost:${
+  process.env.E2E_ALT_PORT ?? Number(process.env.E2E_PORT ?? 3210) + 2
+}`;
+
+/**
  * Headers for direct API calls from tests: state-changing routes require the app's Origin (CSRF protection,
  * server/http/origin.ts), which browsers add by themselves but Playwright's request context does not.
  */
