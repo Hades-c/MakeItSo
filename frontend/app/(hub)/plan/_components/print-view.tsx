@@ -53,7 +53,7 @@ export function WebTreePrintView({
         </Link>
       </div>
       <div>
-        <h2 className="text-xl font-strong tracking-title text-fg">
+        <h2 className="font-display text-xl font-strong tracking-title text-fg">
           {data.termLabel} WebTree preferences
         </h2>
         <p className="mt-1 text-sm text-fg-2">
@@ -97,7 +97,7 @@ export function WebTreePrintView({
                 const section = data.sections[choice.crn];
                 return (
                   <tr key={choice.crn} className="border-b border-line align-top">
-                    <td className="py-2 pr-3 font-mono font-semibold">{choice.rank}</td>
+                    <td className="py-2 pr-3 font-semibold tabular-nums">{choice.rank}</td>
                     <td className="py-2 pr-3 font-mono">
                       {detail?.registerAs ? detail.registerAs.crn : choice.crn}
                     </td>

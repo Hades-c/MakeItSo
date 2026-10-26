@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CourseAboutPanel, RETRYABLE } from "@/app/(hub)/courses/_components/course-about-panel";
 import { AI_FAILURE_KINDS, AI_FAILURE_MESSAGES, AI_RESULT_STATUS } from "@/lib/types/ai";
+import { UNVERIFIED_AI_ALLOWED_MESSAGE } from "@/lib/types/ai-constants";
 
 /** The AI "About this course" panel: every AiResult kind rendered, the gate, Retry and Report this. */
 
@@ -97,6 +98,10 @@ describe("CourseAboutPanel", () => {
     renderPanel();
     await userEvent.click(await screen.findByRole("button", { name: "Report this summary" }));
     expect(await screen.findByText("Could not send the report. Try again.")).toBeVisible();
+    // An icon and words (FieldError), never the danger colour alone.
+    const status = screen.getByText("Could not send the report. Try again.").closest("p")!;
+    expect(status).toHaveAttribute("role", "status");
+    expect(status.querySelector("svg[aria-hidden]")).not.toBeNull();
   });
 
   it.each(AI_FAILURE_KINDS)("renders the %s result kind", async (kind) => {
@@ -161,5 +166,26 @@ describe("CourseAboutPanel", () => {
       AI_FAILURE_MESSAGES.unverified,
     );
     expect(screen.queryByRole("link", { name: "Verify your Davidson email" })).toBeNull();
+  });
+
+  it("says the server's words for the gate (they depend on the temporary AI_ALLOW_UNVERIFIED switch)", async () => {
+    stubFetch([403, { kind: "unverified", message: UNVERIFIED_AI_ALLOWED_MESSAGE }]);
+    const { unmount } = render(
+      <CourseAboutPanel
+        termCode="202602"
+        courseCode="CSC 221"
+        gate="unverified"
+        unverifiedMessage={UNVERIFIED_AI_ALLOWED_MESSAGE}
+        verifyHref={null}
+      />,
+    );
+    expect(screen.getByTestId("about-gate")).toHaveTextContent(UNVERIFIED_AI_ALLOWED_MESSAGE);
+    expect(screen.getByTestId("about-gate")).not.toHaveTextContent(/limited to verified/);
+    unmount();
+    // The route's answer after the page rendered carries the same words.
+    renderPanel("ready", null);
+    expect(await screen.findByTestId("about-gate")).toHaveTextContent(
+      UNVERIFIED_AI_ALLOWED_MESSAGE,
+    );
   });
 });

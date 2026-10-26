@@ -30,7 +30,7 @@ export function RegistrationDeadlines({
     >
       <h2
         id="registration-deadlines-title"
-        className="flex items-center gap-2 text-lg font-strong tracking-title text-fg"
+        className="flex items-center gap-2 font-display text-lg font-strong tracking-title text-fg"
       >
         <CalendarClock aria-hidden className="size-5 text-taupe" />
         {termLabel} registration

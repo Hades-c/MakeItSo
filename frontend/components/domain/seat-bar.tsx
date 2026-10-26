@@ -67,7 +67,7 @@ export function SeatBar({
       ? "bg-warning"
       : courseCode
         ? COURSE_COLOR_CLASSES[courseColor(courseCode)].fill
-        : "bg-primary-fill";
+        : "bg-fg-2";
 
   if (s.state === "no-seats") {
     return (

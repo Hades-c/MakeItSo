@@ -35,7 +35,7 @@ export function EventsResultsSkeleton() {
 export function CardSkeleton({ title }: { title: string }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5">
-      <p className="mb-3.5 text-lg font-strong tracking-title text-fg">{title}</p>
+      <p className="mb-3.5 font-display text-lg font-strong tracking-title text-fg">{title}</p>
       <p role="status" className="sr-only">
         Loading {title.toLowerCase()}…
       </p>

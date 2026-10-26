@@ -126,7 +126,10 @@ describe("NameForm", () => {
     expect(calls).toEqual([
       { url: "/api/profile", method: "PATCH", body: { name: "Casey Q. Wildcat" } },
     ]);
-    expect(await screen.findByText("Name saved.")).toHaveAttribute("role", "status");
+    const saved = await screen.findByText("Name saved.");
+    expect(saved).toHaveAttribute("role", "status");
+    // Status green is icon + words, never colour alone.
+    expect(saved.querySelector("svg[aria-hidden]")).not.toBeNull();
     expect(router.refresh).toHaveBeenCalled();
     expect(save).toHaveAttribute("aria-disabled", "true");
   });
@@ -201,12 +204,16 @@ describe("AcademicsForm", () => {
     expect(majors.getByTestId("unlisted-major")).toHaveTextContent(
       "Student-designed major (Center for Interdisciplinary Studies): A major through the Center for Interdisciplinary Studies is applied for and approved there",
     );
-    expect(
-      majors.getByRole("link", { name: "Center for Interdisciplinary Studies in the catalog" }),
-    ).toHaveAttribute(
+    const cis = majors.getByRole("link", {
+      name: "Center for Interdisciplinary Studies in the catalog",
+    });
+    expect(cis).toHaveAttribute(
       "href",
       "https://catalog.davidson.edu/preview_program.php?catoid=28&poid=1794",
     );
+    // A text link: near-black and underlined (the `link` utility), never red text.
+    expect(cis).toHaveClass("link");
+    expect(cis).not.toHaveClass("text-primary");
     const minors = within(screen.getByRole("group", { name: "Minors" }));
     expect(minors.getByRole("link", { name: "Arab Studies in the catalog" })).toHaveAttribute(
       "href",
@@ -507,6 +514,10 @@ describe("AiConsentPanel", () => {
   it("needs the 18+ attestation before anything is sent", async () => {
     stubFetch();
     consent();
+    // Outlined: consent is never the page's red call to action (Save academics is).
+    expect(screen.getByRole("button", { name: "Turn on AI features" }).className).not.toMatch(
+      /\bbg-primary-fill\b/,
+    );
     await userEvent.click(screen.getByRole("button", { name: "Turn on AI features" }));
     expect(alertWith("Confirm that you are 18 or older to turn on AI features.")).toBeDefined();
     expect(screen.getByRole("checkbox", { name: "I am 18 or older" })).toHaveFocus();
@@ -564,6 +575,79 @@ describe("AiConsentPanel", () => {
     expect(off).toHaveFocus();
     await userEvent.keyboard("{Enter}");
     expect(await screen.findByRole("button", { name: "Turn on AI features" })).toHaveFocus();
+  });
+
+  it("AI_ALLOW_UNVERIFIED on: an unverified Davidson student may consent, and is told only what still needs verifying", async () => {
+    stubFetch(profileAnswer({ aiConsentAt: NOW, adultAttestedAt: NOW }));
+    consent({
+      verifiedDavidson: false,
+      aiVerified: true,
+      allowUnverifiedAi: true,
+      aiOpenWithoutVerifying: true,
+      mailAvailable: false,
+    });
+    const note = screen.getByText(
+      /AI features work before your @davidson.edu address is verified/,
+      {
+        selector: "div",
+      },
+    );
+    expect(note).toHaveTextContent(
+      "Cold-email drafts and the alumni network still need a verified address.",
+    );
+    expect(note).toHaveTextContent("Email verification is not available yet.");
+    expect(screen.queryByText(/limited to verified @davidson.edu accounts/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Verify your email" })).toBeNull();
+    // Consent and the 18+ attestation work as for anyone.
+    await userEvent.click(screen.getByRole("checkbox", { name: "I am 18 or older" }));
+    await userEvent.click(screen.getByRole("button", { name: "Turn on AI features" }));
+    expect(await screen.findByRole("button", { name: "Turn off AI features" })).toBeVisible();
+    expect(calls).toEqual([
+      { url: "/api/profile/ai-consent", method: "PUT", body: { adultAttested: true } },
+    ]);
+  });
+
+  it("AI_ALLOW_UNVERIFIED on but AI off or not set up: no promise that AI works, only the rule", () => {
+    const unverified = {
+      verifiedDavidson: false,
+      aiVerified: true,
+      allowUnverifiedAi: true,
+      mailAvailable: false,
+    };
+    const rule =
+      /^AI features are limited to @davidson.edu accounts, and the alumni network and cold-email drafts to verified ones\./;
+    // AI_ENABLED off: the panel says so, and does not also say AI works before verifying.
+    const { unmount } = consent({ ...unverified, aiEnabled: false, aiOpenWithoutVerifying: true });
+    expect(screen.getByText(/switched off for everyone right now/)).toBeInTheDocument();
+    expect(screen.queryByText(/AI features work before/)).toBeNull();
+    expect(screen.getByText(rule, { selector: "div" })).toHaveTextContent(
+      "Email verification is not available yet.",
+    );
+    unmount();
+    // On, but no provider configured (aiOpenWithoutVerifying false): the rule, no promise.
+    consent({ ...unverified, aiOpenWithoutVerifying: false });
+    expect(screen.queryByText(/AI features work before/)).toBeNull();
+    expect(screen.getByText(rule, { selector: "div" })).toBeInTheDocument();
+    // Consent can still be given (it applies once AI works).
+    expect(screen.getByRole("button", { name: "Turn on AI features" })).toBeVisible();
+  });
+
+  it("AI_ALLOW_UNVERIFIED on: a non-Davidson account is told AI needs an @davidson.edu address", () => {
+    consent({
+      verifiedDavidson: false,
+      aiVerified: false,
+      allowUnverifiedAi: true,
+      davidson: false,
+    });
+    expect(
+      screen.getByText(
+        /^AI features are limited to @davidson.edu accounts, and the alumni network/,
+        {
+          selector: "div",
+        },
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Verify your email" })).toBeNull();
   });
 
   it("offers no verify link while no mail provider can send the code", () => {
@@ -639,9 +723,9 @@ describe("PasswordForm", () => {
         redirect: false,
       }),
     );
-    expect(
-      await screen.findByText(/Password changed\. Every other device was signed out/),
-    ).toBeInTheDocument();
+    const changed = await screen.findByText(/Password changed\. Every other device was signed out/);
+    expect(changed).toHaveAttribute("role", "status");
+    expect(changed.querySelector("svg[aria-hidden]")).not.toBeNull();
     expect(router.refresh).toHaveBeenCalled();
     expect(screen.getByLabelText("Current password")).toHaveValue("");
     expect(nav.hardNavigate).not.toHaveBeenCalled();

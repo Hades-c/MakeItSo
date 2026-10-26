@@ -520,9 +520,15 @@ describe("Due for you", () => {
     expect(watson?.dataset.forYou).toBe("false");
     expect(watson).not.toHaveAttribute("data-urgent");
     expect(watson?.querySelector(".text-urgent")).toBeNull();
+    expect(within(watson!).queryByTestId("due-urgent-icon")).toBeNull();
     const own = items.find((li) => li.dataset.kind === "student");
     expect(own).toHaveAttribute("data-urgent", "true");
     expect(own?.querySelector(".text-urgent")).toHaveTextContent("Today 5:00p");
+    // Never colour alone (red is also the accent): an alarm icon beside the words.
+    expect(own?.querySelector(".text-urgent")).toContainElement(
+      within(own!).getByTestId("due-urgent-icon"),
+    );
+    expect(screen.getAllByTestId("due-urgent-icon")).toHaveLength(1);
     expect(items.filter((li) => li.dataset.urgent === "true")).toEqual([own]);
   });
 
@@ -797,5 +803,21 @@ describe("the action row", () => {
       "href",
       "/onboarding",
     );
+  });
+
+  it("keeps one red button: setup first while it is due, then Plan Spring 2027", async () => {
+    const during = new Date("2026-10-20T12:00:00-04:00");
+    state.profile = ok({ ...PROFILE, onboardedAt: null });
+    const first = await show(TodayActions({ userId: USER, now: during, timeZone: TZ }));
+    const red = () =>
+      [...document.querySelectorAll("a, button")]
+        .filter((el) => el.classList.contains("bg-primary-fill"))
+        .map((el) => el.textContent?.trim());
+    expect(screen.getByTestId("plan-next-cta")).toBeVisible();
+    expect(red()).toEqual(["Set up my plan"]);
+    first.unmount();
+    state.profile = ok(PROFILE);
+    await show(TodayActions({ userId: USER, now: during, timeZone: TZ }));
+    expect(red()).toEqual(["Plan Spring 2027"]);
   });
 });

@@ -90,9 +90,12 @@ export default async function CareersPage({
             const headingId = `cluster-${clusterSlug(group.cluster)}`;
             return (
               <section key={group.cluster} aria-labelledby={headingId}>
-                <h2 id={headingId} className="mb-3 text-lg font-strong tracking-title text-fg">
+                <h2
+                  id={headingId}
+                  className="mb-3 font-display text-lg font-strong tracking-title text-fg"
+                >
                   {group.cluster}{" "}
-                  <span className="font-mono text-xs font-medium text-fg-3">
+                  <span className="font-sans text-xs font-medium text-fg-3 tabular-nums">
                     {group.careers.length}
                   </span>
                 </h2>

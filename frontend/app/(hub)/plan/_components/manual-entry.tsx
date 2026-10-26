@@ -6,6 +6,7 @@ import { notify } from "@/components/ui/notify";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input, controlClass } from "@/components/ui/input";
+import { Notice } from "@/components/ui/notice";
 import { callApi } from "@/lib/api/client";
 import { planEndpoints } from "@/lib/api/endpoints";
 import type { AddPlanItemBody } from "@/lib/api/plan";
@@ -14,7 +15,6 @@ import { COURSE_CODE_PATTERN, normalizeCourseCode } from "@/lib/course-code";
 import type { PlanStatus } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
 import { STATUS_OPTIONS } from "../_lib/labels";
-import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
 /**

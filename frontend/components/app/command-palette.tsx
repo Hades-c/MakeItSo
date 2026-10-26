@@ -356,7 +356,7 @@ function PaletteBody({
           </span>
           <kbd
             aria-hidden
-            className="hidden rounded-xs border border-line-2 bg-surface px-1.5 font-mono text-xs text-fg-3 md:inline"
+            className="hidden rounded-xs border border-line-2 bg-surface px-1.5 font-sans text-xs text-fg-3 md:inline"
           >
             Esc
           </kbd>
@@ -376,7 +376,7 @@ function PaletteBody({
             <div key={group.kind} role="group" aria-labelledby={headingId} className="pb-1">
               <p
                 id={headingId}
-                className="px-2.5 pt-2 pb-1 font-mono text-xs font-medium tracking-label text-fg-3 uppercase"
+                className="px-2.5 pt-2 pb-1 text-xs font-medium tracking-label text-fg-3 uppercase"
               >
                 {label}
               </p>
@@ -443,7 +443,7 @@ function PaletteBody({
               event.preventDefault();
               go(courseSearchHref(trimmed));
             }}
-            className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-primary hover:underline md:min-h-0"
+            className="inline-flex min-h-11 items-center gap-1.5 font-semibold link md:min-h-0"
           >
             Search courses for “{trimmed}”
             <ArrowRight aria-hidden className="size-4" />

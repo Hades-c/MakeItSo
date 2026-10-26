@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import type * as React from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { SUPPORT_CONTACT } from "@/app/(auth)/_lib/support";
 import { Wordmark } from "@/components/app/wordmark";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/lib/routes";
+import { loadAiAllowsUnverified } from "@/server/ai/access";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -13,10 +15,12 @@ export const metadata: Metadata = {
 };
 
 /** When this notice last changed (update it with every change to the text). */
-const LAST_UPDATED = "September 30, 2026";
+const LAST_UPDATED = "October 25, 2026";
 
 /**
- * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Static. Every statement here must stay true: the
+ * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Rendered per request only because of the owner's
+ * temporary AI_ALLOW_UNVERIFIED switch (server/ai/access.ts), which changes who may use AI: the notice says which
+ * accounts the AI features need in either state. Every statement here must stay true: the
  * retention periods match the models (verification codes valid 15 min and deleted after 24 h, per-user AI cache
  * 30 days, feed items 60 days, rate limits by window), the AI payload allow-list (server/ai/payloads.ts), the
  * account data registry (server/account/erasers.ts: the built-in legacy erasers cover `courseplans`,
@@ -36,7 +40,7 @@ function Section({
 }) {
   return (
     <section aria-labelledby={id} className="border-t border-line pt-6">
-      <h2 id={id} className="text-lg font-strong tracking-title text-fg md:text-xl">
+      <h2 id={id} className="font-display text-lg font-strong tracking-title text-fg md:text-xl">
         {title}
       </h2>
       <div className="mt-3 flex flex-col gap-3 text-base text-fg-2 [&_b]:font-semibold [&_b]:text-fg [&_li]:mt-1.5 [&_ul]:list-disc [&_ul]:pl-5">
@@ -55,7 +59,10 @@ function Retention({ what, how }: { what: string; how: string }) {
   );
 }
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  // Read per request, never at build time.
+  await connection();
+  const aiWithoutVerifying = loadAiAllowsUnverified();
   return (
     <div className="min-h-dvh bg-bg">
       <header className="border-b border-line bg-surface">
@@ -74,10 +81,12 @@ export default function PrivacyPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-10 md:px-6 md:py-14">
-        <p className="mb-3 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
+        <p className="mb-3 text-xs font-medium tracking-label text-fg-3 uppercase">
           Last updated {LAST_UPDATED}
         </p>
-        <h1 className="text-xl font-strong text-fg md:text-2xl">Privacy at MakeItSo</h1>
+        <h1 className="font-display text-xl font-strong text-fg md:text-2xl">
+          Privacy at MakeItSo
+        </h1>
         <p className="mt-4 text-base text-fg-2 md:text-lg">
           MakeItSo is an <b className="font-semibold text-fg">independent student project</b> for
           Davidson College students. It is{" "}
@@ -89,10 +98,7 @@ export default function PrivacyPage() {
           className="mt-8 rounded-xl border border-line bg-surface p-5 shadow-card md:p-6"
           aria-labelledby="short-version"
         >
-          <h2
-            id="short-version"
-            className="font-mono text-xs font-medium tracking-label text-fg-3 uppercase"
-          >
+          <h2 id="short-version" className="text-xs font-medium tracking-label text-fg-3 uppercase">
             The short version
           </h2>
           <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-sm text-fg md:text-base">
@@ -154,7 +160,7 @@ export default function PrivacyPage() {
               emails are sent through{" "}
               <a
                 href="https://resend.com/legal/privacy-policy"
-                className="font-semibold text-primary underline"
+                className="font-semibold link"
                 rel="noopener noreferrer"
                 target="_blank"
               >
@@ -180,8 +186,17 @@ export default function PrivacyPage() {
               MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans and
               cold-email drafts) use <b>Claude, a model made by Anthropic</b>. They are{" "}
               <b>off until you turn them on</b> in your profile, which asks you to confirm that you
-              are 18 or older, and they need a verified @davidson.edu account. You can turn them off
-              again at any time.
+              are 18 or older, and they need{" "}
+              {aiWithoutVerifying ? (
+                <>
+                  an @davidson.edu account. For now, while email verification is being set up, the
+                  address does not have to be verified yet, except for cold-email drafts, which need
+                  a verified one.
+                </>
+              ) : (
+                "a verified @davidson.edu account."
+              )}{" "}
+              You can turn them off again at any time.
             </p>
             <p>
               When you use an AI feature, MakeItSo sends Anthropic only what that feature needs:
@@ -201,7 +216,7 @@ export default function PrivacyPage() {
               and{" "}
               <a
                 href="https://www.anthropic.com/legal/privacy"
-                className="font-semibold text-primary underline"
+                className="font-semibold link"
                 rel="noopener noreferrer"
                 target="_blank"
               >
@@ -260,7 +275,7 @@ export default function PrivacyPage() {
             <ul>
               <li>
                 <b>Download my data</b> on your{" "}
-                <Link href={routes.profile()} className="font-semibold text-primary underline">
+                <Link href={routes.profile()} className="font-semibold link">
                   profile
                 </Link>{" "}
                 gives you a JSON file of everything MakeItSo stores about you (up to 5 times a day),
@@ -283,7 +298,7 @@ export default function PrivacyPage() {
               Questions, removal or correction requests: reach the people who run MakeItSo through{" "}
               <a
                 href={SUPPORT_CONTACT.url}
-                className="font-semibold text-primary underline"
+                className="font-semibold link"
                 rel="noopener noreferrer"
                 target="_blank"
               >

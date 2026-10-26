@@ -3,9 +3,9 @@ import Link from "next/link";
 import { MailCheck, MailWarning } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
-import { UNVERIFIED_MESSAGE } from "@/lib/api/account";
 import { formatMediumDate } from "@/lib/format";
 import { queryString, routes } from "@/lib/routes";
+import { verifiedOnlyMessage } from "@/lib/types/ai-constants";
 import { requireUser } from "@/server/auth";
 import { readEnv } from "@/server/env";
 import { AcademicsForm } from "./_components/academics-form";
@@ -53,7 +53,7 @@ export default async function ProfilePage() {
             <li key={section.id}>
               <a
                 href={`#${section.id}`}
-                className="inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0"
+                className="inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0"
               >
                 {section.label}
               </a>
@@ -112,6 +112,9 @@ export default async function ProfilePage() {
             adultAttestedAt={profile.adultAttestedAt}
             aiEnabled={data.flags.ai}
             verifiedDavidson={data.verifiedDavidson}
+            aiVerified={data.aiVerified}
+            allowUnverifiedAi={data.allowUnverifiedAi}
+            aiOpenWithoutVerifying={data.aiOpenWithoutVerifying}
             davidson={profile.davidson}
             mailAvailable={data.mailAvailable}
             timeZone={timeZone}
@@ -149,6 +152,8 @@ export default async function ProfilePage() {
 
 function Verification({ data, timeZone }: { data: ProfilePageData; timeZone: string }) {
   const { profile } = data;
+  // True in either state of the temporary AI_ALLOW_UNVERIFIED switch.
+  const lock = verifiedOnlyMessage(data.allowUnverifiedAi);
   if (profile.emailVerifiedAt) {
     return (
       <span className="flex flex-wrap items-center gap-2">
@@ -157,7 +162,7 @@ function Verification({ data, timeZone }: { data: ProfilePageData; timeZone: str
           Verified
         </Badge>
         <span className="text-fg-2">on {formatMediumDate(profile.emailVerifiedAt, timeZone)}</span>
-        {!profile.davidson ? <span className="text-fg-2">{UNVERIFIED_MESSAGE}</span> : null}
+        {!profile.davidson ? <span className="text-fg-2">{lock}</span> : null}
       </span>
     );
   }
@@ -172,16 +177,18 @@ function Verification({ data, timeZone }: { data: ProfilePageData; timeZone: str
         {data.mailAvailable ? (
           <Link
             href={`${routes.verify()}${queryString({ next: routes.profile() })}`}
-            className="-my-2 inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0"
+            className="-my-2 inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0"
           >
             Verify your email
           </Link>
         ) : null}
       </span>
       <span className="text-fg-2">
-        {profile.davidson
-          ? "A verified @davidson.edu address opens the alumni network and AI features."
-          : UNVERIFIED_MESSAGE}
+        {!profile.davidson
+          ? lock
+          : data.allowUnverifiedAi
+            ? "A verified @davidson.edu address opens the alumni network and cold-email drafts."
+            : "A verified @davidson.edu address opens the alumni network and AI features."}
         {data.mailAvailable ? null : " Email verification is not available yet."}
       </span>
     </span>

@@ -108,6 +108,8 @@ describe("AddCourse", () => {
     // The live region is always there; wait for its message.
     const notice = await screen.findByTestId("add-to-plan-notice");
     await waitFor(() => expect(notice).toHaveTextContent("Added CSC 221 A to Spring 2027."));
+    // Status green is an icon and words.
+    expect(notice.querySelector(".bg-success-wash svg[aria-hidden]")).not.toBeNull();
     expect(within(notice).getByTestId("added-warnings")).toHaveTextContent(
       "CSC 221 A overlaps BIO 201 A.",
     );
@@ -167,6 +169,8 @@ describe("AddCourse", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add to Spring 2027" }));
     const notice = await screen.findByTestId("add-to-plan-notice");
     expect(notice).toHaveTextContent(SIGNED_OUT_MESSAGE);
+    // An icon and words (Notice), never the danger colour alone.
+    expect(notice.querySelector(".bg-danger-wash svg[aria-hidden]")).not.toBeNull();
     expect(within(notice).getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/login?callbackUrl=%2Fcourses",

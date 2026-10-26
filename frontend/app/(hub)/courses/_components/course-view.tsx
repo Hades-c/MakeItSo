@@ -17,8 +17,7 @@ import { requirementGroups } from "../_lib/format";
  * the week grid. Mobile stacks them in that order.
  */
 
-const CRUMB =
-  "inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0";
+const CRUMB = "inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0";
 
 export function CourseView({
   data,
@@ -95,7 +94,10 @@ export function CourseView({
             className="min-w-0 scroll-mt-24 rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5"
           >
             <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
-              <h2 id="add-title" className="text-lg font-strong tracking-title text-fg">
+              <h2
+                id="add-title"
+                className="font-display text-lg font-strong tracking-title text-fg"
+              >
                 Add to plan
               </h2>
               <SourceTag source="course-schedule" />
@@ -140,6 +142,7 @@ export function CourseView({
                 termCode={params.term}
                 courseCode={params.code}
                 gate={data.aboutGate}
+                unverifiedMessage={data.aboutUnverifiedMessage}
                 verifyHref={verifyHref}
                 timeZone={timeZone}
               />

@@ -112,7 +112,7 @@ function SendToPlan({ draft, suggestionsHref }: { draft: PlanDraft; suggestionsH
     <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-3.5">
       <p className="text-sm text-fg-2">
         {plural(draft.items.length, "course", "courses")} wait as a draft in{" "}
-        <Link href={suggestionsHref} className="font-semibold text-primary hover:underline">
+        <Link href={suggestionsHref} className="font-semibold link">
           My plan → Suggestions
         </Link>
         . Nothing is added to your plan until you accept it there.

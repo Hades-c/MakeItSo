@@ -153,6 +153,13 @@ export const envSchema = z.object({
     z.enum(["anthropic", "mock"], { error: 'must be "anthropic" or "mock"' }).default("anthropic"),
   ),
   AI_ENABLED: flag(true),
+  /**
+   * TEMPORARY owner switch, to be removed once a mail provider can verify addresses: an @davidson.edu account that
+   * has not verified its mailbox counts as verified for AI (server/ai/access.ts isAiVerified), except for cold
+   * e-mail, which uses alumni data. Consent, the 18+ attestation, quotas and AI_DAILY_TOKEN_BUDGET still apply;
+   * alumni stay verified-only. Default off. While on, the budget is the only real cost limit (README).
+   */
+  AI_ALLOW_UNVERIFIED: flag(false),
   /** Tokens per day across all users before AI pauses ("AI is paused for today"). */
   AI_DAILY_TOKEN_BUDGET: z.preprocess(
     unsetIfBlank,

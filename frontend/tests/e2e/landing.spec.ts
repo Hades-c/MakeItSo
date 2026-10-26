@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { collectErrors, registerViaApi, seriousViolations, signIn, uniqueEmail } from "./helpers";
+import {
+  collectErrors,
+  primaryFills,
+  registerViaApi,
+  seriousViolations,
+  signIn,
+  uniqueEmail,
+} from "./helpers";
 
 /**
  * "/" (W9b): the truthful landing for visitors, with facts computed at request time (never at build) from the
@@ -24,6 +31,8 @@ test("landing: live facts for visitors, computed from the catalog", async ({ pag
   const account = page.getByRole("navigation", { name: "Account" });
   await expect(account.getByRole("link", { name: "Sign in" })).toBeVisible();
   await expect(account.getByRole("link", { name: "Create account" })).toBeVisible();
+  // One red action: the hero's (the header's Create account does the same thing, outlined).
+  expect(await primaryFills(page)).toEqual(["Create your account"]);
 
   // The number is the catalog's own count for the registration term, not a constant.
   const search = await request.get("/api/catalog/search?term=202602&pageSize=1");
@@ -59,6 +68,7 @@ test("landing: signed-in students get Go to Today", async ({ page, request }) =>
   await page.goto("/");
   const account = page.getByRole("navigation", { name: "Account" });
   await expect(account.getByRole("link", { name: "Sign in" })).toHaveCount(0);
+  expect(await primaryFills(page)).toEqual(["Go to Today"]);
   await account.getByRole("link", { name: "Go to Today" }).click();
   await expect(page).toHaveURL(/\/today$/);
 });

@@ -337,6 +337,10 @@ describe("WebTreeEditor", () => {
     const radio = await screen.findByRole("radio", { name: /CRN 21001/ });
     expect(radio).toBeChecked();
     expect(screen.getByTestId("section-picker")).toHaveTextContent("15 of 20 seats open");
+    // Outlined: "Copy for WebTree" is the tab's one red action.
+    expect(screen.getByRole("button", { name: "Add as choice 1" }).className).not.toMatch(
+      /\bbg-primary-fill\b/,
+    );
     await user.click(screen.getByRole("button", { name: "Add as choice 1" }));
     await waitFor(() => expect(calls).toHaveLength(3));
     expect(calls[0]!.url).toBe("/api/catalog/search?term=202602&q=world&pageSize=8");
@@ -607,6 +611,16 @@ describe("WebTreeEditor", () => {
     expect(screen.getAllByTestId("webtree-choice")[1]).toHaveTextContent(
       "CRN 20478 is no longer in the schedule. Remove it or pick another section.",
     );
+  });
+
+  it("says a search problem with an icon and words, never the danger colour alone", async () => {
+    const user = userEvent.setup();
+    render(<WebTreeEditor {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    const message = screen.getByText("Type a course code, title or instructor to search.");
+    const notice = message.closest("div.bg-danger-wash")!;
+    expect(notice).not.toBeNull();
+    expect(notice.querySelector("svg[aria-hidden]")).not.toBeNull();
   });
 });
 

@@ -23,7 +23,7 @@ const LAYOUT = {
   page: {
     box: "items-center rounded-xl border-line bg-surface px-5 py-10 text-center shadow-card md:px-8 md:py-12",
     icon: "mb-4 size-11",
-    title: "text-lg",
+    title: "font-display text-lg",
     actions: "mt-5 justify-center",
   },
   inline: {
@@ -56,9 +56,7 @@ export function ErrorState({
       <Heading className={cn("font-strong tracking-title text-fg", layout.title)}>{title}</Heading>
       {description ? <p className="mt-1.5 max-w-prose text-sm text-fg-2">{description}</p> : null}
       {action ? <div className={cn("flex flex-wrap gap-2", layout.actions)}>{action}</div> : null}
-      {reference ? (
-        <p className="mt-4 font-mono text-xs text-fg-3">Reference: {reference}</p>
-      ) : null}
+      {reference ? <p className="mt-4 text-xs text-fg-3">Reference: {reference}</p> : null}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AiChip } from "@/components/ui/ai-chip";
 import { CourseCode } from "@/components/ui/course-code";
-import { SourceTag, SourceTagList } from "@/components/ui/source-tag";
+import { SourceLink, SourceTag, SourceTagList } from "@/components/ui/source-tag";
 
 describe("SourceTag", () => {
   it("names the source in words (uppercased by CSS, not in the DOM)", () => {
@@ -31,10 +31,56 @@ describe("SourceTag", () => {
     expect(tag).not.toHaveAttribute("tabindex");
   });
 
+  it("stays Inter inside a Playfair (font-display) heading: labels are never in the display face", () => {
+    render(
+      <h3 className="font-display">
+        Conflict check <SourceTag source="course-schedule" />
+      </h3>,
+    );
+    const tag = screen.getByText("Course schedule", { exact: false });
+    expect(tag).toHaveClass("font-sans");
+    expect(tag).not.toHaveClass("font-display");
+    // The same for the other small labels that can sit in a title.
+    render(<AiChip />);
+    expect(
+      screen.getByText("AI-generated content: verify with your advisor").parentElement,
+    ).toHaveClass("font-sans");
+  });
+
   it("renders a labelled list", () => {
     render(<SourceTagList label="Sources for events" sources={["wildcatsync", "library"]} />);
     const list = screen.getByRole("list", { name: "Sources for events" });
     expect(list.querySelectorAll("li")).toHaveLength(2);
+  });
+});
+
+describe("SourceLink", () => {
+  it("names the source once, as the link to the item's page there, keeping the tag's contract", () => {
+    render(
+      <SourceLink
+        source="ratemyprofessors"
+        href="https://www.ratemyprofessors.com/professor/1"
+        what="Katy Williams’s page"
+      />,
+    );
+    const link = screen.getByRole("link", {
+      name: "Source: RateMyProfessors, Katy Williams’s page (opens in a new tab)",
+    });
+    expect(link).toHaveAttribute("data-source", "ratemyprofessors");
+    expect(link.textContent?.startsWith("Source:")).toBe(true);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    // Sentence case, not a boxed uppercase tag, and a text link: near-black and underlined, never red text.
+    expect(link).not.toHaveClass("uppercase");
+    expect(link).toHaveClass("link");
+    expect(link).not.toHaveClass("text-primary");
+  });
+
+  it("is the same words as plain text without a link", () => {
+    const { container } = render(<SourceLink source="ratemyprofessors" href={null} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    const text = container.querySelector('[data-source="ratemyprofessors"]')!;
+    expect(text).toHaveTextContent("Source: RateMyProfessors");
   });
 });
 

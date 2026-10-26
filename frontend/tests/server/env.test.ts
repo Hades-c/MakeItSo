@@ -55,6 +55,7 @@ describe("getEnv", () => {
       ANTHROPIC_API_KEY: undefined,
       AI_PROVIDER: "anthropic",
       AI_ENABLED: true,
+      AI_ALLOW_UNVERIFIED: false,
       AI_DAILY_TOKEN_BUDGET: 2_000_000,
       MAIL_PROVIDER: "console",
       MAIL_API_KEY: undefined,

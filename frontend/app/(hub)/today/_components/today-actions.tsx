@@ -20,7 +20,8 @@ function windowText(window: WebTreeWindow, timeZone: string): string {
 /**
  * The action row under the headline: "Plan Spring 2027" (→ /plan?tab=next, the WebTree list) while WebTree
  * is open (PLAN §3: during the WebTree window only; before it opens Due soon lists the window), with the window's dates from the Registrar calendar; "Browse courses"
- * always; and, while the student has not finished first-run setup, a nudge to /onboarding.
+ * always; and, while the student has not finished first-run setup, a nudge to /onboarding. One red button: the
+ * nudge's "Set up my plan" while it shows (setup comes first), else "Plan Spring 2027".
  */
 export async function TodayActions({
   userId,
@@ -44,10 +45,10 @@ export async function TodayActions({
         <section
           aria-labelledby="onboarding-title"
           data-testid="onboarding-nudge"
-          className="flex flex-col gap-3 rounded-xl border border-primary bg-primary-wash p-4 md:flex-row md:items-center md:justify-between"
+          className="flex flex-col gap-3 rounded-xl border border-line bg-surface-2 p-4 md:flex-row md:items-center md:justify-between"
         >
           <div className="flex items-start gap-3">
-            <Sparkles aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />
+            <Sparkles aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-2" />
             <div>
               <h2 id="onboarding-title" className="text-base font-strong text-fg">
                 Finish setting up MakeItSo
@@ -68,7 +69,7 @@ export async function TodayActions({
       ) : null}
       <div className="flex flex-wrap items-center gap-2.5">
         {window ? (
-          <Button asChild>
+          <Button asChild variant={needsSetup ? "secondary" : "primary"}>
             <Link href={routes.plan("next")} data-testid="plan-next-cta">
               <CalendarPlus aria-hidden />
               Plan {window.termLabel}

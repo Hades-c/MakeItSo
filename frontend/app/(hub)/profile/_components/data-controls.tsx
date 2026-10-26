@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field } from "@/components/ui/field";
+import { Field, SuccessStatus } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { callApi } from "@/lib/api/client";
 import { accountEndpoints } from "@/lib/api/endpoints";
@@ -45,7 +45,7 @@ const PRIVACY_YOUR_DATA = "/privacy#your-data";
 
 function PrivacyLink({ children }: { children: React.ReactNode }) {
   return (
-    <Link href={PRIVACY_YOUR_DATA} className="font-semibold text-primary underline">
+    <Link href={PRIVACY_YOUR_DATA} className="font-semibold link">
       {children}
     </Link>
   );
@@ -86,9 +86,7 @@ export function DownloadData() {
           {busy ? "Preparing…" : "Download my data"}
         </Button>
       </div>
-      <p role="status" className="text-sm font-medium text-success">
-        {status}
-      </p>
+      <SuccessStatus>{status}</SuccessStatus>
     </div>
   );
 }

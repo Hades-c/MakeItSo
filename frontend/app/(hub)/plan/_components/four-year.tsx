@@ -2,6 +2,7 @@ import { History, TriangleAlert } from "lucide-react";
 import { PlanMap } from "@/components/domain/plan-map";
 import { RequirementSlots } from "@/components/domain/requirement-slots";
 import { ErrorState } from "@/components/ui/error-state";
+import { Notice } from "@/components/ui/notice";
 import { SectionCard } from "@/components/ui/section-card";
 import { SourceTagList } from "@/components/ui/source-tag";
 import { isSummer, termLabel } from "@/lib/term";
@@ -22,7 +23,6 @@ import { creditsText, formatNumber, plural } from "../_lib/labels";
 import type { FourYearData, Loaded } from "../_lib/load";
 // The view's client islands load on demand (lazy-islands.tsx).
 import { ManualEntryForm, ManualRequirements, PlanItemRow } from "./lazy-islands";
-import { Notice } from "./notice";
 
 /**
  * The 4-year plan (PLAN §3): the degree map, every term's courses with their status, P/F, move, retake and
@@ -83,11 +83,10 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
           {group.label}
           {group.isCurrent ? <span className="text-xs font-semibold text-primary">Now</span> : null}
           {group.isRegistration ? (
-            <span className="text-xs font-semibold text-primary">Registration term</span>
+            // The next term, not now: neutral (red marks "Now" only).
+            <span className="text-xs font-semibold text-fg-2">Registration term</span>
           ) : null}
-          <span className="font-mono text-xs font-medium text-fg-3">
-            {creditsText(group.credits)}
-          </span>
+          <span className="text-xs font-medium text-fg-3">{creditsText(group.credits)}</span>
         </h3>
         {note ? <p className="text-xs text-fg-2">{note}</p> : null}
         {group.items.length === 0 ? (
@@ -156,7 +155,10 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
 
       {general.length > 0 ? (
         <section aria-labelledby="plan-warnings-title" data-testid="plan-warnings">
-          <h2 id="plan-warnings-title" className="text-lg font-strong tracking-title text-fg">
+          <h2
+            id="plan-warnings-title"
+            className="font-display text-lg font-strong tracking-title text-fg"
+          >
             Things to check
           </h2>
           <ul className="mt-2 flex flex-col gap-1.5">
@@ -177,7 +179,7 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
         <h2
           id="plan-terms-title"
           tabIndex={-1}
-          className="text-lg font-strong tracking-title text-fg"
+          className="font-display text-lg font-strong tracking-title text-fg"
         >
           Term by term
         </h2>

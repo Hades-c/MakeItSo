@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { Flag } from "lucide-react";
+import { Clock, Flag } from "lucide-react";
 import { CourseCode } from "@/components/ui/course-code";
 import { SourceTag } from "@/components/ui/source-tag";
 import { COURSE_COLOR_CLASSES, courseColor } from "@/lib/course-color";
@@ -90,7 +90,7 @@ function groupSpanLabel(group: OverlapGroup): string {
 
 /**
  * Today, to scale: classes coloured by course, campus events with their source tag, deadlines as point markers,
- * free gaps, and a red now-line (Davidson Red means "now"). Proportional minutes in ET wall-clock time; renders on
+ * free gaps, and a red now-line with a clock pill ("now"). Proportional minutes in ET wall-clock time; renders on
  * the server. The list is chronological for screen readers, with each item's times spelled out.
  *
  * Nothing is drawn over text: the now pill sits in the hour gutter and the now and deadline lines pass under the
@@ -167,7 +167,7 @@ export function DayTimeline({
           {shownHours.map((hour) => (
             <span
               key={hour}
-              className="absolute right-2 -translate-y-1/2 font-mono text-xs leading-none text-fg-3"
+              className="absolute right-2 -translate-y-1/2 text-xs leading-none text-fg-3 tabular-nums"
               style={{ top: percent(toFraction(hour * MINUTES_PER_HOUR, window)) }}
             >
               {hourLabel(hour)}
@@ -188,9 +188,12 @@ export function DayTimeline({
           {nowShown ? (
             <span
               data-testid="now-pill"
-              className="absolute right-1 z-10 -translate-y-1/2 rounded-full bg-urgent-fill px-1 py-0.5 font-mono text-xs leading-4 font-semibold whitespace-nowrap text-on-urgent"
+              className="absolute -right-1.5 z-10 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-full bg-urgent-fill px-1 py-0.5 text-xs leading-4 font-semibold whitespace-nowrap text-on-urgent"
               style={{ top: percent(layout.now!) }}
             >
+              {/* Red is also the accent, so "now" is never colour alone: the clock glyph and the time. The pill
+                  reaches 6px past the gutter, over the now-line's start: blocks begin 10px into the column. */}
+              <Clock aria-hidden className="size-3 shrink-0" />
               {clockLabel(nowMinute)}
             </span>
           ) : null}
@@ -396,8 +399,7 @@ function TimelineBlock({
         {tag}
         {/* The time and place are extras here (the list item reads them out): phones drop them, not the title. */}
         <span aria-hidden className={cn("flex min-w-0 shrink-[10]", !rel && "@max-[28rem]:hidden")}>
-          {rel ??
-            (meta ? <span className="truncate font-mono text-xs text-fg-2">{meta}</span> : null)}
+          {rel ?? (meta ? <span className="truncate text-xs text-fg-2">{meta}</span> : null)}
         </span>
       </span>
     );
@@ -411,9 +413,7 @@ function TimelineBlock({
           {code ? title : null}
           {isClass
             ? (rel ??
-              (meta ? (
-                <span className="truncate font-mono text-xs leading-4 text-fg-2">{meta}</span>
-              ) : null))
+              (meta ? <span className="truncate text-xs leading-4 text-fg-2">{meta}</span> : null))
             : null}
         </span>
         {tag ? <span className="mt-0.5 flex max-w-full min-w-0">{tag}</span> : null}
@@ -432,9 +432,7 @@ function TimelineBlock({
           <span className="flex min-w-0 items-baseline justify-between gap-3">
             <span className="shrink-0">{code}</span>
             {where ? (
-              <span className="min-w-0 truncate font-mono text-xs leading-4 text-fg-2">
-                {where}
-              </span>
+              <span className="min-w-0 truncate text-xs leading-4 text-fg-2">{where}</span>
             ) : null}
           </span>
           <span className="flex min-w-0 items-baseline justify-between gap-3">
@@ -458,7 +456,7 @@ function TimelineBlock({
             {rel}
           </span>
           {where && roomFits ? (
-            <span className="mt-0.5 truncate font-mono text-xs leading-4 text-fg-2">{where}</span>
+            <span className="mt-0.5 truncate text-xs leading-4 text-fg-2">{where}</span>
           ) : null}
         </span>
       </>
@@ -476,7 +474,7 @@ function TimelineBlock({
           {meta ? (
             <span
               aria-hidden
-              className="line-clamp-2 min-w-0 font-mono text-xs leading-4 break-words text-fg-2"
+              className="line-clamp-2 min-w-0 text-xs leading-4 break-words text-fg-2"
               data-testid="timeline-event-meta"
             >
               {meta}
@@ -546,7 +544,7 @@ function GroupBlock({ group, className }: { group: OverlapGroup; className?: str
       </span>
       <span aria-hidden className="flex flex-wrap items-baseline gap-x-2.5">
         <span className="text-sm leading-tight font-strong">{count} at the same time</span>
-        <span className="font-mono text-xs leading-4 text-fg-2">{when} · listed below</span>
+        <span className="text-xs leading-4 text-fg-2">{when} · listed below</span>
       </span>
     </li>
   );
@@ -604,7 +602,7 @@ function DeadlineMarker({ placed, timeZone }: { placed: PlacedDeadline; timeZone
       >
         <span className="flex min-w-0 items-center gap-2">
           <Flag aria-hidden className="size-3.5 shrink-0 text-fg-2" />
-          <span className="shrink-0 font-mono text-fg-2">
+          <span className="shrink-0 text-fg-2">
             <span className="sr-only">Due </span>
             {clockLabel(minute)}
           </span>
@@ -654,7 +652,7 @@ function OutsideList({
             className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md bg-surface-2 px-3 py-2 text-sm"
           >
             {interval ? (
-              <span className="font-mono text-xs text-fg-2">
+              <span className="text-xs text-fg-2">
                 {item.kind === "deadline" ? <span className="sr-only">Due </span> : null}
                 {spanLabel(interval)}
               </span>

@@ -76,7 +76,7 @@ export function LibraryHoursView({
             href={libraryUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="-my-2 inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-semibold text-primary hover:underline md:min-h-0"
+            className="-my-2 inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-semibold link md:min-h-0"
           >
             Library website <span className="sr-only">(opens in a new tab)</span>
             <ExternalLink aria-hidden className="size-3.5" />

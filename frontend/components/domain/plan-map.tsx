@@ -60,12 +60,12 @@ function cellClasses(cell: PlanCell): string {
   if (cell.status === "in-progress") {
     return cn(
       "border-[1.5px]",
-      colors ? cn(colors.chip, colors.border) : "border-primary bg-primary-wash text-primary",
+      colors ? cn(colors.chip, colors.border) : "border-fg-2 bg-surface-2 text-fg",
     );
   }
   return cn(
     "border-[1.5px] border-dashed",
-    colors ? cn(colors.border, colors.text) : "border-primary text-primary",
+    colors ? cn(colors.border, colors.text) : "border-fg-2 text-fg",
   );
 }
 
@@ -145,7 +145,7 @@ export function PlanMap({
             >
               <span
                 className={cn(
-                  "mb-0.5 text-center font-mono text-xs leading-4 whitespace-nowrap",
+                  "mb-0.5 text-center text-xs leading-4 whitespace-nowrap",
                   target ? "font-semibold text-primary" : "text-fg-3",
                 )}
               >
@@ -208,7 +208,7 @@ export function PlanMap({
               style={{ width: percent(share(totals.inProgress, requiredCredits)) }}
             />
             <span
-              className="bg-stripes-primary"
+              className="bg-stripes-planned"
               style={{ width: percent(share(totals.planned, requiredCredits)) }}
             />
           </div>
@@ -225,7 +225,7 @@ export function PlanMap({
               {totals.inProgress} in progress
             </li>
             <li className="flex items-center gap-1.25">
-              <span className="size-2 rounded-[2px] bg-stripes-primary" />
+              <span className="size-2 rounded-[2px] bg-stripes-planned" />
               {totals.planned} planned
             </li>
           </ul>
@@ -250,7 +250,7 @@ export function PlanMap({
         <ol aria-label={label} className="flex flex-col gap-3">
           {years.map((year) => (
             <li key={year.label}>
-              <p className="mb-1.5 font-mono text-xs text-fg-3">{year.label}</p>
+              <p className="mb-1.5 text-xs text-fg-3">{year.label}</p>
               {/* Fall | Spring side by side, a summer underneath across both; two slots per line. */}
               <ol className="grid grid-cols-2 gap-x-2 gap-y-3">
                 {year.fall ? (
@@ -283,16 +283,17 @@ export function PlanMap({
           Done
         </li>
         <li className="flex items-center gap-1.5">
+          {/* Neutral, like the other swatches: in-progress cells take their course's colour, never red. */}
           <span
             aria-hidden
-            className="size-3 rounded-[3px] border-[1.5px] border-primary bg-primary-wash"
+            className="size-3 rounded-[3px] border-[1.5px] border-fg-2 bg-surface-2"
           />
           In progress
         </li>
         <li className="flex items-center gap-1.5">
           <span
             aria-hidden
-            className="size-3 rounded-[3px] border-[1.5px] border-dashed border-primary"
+            className="size-3 rounded-[3px] border-[1.5px] border-dashed border-fg-2"
           />
           Planned
         </li>
@@ -346,7 +347,7 @@ function TermColumn({
       <p
         aria-hidden
         className={cn(
-          "mb-0.5 font-mono text-xs leading-4 whitespace-nowrap",
+          "mb-0.5 text-xs leading-4 whitespace-nowrap",
           labelStyle === "short" && "text-center",
           current ? "font-semibold text-primary" : "text-fg-3",
         )}

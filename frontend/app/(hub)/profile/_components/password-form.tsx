@@ -10,7 +10,7 @@ import {
 } from "@/app/(auth)/_components/field-errors";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { Field, SuccessStatus } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PasswordSchema } from "@/lib/api/account";
 import { callApi } from "@/lib/api/client";
@@ -144,9 +144,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
         </Field>
       </div>
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <p role="status" className="text-sm font-medium text-success">
-          {status}
-        </p>
+        <SuccessStatus>{status}</SuccessStatus>
         {/* aria-disabled, not disabled: focus stays on the button while the change is in flight. */}
         <Button
           type="submit"

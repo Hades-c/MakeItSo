@@ -60,7 +60,7 @@ export function InterestsStep({ initial, careers }: InterestsStepProps) {
           <div key={cluster} role="group" aria-labelledby={headingId}>
             <h2
               id={headingId}
-              className="mb-2 font-mono text-xs font-medium tracking-label text-fg-3 uppercase"
+              className="mb-2 text-xs font-medium tracking-label text-fg-3 uppercase"
             >
               {cluster}
             </h2>

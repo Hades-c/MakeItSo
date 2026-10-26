@@ -4,11 +4,12 @@ import { cn } from "@/lib/utils";
 
 /**
  * Chip: a static pill for requirement codes, tags and facts ("VPRQ", "LTRQ · now"); `wrap` lets long text wrap.
+ * Inter (font-sans) even inside a font-display title; `mono` switches it to IBM Plex Mono for codes.
  * ToggleChip: a pressable filter pill (aria-pressed), 44px tall on touch layouts; `wrap` lets a long label (an
  * interest name at 320px) wrap onto a second line instead of pushing the page sideways (WCAG 1.4.10 reflow).
  */
 const chipVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap [&_svg]:size-3 [&_svg]:shrink-0",
+  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-sans text-xs font-medium whitespace-nowrap [&_svg]:size-3 [&_svg]:shrink-0",
   {
     variants: {
       variant: {

@@ -3,12 +3,12 @@
 import * as React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
 import { Switch } from "@/components/ui/switch";
 import { callApi } from "@/lib/api/client";
 import { planEndpoints } from "@/lib/api/endpoints";
 import type { PlanView } from "@/lib/types/plan";
 import { PE_LIFETIME_REQUIRED } from "../_lib/four-year";
-import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
 /**

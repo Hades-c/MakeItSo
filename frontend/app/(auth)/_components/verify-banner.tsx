@@ -9,6 +9,11 @@ export interface VerifyBannerProps {
   replaceable: boolean;
   /** Hours left of those 24 (null when not replaceable). */
   hoursLeft: number | null;
+  /**
+   * The temporary AI_ALLOW_UNVERIFIED switch is on (server/ai/access.ts): AI works without verifying, so verifying
+   * opens the alumni network and cold-email drafts only.
+   */
+  aiWithoutVerifying?: boolean;
 }
 
 /**
@@ -18,22 +23,28 @@ export interface VerifyBannerProps {
  *   const banner = await verifyBannerFor(user, now());   // server/auth
  *   {banner ? <VerifyBanner {...banner} /> : null}
  */
-export function VerifyBanner({ email, replaceable, hoursLeft }: VerifyBannerProps) {
+export function VerifyBanner({
+  email,
+  replaceable,
+  hoursLeft,
+  aiWithoutVerifying = false,
+}: VerifyBannerProps) {
   return (
     <section
       aria-labelledby="verify-banner-title"
       data-testid="verify-banner"
-      className="mb-5 flex flex-col gap-3 rounded-xl border border-line bg-primary-wash p-4 md:flex-row md:items-center md:justify-between md:gap-5"
+      className="mb-5 flex flex-col gap-3 rounded-xl border border-line bg-surface-2 p-4 md:flex-row md:items-center md:justify-between md:gap-5"
     >
       <div className="flex min-w-0 items-start gap-3">
-        <MailWarning aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />
+        <MailWarning aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-2" />
         <div className="min-w-0 text-sm">
           <h2 id="verify-banner-title" className="font-strong text-fg">
             Verify your Davidson email
           </h2>
           <p className="mt-0.5 text-fg-2">
             Confirm that <span className="font-semibold break-all text-fg">{email}</span> is yours
-            with a 6-digit code by email to open the alumni network and AI features.
+            with a 6-digit code by email to open the alumni network and{" "}
+            {aiWithoutVerifying ? "cold-email drafts" : "AI features"}.
             {replaceable ? (
               <>
                 {" "}
@@ -47,7 +58,8 @@ export function VerifyBanner({ email, replaceable, hoursLeft }: VerifyBannerProp
           </p>
         </div>
       </div>
-      <Button asChild className="w-full md:w-auto">
+      {/* Secondary: the banner sits above every hub page, whose own primary action keeps the one red fill. */}
+      <Button asChild variant="secondary" className="w-full md:w-auto">
         <Link href={routes.verify()}>Get a code</Link>
       </Button>
     </section>

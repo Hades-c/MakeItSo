@@ -17,7 +17,7 @@ export function UnlistedProgramNote({ kind }: { kind: UnlistedProgram["kind"] })
             href={program.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-primary underline underline-offset-2"
+            className="font-semibold link"
           >
             {program.sourceLabel}
           </a>

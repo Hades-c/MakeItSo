@@ -31,7 +31,7 @@ export function ProfileSection({
         className,
       )}
     >
-      <h2 id={headingId} className="text-lg font-strong tracking-title text-fg">
+      <h2 id={headingId} className="font-display text-lg font-strong tracking-title text-fg">
         {title}
       </h2>
       {description ? <div className="mt-1 text-sm text-fg-2">{description}</div> : null}
@@ -50,7 +50,7 @@ export function FactList({ children }: { children: React.ReactNode }) {
 export function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <>
-      <dt className="font-mono text-xs tracking-label text-fg-3 uppercase md:pt-0.5">{label}</dt>
+      <dt className="text-xs font-medium tracking-label text-fg-3 uppercase md:pt-0.5">{label}</dt>
       <dd className="min-w-0 break-words text-fg">{children}</dd>
     </>
   );

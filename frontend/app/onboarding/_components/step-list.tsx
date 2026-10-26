@@ -47,7 +47,7 @@ export function StepList({
                 <span
                   aria-hidden
                   className={cn(
-                    "grid size-6 shrink-0 place-items-center rounded-full border font-mono text-xs",
+                    "grid size-6 shrink-0 place-items-center rounded-full border text-xs tabular-nums",
                     saved
                       ? "border-transparent bg-success-wash text-success"
                       : "border-line-strong text-fg-2",

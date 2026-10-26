@@ -182,7 +182,8 @@ describe("hub layout: verify banner", () => {
     expect(children).toHaveLength(2);
     const [banner] = children as ReactElement[];
     expect(banner?.type).toBe(VerifyBanner);
-    expect(banner?.props).toEqual(state);
+    // Plus what verifying opens, which the temporary AI_ALLOW_UNVERIFIED switch changes (off by default).
+    expect(banner?.props).toEqual({ ...state, aiWithoutVerifying: false });
     expect(stubs.verifyBannerFor).toHaveBeenCalledWith(
       expect.objectContaining({ email: "sam@davidson.edu" }),
       expect.any(Date),

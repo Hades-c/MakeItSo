@@ -37,8 +37,11 @@ export function BottomTabs({ nav = ALL_NAV_KEYS, className }: BottomTabsProps) {
                 href={href}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-md text-xs font-semibold transition-colors",
-                  current ? "text-primary" : "text-fg-3 hover:text-fg",
+                  "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-md text-xs font-semibold transition-colors",
+                  // Current page: the red label plus a 28 × 3px bar in --nav-mark on the bar's top edge (the ≥ 3:1 cue).
+                  current
+                    ? "text-primary before:absolute before:-top-1.5 before:left-1/2 before:h-0.75 before:w-7 before:-translate-x-1/2 before:rounded-b-[3px] before:bg-nav-mark"
+                    : "text-fg-3 hover:text-fg",
                 )}
               >
                 <Icon aria-hidden strokeWidth={1.8} className="size-5.5" />

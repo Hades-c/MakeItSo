@@ -79,7 +79,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
     <div data-testid="onboarding" data-step={step}>
       <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="mb-1.5 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
+          <p className="mb-1.5 text-xs font-medium tracking-label text-fg-3 uppercase">
             Step {stepIndex(step) + 1} of {ONBOARDING_STEPS.length}
             {step === "about" && firstName ? ` · Welcome, ${firstName}` : ""}
           </p>

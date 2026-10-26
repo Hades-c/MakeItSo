@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Chip, ToggleChip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
-import { Field } from "@/components/ui/field";
+import { Field, SuccessStatus } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
@@ -26,6 +26,22 @@ describe("Field", () => {
     expect(input).toHaveAttribute("id", "email");
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAccessibleDescription("Use your Davidson email. Enter a valid email");
+    // The error is an icon and words, never the danger colour alone (red is also the accent).
+    const error = screen.getByText("Enter a valid email").closest("p")!;
+    expect(error).toHaveClass("text-danger");
+    expect(error.querySelector("svg[aria-hidden]")).not.toBeNull();
+  });
+
+  it("keeps a form's success line in the page, empty, and gives its message an icon", () => {
+    const { rerender } = render(<SuccessStatus>{""}</SuccessStatus>);
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+    rerender(<SuccessStatus>Name saved.</SuccessStatus>);
+    // The same live region, now with the success colour, an icon and words.
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent("Name saved.");
+    expect(status).toHaveClass("text-success");
+    expect(status.querySelector("svg[aria-hidden]")).not.toBeNull();
   });
 });
 
@@ -95,6 +111,9 @@ describe("page building blocks", () => {
     );
     expect(screen.getByText("Due today")).toHaveClass("bg-urgent-wash", "text-urgent");
     expect(screen.getByText("VPRQ")).toHaveClass("bg-success-wash", "font-mono");
+    // Labels stay Inter inside a font-display title; a mono chip is mono only.
+    expect(screen.getByText("Due today")).toHaveClass("font-sans");
+    expect(screen.getByText("VPRQ")).not.toHaveClass("font-sans");
   });
 
   it("Chip wraps long text only when asked to", () => {

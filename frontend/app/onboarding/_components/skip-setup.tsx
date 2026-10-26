@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/field";
 import { callApi } from "@/lib/api/client";
 import { profileEndpoints } from "@/lib/api/endpoints";
 import { describeFailure } from "../_lib/errors";
@@ -38,11 +39,7 @@ export function SkipSetup() {
       <Button variant="ghost" size="sm" onClick={skip} aria-disabled={saving || undefined}>
         {saving ? "Saving…" : "Skip setup"}
       </Button>
-      {error ? (
-        <p role="alert" className="text-xs font-semibold text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <FieldError role="alert">{error}</FieldError> : null}
     </div>
   );
 }

@@ -26,7 +26,7 @@ export function ProvenanceLine({
     <p className={cn("text-xs text-fg-3", className)} data-testid="alumni-provenance">
       Compiled from public sources · checked{" "}
       <time dateTime={checkedAt}>{formatContentDate(checkedAt)}</time> ·{" "}
-      <Link href={REMOVAL_HREF} className="font-semibold text-primary underline underline-offset-2">
+      <Link href={REMOVAL_HREF} className="font-semibold link">
         Request removal/correction
       </Link>
     </p>

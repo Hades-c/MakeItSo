@@ -4,9 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { Info } from "lucide-react";
 import { AddToPlanControl, type AddToPlanTerm } from "@/components/domain/add-to-plan-control";
+import { Notice } from "@/components/ui/notice";
 import { ApiClientError, callApi } from "@/lib/api/client";
 import { planEndpoints } from "@/lib/api/endpoints";
-import { cn } from "@/lib/utils";
 
 /**
  * Add a career's course to the plan (client island over AddToPlanControl). The term choice shows the live
@@ -142,7 +142,7 @@ export function CourseAddToPlan({
         ) : null}
         {underway ? (
           <p className="flex items-start gap-1.5 text-fg" data-testid="current-term-note">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-2" />
             <span>
               {labelOf(terms, currentTerm)} is already under way: adding {courseCode} there records
               it as a class you’re taking this term.
@@ -165,19 +165,14 @@ export function CourseAddToPlan({
         pending={pending}
         added={added}
         courseCode={courseCode}
+        emphasis="secondary"
       >
         {notes}
       </AddToPlanControl>
       <div aria-live="polite" data-testid="add-to-plan-notice">
         {notice ? (
-          <div
-            className={cn(
-              "mt-2 rounded-md px-3 py-2 text-sm",
-              notice.tone === "success" && "bg-success-wash text-success",
-              notice.tone === "info" && "bg-surface-2 text-fg-2",
-              notice.tone === "error" && "bg-danger-wash text-danger",
-            )}
-          >
+          // Each tone with its icon and words (Notice): never colour alone.
+          <Notice tone={notice.tone} className="mt-2">
             <p>
               {notice.text}{" "}
               {notice.tone === "success" ? (
@@ -198,7 +193,7 @@ export function CourseAddToPlan({
                 ))}
               </ul>
             ) : null}
-          </div>
+          </Notice>
         ) : null}
       </div>
     </div>

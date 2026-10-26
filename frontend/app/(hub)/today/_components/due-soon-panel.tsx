@@ -1,4 +1,4 @@
-import { ExternalLink, TriangleAlert } from "lucide-react";
+import { AlarmClock, ExternalLink, TriangleAlert } from "lucide-react";
 import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
 import { SourceTag } from "@/components/ui/source-tag";
@@ -133,12 +133,7 @@ function DueSoonRow({ item, label }: { item: DueSoonItem; label: string }) {
       <div className="min-w-0">
         <p className="text-sm leading-snug font-semibold text-fg md:text-base">
           {item.url ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(STRETCHED_LINK, "hover:text-primary")}
-            >
+            <a href={item.url} target="_blank" rel="noopener noreferrer" className={STRETCHED_LINK}>
               {title} <span className="sr-only">(opens in a new tab)</span>
               <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
             </a>
@@ -152,12 +147,21 @@ function DueSoonRow({ item, label }: { item: DueSoonItem; label: string }) {
           {item.audience && !item.forYou ? <span>For: {item.audience}</span> : null}
         </p>
       </div>
+      {/* Due today (the student's own): red, and never by colour alone (red is also the accent): an alarm icon and
+          the words. */}
       <p
         className={cn(
-          "shrink-0 text-right font-mono text-xs leading-5 font-medium",
-          urgent ? "text-urgent" : "text-fg-2",
+          "flex shrink-0 items-start justify-end gap-1 text-right text-xs leading-5",
+          urgent ? "font-semibold text-urgent" : "font-medium text-fg-2",
         )}
       >
+        {urgent ? (
+          <AlarmClock
+            aria-hidden
+            data-testid="due-urgent-icon"
+            className="mt-0.75 size-3.5 shrink-0"
+          />
+        ) : null}
         {label}
       </p>
     </li>

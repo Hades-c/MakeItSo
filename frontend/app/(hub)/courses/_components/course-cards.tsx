@@ -62,7 +62,7 @@ function CardHeading({
       <h2
         id={id}
         tabIndex={focusable ? -1 : undefined}
-        className="min-w-0 text-lg font-strong tracking-title break-words text-fg"
+        className="min-w-0 font-display text-lg font-strong tracking-title break-words text-fg"
       >
         {title}
       </h2>
@@ -123,7 +123,7 @@ export function CourseHeader({
       />
       <div className="grid gap-5 rounded-2xl border border-line bg-surface p-5 shadow-card md:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] lg:gap-8">
         <div className="flex min-w-0 flex-col gap-3">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-fg-2">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-2">
             {kicker.map((part, index) => (
               <span key={part}>
                 {index > 0 ? <span aria-hidden>· </span> : null}
@@ -132,7 +132,12 @@ export function CourseHeader({
             ))}
             <SourceTag source="course-schedule" asOf={asOf} />
           </p>
-          <h1 className={cn("text-2xl font-strong tracking-title text-fg md:text-3xl", BREAK_TEXT)}>
+          <h1
+            className={cn(
+              "font-display text-2xl font-strong tracking-title text-fg md:text-3xl",
+              BREAK_TEXT,
+            )}
+          >
             {title}
           </h1>
           {course.topics ? (
@@ -205,7 +210,8 @@ export function CourseHeader({
               </a>
             </Button>
           ) : (
-            <Button asChild size="lg" className="w-full">
+            // A jump to the Add to plan card below, whose button is the page's one red action.
+            <Button asChild size="lg" variant="secondary" className="w-full">
               <a href="#add-to-plan">
                 <Plus aria-hidden />
                 Add to plan
@@ -246,7 +252,7 @@ export function RequirementChips({ reqs }: { reqs: readonly RequirementTag[] }) 
         <li key={req.code} className="max-w-full min-w-0">
           <Chip variant="neutral" className={cn(WRAP_CHIP, "text-fg")}>
             <span>
-              {req.name} <span className="font-mono text-fg-3">{req.code}</span>
+              {req.name} <span className="text-fg-3">{req.code}</span>
             </span>
           </Chip>
         </li>
@@ -289,7 +295,7 @@ export function CourseAboutCard({
           {descriptions.map((entry) => (
             <div key={entry.value}>
               {several(descriptions) ? (
-                <p className="mb-1 font-mono text-xs font-semibold text-fg-2">
+                <p className="mb-1 text-xs font-semibold text-fg-2">
                   Section {entry.sections.join(", ")}
                 </p>
               ) : null}
@@ -304,13 +310,13 @@ export function CourseAboutCard({
       )}
 
       <dl className="mt-4 grid gap-x-6 gap-y-3 border-t border-line pt-4 text-sm md:grid-cols-[9rem_minmax(0,1fr)]">
-        <dt className="font-mono text-xs text-fg-3 md:pt-0.5">Requirements</dt>
+        <dt className="text-xs font-medium text-fg-3 md:pt-0.5">Requirements</dt>
         <dd className="min-w-0" data-testid="course-requirements">
           {requirementsBySection && requirementsBySection.length > 1 ? (
             <ul className="flex flex-col gap-2" data-testid="requirements-by-section">
               {requirementsBySection.map((group) => (
                 <li key={group.sections.join(",")} className="flex flex-col gap-1">
-                  <span className="font-mono text-xs font-semibold text-fg-2">
+                  <span className="text-xs font-semibold text-fg-2">
                     {group.sections.length === 1 ? "Section" : "Sections"}{" "}
                     {group.sections.join(", ")}
                   </span>
@@ -330,7 +336,7 @@ export function CourseAboutCard({
           <p className="mt-1.5 text-xs text-fg-3">{disclaimer}</p>
         </dd>
 
-        <dt className="font-mono text-xs text-fg-3 md:pt-0.5">Also counts for</dt>
+        <dt className="text-xs font-medium text-fg-3 md:pt-0.5">Also counts for</dt>
         <dd className="min-w-0" data-aggregated="catalog" data-testid="also-counts-for">
           {programs === null ? (
             <span className="text-fg-2">The catalog’s programs can’t be read right now.</span>
@@ -353,7 +359,7 @@ export function CourseAboutCard({
                     href={match.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center text-fg underline decoration-line-strong underline-offset-2 hover:text-primary md:inline md:min-h-0"
+                    className="inline-flex min-h-11 items-center link md:inline md:min-h-0"
                   >
                     {match.name}
                     <span className="sr-only"> (catalog page, opens in a new tab)</span>
@@ -370,7 +376,7 @@ export function CourseAboutCard({
           </p>
         </dd>
 
-        <dt id="prerequisites" className="font-mono text-xs text-fg-3 md:pt-0.5">
+        <dt id="prerequisites" className="text-xs font-medium text-fg-3 md:pt-0.5">
           Prerequisites
         </dt>
         <dd className="min-w-0" data-testid="course-prerequisites">
@@ -381,7 +387,7 @@ export function CourseAboutCard({
               {prereqs.map((entry) => (
                 <li key={entry.value} className={cn("text-fg", BREAK_TEXT)}>
                   {several(prereqs) ? (
-                    <span className="mr-1 font-mono text-xs font-semibold text-fg-2">
+                    <span className="mr-1 text-xs font-semibold text-fg-2">
                       {entry.sections.join(", ")}:
                     </span>
                   ) : null}
@@ -429,7 +435,7 @@ export function OtherTermsCard({
                 {entry.status === "offered" && !here ? (
                   <Link
                     href={routes.course(entry.termCode, code)}
-                    className="inline-flex min-h-11 items-center text-primary hover:underline md:min-h-0"
+                    className="inline-flex min-h-11 items-center link md:min-h-0"
                   >
                     {termLabel(entry.termCode)}
                   </Link>
@@ -530,7 +536,7 @@ function UnplacedList({ items, term }: { items: readonly PlanItem[]; term: TermC
           <li key={item.id}>
             <Link
               href={routes.course(term, item.courseCode)}
-              className="inline-flex min-h-11 items-center font-mono text-xs font-semibold text-primary hover:underline md:min-h-0"
+              className="inline-flex min-h-11 items-center font-mono text-xs font-semibold link md:min-h-0"
             >
               {item.courseCode}
             </Link>

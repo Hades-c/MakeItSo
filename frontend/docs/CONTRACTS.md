@@ -104,15 +104,21 @@ The frozen interfaces every workstream codes against. They change only through t
 - What a course page shows from RMP (PLAN §5's "nothing else from RMP is shown" now covers all of it): the rating
   and its count, from one rating; difficulty and "would take again", from three ratings (`MIN_DETAIL_RATINGS`,
   `components/domain/rating-summary.tsx`: with one or two they read 0% or 100% about a named professor); the most
-  common tags, from three counted ratings, each used at least twice, at most three, on a line with its own freshness,
-  "Most common tags (from 39 ratings, as of Oct 25, 2026): … · via RateMyProfessors" (`rmp.tagRatingsCounted` and
-  `rmp.tagsAsOf`, the daily count; the roster's `asOf` dates the rest); the source tag and the profile link. No
-  review text, and no ratings on /courses rows or career cards.
+  common tags, from three counted ratings, each used at least twice, at most three, on a line with its own
+  freshness, "Most common tags (from 39 ratings, as of Oct 25, 2026): …" (`rmp.tagRatingsCounted` and
+  `rmp.tagsAsOf`, the daily count; the date is left out, "Most common tags (from 39 ratings): …", when it is the day
+  the provenance line prints, so an entry never shows one date twice); then ONE provenance line, the roster's `asOf`
+  and the source named once as the profile link, "as of Oct 22, 2026 · RateMyProfessors ↗" (`SourceLink` in
+  `components/ui/source-tag.tsx`: `data-source` and the "Source: RateMyProfessors" name, like a SourceTag; never a
+  tag beside a separately worded link). All of it once per instructor, in "Instructors on RateMyProfessors": the
+  section rows list instructors by name only. No review text, and no ratings on section rows, /courses rows or
+  career cards.
 - `rmp.tagsAsOf`: when the tags were counted (`rmpteachers.tagsFetchedAt`), null until counted or with no ratings.
 - "Instructors on RateMyProfessors" is its own component, `InstructorRatings`
   (`app/(hub)/courses/_components/instructor-ratings.tsx`), fed by `ratedInstructors(sections, ratings)`: each
-  rated instructor once, in section order, Staff left out. A course page layout places it (today under the
-  sections; M6 may move it to a hoisted "Both sections:" line or to each section row) without touching it.
+  rated instructor once, in section order, Staff left out. It is the only place a course page shows RMP data; a
+  layout may move it (today under the sections, above the matching-rule footnote, which appears once) without
+  touching it.
 - Tag counts (`server/rmp/tags.ts`, the daily cron): a teacher whose own answer is unusable (missing, null,
   malformed, or a cursor that does not move) is skipped and marked, `tagsFailures` + 1 and `tagsRetryAt` (1 day,
   doubling per failure in a row, at most 30), and is not due until then, so a few bad teachers at the front of the
@@ -132,7 +138,8 @@ The frozen interfaces every workstream codes against. They change only through t
   use `requireApiUser()` or defineRoute's auth modes (401/403, never a redirect). `getSessionUser()` is memoised per
   request; a JWT is revoked by `sessionVersion` (sign out everywhere, password change or reset, deletion).
   `isEmailVerified(account)` (any address) and `isVerifiedDavidsonUser(account)` (verified AND @davidson.edu: the
-  alumni/AI gate) take a SessionUser, a lean User or a Profile.
+  alumni gate, and the AI gate while AI_ALLOW_UNVERIFIED is off) take a SessionUser, a lean User or a Profile. Who
+  is verified for AI is decided by `server/ai/access.ts isAiVerified` only (see "AI wire format").
 - **First run**: `SessionUser.onboardedAt` (ISO or null; `isOnboarded(user)`: a SessionUser without the field
   counts as onboarded). The hub layout sends an account with `onboardedAt` null to
   `routes.onboarding(undefined, { next: <requested path> })`, except on `/today` (its setup nudge and "not
@@ -143,7 +150,8 @@ The frozen interfaces every workstream codes against. They change only through t
 - **Return paths**: every untrusted path goes through `safeAppPath(value, fallback?)` / `isSafeAppPath(path)`
   (one leading "/", never "//" or "/\\" after normalising); `lib/routes.ts safeCallbackPath` applies the same rule.
 - **Verify banner**: `verifyBannerFor(user, now())` → `{ email, replaceable, hoursLeft }` or null (only unverified
-  @davidson.edu accounts, only while mail is available); the hub layout renders `<VerifyBanner {...state} />`.
+  @davidson.edu accounts, only while mail is available); the hub layout renders
+  `<VerifyBanner {...state} aiWithoutVerifying={loadAiAllowsUnverified()} />` (what verifying opens).
 - **Profile**: `getProfile(userId)` / `updateProfile(userId, patch)` (strict whitelist, `null` → `$unset` for
   firstTerm/standingOverride; `interests` are the 24 career-path slugs of server/content: 400 `interests.<i>`
   otherwise, unknown stored slugs dropped on read), `grantAiConsent` / `revokeAiConsent`, `defaultFirstTerm(gradYear)`,
@@ -180,22 +188,74 @@ The frozen interfaces every workstream codes against. They change only through t
 | ---------- | ------------------------------------------------------------------- | -------------------- |
 | `public`   | anyone; cookies never read (required for `cache: "public-catalog"`) | —                    |
 | `user`     | signed in                                                           | 401                  |
-| `verified` | signed in + `emailVerifiedAt` + `@davidson.edu` (alumni, AI report) | 401 / 403            |
+| `verified` | signed in + `emailVerifiedAt` + `@davidson.edu` (alumni)            | 401 / 403            |
 | `admin`    | verified mailbox + address in `ADMIN_EMAILS`                        | 401 / 403            |
 | `cron`     | `Authorization: Bearer $CRON_SECRET` (constant-time compare)        | 401; 503 while unset |
 
 Non-GET requests also need the app's `Origin` (or `Sec-Fetch-Site: same-origin`) → 403, a JSON body when the
-route takes one → 415, at most 16 KB → 413, and a body matching the strict schema → 400.
+route takes one → 415, at most 16 KB → 413, and a body matching the strict schema → 400. The `verified` 403
+message is `verifiedOnlyMessage(switch)` (lib/types/ai-constants.ts), true in either state of AI_ALLOW_UNVERIFIED.
+"Report this" (POST /api/ai/report) is `user`: `reportEntry` answers 403 unless `isAiVerified` (below).
 
 ## AI wire format (`lib/types/ai.ts`, `lib/api/ai.ts`)
 
 The generating AI routes are `auth: "user"` + `aiResult: true`. The handler returns an `AiResult` for every
-outcome it decides, failures included: first `const gate = aiGateFailure({ enabled, configured, verified,
-consented }); if (gate) return gate;` (disabled → not_configured → unverified → consent_required), then the
-generation result. defineRoute sends it with `AI_RESULT_STATUS[kind]` (quota 429, unverified 403, ...), and
-`callApi` returns it instead of throwing, so client code does `switch (result.kind)`. Only problems outside the
+outcome it decides, failures included: first
+`const gate = aiGateFailure(await aiGateInput(user.id, feature)); if (gate) return gate;` (disabled →
+not_configured → unverified → consent_required), then the generation result. `aiGateInput` (server/ai/gate.ts)
+reads the account once: `verified` is `isAiVerified(account, feature, switch)` and `unverifiedMessage` what a
+student who fails it is told (`aiUnverifiedMessage`). A page that shows or hides an AI panel decides it with
+`aiGateInput` too (plan suggestions, course About, the career panels: one input per feature), so a page and its
+route never disagree. defineRoute sends the result with `AI_RESULT_STATUS[kind]` (quota 429, unverified 403, ...),
+and `callApi` returns it instead of throwing, so client code does `switch (result.kind)`. Only problems outside the
 handler (401 signed out, 400 bad body, 429 route rate limit, 500) use the generic error body and throw
 `ApiClientError`.
+
+### Temporary: `AI_ALLOW_UNVERIFIED` (remove once mail works)
+
+An owner switch (server/env.ts, boolean, default `false`), there only because email verification cannot work in
+production without a mail provider. Read with `aiAllowsUnverified()` on route paths (a malformed value throws,
+like `getFlags()`) or `loadAiAllowsUnverified()` for pages and copy (never throws: malformed = off), both in
+`server/ai/access.ts`:
+
+- `isAiVerified(account, feature, allowUnverified)`: a verified @davidson.edu mailbox, always; an unverified
+  @davidson.edu address only while the switch is on and never for `VERIFIED_ONLY_AI_FEATURES` (`cold-email`: it
+  uses alumni data); legacy non-Davidson accounts, never. Alumni data stays verified-only whatever the switch
+  says: `alumniForCareer`, the alumni pages, the search provider and `defineRoute` `verified` use
+  `isVerifiedDavidsonUser`.
+- Consent and the 18+ attestation are still required (the Profile AI section lets any signed-in student consent);
+  per-user quotas, AI_DAILY_TOKEN_BUDGET and the payload allow-lists are unchanged. **Known risk (owner
+  decision)**: with the switch on, a quota limits an address nobody has proven they own (registration sends no
+  mail and allows 5 accounts an hour per IP), so `AI_DAILY_TOKEN_BUDGET` is the only real cost limit, and a few
+  throwaway sign-ups can use it up: the owner pays the full budget that day and every student sees "AI is paused
+  for today". Options that add a limit without changing the existing ones (none built): a token sub-budget for
+  accounts verified only through the switch, a lower generation quota for them, or a per-IP limit on the
+  generating routes while the switch is on. Today every production account is unverified (no mail provider), so
+  each of these would also limit every real student.
+- "Report this": only reports from a verified @davidson.edu mailbox count toward `REPORTS_TO_HIDE`
+  (`reports.entries[].verified: false` is kept for the admin but left out of `REPORTER_COUNT`; reports from before
+  the switch have no `verified` field and count). **This rule is permanent**: the `verified` field and the
+  `$filter` on `$$entry.verified` in `REPORTER_COUNT` stay when the switch is turned off or removed. The
+  `verified: false` entries stay in `reports.entries` after that, and every recount (the next report,
+  `server/ai/account-data.ts` erasing an account) must keep leaving them out, or the old throwaway reports count
+  and hide any shared answer with 3 or more of them. Dropping the field or the filter needs a migration that first
+  deletes the `verified: false` entries and their ids from `reports.userIds`.
+- Copy says what is true in both states. Copy that states a RULE follows the switch: `verifiedOnlyMessage(switch)` /
+  `aiUnverifiedMessage(feature, switch)`, what verifying opens (the verify banner, Profile) and /privacy (rendered
+  per request). Copy that PROMISES AI without verifying also needs AI to work: `aiOpenWithoutVerifying()` (the
+  switch AND `AI_ENABLED` AND `aiConfigured()`, what the landing's AI claim checks too) chooses
+  `verificationUnavailableMessage(switch, aiOpen)` ("… the AI features in the meantime" only then; /verify, the
+  alumni gate, the resend 503) and the Profile AI note, so no page offers AI while it is off or not set up. The
+  landing's AI claim is `landingClaims` (AI on and configured, and a mail provider OR the switch). The verify
+  links stay tied to the `unverified` gate, so they are offered only where verifying still helps (cold e-mail,
+  alumni).
+- e2e: a second server with the switch on (playwright.config.ts, `E2E_ALT_PORT`, helpers.ts `E2E_ALT_ORIGIN`)
+  runs `tests/e2e/ai-unverified.spec.ts`; remove both with the switch.
+- Removing the switch (once mail works): remove `AI_ALLOW_UNVERIFIED` from server/env.ts and the docs, the
+  switch's paths in `server/ai/access.ts` (`isAiVerified` becomes `isVerifiedDavidsonUser`) and in the copy above,
+  and the e2e server. Keep the report rule above (the `verified` model field, `REPORTER_COUNT`'s filter, and
+  `reportEntry` marking a re-report from a now-verified student `verified: true`) unless the migration it
+  describes has run first.
 
 ## Models (collections)
 
@@ -207,6 +267,38 @@ the legacy `careergoals` (by userId) and `aicaches` (the personal "roadmap", "ca
 rows, whose cacheKey starts with `{"userId":"<id or e-mail>"`): export and deletion of the student's own account
 are their only readers and writers. Legacy "cold-email" rows are keyed by the student's name only and are not
 attributable, so no eraser touches them (the privacy notice says to ask).
+
+## Look (`app/globals.css`, `components/ui`)
+
+Owner's decision, 2026-10-25: the classic MakeItSo fonts with Davidson's official colours. This supersedes the
+Lakeside palette and Instrument Sans named in PLAN §1 ("Visual") and §7 ("Colours": `--line-strong` is now
+#80868F light / #66768E dark; "red means now/urgent" becomes the rules below).
+
+- Type: Inter (`font-sans`, everything by default); Playfair Display bold (`font-display`) for the wordmark, page
+  h1s and card/section titles only; IBM Plex Mono (`font-mono`) only for course codes, CRNs and the verification
+  code. Counts or meta inside a `font-display` heading say `font-sans`; `SourceTag`, `AiChip`, `Badge` and `Chip`
+  already do. The next/font definitions live in `app/fonts.ts`: a document that renders its own `<html>`
+  (`app/global-error.tsx`) puts `fontVariables` on it, as the root layout does.
+- Colour: Davidson Red fills (`bg-primary-fill`, white text) for the one primary action per screen (the whole
+  page: a second action beside it, a jump link to it, a header or banner button, is `variant="secondary"`) and
+  selected fills; red text and tint (`text-primary`, `bg-primary-wash`) for the current page and selection;
+  `--urgent` for "now" and the student's own items due today. Red is never a status: planned work and the
+  registration term are neutral and courses in progress keep their course colour; only this term's own marks (its
+  "now" label, its credits on the progress bar, a requirement it fills) are red, as "now". Text links use the
+  `link` utility, never `text-primary`. Info notices and icons are neutral (`bg-surface-2`, `text-fg-2`); status
+  green and amber are icon + words (a form's "saved" line is `SuccessStatus` from `components/ui/field`).
+- Never colour alone: the now pill has a clock icon beside the time (the 56px gutter has no room for the word
+  too: "now" is in the current block's "now · 20 m left" and the screen-reader line "Now: 12:00p"), urgent due
+  labels an alarm icon, errors an icon (`FieldError` from `components/ui/field` for a field or a line beside a
+  button, `Notice` from `components/ui/notice` for an inline message, which picks the icon by tone),
+  destructive actions `variant="danger"` (outlined crimson; `--danger` has no fill) with a trash icon, words and
+  a confirm (`ConfirmButton`'s "Yes, …" carries the icon too). The current nav item carries a `--nav-mark` bar
+  (≥ 3:1). Focus is `--focus` (Lake Blue), never red.
+- `AddToPlanControl` / `AddCourse` take `emphasis` (`"primary"` default, `"secondary"` in lists with a button
+  per row).
+- Checked by `tests/e2e/ux`: `primaryFills` (`tests/e2e/helpers.ts`, the controls drawn in `--primary-fill`,
+  selection and the current page left out) is at most 1 on every measured page and width, and Today's `urgent`
+  (marks drawn with an `--urgent` token class) is exactly the now pill for the seeded student.
 
 ## Tests
 

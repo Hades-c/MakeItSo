@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CourseCode } from "@/components/ui/course-code";
 import { Input, controlClass } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
 import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { catalogEndpoints } from "@/lib/api/endpoints";
@@ -294,7 +295,7 @@ export function AddCourse({
 
       <div aria-live="polite">
         {results.state === "error" ? (
-          <p className="text-sm text-danger">{results.message}</p>
+          <Notice tone="error">{results.message}</Notice>
         ) : results.state === "done" ? (
           results.items.length === 0 ? (
             <p className="text-sm text-fg-2">
@@ -347,7 +348,9 @@ export function AddCourse({
           {sections.state === "loading" ? (
             <p className="mt-2 text-sm text-fg-2">Loading sections…</p>
           ) : sections.state === "error" ? (
-            <p className="mt-2 text-sm text-danger">{sections.message}</p>
+            <Notice tone="error" className="mt-2">
+              {sections.message}
+            </Notice>
           ) : sections.state === "done" ? (
             <form
               className="mt-2 flex flex-col gap-3"
@@ -398,7 +401,8 @@ export function AddCourse({
                 })}
               </fieldset>
               <div>
-                <Button type="submit" disabled={!chosen || full || disabled}>
+                {/* Secondary, like the plan rows' Add buttons: "Copy for WebTree" is the tab's one red action. */}
+                <Button type="submit" variant="secondary" disabled={!chosen || full || disabled}>
                   <Plus aria-hidden />
                   {addLabel}
                 </Button>

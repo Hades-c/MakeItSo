@@ -286,6 +286,9 @@ describe("DayTimeline", () => {
     const gutter = screen.getByTestId("timeline-gutter");
     const pill = within(gutter).getByTestId("now-pill");
     expect(pill).toHaveTextContent("9:12a");
+    // Red is also the accent, so "now" is never colour alone: the pill carries a clock glyph with the time.
+    expect(pill.querySelector("svg[aria-hidden]")).not.toBeNull();
+    expect(pill).toHaveClass("bg-urgent-fill");
     expect(pill.style.top).toBe("2.8571%");
     expect(list).not.toContainElement(pill);
     // "9a" would sit under the pill, so it is left out; the other hours stay.

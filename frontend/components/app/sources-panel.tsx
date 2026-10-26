@@ -77,7 +77,7 @@ export interface SourcesPanelProps {
   className?: string;
 }
 
-const HEADING = "mb-2 font-mono text-xs font-medium uppercase tracking-label text-fg-3";
+const HEADING = "mb-2 text-xs font-medium uppercase tracking-label text-fg-3";
 
 /**
  * Sidebar "Sources" panel: every source MakeItSo aggregates with its real last-sync (or checked) time, and the
@@ -173,7 +173,7 @@ export function SourcesPanel({
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="-mx-1 flex min-h-7 items-center gap-1.5 rounded-xs px-1 text-fg-2 hover:text-primary hover:underline"
+                    className="-mx-1 flex min-h-7 items-center gap-1.5 rounded-xs px-1 text-fg-2 hover:text-fg hover:underline"
                   >
                     {label}
                     <ArrowUpRight aria-hidden className="size-3.5 text-fg-3" />

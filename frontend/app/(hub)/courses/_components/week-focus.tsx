@@ -27,7 +27,7 @@ export function ShowInWeekLink({ href, children }: { href: string; children: Rea
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         requestedAt = Date.now();
       }}
-      className="inline-flex min-h-11 items-center rounded-sm text-sm font-semibold text-primary hover:underline md:min-h-0"
+      className="inline-flex min-h-11 items-center rounded-sm text-sm font-semibold link md:min-h-0"
     >
       {children}
     </Link>

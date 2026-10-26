@@ -10,7 +10,7 @@ import {
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { UnlistedProgramNote } from "@/components/domain/unlisted-program-note";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { Field, FieldError, SuccessStatus } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -264,9 +264,7 @@ export function AcademicsForm({ initial, majorNames, minorNames, now }: Academic
       </Field>
 
       <div className="flex flex-col gap-2 border-t border-line pt-4 md:flex-row md:items-center md:justify-between">
-        <p role="status" className="text-sm font-medium text-success">
-          {status}
-        </p>
+        <SuccessStatus>{status}</SuccessStatus>
         <Button
           type="submit"
           aria-disabled={saving || !dirty ? true : undefined}
@@ -437,11 +435,7 @@ function ProgramRows({
         <p className="text-xs text-fg-3">Up to {MAX_PROGRAMS}.</p>
       )}
       <UnlistedProgramNote kind={field === "majors" ? "major" : "minor"} />
-      {error ? (
-        <p id={errorId} className="text-xs font-semibold text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
     </fieldset>
   );
 }

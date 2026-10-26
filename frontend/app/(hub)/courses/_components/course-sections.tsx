@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Clock, MapPin, TriangleAlert } from "lucide-react";
-import { RatingSummary } from "@/components/domain/rating-summary";
 import { SeatBar } from "@/components/domain/seat-bar";
 import { Chip } from "@/components/ui/chip";
 import { SourceTag } from "@/components/ui/source-tag";
@@ -14,28 +13,26 @@ import {
   orderedMeetings,
   restrictionFlags,
 } from "../_lib/format";
-import { instructorKeyOf, type RatingsLookup } from "../_lib/ratings";
+import type { RatingsLookup } from "../_lib/ratings";
 import type { RegisterAs } from "../_lib/sections";
-import { InstructorRatings, ratedInstructors, shownRating } from "./instructor-ratings";
+import { InstructorRatings, ratedInstructors } from "./instructor-ratings";
 import { WRAP_CHIP } from "./wrap";
 import { ShowInWeekLink } from "./week-focus";
 
 /**
  * Every section of the course in the term (PLAN §5 "Sections"): CRN, section, its own title when it differs,
- * meetings ("Time TBA" when there is no time), room, instructors in upstream order ("Staff (TBA)"; a matched
- * RateMyProfessors rating and difficulty when RMP is on), seats ("Over-enrolled" when the API reports more than
- * max), the notes verbatim, restriction flags, "Register as <sibling>" for a max-0 cross-listing, the hidden
- * registration-only listings ("Also registrable as …") and "Registration section for …". "Show in my week" picks
- * the section the week grid and the header show (?crn= in the URL). Under the sections, each rated instructor once
- * with the rest of what RMP says (would take again, most common tags), however many sections they teach
- * (InstructorRatings, its own component, so it can move).
+ * meetings ("Time TBA" when there is no time), room, instructors in upstream order by name only ("Staff (TBA)"),
+ * seats ("Over-enrolled" when the API reports more than max), the notes verbatim, restriction flags, "Register as
+ * <sibling>" for a max-0 cross-listing, the hidden registration-only listings ("Also registrable as …") and
+ * "Registration section for …". "Show in my week" picks the section the week grid and the header show (?crn= in
+ * the URL). What RateMyProfessors says appears once per instructor, under the sections, however many sections they
+ * teach (InstructorRatings, its own component, so it can move): never again on the section rows.
  */
 
 export function SectionItem({
   section,
   course,
   chosen,
-  ratings,
   sectionHref,
   registerAs = null,
   regForTitle = null,
@@ -43,7 +40,6 @@ export function SectionItem({
   section: Section;
   course: Pick<Course, "title" | "topics">;
   chosen: boolean;
-  ratings: RatingsLookup | null;
   sectionHref: string;
   /** The sibling a max-0 listing registers under (resolved on the server: the first sibling with seats). */
   registerAs?: RegisterAs | null;
@@ -69,7 +65,7 @@ export function SectionItem({
           tabIndex={-1}
           className="flex flex-wrap items-baseline gap-x-2 text-base font-strong text-fg"
         >
-          <span className="font-mono text-sm">Section {section.section}</span>
+          <span className="text-sm">Section {section.section}</span>
           <span className="font-mono text-xs font-medium text-fg-2">CRN {section.crn}</span>
         </h3>
         {chosen ? (
@@ -91,7 +87,7 @@ export function SectionItem({
             const room = meeting ? meetingRoom(meeting) : null;
             return (
               <li key={index} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <span className="inline-flex items-center gap-1.5 font-mono text-xs text-fg">
+                <span className="inline-flex items-center gap-1.5 text-xs text-fg">
                   <Clock aria-hidden className="size-3.5 shrink-0 text-fg-3" />
                   {meeting ? meetingText(meeting, "long") : "Time TBA"}
                 </span>
@@ -111,33 +107,14 @@ export function SectionItem({
         {section.instructors.length === 0 ? (
           <li className="text-sm text-fg-2">Staff (TBA)</li>
         ) : (
-          section.instructors.map((instructor, index) => {
-            const shown = instructor.isStaff
-              ? null
-              : shownRating(ratings?.get(instructorKeyOf(instructor)));
-            return (
-              <li
-                key={`${instructor.first}-${instructor.last}-${index}`}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1"
-              >
-                <span className="text-sm font-semibold text-fg">{instructorName(instructor)}</span>
-                {shown ? (
-                  <span data-aggregated="ratemyprofessors" className="min-w-0">
-                    <RatingSummary
-                      status="matched"
-                      size="sm"
-                      avgRating={shown.rmp.avgRating}
-                      numRatings={shown.rmp.numRatings}
-                      avgDifficulty={shown.rmp.avgDifficulty}
-                      asOf={shown.rmp.asOf}
-                      url={shown.rmp.url}
-                      instructorName={instructorName(instructor)}
-                    />
-                  </span>
-                ) : null}
-              </li>
-            );
-          })
+          section.instructors.map((instructor, index) => (
+            <li
+              key={`${instructor.first}-${instructor.last}-${index}`}
+              className="text-sm font-semibold text-fg"
+            >
+              {instructorName(instructor)}
+            </li>
+          ))
         )}
       </ul>
 
@@ -152,7 +129,7 @@ export function SectionItem({
       {sibling ? (
         <p className="text-sm font-semibold text-fg" data-testid="register-as">
           Register as{" "}
-          <Link href={sibling.href} className="text-primary underline underline-offset-2">
+          <Link href={sibling.href} className="link">
             {sibling.label}
           </Link>{" "}
           <span className="font-mono text-xs font-medium text-fg-2">(CRN {sibling.crn})</span>
@@ -165,7 +142,7 @@ export function SectionItem({
               {index > 0 ? ", " : null}
               <Link
                 href={routes.course(section.termCode, listing.courseCode)}
-                className="font-semibold text-primary underline underline-offset-2"
+                className="font-semibold link"
               >
                 {listing.courseCode} {listing.section}
               </Link>
@@ -187,7 +164,7 @@ export function SectionItem({
           Registration section for{" "}
           <Link
             href={routes.course(section.termCode, section.regFor)}
-            className="font-semibold break-words text-primary underline underline-offset-2"
+            className="font-semibold break-words link"
           >
             {regForTitle ? `${regForTitle} (${section.regFor})` : section.regFor}
           </Link>
@@ -252,10 +229,12 @@ export function CourseSections({
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
         <h2
           id="sections-title"
-          className="flex items-center gap-2 text-lg font-strong tracking-title text-fg"
+          className="flex items-center gap-2 font-display text-lg font-strong tracking-title text-fg"
         >
           Sections{" "}
-          <span className="font-mono text-xs font-medium text-fg-3">{course.sections.length}</span>
+          <span className="font-sans text-xs font-medium text-fg-3 tabular-nums">
+            {course.sections.length}
+          </span>
         </h2>
         <SourceTag source="course-schedule" asOf={asOf} />
       </div>
@@ -266,7 +245,6 @@ export function CourseSections({
               section={section}
               course={course}
               chosen={section.crn === chosenCrn}
-              ratings={ratings}
               sectionHref={sectionHref(section.crn)}
               registerAs={registerAs[section.crn] ?? null}
               regForTitle={section.regFor ? (regForTitles[section.regFor] ?? null) : null}

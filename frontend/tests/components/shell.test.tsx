@@ -27,6 +27,9 @@ describe("SidebarNav", () => {
       "page",
     );
     expect(within(main).getByRole("link", { name: "Today" })).not.toHaveAttribute("aria-current");
+    // The current page carries the --nav-mark bar (the >= 3:1 cue; the pill's tint alone is about 1.1:1).
+    expect(within(main).getByRole("link", { name: /Courses/ })).toHaveClass("before:bg-nav-mark");
+    expect(within(main).getByRole("link", { name: "Today" }).className).not.toMatch(/nav-mark/);
     expect(main).not.toHaveTextContent("676");
 
     rerender(<SidebarNav counts={{ courses: 676, plan: { done: 12, total: 32 } }} />);
@@ -76,6 +79,9 @@ describe("BottomTabs", () => {
       "Events",
     ]);
     expect(screen.getByRole("link", { name: "Careers" })).toHaveAttribute("aria-current", "page");
+    // The current tab's 28 x 3px bar in --nav-mark; the others have none.
+    expect(screen.getByRole("link", { name: "Careers" })).toHaveClass("before:bg-nav-mark");
+    expect(screen.getByRole("link", { name: "Today" }).className).not.toMatch(/nav-mark/);
   });
 });
 

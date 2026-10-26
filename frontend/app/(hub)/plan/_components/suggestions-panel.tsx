@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, LoaderCircle, Plus, Sparkles, Undo2, X } from "lucide-react";
+import { Check, LoaderCircle, Plus, Sparkles, Trash2, Undo2, X } from "lucide-react";
 import { notify } from "@/components/ui/notify";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { CourseCode } from "@/components/ui/course-code";
 import { EmptyState } from "@/components/ui/empty-state";
 import { controlClass } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
 import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { aiEndpoints, planEndpoints } from "@/lib/api/endpoints";
@@ -28,7 +29,6 @@ import {
   type SuggestionRow,
 } from "../_lib/suggestions";
 import { ConfirmButton } from "./confirm-button";
-import { Notice } from "./notice";
 import { usePlanAction } from "./use-plan-action";
 
 /**
@@ -134,7 +134,10 @@ function DraftCard({
       data-source="ai"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id={`draft-${draft.id}`} className="text-lg font-strong tracking-title text-fg">
+        <h3
+          id={`draft-${draft.id}`}
+          className="font-display text-lg font-strong tracking-title text-fg"
+        >
           Suggestions from {formatMediumDate(draft.createdAt, timeZone)}
         </h3>
         <span className="flex items-center gap-2">
@@ -275,6 +278,7 @@ function DraftCard({
           disabled={action.busy}
           onConfirm={() => void close("dismissed")}
         >
+          <Trash2 aria-hidden />
           Dismiss all
         </ConfirmButton>
       </div>

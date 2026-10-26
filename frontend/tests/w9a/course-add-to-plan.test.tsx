@@ -87,6 +87,10 @@ describe("CourseAddToPlan", () => {
     const user = userEvent.setup();
     renderControl();
     expect(screen.getByRole("radio", { name: "Spring 2027" })).toBeChecked();
+    // A career lists many courses, each with this button: outlined, so the page keeps one red button.
+    const add = screen.getByRole("button", { name: "Add to Spring 2027" });
+    expect(add.className).not.toMatch(/\bbg-primary-fill\b/);
+    expect(add).toHaveClass("border-line-strong");
     await user.click(screen.getByRole("button", { name: "Add to Spring 2027" }));
 
     expect(
@@ -94,6 +98,8 @@ describe("CourseAddToPlan", () => {
     ).toBeVisible();
     const notice = screen.getByTestId("add-to-plan-notice");
     expect(notice).toHaveTextContent("Added CSC 221 to Spring 2027.");
+    // Status green is an icon and words (Notice).
+    expect(notice.querySelector(".bg-success-wash svg[aria-hidden]")).not.toBeNull();
     expect(within(notice).getByRole("link", { name: "Open My plan" })).toHaveAttribute(
       "href",
       "/plan?tab=next",

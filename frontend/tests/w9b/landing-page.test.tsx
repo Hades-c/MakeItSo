@@ -58,6 +58,13 @@ function listedSources(): (string | null)[] {
   return [...list.querySelectorAll("[data-source]")].map((el) => el.getAttribute("data-source"));
 }
 
+/** The links and buttons drawn as Davidson Red fills (the Button primary variant). */
+function redFills(): string[] {
+  return [...document.querySelectorAll("a, button")]
+    .filter((el) => el.classList.contains("bg-primary-fill"))
+    .map((el) => el.textContent?.trim() ?? "");
+}
+
 function featureTitles(): string[] {
   const features = screen.getByRole("region", { name: "One place instead of many tabs" });
   return within(features)
@@ -88,6 +95,8 @@ describe("/ for visitors", () => {
       "href",
       "/register",
     );
+    // One red action: the hero's. The header's Create account does the same thing, outlined.
+    expect(redFills()).toEqual(["Create your account"]);
     expect(screen.queryByRole("link", { name: /Go to Today/ })).toBeNull();
     expect(screen.getByTestId("facts-slot")).toBeInTheDocument();
     // Truthful copy only.
@@ -205,6 +214,7 @@ describe("/ for signed-in students", () => {
     );
     expect(within(account).queryByRole("link", { name: "Sign in" })).toBeNull();
     expect(screen.getAllByRole("link", { name: /Go to Today/ })).toHaveLength(2);
+    expect(redFills()).toEqual(["Go to Today"]);
     expect(screen.queryByRole("link", { name: /Create your account/ })).toBeNull();
   });
 });

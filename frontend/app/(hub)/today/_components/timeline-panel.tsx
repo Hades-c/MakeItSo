@@ -2,7 +2,7 @@ import Link from "next/link";
 import { DayTimeline, type TimelineNextUp } from "@/components/domain/day-timeline";
 import { windowLabel } from "@/components/domain/time-geometry";
 import { SectionCard } from "@/components/ui/section-card";
-import { ExternalLink } from "lucide-react";
+import { AlarmClock, ExternalLink } from "lucide-react";
 import { SourceTag } from "@/components/ui/source-tag";
 import { formatLongDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
@@ -198,14 +198,15 @@ function AllDayList({ items, isToday }: { items: readonly AllDayDeadline[]; isTo
           data-aggregated={item.source}
           className="relative flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-line px-3 py-2 text-sm"
         >
-          <span className="font-mono text-xs font-medium text-urgent">
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-urgent">
+            <AlarmClock aria-hidden className="size-3.5 shrink-0" />
             Due {isToday ? "today" : "that day"}
           </span>
           <a
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn(STRETCHED_LINK, "font-semibold text-fg hover:text-primary")}
+            className={cn(STRETCHED_LINK, "font-semibold text-fg")}
           >
             {item.title} <span className="sr-only">(opens in a new tab)</span>
             <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />

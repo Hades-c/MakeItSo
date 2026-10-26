@@ -1,7 +1,7 @@
 import type * as React from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Check } from "lucide-react";
+import { AlarmClock, Check, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { DayTimeline } from "@/components/domain/day-timeline";
 import { FiveDayStrip } from "@/components/domain/five-day-strip";
@@ -11,8 +11,10 @@ import { RequirementSlots } from "@/components/domain/requirement-slots";
 import { SeatBar } from "@/components/domain/seat-bar";
 import { windowLabel } from "@/components/domain/time-geometry";
 import { WeekGrid } from "@/components/domain/week-grid";
+import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { CourseCode } from "@/components/ui/course-code";
+import { FieldError } from "@/components/ui/field";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import {
@@ -49,7 +51,7 @@ const STACK = "flex min-w-0 flex-col gap-5";
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mt-10 mb-3 border-t border-line pt-5 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
+    <p className="mt-10 mb-3 border-t border-line pt-5 text-xs font-medium tracking-label text-fg-3 uppercase">
       {children}
     </p>
   );
@@ -68,8 +70,34 @@ const REQ_CHIPS: { code: string; state: "done" | "now" | "open" }[] = [
   { code: "Language", state: "open" },
 ];
 
+/** The palette's jobs (app/globals.css): what each colour marks, shown with words, never a bare swatch. */
+const SWATCHES: { swatch: string; name: string; job: string }[] = [
+  {
+    swatch: "bg-primary-fill",
+    name: "Davidson Red",
+    job: "the one primary action, selected fills and the now pill",
+  },
+  {
+    swatch: "bg-primary-wash ring-1 ring-primary",
+    name: "Red tint and red text",
+    job: "the current page and what is selected",
+  },
+  {
+    swatch: "bg-fg",
+    name: "The text colour",
+    job: "Davidson Black in light; links are text-coloured and always underlined",
+  },
+  {
+    swatch: "bg-surface-2 ring-1 ring-line-strong",
+    name: "Cool grey",
+    job: "insets, notices, edges",
+  },
+  { swatch: "bg-taupe", name: "Deep Taupe", job: "decorative icons" },
+  { swatch: "bg-focus", name: "Lake Blue", job: "the keyboard focus ring, never red" },
+];
+
 /**
- * Dev-only gallery of the Lakeside domain components with the mockup data, for screenshots and axe. It never ships:
+ * Dev-only gallery of the domain components with the mockup data, for screenshots and axe. It never ships:
  * production builds answer 404.
  */
 export default function DesignGalleryPage() {
@@ -127,7 +155,10 @@ export default function DesignGalleryPage() {
               terms={PLAN_2029}
               requiredCredits={32}
               heading={
-                <h2 id="progress-title" className="text-lg font-strong tracking-title text-fg">
+                <h2
+                  id="progress-title"
+                  className="font-display text-lg font-strong tracking-title text-fg"
+                >
                   Degree progress
                 </h2>
               }
@@ -139,7 +170,6 @@ export default function DesignGalleryPage() {
               {REQ_CHIPS.map(({ code, state }) => (
                 <li key={code}>
                   <Chip
-                    mono
                     variant={state === "done" ? "done" : state === "now" ? "active" : "outline"}
                   >
                     {state === "done" ? <Check aria-hidden strokeWidth={3} /> : null}
@@ -216,7 +246,10 @@ export default function DesignGalleryPage() {
             className="min-w-0 rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5"
           >
             <div className="mb-3.5 flex items-center justify-between gap-3">
-              <h2 id="week-title" className="text-lg font-strong tracking-title text-fg">
+              <h2
+                id="week-title"
+                className="font-display text-lg font-strong tracking-title text-fg"
+              >
                 Your week with HIS 357
               </h2>
               <Chip variant="done">
@@ -294,7 +327,6 @@ export default function DesignGalleryPage() {
                   avgRating={4.6}
                   numRatings={1}
                   avgDifficulty={2}
-                  size="sm"
                   url="https://www.ratemyprofessors.com/search/professors/3965"
                   asOf="2026-09-29T09:00:00Z"
                   timeZone={TIME_ZONE}
@@ -355,6 +387,62 @@ export default function DesignGalleryPage() {
               /api/search exists). This one uses sample results.
             </p>
             <CommandPaletteDemo results={SAMPLE_SEARCH_RESULTS} initialQuery="civil rights" />
+          </SectionCard>
+        </div>
+      </div>
+
+      <Kicker>Type and colour</Kicker>
+      <div className={GRID}>
+        <div className={STACK}>
+          <SectionCard id="type" title="Type">
+            <div className="flex flex-col gap-3">
+              <p className="font-display text-2xl font-strong text-fg">Playfair Display, bold</p>
+              <p className="text-sm text-fg-2">
+                The wordmark, every page title and card and section titles. Nothing smaller.
+              </p>
+              <p className="text-base text-fg">
+                Inter for everything else: body, labels, buttons, times and counts (12:20 PM · 5 due
+                for you).
+              </p>
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-2">
+                <CourseCode code="CSC 221" section="A" />
+                <span className="font-mono text-xs font-medium">CRN 20135</span>
+                <span>IBM Plex Mono: course codes, CRNs and the verification code only.</span>
+              </p>
+            </div>
+          </SectionCard>
+        </div>
+        <div className={STACK}>
+          <SectionCard id="colour" title="Colour and what it marks">
+            <ul className="flex flex-col gap-2.5">
+              {SWATCHES.map(({ swatch, name, job }) => (
+                <li key={name} className="flex items-center gap-3 text-sm">
+                  <span aria-hidden className={`size-6 shrink-0 rounded-sm ${swatch}`} />
+                  <span>
+                    <b className="font-semibold text-fg">{name}</b>
+                    <span className="text-fg-2">: {job}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex flex-wrap items-center gap-2.5 border-t border-line pt-4">
+              <Button>Plan Spring 2027</Button>
+              <Button variant="secondary">Browse courses</Button>
+              <Button variant="danger">
+                <Trash2 aria-hidden />
+                Remove
+              </Button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              <a href="#type" className="font-semibold link">
+                A text link
+              </a>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-urgent">
+                <AlarmClock aria-hidden className="size-3.5 shrink-0" />
+                Today 11:59p
+              </span>
+              <FieldError>Enter your Davidson email address.</FieldError>
+            </div>
           </SectionCard>
         </div>
       </div>

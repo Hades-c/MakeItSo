@@ -3,4 +3,4 @@
  * targets), normal height from md up.
  */
 export const STANDALONE_LINK =
-  "inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0";
+  "inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0";

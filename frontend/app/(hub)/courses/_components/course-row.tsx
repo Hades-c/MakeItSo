@@ -51,7 +51,10 @@ export function CourseRow({
             {openSeatsLabel(summary.openSeats)}
           </span>
         </div>
-        <h3 id={titleId} className={cn("text-lg font-strong tracking-title text-fg", BREAK_TEXT)}>
+        <h3
+          id={titleId}
+          className={cn("font-display text-lg font-strong tracking-title text-fg", BREAK_TEXT)}
+        >
           <Link
             href={row.href}
             className="inline-flex min-h-11 items-center rounded-sm hover:underline md:inline md:min-h-0"
@@ -73,7 +76,7 @@ export function CourseRow({
               <li key={req.code} className="max-w-full min-w-0">
                 <Chip variant="neutral" title={req.code} className={WRAP_CHIP}>
                   <span>
-                    {req.name} <span className="font-mono text-fg-3">{req.code}</span>
+                    {req.name} <span className="text-fg-3">{req.code}</span>
                   </span>
                 </Chip>
               </li>
@@ -93,7 +96,7 @@ export function CourseRow({
                 {summary.topics ? (
                   <span className={cn("font-semibold text-fg", BREAK_TEXT)}>{section.title}</span>
                 ) : null}
-                <span className="inline-flex items-baseline gap-1 font-mono text-xs text-fg-2">
+                <span className="inline-flex items-baseline gap-1 text-xs text-fg-2">
                   <Clock aria-hidden className="size-3.5 shrink-0 self-center" />
                   {section.times.join(" · ")}
                 </span>
@@ -104,10 +107,7 @@ export function CourseRow({
                 {section.registerAs ? (
                   <span className="text-xs font-semibold text-fg-2" data-testid="row-register-as">
                     Register as{" "}
-                    <Link
-                      href={section.registerAs.href}
-                      className="text-primary underline underline-offset-2"
-                    >
+                    <Link href={section.registerAs.href} className="link">
                       {section.registerAs.label}
                     </Link>{" "}
                     <span className="font-mono font-medium">(CRN {section.registerAs.crn})</span>
@@ -138,6 +138,7 @@ export function CourseRow({
             unpublishedNote={row.add.unpublishedNote}
             planHref={planHref}
             loginHref={loginHref}
+            emphasis="secondary"
           />
         ) : (
           <p

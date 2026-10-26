@@ -6,7 +6,7 @@ import { Plus, X } from "lucide-react";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { UnlistedProgramNote } from "@/components/domain/unlisted-program-note";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { Field, FieldError } from "@/components/ui/field";
 import { callApi } from "@/lib/api/client";
 import { profileEndpoints } from "@/lib/api/endpoints";
 import { termLabel, type TermCode } from "@/lib/term";
@@ -322,11 +322,7 @@ function ProgramRows({
           </div>
         );
       })}
-      {error ? (
-        <p id={errorId} className="text-xs font-semibold text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
       <UnlistedProgramNote kind={noun === "major" ? "major" : "minor"} />
       {canAdd ? (
         <div>

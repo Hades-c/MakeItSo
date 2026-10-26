@@ -15,7 +15,7 @@ export interface NavCounts {
 function CountLabel({ navKey, counts }: { navKey: NavKey; counts?: NavCounts }) {
   if (navKey === "courses" && counts?.courses !== undefined) {
     return (
-      <span className="ml-auto font-mono text-xs text-fg-3 max-xl:hidden">
+      <span className="ml-auto text-xs text-fg-3 tabular-nums max-xl:hidden">
         <span className="sr-only">, </span>
         {counts.courses.toLocaleString("en-US")}
         <span className="sr-only"> courses</span>
@@ -24,7 +24,7 @@ function CountLabel({ navKey, counts }: { navKey: NavKey; counts?: NavCounts }) 
   }
   if (navKey === "plan" && counts?.plan) {
     return (
-      <span className="ml-auto font-mono text-xs text-fg-3 max-xl:hidden">
+      <span className="ml-auto text-xs text-fg-3 tabular-nums max-xl:hidden">
         <span className="sr-only">, </span>
         {counts.plan.done}
         <span aria-hidden>/</span>
@@ -64,8 +64,10 @@ export function SidebarNav({ counts, nav = ALL_NAV_KEYS }: SidebarNavProps) {
                 className={cn(
                   "flex min-h-11 items-center gap-3 rounded-md px-3 text-sm transition-colors xl:min-h-9.75",
                   "max-xl:h-14 max-xl:w-full max-xl:flex-col max-xl:justify-center max-xl:gap-1 max-xl:px-0",
+                  // Current page: the tinted pill and red label, plus a 3 × 18px bar in --nav-mark inside the pill's
+                  // left edge (22px tall on the rail). The bar is the ≥ 3:1 cue: the tint alone is about 1.1:1.
                   current
-                    ? "bg-primary-wash font-strong text-primary"
+                    ? "relative bg-primary-wash font-strong text-primary before:absolute before:top-1/2 before:left-1 before:h-4.5 before:w-0.75 before:-translate-y-1/2 before:rounded-full before:bg-nav-mark max-xl:before:left-0.75 max-xl:before:h-5.5"
                     : "font-nav text-fg-2 hover:bg-surface-2 hover:text-fg",
                 )}
               >

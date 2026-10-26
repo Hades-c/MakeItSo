@@ -60,8 +60,7 @@ function CardSkeleton({ className }: { className?: string }) {
 }
 
 /** Breadcrumb links: 44px tall below 720px (PLAN §7 tap targets), compact from there. */
-const CRUMB =
-  "inline-flex min-h-11 items-center rounded-sm font-semibold text-primary hover:underline md:min-h-0";
+const CRUMB = "inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0";
 const GRID = "grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]";
 const STACK = "flex min-w-0 flex-col gap-5";
 

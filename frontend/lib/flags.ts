@@ -6,8 +6,9 @@ import { readEnv } from "@/server/env";
  * client code may `import type { Flags }` from here (type imports are erased), never call getFlags().
  *
  * Every R2 surface is built behind these so either release can ship without rework (PLAN §0). A flag only switches
- * a surface off: AI additionally needs configuration + consent + a verified @davidson.edu account at request time,
- * and alumni need a verified account.
+ * a surface off: AI additionally needs configuration + consent + a verified @davidson.edu account at request time
+ * (server/ai/access.ts; the temporary AI_ALLOW_UNVERIFIED switch, read there and not a flag here, relaxes the last
+ * for everything but cold e-mail), and alumni need a verified account.
  *
  *   careers       FEATURE_CAREERS        default on
  *   events        FEATURE_EVENTS         default on

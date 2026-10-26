@@ -24,7 +24,7 @@ export function Toaster() {
           success: "[&_[data-icon]]:text-success",
           error: "border-danger [&_[data-icon]]:text-danger",
           warning: "[&_[data-icon]]:text-warning",
-          info: "[&_[data-icon]]:text-primary",
+          info: "[&_[data-icon]]:text-fg-2",
           actionButton:
             "ml-auto h-8 shrink-0 rounded-md bg-primary-fill px-3 text-xs font-semibold text-on-primary",
           cancelButton:

@@ -71,12 +71,12 @@ function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZon
         aria-hidden
         className={cn(
           "flex w-11 shrink-0 flex-col items-center rounded-md border py-1",
-          isToday
-            ? "border-primary-fill bg-primary-fill text-on-primary"
-            : "border-line bg-surface-2",
+          // Today's events: a stronger outline, not a red fill (the row already says "Today", and red is
+          // kept for the primary action, the current page, selection and "now").
+          isToday ? "border-line-strong bg-surface text-fg" : "border-line bg-surface-2",
         )}
       >
-        <span className="font-mono text-xs leading-4 uppercase">
+        <span className="text-xs leading-4 font-medium uppercase">
           {WEEKDAY(timeZone).format(shownDay)}
         </span>
         <span className="text-base leading-5 font-strong">
@@ -85,12 +85,7 @@ function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZon
       </span>
       <div className="min-w-0">
         <p className="text-sm leading-snug font-semibold text-fg md:text-base">
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(STRETCHED_LINK, "hover:text-primary")}
-          >
+          <a href={item.url} target="_blank" rel="noopener noreferrer" className={STRETCHED_LINK}>
             {item.title} <span className="sr-only">(opens in a new tab)</span>
             <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
           </a>

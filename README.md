@@ -19,7 +19,7 @@ alumni and campus events.
 | Layer         | Technology                                                                              |
 | ------------- | --------------------------------------------------------------------------------------- |
 | App           | Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 5.9 (strict)                 |
-| UI            | Tailwind CSS 4 (Lakeside tokens) · Radix UI primitives · lucide-react · sonner          |
+| UI            | Tailwind CSS 4 (design tokens) · Radix UI primitives · lucide-react · sonner            |
 | Auth          | NextAuth.js v4 (email + password credentials, JWT sessions)                             |
 | Data          | MongoDB + Mongoose 9                                                                    |
 | AI            | Anthropic Claude via `@anthropic-ai/sdk` (being wired up; `AI_PROVIDER=mock` for tests) |
@@ -43,7 +43,7 @@ MakeItSo/
     │   ├── (hub)/             signed-in pages in the AppShell (layout requires a session): /today,
     │   │                      /courses, /courses/[term]/[code], /plan, /careers, /careers/[slug], /events,
     │   │                      /alumni, /profile
-    │   ├── globals.css        Lakeside design tokens (the only place raw colours live)
+    │   ├── globals.css        design tokens (the only place raw colours live)
     │   └── api/               route handlers, all built with defineRoute (auth, register, profile, search)
     ├── server/                server-only modules
     │   ├── env.ts             zod-validated environment, read lazily, with production checks
@@ -60,7 +60,7 @@ MakeItSo/
     │   ├── catalog/ programs/ rmp/ feeds/ content/   the live course catalog, Acalog majors and minors,
     │   │                      ratings, campus feeds and curated content; plan/ is a typed stub until it lands
     │   └── search/            global search over pluggable providers
-    ├── components/ui/         Lakeside UI primitives (Button, Card, SourceTag, CourseCode, Dialog, ...)
+    ├── components/ui/         UI primitives (Button, Card, SourceTag, CourseCode, Dialog, ...)
     ├── components/app/        AppShell: TopBar, Sidebar + Sources panel, BottomTabs, theme, user menu
     ├── lib/                   shared (client + server): term, sources, routes, flags, format, day-summary
     │   ├── types/             zod schemas + types for catalog, plan, feeds, content, ratings, AI
@@ -84,10 +84,18 @@ data registry, feature flags and the service signatures. Outside services are re
 
 ---
 
-## Design system (Lakeside)
+## Design system (classic MakeItSo, Davidson colours)
 
-The look is the "Lakeside" direction: Davidson's Lake Blue, Sandstone and Deep Taupe lead, and Davidson Red is
-kept for "now" and urgent items. Errors use a separate danger colour, and focus rings are Lake Blue.
+The look is the classic MakeItSo type with Davidson's official colours (the owner's decision of 2026-10-25,
+which replaced the earlier "Lakeside" palette): a white ground, Davidson Black (#0F1012) text, cool grey
+structure and Davidson Red (#D42121, PMS 3546 C) as the one accent, from the College's Marketing Toolbox.
+Red marks exactly four things: the one primary action on a screen, the current page (a red bar beside the nav
+item, not only a tint), selection, and "now". Text links are near-black and underlined, never red. Since red is
+the accent, urgency and danger never rely on colour: the now pill has a clock icon beside the time, an item due
+today an alarm icon and its words, errors an icon, and destructive buttons are outlined (crimson, never a red
+fill) with a trash icon and words, and ask first. Planned work and the next term are never red, and courses in
+progress keep their course colour; only this term's own marks (its "now" label, its credits on the progress bar,
+a requirement it fills) are red, as "now". Focus rings are Lake Blue, never red.
 
 - **Tokens** live in `frontend/app/globals.css` as CSS variables for light and dark. With no `data-theme` on
   `<html>` the theme follows the system; the toggle stores an explicit choice in `localStorage` (`mis-theme`),
@@ -98,8 +106,14 @@ kept for "now" and urgent items. Errors use a separate danger colour, and focus 
   `tests/design/no-raw-colors.test.ts` fails on raw hex/rgb colours, palette classes (`bg-red-500`) or dynamically
   built class names in `app/`, `components/` and `lib/`. `tests/design/tokens.test.ts` checks WCAG AA contrast for
   every token pair in both themes.
-- **Type**: Instrument Sans for UI and body, IBM Plex Mono (`font-mono`) for course codes, times, rooms, CRNs and
-  labels. Both are self-hosted from the `@fontsource` packages through `next/font/local`, so the build needs no
+- **Links and states**: text links use the `link` utility (Davidson Black, a grey underline that darkens on
+  hover); the current sidebar item and phone tab carry a bar in `--nav-mark`; field errors use `<FieldError>`
+  and inline messages `<Notice>` (icon + words); a list with an add button on every row uses
+  `emphasis="secondary"`, and a page's other buttons are `variant="secondary"`, so a screen keeps one red button
+  (the UI budgets in `tests/e2e/ux` fail on a second).
+- **Type**: Inter for UI and body; Playfair Display bold (`font-display`) for the wordmark, page titles and card
+  and section titles only; IBM Plex Mono (`font-mono`) only for course codes, CRNs and the verification code.
+  All three are self-hosted from the `@fontsource` packages through `next/font/local`, so the build needs no
   network and the browser never calls Google. Sizes `text-xs` (12px, the floor) to `text-2xl`
   (32px), plus `text-3xl` (44px) for big numbers.
 - **Breakpoints**: `md` = 720px (bottom tabs below, sidebar above), `lg` = 900px (two content columns), `xl` =
@@ -141,6 +155,7 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `AI_PROVIDER`           | no           | `anthropic` (default) or `mock` (tests and e2e, answers as model `mock`; rejected on Vercel production)   |
 | `AI_ENABLED`            | no           | All AI features on/off. Default `true` (AI also needs a verified @davidson.edu account and consent)       |
 | `AI_DAILY_TOKEN_BUDGET` | no           | Tokens per day across all users before AI pauses. Default `2000000`                                       |
+| `AI_ALLOW_UNVERIFIED`   | no           | Temporary (remove once mail works): `true` lets unverified @davidson.edu accounts use AI. Default `false` |
 | `MAIL_PROVIDER`         | no           | `none`, `console` (codes in the server log; dev/test default) or `resend`. Default `none` in production   |
 | `MAIL_API_KEY`          | for `resend` | Mail provider API key                                                                                     |
 | `MAIL_FROM`             | for `resend` | Sender, e.g. `MakeItSo <noreply@example.org>`                                                             |
@@ -155,6 +170,21 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `APP_TIMEZONE`          | no           | IANA time zone for "today" logic. Default `America/New_York`                                              |
 | `RMP_ENABLED`           | no           | RateMyProfessors ratings on/off. Default `true`                                                           |
 | `RMP_SUMMARIES_ENABLED` | no           | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)                           |
+
+`AI_ALLOW_UNVERIFIED` exists only while email verification cannot work in production (no mail provider). With it
+on, an @davidson.edu account that has not verified its address may use AI after consenting (18+ attestation
+included); cold-email drafts and the alumni network stay verified-only, legacy non-Davidson accounts stay locked,
+quotas and the daily token budget are unchanged, and "Report this" from an unverified account never hides a shared
+answer (`frontend/server/ai/access.ts`, `frontend/docs/CONTRACTS.md`). When the switch is removed, that report rule
+stays: reports kept from unverified accounts must go on not counting (CONTRACTS.md, "Removing the switch").
+
+**Cost risk while it is on**: the per-student quotas (20 generations a day) then limit addresses nobody has proven
+they own. Sign-up sends no mail, accepts any @davidson.edu address and allows 5 accounts an hour per IP, so each
+throwaway account gets its own quota, and `AI_DAILY_TOKEN_BUDGET` (input, output and cache tokens of everyone) is
+the only real cost limit. A handful of such accounts can use up the whole budget (one plan-suggestions or
+career-plan model call may use up to 12,000 output tokens), which costs the full budget that day and shows "AI is
+paused for today" to every student until midnight in Davidson. Set the budget to what you are willing to spend in a
+day, and keep the Anthropic workspace's spend limit, while the switch is on.
 
 Production (`next start` and every Vercel deployment) also checks that the Vercel production environment does not
 use `AI_PROVIDER=mock`, `EXTERNAL_MODE=fixtures`, the console mailer or `FIXTURES_NOW`, and `RATE_LIMITS=off` is

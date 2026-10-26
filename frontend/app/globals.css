@@ -1,9 +1,17 @@
 /*
- * MakeItSo design tokens: Lakeside.
+ * MakeItSo design tokens: classic MakeItSo type with Davidson's official colours (owner's decision, 2026-10-25;
+ * replaces the Lakeside palette of PLAN §1/§7).
  *
- * Davidson's supporting palette leads (Lake Blue, Sandstone, Deep Taupe). Davidson Red is reserved for "now" and
- * urgent items; errors use a separate danger colour, and focus rings use Lake Blue, never red.
- * Source: the Lakeside mockups (design-options/lakeside/*.html) and audit/merged.json → designOptions.
+ * Colours: Davidson College Communications, Marketing Toolbox (Color): Davidson Red #D42121 (PMS 3546 C), Black
+ * #0F1012 and White lead; the supporting Sandstone #E9DED3, Deep Taupe #9F8B76, Lake Blue #294878 and cool greys
+ * support. White-first ground, Davidson Black text, cool grey structure. Red is the accent and marks exactly four
+ * things: the one primary action per screen (a #D42121 fill with white text, 5.20:1), the current page, selection,
+ * and "now". Red text is #C21D1D on light and #FF6E66 on dark. Text links are near-black and underlined, so red
+ * never means "link". Because red is no longer reserved for urgency, urgency and danger never rely on colour: the
+ * now pill carries a clock icon, an urgent due label an alarm icon and its words, destructive actions are outlined
+ * with a trash icon and words (and ask first), errors carry an icon. Status green and amber appear as icon + words.
+ * Focus rings stay Lake Blue, never red. Values: aesthetics/white-red-aa (contrast.md there checks every pair).
+ * Type: see app/fonts.ts (Inter; Playfair Display bold through `font-display`; IBM Plex Mono for codes only).
  *
  * This file is the ONLY place colours are written as raw values. Components use the Tailwind utilities generated
  * from the @theme blocks below (bg-surface, text-fg-2, border-line, text-course-pine, ...). The default Tailwind
@@ -20,8 +28,8 @@
 
 @import "tailwindcss";
 
-/* Breakpoints follow the Lakeside layout: 720px = bottom tabs ↔ sidebar, 900px = one ↔ two content columns,
- * 1180px = compact ↔ full sidebar. (Tailwind's md/lg/xl names, Lakeside's values.) */
+/* Breakpoints: 720px = bottom tabs ↔ sidebar, 900px = one ↔ two content columns, 1180px = compact ↔ full
+ * sidebar. (Tailwind's md/lg/xl names, the layout's own values.) */
 @theme {
   --breakpoint-md: 45rem;
   --breakpoint-lg: 56.25rem;
@@ -45,52 +53,54 @@
 /* ------------------------------------------------------------------------------------------------------------ */
 
 :root {
-  /* Surfaces */
-  --bg: #f4efe8; /* sandstone tint page background */
-  --surface: #fffdfa; /* cards, top bar */
-  --surface-2: #efe7dc; /* sandstone inset */
-  --overlay: rgb(21 34 56 / 0.45); /* dialog backdrop */
+  /* Surfaces: white-first; cards are white on white, set off by their hairline border */
+  --bg: #ffffff;
+  --surface: #ffffff; /* cards, top bar, sidebar */
+  --surface-2: #f3f4f6; /* cool grey inset: search hints, notices, step numbers, week grid */
+  --overlay: rgb(15 16 18 / 0.45); /* dialog backdrop (Davidson Black) */
 
   /* Text */
-  --fg: #152238; /* lake navy */
-  --fg-2: #485266;
-  --fg-3: #5b6475; /* meta text: still ≥ 4.5:1 on every surface */
+  --fg: #0f1012; /* Davidson Black */
+  --fg-2: #454a53;
+  --fg-3: #5f6570; /* meta text: still ≥ 4.5:1 on every surface and wash */
 
   /* Lines */
-  --line: #e4dacc; /* dividers, card borders (decorative) */
-  --line-2: #d5c8b6; /* dashed slots, kbd borders (decorative) */
-  --line-strong: #8a7f70; /* form-control and source-tag borders: ≥ 3:1 on bg, surface and surface-2 */
+  --line: #e3e6ea; /* dividers, card borders (decorative) */
+  --line-2: #d3d7dd; /* dashed slots, kbd borders (decorative) */
+  --line-strong: #80868f; /* form-control, outlined-button and source-tag borders: ≥ 3:1 on bg, surface and surface-2 */
 
-  /* Lake Blue (brand primary) */
-  --primary: #294878; /* text and accents */
-  --primary-fill: #294878; /* buttons, selected day */
-  --primary-fill-hover: #203b63;
-  --primary-wash: #e3eaf4; /* active nav, in-progress */
-  --on-primary: #ffffff;
+  /* Davidson Red: the one primary action, the current page, selection and "now" */
+  --primary: #c21d1d; /* red text on light: current page, selected states (6.0:1 on white) */
+  --primary-fill: #d42121; /* Davidson Red (PMS 3546 C): the primary button, the brand mark, selected fills */
+  --primary-fill-hover: #b81c1c;
+  --primary-wash: #fdeeee; /* current-page pill, selected tint, text selection */
+  --on-primary: #ffffff; /* 5.20:1 on #D42121 */
 
-  /* Davidson Red: "now" and urgent only */
+  /* "Now" and due-today (always with an icon and words, never colour alone) */
   --urgent: #c21d1d;
-  --urgent-fill: #c21d1d;
-  --urgent-wash: #fbe3e0;
+  --urgent-fill: #d42121; /* the now pill */
+  --urgent-wash: #fdeeee;
   --on-urgent: #ffffff;
 
-  /* Status */
+  /* Status: green and amber only as an icon + words, so their washes are the neutral inset */
   --success: #2d6a4d;
-  --success-wash: #e0efe6;
+  --success-wash: #f3f4f6;
   --warning: #8a5300;
-  --warning-wash: #faebd2;
-  --danger: #a3134d; /* errors and destructive actions: a crimson distinct from Davidson Red */
-  --danger-fill: #a3134d;
-  --danger-fill-hover: #8a0f41;
+  --warning-wash: #f3f4f6;
+  --danger: #a3134d; /* errors, destructive outlines (never a fill): crimson, not Davidson Red; icon + words */
   --danger-wash: #fbe4ec;
-  --on-danger: #ffffff;
 
   /* Decor */
-  --taupe: #7a6650; /* Deep Taupe */
-  --sand: #e9ded3; /* Sandstone */
+  --taupe: #7a6650; /* Deep Taupe, darkened to hold 3:1 as an icon */
+  --sand: #eef0f3; /* avatar disc: a cool grey (white-first), not Sandstone */
 
-  /* Focus ring (never red) */
+  /* Focus ring: Lake Blue, never red */
   --focus: #3c68b0;
+
+  /* Navigation and links */
+  --nav-mark: #d42121; /* the current-page bar in the sidebar and the phone tabs: the ≥ 3:1 state cue */
+  --link: #0f1012; /* text links: near-black and underlined (red is not a link colour) */
+  --link-line: #80868f; /* their underline, ≥ 3:1 on every surface */
 
   /* Course colours by department: text on wash. See lib/course-color.ts for the mapping rule. */
   --course-lake: #294878;
@@ -110,14 +120,15 @@
   --course-iris: #4f4a9c;
   --course-iris-wash: #e8e6f6;
 
-  /* Elevation */
-  --elev-card: 0 1px 2px rgb(21 34 56 / 0.05), 0 4px 16px rgb(21 34 56 / 0.04);
-  --elev-pop: 0 2px 6px rgb(21 34 56 / 0.08), 0 12px 32px rgb(21 34 56 / 0.12);
+  /* Elevation: cards and popovers carry their own hairline border, so no ring here; cards get a 1px lift only */
+  --elev-card: 0 1px 2px rgb(15 16 18 / 0.04);
+  --elev-pop: 0 4px 8px -2px rgb(15 16 18 / 0.08), 0 14px 32px rgb(15 16 18 / 0.12);
 
   color-scheme: light;
 }
 
-/* Dark, from the system preference (no explicit choice). Keep identical to the [data-theme="dark"] block. */
+/* Dark, from the system preference (no explicit choice). Keep identical to the [data-theme="dark"] block. Davidson Red
+ * stays the fill (white text 5.20:1); red text lifts to #FF6E66 (6.26:1 on the card). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0d131b;
@@ -130,27 +141,27 @@
     --line: #243042;
     --line-2: #2f3d52;
     --line-strong: #66768e;
-    --primary: #93b6ee;
-    --primary-fill: #3c68b0;
-    --primary-fill-hover: #4775c0;
-    --primary-wash: #1a2940;
+    --primary: #ff6e66;
+    --primary-fill: #d42121;
+    --primary-fill-hover: #e0302d;
+    --primary-wash: #3a1a1c;
     --on-primary: #ffffff;
     --urgent: #ff6e66;
     --urgent-fill: #d42121;
     --urgent-wash: #3a1a1c;
     --on-urgent: #ffffff;
     --success: #7fcfa5;
-    --success-wash: #132d20;
+    --success-wash: #1b2532;
     --warning: #f0b75e;
-    --warning-wash: #33260f;
+    --warning-wash: #1b2532;
     --danger: #f68fb0;
-    --danger-fill: #c2255c;
-    --danger-fill-hover: #d23a6f;
     --danger-wash: #3b1726;
-    --on-danger: #ffffff;
     --taupe: #c4af96;
-    --sand: #2a2521;
+    --sand: #232d3b;
     --focus: #93b6ee;
+    --nav-mark: #ff6e66;
+    --link: #e8edf4;
+    --link-line: #66768e;
     --course-lake: #93b6ee;
     --course-lake-wash: #1a2940;
     --course-pine: #7fcfa5;
@@ -185,27 +196,27 @@
   --line: #243042;
   --line-2: #2f3d52;
   --line-strong: #66768e;
-  --primary: #93b6ee;
-  --primary-fill: #3c68b0;
-  --primary-fill-hover: #4775c0;
-  --primary-wash: #1a2940;
+  --primary: #ff6e66;
+  --primary-fill: #d42121;
+  --primary-fill-hover: #e0302d;
+  --primary-wash: #3a1a1c;
   --on-primary: #ffffff;
   --urgent: #ff6e66;
   --urgent-fill: #d42121;
   --urgent-wash: #3a1a1c;
   --on-urgent: #ffffff;
   --success: #7fcfa5;
-  --success-wash: #132d20;
+  --success-wash: #1b2532;
   --warning: #f0b75e;
-  --warning-wash: #33260f;
+  --warning-wash: #1b2532;
   --danger: #f68fb0;
-  --danger-fill: #c2255c;
-  --danger-fill-hover: #d23a6f;
   --danger-wash: #3b1726;
-  --on-danger: #ffffff;
   --taupe: #c4af96;
-  --sand: #2a2521;
+  --sand: #232d3b;
   --focus: #93b6ee;
+  --nav-mark: #ff6e66;
+  --link: #e8edf4;
+  --link-line: #66768e;
   --course-lake: #93b6ee;
   --course-lake-wash: #1a2940;
   --course-pine: #7fcfa5;
@@ -231,7 +242,7 @@
 /* Tailwind theme                                                                                                */
 /* ------------------------------------------------------------------------------------------------------------ */
 
-/* Clear the defaults so only Lakeside tokens exist. */
+/* Clear the defaults so only these tokens exist. */
 @theme {
   --color-*: initial;
   --text-*: initial;
@@ -246,7 +257,7 @@
    * Type scale: six running-text steps with a 12px floor, plus one display step (3xl) reserved for StatNumber
    * and the landing hero. Body is 15px.
    */
-  --text-xs: 0.75rem; /* 12px: meta, mono labels, chips, source tags */
+  --text-xs: 0.75rem; /* 12px: meta, labels, chips, source tags */
   --text-xs--line-height: 1rem;
   --text-nav: 0.8125rem; /* 13px: the labels under the 720-1179px rail's icons */
   --text-nav--line-height: 1rem;
@@ -270,11 +281,11 @@
   --font-weight-medium: 500;
   --font-weight-nav: 550; /* sidebar links */
   --font-weight-semibold: 600;
-  --font-weight-strong: 650; /* Lakeside headings */
+  --font-weight-strong: 650; /* headings (Playfair, which has only its bold, renders these at 700) */
   --font-weight-bold: 700;
 
   --tracking-title: -0.01em;
-  --tracking-label: 0.08em; /* uppercase mono labels and source tags */
+  --tracking-label: 0.08em; /* uppercase labels and source tags */
 
   /* Radii */
   --radius-xs: 5px; /* kbd, tiny marks */
@@ -288,7 +299,12 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Fonts (next/font variables from app/fonts.ts). font-display: Playfair Display bold for the wordmark, page
+   * titles and card/section titles only, with lining figures so times and course numbers in a title sit on the
+   * line. font-mono: course codes, CRNs and the verification code only. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
+  --font-display--font-feature-settings: "lnum";
   --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   --color-bg: var(--bg);
@@ -315,13 +331,13 @@
   --color-warning: var(--warning);
   --color-warning-wash: var(--warning-wash);
   --color-danger: var(--danger);
-  --color-danger-fill: var(--danger-fill);
-  --color-danger-fill-hover: var(--danger-fill-hover);
   --color-danger-wash: var(--danger-wash);
-  --color-on-danger: var(--on-danger);
   --color-taupe: var(--taupe);
   --color-sand: var(--sand);
   --color-focus: var(--focus);
+  --color-nav-mark: var(--nav-mark);
+  --color-link: var(--link);
+  --color-link-line: var(--link-line);
 
   --color-course-lake: var(--course-lake);
   --color-course-lake-wash: var(--course-lake-wash);
@@ -454,21 +470,25 @@
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
-/* "Planned" on progress bars: Lake Blue stripes, so it reads differently from the solid "in progress" fill without
- * relying on colour. */
-@utility bg-stripes-primary {
+/* "Planned" on progress bars: dark grey stripes, so it reads differently from the solid fills without relying on
+ * colour, and matches the dark dashed "Planned" outline of the plan map (red is not a status colour). */
+@utility bg-stripes-planned {
   background-image: repeating-linear-gradient(
     135deg,
-    var(--primary-fill) 0 2px,
-    var(--primary-wash) 2px 4.5px
+    var(--fg-2) 0 2px,
+    var(--surface-2) 2px 4.5px
   );
 }
 
-/* The striped band at the foot of the "M" brand mark (Lakeside wordmark). */
-@utility brand-stripes {
-  background-image: repeating-linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--on-primary) 45%, transparent) 0 3px,
-    transparent 3px 6px
-  );
+/* Text links: Davidson Black with a grey underline that darkens on hover. Red is never a link colour (it marks the
+ * primary action, the current page, selection and "now"), and a link is never told apart by colour alone. */
+@utility link {
+  color: var(--link);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--link-line);
+  text-underline-offset: 3px;
+  &:hover {
+    text-decoration-color: currentColor;
+  }
 }

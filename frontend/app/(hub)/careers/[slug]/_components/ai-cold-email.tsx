@@ -232,8 +232,10 @@ export function AiColdEmailPanel({
       {shown === null || switched ? (
         <div className="flex flex-col gap-2">
           <div>
-            {/* aria-disabled, not disabled: a disabled button drops keyboard focus to <body>. */}
+            {/* aria-disabled, not disabled: a disabled button drops keyboard focus to <body>. Secondary: the
+                career plan beside it is the page's one red action, and this one waits for an alumnus. */}
             <Button
+              variant="secondary"
               onClick={() => generate(selected, false)}
               aria-disabled={busy || !selected || undefined}
             >

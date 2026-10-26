@@ -431,6 +431,10 @@ describe("VerifyBanner", () => {
     );
     expect(screen.getByRole("heading", { name: "Verify your Davidson email" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Get a code" })).toHaveAttribute("href", "/verify");
+    // Above every hub page, whose own primary action keeps the one red fill.
+    expect(screen.getByRole("link", { name: "Get a code" }).className).not.toMatch(
+      /\bbg-primary-fill\b/,
+    );
     // It never claims a code was sent (review regression).
     expect(screen.getByTestId("verify-banner")).not.toHaveTextContent(/we sent|enter the code/i);
     expect(screen.getByTestId("verify-banner")).toHaveTextContent(
@@ -438,6 +442,27 @@ describe("VerifyBanner", () => {
     );
     rerender(<VerifyBanner email="casey@davidson.edu" replaceable={false} hoursLeft={null} />);
     expect(screen.getByTestId("verify-banner")).not.toHaveTextContent(/replace/);
+  });
+
+  it("says what verifying opens, in either state of the temporary AI_ALLOW_UNVERIFIED switch", () => {
+    const { rerender } = render(
+      <VerifyBanner email="casey@davidson.edu" replaceable={false} hoursLeft={null} />,
+    );
+    expect(screen.getByTestId("verify-banner")).toHaveTextContent(
+      "to open the alumni network and AI features.",
+    );
+    rerender(
+      <VerifyBanner
+        email="casey@davidson.edu"
+        replaceable={false}
+        hoursLeft={null}
+        aiWithoutVerifying
+      />,
+    );
+    expect(screen.getByTestId("verify-banner")).toHaveTextContent(
+      "to open the alumni network and cold-email drafts.",
+    );
+    expect(screen.getByTestId("verify-banner")).not.toHaveTextContent(/AI features/);
   });
 });
 

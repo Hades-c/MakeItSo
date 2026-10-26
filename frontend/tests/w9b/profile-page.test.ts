@@ -181,6 +181,48 @@ describe("ProfilePage", () => {
     expect(html.match(/Email verification is not available yet\./g)).toHaveLength(2);
   });
 
+  it("says what verifying still opens while AI_ALLOW_UNVERIFIED is on (no mail provider, as in production)", async () => {
+    vi.stubEnv("MAIL_PROVIDER", "none");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    vi.stubEnv("AI_PROVIDER", "mock");
+    await signIn();
+    const html = await renderPage();
+    expect(html).toContain("Not verified");
+    expect(html).toContain(
+      "A verified @davidson.edu address opens the alumni network and cold-email drafts.",
+    );
+    expect(html).toContain(
+      "For now, AI features work before your @davidson.edu address is verified.",
+    );
+    expect(html).not.toContain("limited to verified @davidson.edu accounts");
+    expect(html).not.toContain('href="/verify');
+    expect(html).toContain("Turn on AI features");
+  });
+
+  it("promises no AI before verifying while AI is off or not set up, switch or not", async () => {
+    vi.stubEnv("MAIL_PROVIDER", "none");
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    const user = await signIn();
+    // No provider configured (vitest sets no key).
+    const unconfigured = await loadProfilePage(user.id);
+    expect(unconfigured).toMatchObject({ allowUnverifiedAi: true, aiOpenWithoutVerifying: false });
+    let html = await renderPage();
+    expect(html).not.toContain("AI features work before");
+    expect(html).toContain(
+      "AI features are limited to @davidson.edu accounts, and the alumni network and cold-email drafts to verified ones.",
+    );
+    // AI_ENABLED off, provider configured.
+    vi.stubEnv("AI_PROVIDER", "mock");
+    vi.stubEnv("AI_ENABLED", "false");
+    html = await renderPage();
+    expect(html).toContain("switched off for everyone right now");
+    expect(html).not.toContain("AI features work before");
+    // Back on: the promise is true again.
+    vi.stubEnv("AI_ENABLED", "true");
+    expect((await loadProfilePage(user.id)).aiOpenWithoutVerifying).toBe(true);
+    expect(await renderPage()).toContain("AI features work before");
+  });
+
   it("promises no more deletion than the registry covers, and links to Privacy", async () => {
     await signIn();
     const html = await renderPage();

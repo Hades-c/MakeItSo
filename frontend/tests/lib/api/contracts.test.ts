@@ -61,6 +61,9 @@ describe("lib/api route contracts (PLAN §4.1.16)", () => {
   });
 
   it("AI routes: generating routes answer AiResults (auth user, gate in the handler); report/purge do not", () => {
+    // "Report this" is auth "user": reportEntry decides who may report (server/ai/access.ts isAiVerified, which the
+    // temporary AI_ALLOW_UNVERIFIED switch widens) and whose report counts (verified mailboxes only).
+    const nonGenerating: Record<string, string> = { report: "user", purge: "admin" };
     const generating = [
       "courseAbout",
       "planSuggestions",
@@ -78,7 +81,7 @@ describe("lib/api route contracts (PLAN §4.1.16)", () => {
         // Every failure kind is a valid body for the route (callApi returns it instead of throwing).
         expect(spec.response?.safeParse({ kind: "unverified", message: "x" }).success).toBe(true);
       } else {
-        expect([name, spec.auth]).toEqual([name, name === "purge" ? "admin" : "verified"]);
+        expect([name, spec.auth]).toEqual([name, nonGenerating[name]]);
         expect("aiResult" in spec).toBe(false);
       }
     }

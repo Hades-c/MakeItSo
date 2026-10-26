@@ -37,7 +37,7 @@ export function EmptyState({
           <Icon aria-hidden className="size-5" />
         </span>
       ) : null}
-      <Heading className="text-lg font-strong tracking-title text-fg">{title}</Heading>
+      <Heading className="font-display text-lg font-strong tracking-title text-fg">{title}</Heading>
       {description ? (
         <div className="mt-1.5 max-w-prose text-sm text-fg-2 [&_p+p]:mt-2">{description}</div>
       ) : null}

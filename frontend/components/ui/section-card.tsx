@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 export interface SectionCardProps {
   title: React.ReactNode;
-  /** Shown after the title in mono, e.g. a count ("4") or a range ("9a–4p"). */
+  /** Shown after the title, small and grey, e.g. a count ("4") or a range ("9a–4p"). */
   count?: React.ReactNode;
   /** Header link on the right, e.g. { href: "/events", label: "Events" }. */
   link?: { href: string; label: string };
@@ -28,20 +28,20 @@ export function SectionCard({ title, count, link, id, className, children }: Sec
       <div className="mb-3.5 flex items-center justify-between gap-3">
         <h2
           id={headingId}
-          className="flex items-center gap-2 text-lg font-strong tracking-title text-fg"
+          className="flex items-center gap-2 font-display text-lg font-strong tracking-title text-fg"
         >
           {title}
           {count !== undefined && count !== null ? (
             <>
               {" "}
-              <span className="font-mono text-xs font-medium text-fg-3">{count}</span>
+              <span className="font-sans text-xs font-medium text-fg-3 tabular-nums">{count}</span>
             </>
           ) : null}
         </h2>
         {link ? (
           <Link
             href={link.href}
-            className="-my-2 inline-flex min-h-11 items-center rounded-sm text-sm font-semibold text-primary hover:underline md:min-h-0"
+            className="-my-2 inline-flex min-h-11 items-center rounded-sm text-sm font-semibold link md:min-h-0"
           >
             {link.label}
           </Link>

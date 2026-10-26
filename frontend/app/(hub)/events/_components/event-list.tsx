@@ -71,16 +71,16 @@ function EventGroupSection({
     >
       <h2
         id={headingId}
-        className="flex flex-wrap items-baseline gap-x-2 text-lg font-strong tracking-title"
+        className="flex flex-wrap items-baseline gap-x-2 font-display text-lg font-strong tracking-title"
       >
         {group.title}
         {group.detail ? (
           <>
             {" "}
-            <span className="text-sm font-medium text-fg-3">{group.detail}</span>
+            <span className="font-sans text-sm font-medium text-fg-3">{group.detail}</span>
           </>
         ) : null}
-        <span className="font-mono text-xs font-medium text-fg-3">
+        <span className="font-sans text-xs font-medium text-fg-3 tabular-nums">
           <span className="sr-only">, </span>
           {group.items.length}
           <span className="sr-only">{group.items.length === 1 ? " item" : " items"}</span>
@@ -114,7 +114,7 @@ function EventRow({
       data-event-index={index}
       className="relative flex flex-col gap-1 py-3 md:flex-row md:gap-4"
     >
-      <p className="flex shrink-0 items-start gap-1.5 font-mono text-xs leading-5 font-medium text-fg-2 md:w-40">
+      <p className="flex shrink-0 items-start gap-1.5 text-xs leading-5 font-medium text-fg-2 md:w-40">
         {deadline ? (
           <CalendarClock aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warning" />
         ) : (
@@ -129,7 +129,7 @@ function EventRow({
             target="_blank"
             rel="noopener noreferrer"
             data-event-link=""
-            className="rounded-xs break-words after:absolute after:inset-0 hover:text-primary hover:underline"
+            className="rounded-xs break-words after:absolute after:inset-0 hover:underline"
           >
             {item.title} <span className="sr-only">(opens in a new tab)</span>
             <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />

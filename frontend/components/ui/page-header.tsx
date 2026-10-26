@@ -5,7 +5,7 @@ export interface PageHeaderProps {
   title: React.ReactNode;
   /** One line under the title (term, counts, context). */
   subtitle?: React.ReactNode;
-  /** Small mono label above the title, e.g. "FALL 2026" or a breadcrumb. */
+  /** Small uppercase label above the title, e.g. "FALL 2026" or a breadcrumb. */
   kicker?: React.ReactNode;
   /** Buttons or controls, right-aligned on desktop and stacked under the title on phones. */
   actions?: React.ReactNode;
@@ -23,11 +23,9 @@ export function PageHeader({ title, subtitle, kicker, actions, className }: Page
     >
       <div className="min-w-0">
         {kicker ? (
-          <p className="mb-1.5 font-mono text-xs font-medium tracking-label text-fg-3 uppercase">
-            {kicker}
-          </p>
+          <p className="mb-1.5 text-xs font-medium tracking-label text-fg-3 uppercase">{kicker}</p>
         ) : null}
-        <h1 className="text-xl font-strong text-fg md:text-2xl">{title}</h1>
+        <h1 className="font-display text-xl font-strong text-fg md:text-2xl">{title}</h1>
         {subtitle ? (
           <p className="mt-1.5 text-sm text-fg-2 md:text-base [&_b]:font-semibold [&_b]:text-fg">
             {subtitle}

@@ -9,7 +9,7 @@ import {
 } from "@/app/(auth)/_components/field-errors";
 import { FormAlert } from "@/app/(auth)/_components/form-alert";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
+import { Field, SuccessStatus } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { callApi } from "@/lib/api/client";
 import { profileEndpoints } from "@/lib/api/endpoints";
@@ -89,9 +89,7 @@ export function NameForm({ initialName }: NameFormProps) {
           {saving ? "Saving…" : "Save name"}
         </Button>
       </div>
-      <p role="status" className="text-sm font-medium text-success">
-        {status}
-      </p>
+      <SuccessStatus>{status}</SuccessStatus>
     </form>
   );
 }

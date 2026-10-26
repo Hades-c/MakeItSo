@@ -47,7 +47,7 @@ export function NextSemesterTab({
       <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-xl font-strong tracking-title text-fg">
+            <h2 className="font-display text-xl font-strong tracking-title text-fg">
               {data.termLabel} WebTree list
             </h2>
             <p className="mt-1 max-w-prose text-sm text-fg-2">

@@ -230,7 +230,7 @@ export function ChoiceCard({
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="grid size-8 shrink-0 place-items-center rounded-md bg-primary-wash font-mono text-sm font-semibold text-primary"
+          className="grid size-8 shrink-0 place-items-center rounded-md bg-surface-2 text-sm font-semibold text-fg-2 tabular-nums"
         >
           {choice.rank}
         </span>

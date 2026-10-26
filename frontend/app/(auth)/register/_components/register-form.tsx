@@ -129,7 +129,7 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
             Already have an account?{" "}
             <Link
               href={routes.login()}
-              className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
+              className="inline-flex min-h-11 items-center font-semibold link md:min-h-0"
             >
               Sign in
             </Link>
@@ -146,7 +146,7 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
             maintainers through{" "}
             <a
               href={SUPPORT_CONTACT.url}
-              className="font-semibold text-primary underline"
+              className="font-semibold link"
               rel="noopener noreferrer"
               target="_blank"
             >
@@ -173,7 +173,7 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
             Already have an account?{" "}
             <Link
               href={routes.login()}
-              className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
+              className="inline-flex min-h-11 items-center font-semibold link md:min-h-0"
             >
               Sign in
             </Link>
@@ -185,7 +185,7 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
             {checkInbox}
           </FormAlert>
           <p className="flex items-start gap-2.5 text-sm text-fg-2">
-            <MailCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+            <MailCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-2" />
             <span>
               Nothing there after a few minutes? Check your spam folder. Messages come from
               MakeItSo, never from Davidson.
@@ -205,7 +205,7 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
           Already have an account?{" "}
           <Link
             href={routes.login()}
-            className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline md:min-h-0"
+            className="inline-flex min-h-11 items-center font-semibold link md:min-h-0"
           >
             Sign in
           </Link>
@@ -276,7 +276,7 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
         </Button>
         <p className="text-xs text-fg-3">
           MakeItSo is an independent student project, not a Davidson College service. See{" "}
-          <Link href={routes.privacy()} className="font-semibold text-primary hover:underline">
+          <Link href={routes.privacy()} className="font-semibold link">
             what we store and why
           </Link>
           .
