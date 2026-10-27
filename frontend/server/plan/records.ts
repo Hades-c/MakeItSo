@@ -191,6 +191,7 @@ export async function addDeadlineImpl(
     title: body.title,
     dueAt: new Date(body.dueAt).toISOString(),
     ...(body.courseCode ? { courseCode: body.courseCode } : {}),
+    origin: "manual",
   };
   await ensurePlanDoc(userId, oid, { create: true });
   const result = await Plan.updateOne(
@@ -202,6 +203,7 @@ export async function addDeadlineImpl(
           title: deadline.title,
           dueAt: new Date(deadline.dueAt),
           ...(deadline.courseCode ? { courseCode: deadline.courseCode } : {}),
+          origin: deadline.origin,
         },
       },
     },
@@ -210,6 +212,69 @@ export async function addDeadlineImpl(
     throw new ApiError(409, "conflict", `You can keep at most ${MAX_DEADLINES} deadlines.`);
   }
   return deadline;
+}
+
+/**
+ * Review-before-save (/syllabi): push every reviewed deadline from one syllabus at once, origin "syllabus",
+ * tagged with `syllabusId` so a later replace or delete of that syllabus (removeDeadlinesBySyllabusImpl) can find
+ * them again. Atomic and all-or-nothing against MAX_DEADLINES, same as a single manual add; empty input is a
+ * no-op that still ensures the plan document exists.
+ */
+export async function addSyllabusDeadlinesImpl(
+  userId: string,
+  syllabusId: string,
+  inputs: readonly Omit<StudentDeadline, "id" | "origin" | "syllabusId">[],
+): Promise<StudentDeadline[]> {
+  const oid = userObjectId(userId);
+  const syllabusOid = objectId(syllabusId, "syllabus");
+  const deadlines: StudentDeadline[] = inputs.map((input) => {
+    const body = parseOr400(CreateDeadlineBodySchema, input);
+    return {
+      id: newId(),
+      title: body.title,
+      dueAt: new Date(body.dueAt).toISOString(),
+      ...(body.courseCode ? { courseCode: body.courseCode } : {}),
+      origin: "syllabus",
+      syllabusId,
+    };
+  });
+  if (deadlines.length === 0) return [];
+  await ensurePlanDoc(userId, oid, { create: true });
+  const result = await Plan.updateOne(
+    { userId: oid, [`deadlines.${MAX_DEADLINES - deadlines.length}`]: trusted({ $exists: false }) },
+    {
+      $push: {
+        deadlines: {
+          $each: deadlines.map((deadline) => ({
+            _id: new mongoose.Types.ObjectId(deadline.id),
+            title: deadline.title,
+            dueAt: new Date(deadline.dueAt),
+            ...(deadline.courseCode ? { courseCode: deadline.courseCode } : {}),
+            origin: deadline.origin,
+            syllabusId: syllabusOid,
+          })),
+        },
+      },
+    },
+  );
+  if (result.matchedCount !== 1) {
+    throw new ApiError(409, "conflict", `You can keep at most ${MAX_DEADLINES} deadlines.`);
+  }
+  return deadlines;
+}
+
+/** Remove every plan deadline that came from this syllabus (its replace or delete, server/syllabi/records.ts). */
+export async function removeDeadlinesBySyllabusImpl(
+  userId: string,
+  syllabusId: string,
+): Promise<void> {
+  const oid = userObjectId(userId);
+  if (!/^[a-f0-9]{24}$/.test(syllabusId)) return;
+  await getDb();
+  await Plan.updateOne(
+    { userId: oid },
+    { $pull: { deadlines: { syllabusId: new mongoose.Types.ObjectId(syllabusId) } } },
+  );
 }
 
 export async function removeDeadlineImpl(userId: string, deadlineId: string): Promise<void> {

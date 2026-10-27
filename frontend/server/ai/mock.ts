@@ -397,6 +397,49 @@ function professorSummary(data: Json, scenario: MockAiScenario): unknown {
   };
 }
 
+const MONTHS = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+];
+
+/** "midterm exam... October 15" → { title: "Midterm Exam", dueAt: "2026-10-15" }, up to 10 matches. */
+function deadlinesFromText(text: string, year: number): { title: string; dueAt: string }[] {
+  const pattern =
+    /\b(midterm exam|final exam|final paper|final project|paper|project|presentation|problem set \d+|quiz \d+|exam \d+)\b[^.\n]{0,40}?\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})\b/gi;
+  const found: { title: string; dueAt: string }[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) && found.length < 10) {
+    const month = MONTHS.indexOf(match[2]!.toLowerCase()) + 1;
+    const day = Number(match[3]);
+    found.push({
+      title: match[1]!.replace(/\b\w/g, (c) => c.toUpperCase()),
+      dueAt: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+    });
+  }
+  return found;
+}
+
+function syllabusDeadlines(data: Json, scenario: MockAiScenario): unknown {
+  const catalog = obj(data.catalog_data);
+  const year = Number(catalog.academicYear) || new Date().getUTCFullYear();
+  if (scenario === "ungrounded") {
+    // A schema-valid date (real calendar day), but decades outside the term's year: for
+    // cleanSyllabusDeadlines's post-validation to drop, same spirit as the other features' "ungrounded".
+    return { deadlines: [{ title: "Fictional retake exam", dueAt: `${year - 50}-01-01` }] };
+  }
+  return { deadlines: deadlinesFromText(str(data.untrusted_syllabus), year) };
+}
+
 function answerFor(feature: AiFeature, data: Json, scenario: MockAiScenario): unknown {
   switch (feature) {
     case "course-about":
@@ -409,6 +452,8 @@ function answerFor(feature: AiFeature, data: Json, scenario: MockAiScenario): un
       return coldEmail(data);
     case "professor-summary":
       return professorSummary(data, scenario);
+    case "syllabus-deadlines":
+      return syllabusDeadlines(data, scenario);
   }
 }
 

@@ -176,12 +176,20 @@ export const SummerActivitySchema = z.object({
 });
 export type SummerActivity = z.infer<typeof SummerActivitySchema>;
 
+/** Where a deadline came from: typed in by the student, or carried over from a syllabus upload (/syllabi). */
+export const DeadlineOriginSchema = z.enum(["manual", "syllabus"]);
+export type DeadlineOrigin = z.infer<typeof DeadlineOriginSchema>;
+
 /** A student-entered deadline (Due soon on Today). */
 export const StudentDeadlineSchema = z.object({
   id: ObjectIdSchema,
   title: z.string().min(1).max(120),
   dueAt: IsoDateTimeSchema,
   courseCode: CourseCodeSchema.optional(),
+  /** Absent (or "manual") for a deadline the student typed in themselves. */
+  origin: DeadlineOriginSchema.optional(),
+  /** The syllabus this deadline came from; set only when origin is "syllabus". */
+  syllabusId: ObjectIdSchema.optional(),
 });
 export type StudentDeadline = z.infer<typeof StudentDeadlineSchema>;
 

@@ -31,6 +31,7 @@ export function aiFeatureEnabled(flags: Flags, feature: AiFeature): boolean {
   switch (feature) {
     case "course-about":
     case "plan-suggestions":
+    case "syllabus-deadlines":
       return true;
     case "career-plan":
       return featureEnabled(flags, "careers");

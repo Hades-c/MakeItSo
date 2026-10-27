@@ -9,6 +9,7 @@ import { programsApi } from "@/lib/api/programs";
 import { ratingsApi } from "@/lib/api/ratings";
 import { searchApi } from "@/lib/api/search";
 import type { ApiRouteSpec, HttpMethod } from "@/lib/api/spec";
+import { syllabiApi } from "@/lib/api/syllabi";
 
 /**
  * Every route spec, by method and path: what `callApi` checks an endpoint's response against outside production
@@ -27,6 +28,7 @@ export const API_SPECS: readonly ApiRouteSpec[] = [
       programsApi,
       ratingsApi,
       searchApi,
+      syllabiApi,
     ].flatMap((family) => Object.values(family) as ApiRouteSpec[]),
   ),
 ];

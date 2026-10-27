@@ -6,7 +6,12 @@ import {
   AI_RESULT_STATUS,
   type AiFailureKind,
 } from "@/lib/types/ai-constants";
-import { CourseCodeSchema, IsoDateTimeSchema, TermCodeSchema } from "@/lib/types/common";
+import {
+  CourseCodeSchema,
+  IsoDateSchema,
+  IsoDateTimeSchema,
+  TermCodeSchema,
+} from "@/lib/types/common";
 
 /**
  * AI results (PLAN §4.1.8, §6.1 W6). The UI renders `ok` data as text only with the "AI · verify with your
@@ -31,6 +36,7 @@ export const AI_FEATURES = [
   "career-plan",
   "cold-email",
   "professor-summary",
+  "syllabus-deadlines",
 ] as const;
 export const AiFeatureSchema = z.enum(AI_FEATURES);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
@@ -180,6 +186,12 @@ export const ProfessorSummarySchema = z.object({
   themes: z.array(z.string()),
 });
 export type ProfessorSummary = z.infer<typeof ProfessorSummarySchema>;
+
+/** Deadlines extracted from an uploaded syllabus (/syllabi). Dates only: a syllabus rarely gives a time. */
+export const SyllabusDeadlinesSchema = z.object({
+  deadlines: z.array(z.object({ title: z.string(), dueAt: IsoDateSchema })),
+});
+export type SyllabusDeadlines = z.infer<typeof SyllabusDeadlinesSchema>;
 
 /** A stored plan draft returned by plan-suggestions / career-plan routes alongside the model output. */
 export const AiPlanDraftResultSchema = aiResultSchema(PlanDraftSchema);

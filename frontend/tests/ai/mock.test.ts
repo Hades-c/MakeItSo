@@ -15,6 +15,7 @@ import * as coldEmail from "@/server/ai/prompts/cold-email";
 import * as courseAbout from "@/server/ai/prompts/course-about";
 import * as planSuggestions from "@/server/ai/prompts/plan-suggestions";
 import * as professorSummary from "@/server/ai/prompts/professor-summary";
+import * as syllabusDeadlines from "@/server/ai/prompts/syllabus-deadlines";
 
 /** The mock provider: deterministic, schema-valid answers from the request, and a knob for every outcome. */
 
@@ -94,12 +95,19 @@ const SUMMARY = professorSummary.professorSummaryRequest({
   reviews: [{ course: "CSC221", text: "Clear lectures and helpful office hours every week." }],
 });
 
+const SYLLABUS = syllabusDeadlines.syllabusDeadlinesRequest({
+  courseCode: "CSC 221",
+  academicYear: 2026,
+  syllabusText: "Midterm exam on October 15. Final paper due December 3.",
+});
+
 const FEATURES: [string, GenerateRequest, { OutputSchema: Parameters<typeof generate>[0] }][] = [
   ["course-about", ABOUT, courseAbout],
   ["plan-suggestions", SUGGEST, planSuggestions],
   ["career-plan", CAREER, careerPlan],
   ["cold-email", EMAIL, coldEmail],
   ["professor-summary", SUMMARY, professorSummary],
+  ["syllabus-deadlines", SYLLABUS, syllabusDeadlines],
 ];
 
 describe("answers", () => {
@@ -133,6 +141,13 @@ describe("answers", () => {
     ]);
     const email = await generate(coldEmail.OutputSchema, EMAIL, { transport: mockTransport });
     expect(email.kind === "ok" && email.data.body).toContain("{{studentName}}");
+    const syllabus = await generate(syllabusDeadlines.OutputSchema, SYLLABUS, {
+      transport: mockTransport,
+    });
+    expect(syllabus.kind === "ok" && syllabus.data.deadlines).toEqual([
+      { title: "Midterm Exam", dueAt: "2026-10-15" },
+      { title: "Final Paper", dueAt: "2026-12-03" },
+    ]);
   });
 
   it("records the request bodies it received", async () => {
@@ -226,6 +241,19 @@ describe("the scenario knob", () => {
       "SOC 101",
       "PHI 101",
       "FAK 901",
+    ]);
+  });
+
+  it("invents an out-of-range date for syllabus-deadlines' grounding scenario", async () => {
+    setMockAiScenario("ungrounded");
+    const outcome = await generate(syllabusDeadlines.OutputSchema, SYLLABUS, {
+      transport: mockTransport,
+    });
+    // Schema-valid (a real calendar date, so the mock still answers "ok") but decades off, for
+    // cleanSyllabusDeadlines (server/ai/features/syllabus-deadlines.ts) to drop on post-validation.
+    expect(outcome.kind).toBe("ok");
+    expect(outcome.kind === "ok" && outcome.data.deadlines).toEqual([
+      { title: "Fictional retake exam", dueAt: "1976-01-01" },
     ]);
   });
 });

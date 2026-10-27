@@ -31,10 +31,12 @@ import { readLegacyPlanImpl } from "@/server/plan/legacy";
 import {
   addDeadlineImpl,
   addSummerImpl,
+  addSyllabusDeadlinesImpl,
   listDeadlinesImpl,
   listDraftsImpl,
   listSummerImpl,
   removeDeadlineImpl,
+  removeDeadlinesBySyllabusImpl,
   removeSummerImpl,
   saveDraftImpl,
   updateDraftStatusImpl,
@@ -282,6 +284,20 @@ export async function addDeadline(
 
 export async function removeDeadline(userId: string, deadlineId: string): Promise<void> {
   return removeDeadlineImpl(userId, deadlineId);
+}
+
+/** Push the reviewed deadlines from one syllabus upload (/syllabi) into the plan, origin "syllabus". */
+export async function addSyllabusDeadlines(
+  userId: string,
+  syllabusId: string,
+  inputs: readonly Omit<StudentDeadline, "id" | "origin" | "syllabusId">[],
+): Promise<StudentDeadline[]> {
+  return addSyllabusDeadlinesImpl(userId, syllabusId, inputs);
+}
+
+/** Remove every plan deadline tied to a syllabus (its replace or delete). */
+export async function removeDeadlinesBySyllabus(userId: string, syllabusId: string): Promise<void> {
+  return removeDeadlinesBySyllabusImpl(userId, syllabusId);
 }
 
 export async function listSummerActivities(userId: string): Promise<SummerActivity[]> {

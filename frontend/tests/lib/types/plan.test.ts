@@ -3,6 +3,7 @@ import {
   PlanItemSchema,
   PlanProgressSchema,
   REQUIREMENT_SLOTS,
+  StudentDeadlineSchema,
   SummerActivitySchema,
   WebTreeListSchema,
   type PlanItem,
@@ -30,6 +31,23 @@ describe("plan types (PLAN §4.1.4)", () => {
     expect(PlanItemSchema.safeParse({ ...item, status: "passed" }).success).toBe(false);
     expect(PlanItemSchema.safeParse({ ...item, reqCodes: [] }).success).toBe(false);
     expect(PlanItemSchema.safeParse({ ...item, credits: 5 }).success).toBe(false);
+  });
+
+  it("defaults a deadline's origin to undefined (manual) and accepts a syllabus one", () => {
+    const manual = {
+      id: "0123456789abcdef01234567",
+      title: "Essay",
+      dueAt: "2026-10-10T03:59:00.000Z",
+    };
+    expect(StudentDeadlineSchema.parse(manual)).toEqual(manual);
+    const fromSyllabus = {
+      ...manual,
+      courseCode: "CSC 221",
+      origin: "syllabus" as const,
+      syllabusId: "fedcba9876543210fedcba98",
+    };
+    expect(StudentDeadlineSchema.parse(fromSyllabus)).toEqual(fromSyllabus);
+    expect(StudentDeadlineSchema.safeParse({ ...manual, origin: "ai" }).success).toBe(false);
   });
 
   it("requires every requirement slot in progress", () => {

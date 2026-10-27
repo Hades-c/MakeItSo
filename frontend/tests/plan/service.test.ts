@@ -4,11 +4,15 @@ import * as plan from "@/server/plan";
 /**
  * The plan service surface (PLAN §4.1.4): the frozen functions of server/plan/index.ts, plus getPlanCredits (the
  * shell's "My plan x/32") and getWebTreeReport (the Next semester tab). A rename is a visible contract change.
+ * addSyllabusDeadlines / removeDeadlinesBySyllabus (PLAN-UX §3 /syllabi) are the one deliberate addition since:
+ * the review-before-save step and a syllabus's replace/delete need a bulk add and a by-syllabus remove that a
+ * single addDeadline/removeDeadline cannot do atomically.
  */
 const FROZEN = [
   "addDeadline",
   "addItem",
   "addSummerActivity",
+  "addSyllabusDeadlines",
   "detectConflicts",
   "getDaySchedule",
   "getPlan",
@@ -19,6 +23,7 @@ const FROZEN = [
   "listSummerActivities",
   "readLegacyPlan",
   "removeDeadline",
+  "removeDeadlinesBySyllabus",
   "removeItem",
   "removeSummerActivity",
   "saveDraft",

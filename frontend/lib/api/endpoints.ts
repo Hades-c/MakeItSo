@@ -5,6 +5,7 @@ import type { catalogApi } from "@/lib/api/catalog";
 import type { planApi } from "@/lib/api/plan";
 import type { profileApi } from "@/lib/api/profile";
 import type { ApiEndpoints } from "@/lib/api/spec";
+import type { syllabiApi } from "@/lib/api/syllabi";
 
 /**
  * The routes client islands call, as `callApi` endpoints: the method, path and AI flag of each spec in lib/api
@@ -77,6 +78,13 @@ export const planEndpoints: ApiEndpoints<typeof planApi> = {
 export const profileEndpoints: ApiEndpoints<typeof profileApi> = {
   get: { method: "GET", path: "/api/profile" },
   update: { method: "PATCH", path: "/api/profile" },
+};
+
+export const syllabiEndpoints: ApiEndpoints<typeof syllabiApi> = {
+  list: { method: "GET", path: "/api/syllabi" },
+  upload: { method: "POST", path: "/api/syllabi", aiResult: true },
+  remove: { method: "DELETE", path: "/api/syllabi/[id]" },
+  saveDeadlines: { method: "POST", path: "/api/syllabi/[id]/deadlines" },
 };
 
 export const authExtraEndpoints: ApiEndpoints<typeof authExtraApi> = {

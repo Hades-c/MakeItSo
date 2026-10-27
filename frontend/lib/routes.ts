@@ -203,6 +203,7 @@ export const routes = {
   /** One alumnus's card in the directory: /alumni#<id> (the card's element id is the Alumnus id). */
   alumnus: (id: string) => `/alumni#${encodeURIComponent(id)}`,
   profile: () => "/profile",
+  syllabi: () => "/syllabi",
 } as const;
 
 export type AppRoutes = typeof routes;
