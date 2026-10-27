@@ -7,7 +7,6 @@ import { CourseCode } from "@/components/ui/course-code";
 import { Input, controlClass } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
-import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { catalogEndpoints } from "@/lib/api/endpoints";
 import { courseSlug } from "@/lib/routes";
@@ -212,7 +211,7 @@ export function AddCourse({
       {fromPlan.length > 0 ? (
         <div>
           <h4 className="flex items-center gap-2 text-sm font-semibold text-fg">
-            From your {termLabel} plan <SourceTag source="my-plan" />
+            From your {termLabel} plan
           </h4>
           <ul className="mt-2 flex flex-col gap-1.5">
             {fromPlan.map((entry, index) => {
@@ -306,8 +305,7 @@ export function AddCourse({
               <p className="flex items-center gap-2 text-xs text-fg-3">
                 {results.total > results.items.length
                   ? `First ${results.items.length} of ${results.total} courses`
-                  : `${results.items.length} ${results.items.length === 1 ? "course" : "courses"}`}{" "}
-                <SourceTag source="course-schedule" />
+                  : `${results.items.length} ${results.items.length === 1 ? "course" : "courses"}`}
               </p>
               <ul className="mt-2 flex flex-col gap-1.5" aria-label="Search results">
                 {results.items.map((item) => (

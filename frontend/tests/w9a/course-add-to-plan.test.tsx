@@ -298,10 +298,6 @@ describe("CareerCourseItem", () => {
     expect(
       within(article).getByRole("link", { name: "Data Structures (CSC 221)" }),
     ).toHaveAttribute("href", "/courses/202602/CSC-221");
-    expect(within(article).getByText("Course schedule")).toHaveAttribute(
-      "data-source",
-      "course-schedule",
-    );
     expect(within(article).getByRole("radio", { name: "Spring 2027" })).toBeChecked();
     // PLAN §5: the unpublished term says "Not yet published", plus the usual season and its basis.
     expect(within(article).getByRole("radio", { name: "Fall 2027" })).toHaveAccessibleDescription(

@@ -42,8 +42,7 @@ const SLOT = "min-w-0 lg:order-none";
  *
  * Each block is its own async server component in its own Suspense boundary and PanelBoundary (error boundary)
  * with its own error state, so a slow or failing source (catalog, plan, feeds), or a panel that throws while it
- * renders, never holds up or takes down the rest. Every aggregated item carries
- * the tag of its stored source (data-aggregated + SourceTag).
+ * renders, never holds up or takes down the rest.
  */
 export default async function TodayPage({
   searchParams,

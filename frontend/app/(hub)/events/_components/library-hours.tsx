@@ -1,7 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
 import { formatAsOf } from "@/lib/format";
 import { SOURCES } from "@/lib/sources";
 import type { LibraryHours, LibraryLocationHours } from "@/lib/types/feeds";
@@ -68,7 +67,6 @@ export function LibraryHoursView({
       )}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
         <span className="flex flex-wrap items-center gap-2 text-xs text-fg-3">
-          <SourceTag source="library" />
           {result.ok ? <span>as of {formatAsOf(result.hours.fetchedAt, timeZone)}</span> : null}
         </span>
         {libraryUrl ? (

@@ -1,6 +1,5 @@
 import { BriefcaseBusiness, ExternalLink } from "lucide-react";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
 import { formatShortDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import {
@@ -52,7 +51,6 @@ export async function OpportunitiesPanel({
           <li
             key={program.slug}
             data-testid="opportunity-item"
-            data-aggregated={program.source}
             className="relative flex min-h-11 items-start justify-between gap-3 py-3"
           >
             <div className="min-w-0">
@@ -72,7 +70,6 @@ export async function OpportunitiesPanel({
               </p>
               <p className="mt-1 text-xs text-fg-2 md:text-sm">{program.deadline.label}</p>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-2 md:text-sm">
-                <SourceTag source={program.source} />
                 {program.office ? <span>{program.office}</span> : null}
                 {program.audience && !program.forYou ? (
                   <span data-testid="opportunity-audience">For: {program.audience}</span>
@@ -87,7 +84,6 @@ export async function OpportunitiesPanel({
         ))}
         <li
           data-testid="opportunity-item"
-          data-aggregated="handshake"
           className="relative flex min-h-11 items-start gap-3 py-3"
         >
           <span
@@ -110,7 +106,6 @@ export async function OpportunitiesPanel({
               </a>
             </p>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-2 md:text-sm">
-              <SourceTag source="handshake" />
               <span>Sign in with your Davidson account</span>
             </p>
           </div>

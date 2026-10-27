@@ -1,6 +1,5 @@
 import { ExternalLink } from "lucide-react";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
 import { formatLongDate, formatTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { FeedItem } from "@/lib/types/feeds";
@@ -62,11 +61,7 @@ function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZon
       ? formatTime(start, timeZone)
       : "Under way";
   return (
-    <li
-      data-testid="campus-item"
-      data-aggregated={item.source}
-      className="relative flex min-h-11 items-start gap-3 py-3"
-    >
+    <li data-testid="campus-item" className="relative flex min-h-11 items-start gap-3 py-3">
       <span
         aria-hidden
         className={cn(
@@ -100,7 +95,6 @@ function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZon
             {time}
             {item.location ? ` · ${item.location}` : ""}
           </span>
-          <SourceTag source={item.source} />
         </p>
       </div>
     </li>

@@ -111,21 +111,3 @@ export async function smallTapTargets(page: Page): Promise<string[]> {
     return out;
   });
 }
-
-/** Every visible [data-source] item marked as an aggregated row holds a visible source tag ("Source: …"). */
-export async function untaggedRows(page: Page, selector: string): Promise<string[]> {
-  return page.evaluate((sel) => {
-    return [...document.querySelectorAll<HTMLElement>(sel)]
-      .filter((row) => row.checkVisibility())
-      .filter((row) => {
-        const source = row.dataset.source;
-        return ![...row.querySelectorAll<HTMLElement>("[data-source]")].some(
-          (tag) =>
-            tag !== row &&
-            tag.dataset.source === source &&
-            (tag.textContent ?? "").trim().startsWith("Source:"),
-        );
-      })
-      .map((row) => (row.textContent ?? "").trim().slice(0, 60));
-  }, selector);
-}

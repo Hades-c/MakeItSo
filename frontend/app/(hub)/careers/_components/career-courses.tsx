@@ -3,7 +3,6 @@ import { CircleAlert, TriangleAlert } from "lucide-react";
 import type { AddToPlanTerm } from "@/components/domain/add-to-plan-control";
 import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import type { TermCode } from "@/lib/term";
 import type { Availability } from "@/lib/types/catalog";
@@ -114,7 +113,6 @@ export function CareerCourseItem({
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <CourseCode code={view.code} variant="chip" size="md" />
-        <SourceTag source="course-schedule" />
       </div>
       <h3 id={titleId} className="mt-1 text-base font-strong tracking-title text-fg md:mt-2">
         {view.href ? (
@@ -228,8 +226,6 @@ export async function CareerCourses({ career }: { career: Career }) {
           <li
             key={view.code}
             className="min-w-0 py-4 first:pt-0 last:pb-0 lg:py-0"
-            data-aggregated="course-schedule"
-            data-source="course-schedule"
             data-course={view.code}
           >
             <CareerCourseItem

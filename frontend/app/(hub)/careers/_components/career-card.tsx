@@ -1,6 +1,5 @@
 import type * as React from "react";
 import Link from "next/link";
-import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import type { Career } from "@/lib/types/content";
 import { formatUsd, occupationName } from "../_lib/format";
@@ -86,8 +85,6 @@ export function OfferedLine({
   return (
     <p
       className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-2"
-      data-aggregated="course-schedule"
-      data-source="course-schedule"
       data-testid="career-card-offered"
     >
       <span>
@@ -96,7 +93,6 @@ export function OfferedLine({
         </span>{" "}
         {total === 1 ? "course" : "courses"} offered in {termLabel}
       </span>
-      <SourceTag source="course-schedule" />
     </p>
   );
 }

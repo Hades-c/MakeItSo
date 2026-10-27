@@ -184,7 +184,7 @@ function nextData(): NextSemesterData {
 }
 
 describe("Next semester tab", () => {
-  it("shows the list, the disclaimer, a print link and the REGISTRAR-tagged dates", () => {
+  it("shows the list, the disclaimer, a print link and the registration dates", () => {
     render(<NextSemesterTab loaded={{ ok: true, data: nextData() }} now={NOW} timeZone={TZ} />);
     expect(screen.getByRole("heading", { name: "Spring 2027 WebTree list" })).toBeInTheDocument();
     expect(screen.getByText("Unofficial — verify in Degree Works.")).toBeInTheDocument();
@@ -195,8 +195,6 @@ describe("Next semester tab", () => {
     const dates = screen.getByTestId("registration-deadlines");
     const rows = within(dates).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveAttribute("data-source", "registrar");
-    expect(rows[0]).toHaveTextContent("Source: Registrar");
     expect(rows[0]).toHaveTextContent("Mon, Oct 12, 7:00a – Tue, Nov 3");
     expect(rows[0]).toHaveTextContent("In 12 days");
     expect(within(rows[0]!).getByRole("link")).toHaveAttribute("rel", "noopener noreferrer");
@@ -763,8 +761,6 @@ describe("Summer", () => {
     );
     const row = screen.getByTestId("summer-activity");
     expect(row).toHaveTextContent("Summer 2027");
-    expect(row).toHaveAttribute("data-source", "my-plan");
-    expect(row).toHaveTextContent("Source: Your plan");
 
     const form = screen.getByRole("heading", { name: "Add a summer plan" }).closest("section")!;
     expect(within(form).getByLabelText("Summer")).toHaveValue("202603");

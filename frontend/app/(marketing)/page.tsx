@@ -10,8 +10,6 @@ import {
 } from "lucide-react";
 import { Wordmark } from "@/components/app/wordmark";
 import { AiChip } from "@/components/ui/ai-chip";
-import { SourceTag, SourceTagList } from "@/components/ui/source-tag";
-import type { SourceId } from "@/lib/sources";
 import { cn } from "@/lib/utils";
 import {
   HeaderActions,
@@ -20,7 +18,7 @@ import {
   HeroActionsView,
 } from "./_components/account-actions";
 import { LandingFacts } from "./_components/landing-facts";
-import { joinWords, landingSources, loadLandingClaims, type LandingClaims } from "./_lib/claims";
+import { joinWords, loadLandingClaims, type LandingClaims } from "./_lib/claims";
 
 // Marketing landing ("/", PLAN §3). Copy states only what MakeItSo does; no invented statistics (audit
 // design-ux/dashboard-static-and-contradictory-claims). The only numbers are runtime facts (./_lib/facts.ts),
@@ -77,24 +75,6 @@ const FEATURE_COLUMNS: Readonly<Record<number, string>> = {
   4: "lg:grid-cols-4",
 };
 
-/** What MakeItSo shows, and the source tag each kind of item carries. Descriptive only: no sample data. */
-function provenance(claims: LandingClaims): { what: string; source: SourceId }[] {
-  return [
-    { what: "Sections, seats and meeting times", source: "course-schedule" },
-    { what: "Registration windows and academic deadlines", source: "registrar" },
-    ...(claims.ratings
-      ? [
-          {
-            what: "Professor ratings, with the date they were checked",
-            source: "ratemyprofessors" as const,
-          },
-        ]
-      : []),
-    ...(claims.events ? [{ what: "Club and campus events", source: "wildcatsync" as const }] : []),
-    { what: "Courses you have taken and plan to take", source: "my-plan" },
-  ];
-}
-
 function heroSentence(claims: LandingClaims): string {
   const parts = [
     "the course schedule",
@@ -102,16 +82,7 @@ function heroSentence(claims: LandingClaims): string {
     ...(claims.careers ? ["career paths"] : []),
     ...(claims.events ? ["campus events"] : []),
   ];
-  return `MakeItSo brings ${joinWords(parts)} together, and labels every item with where it came from.`;
-}
-
-function taggedKinds(claims: LandingClaims): string {
-  const kinds = [
-    "Deadlines",
-    ...(claims.ratings ? ["ratings"] : []),
-    ...(claims.events ? ["events"] : []),
-  ];
-  return `${joinWords(kinds)} keep a tag naming their source`;
+  return `MakeItSo brings ${joinWords(parts)} together in one place.`;
 }
 
 export default async function HomePage() {
@@ -139,55 +110,24 @@ export default async function HomePage() {
       </header>
 
       <main>
-        <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-12 md:px-6 md:py-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-14">
-          <div>
-            <p className="mb-4 text-xs font-medium tracking-label text-fg-3 uppercase">
-              For Davidson College students
-            </p>
-            <h1 className="font-display text-xl font-strong md:text-3xl">
-              {claims.events
-                ? "Your courses, your plan and your campus, in one place."
-                : "Your courses and your plan, in one place."}
-            </h1>
-            <p className="mt-5 max-w-xl text-base text-fg-2 md:text-lg">{heroSentence(claims)}</p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Suspense fallback={<HeroActionsView signedIn={false} />}>
-                <HeroActions />
-              </Suspense>
-            </div>
-            <Suspense fallback={null}>
-              <LandingFacts />
+        <section className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-20">
+          <p className="mb-4 text-xs font-medium tracking-label text-fg-3 uppercase">
+            For Davidson College students
+          </p>
+          <h1 className="font-display text-xl font-strong md:text-3xl">
+            {claims.events
+              ? "Your courses, your plan and your campus, in one place."
+              : "Your courses and your plan, in one place."}
+          </h1>
+          <p className="mt-5 max-w-xl text-base text-fg-2 md:text-lg">{heroSentence(claims)}</p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Suspense fallback={<HeroActionsView signedIn={false} />}>
+              <HeroActions />
             </Suspense>
           </div>
-
-          <section
-            aria-labelledby="provenance-title"
-            className="min-w-0 rounded-2xl border border-line bg-surface p-5 shadow-card md:p-6"
-          >
-            <h2
-              id="provenance-title"
-              className="text-xs font-medium tracking-label text-fg-3 uppercase"
-            >
-              Every item is labelled
-            </h2>
-            <ul className="mt-3 divide-y divide-line">
-              {provenance(claims).map((item) => (
-                <li
-                  key={item.source}
-                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-2.5 text-sm font-semibold text-fg"
-                >
-                  <span className="min-w-0">{item.what}</span>
-                  <SourceTag source={item.source} />
-                </li>
-              ))}
-              {claims.ai ? (
-                <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-2.5 text-sm font-semibold text-fg">
-                  <span className="min-w-0">Suggestions for your plan</span>
-                  <AiChip />
-                </li>
-              ) : null}
-            </ul>
-          </section>
+          <Suspense fallback={null}>
+            <LandingFacts />
+          </Suspense>
         </section>
 
         <section aria-labelledby="features-title" className="border-y border-line bg-surface">
@@ -212,25 +152,16 @@ export default async function HomePage() {
         </section>
 
         <section
-          aria-labelledby="sources-title"
+          aria-labelledby="ai-title"
           className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16"
         >
           <div className="max-w-2xl">
-            <h2 id="sources-title" className="font-display text-xl font-strong">
-              Every item shows where it came from
+            <h2 id="ai-title" className="font-display text-xl font-strong">
+              AI, clearly marked
             </h2>
-            <p className="mt-3 text-base text-fg-2">
-              Course data comes from the Registrar&apos;s public schedule. {taggedKinds(claims)}, so
-              you always know what to double-check.
-            </p>
           </div>
-          <SourceTagList
-            label="Sources MakeItSo draws on"
-            sources={landingSources(claims)}
-            className="mt-6"
-          />
           <div
-            className="mt-8 flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 md:flex-row md:items-center"
+            className="mt-6 flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 md:flex-row md:items-center"
             data-testid="landing-ai"
           >
             {claims.ai ? (

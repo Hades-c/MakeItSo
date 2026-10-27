@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import { termLabel } from "@/lib/term";
 import { REQUIREMENTS_DISCLAIMER, requirementName } from "@/server/content/requirements";
@@ -32,7 +31,6 @@ export function CourseView({
   const { params, course, reference, chosen, add } = data;
   const subject = reference.sections[0]?.subject ?? params.code.split(" ")[0]!;
   const pageHref = routes.course(params.term, params.code);
-  const asOf = course ? data.asOf : null;
   const requirements = reference.reqCodes.map((req) => ({ code: req, name: requirementName(req) }));
   const requirementsBySection = requirementGroups(reference.sections).map((group) => ({
     sections: group.sections,
@@ -73,7 +71,6 @@ export function CourseView({
         term={params.term}
         chosen={chosen}
         departmentName={data.departmentName}
-        asOf={asOf}
         offered={course !== null}
         inPlan={add.inPlanTerms.includes(params.term)}
       />
@@ -86,7 +83,6 @@ export function CourseView({
             requirementsBySection={requirementsBySection}
             programs={data.programs}
             disclaimer={REQUIREMENTS_DISCLAIMER}
-            asOf={asOf}
           />
           <section
             id="add-to-plan"
@@ -100,7 +96,6 @@ export function CourseView({
               >
                 Add to plan
               </h2>
-              <SourceTag source="course-schedule" />
             </div>
             {add.terms.length > 0 ? (
               <AddCourse
@@ -132,7 +127,6 @@ export function CourseView({
                 chosenCrn={chosen?.crn ?? null}
                 ratings={data.ratings}
                 sectionHref={(crn) => `${pageHref}?crn=${crn}#week`}
-                asOf={asOf}
                 registerAs={data.registerAs}
                 regForTitles={data.regForTitles}
               />

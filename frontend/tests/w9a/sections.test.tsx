@@ -235,7 +235,7 @@ describe("CareerAlumni (on a career page)", () => {
 describe("CareerCourses", () => {
   const career = getCareer("software-engineering")!;
 
-  it("lists every course with its live availability, tagged, and starts added where the plan has it", async () => {
+  it("lists every course with its live availability, and starts added where the plan has it", async () => {
     for (const course of career.courses) {
       state.histories.set(course.code, [
         { termCode: "202601", status: "offered", sectionCount: 1 },
@@ -250,10 +250,6 @@ describe("CareerCourses", () => {
     await renderAsync(CareerCourses({ career }));
     const items = screen.getByTestId("career-courses").querySelectorAll(":scope > li");
     expect(items).toHaveLength(career.courses.length);
-    for (const item of items) {
-      expect(item).toHaveAttribute("data-aggregated", "course-schedule");
-      expect(item.querySelector('[data-source="course-schedule"]')).not.toBeNull();
-    }
     const csc221 = [...items].find((item) => item.getAttribute("data-course") === "CSC 221")!;
     expect(
       within(csc221 as HTMLElement).getByRole("button", { name: "In your plan for Spring 2027" }),

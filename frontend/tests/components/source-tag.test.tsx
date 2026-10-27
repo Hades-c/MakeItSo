@@ -13,24 +13,6 @@ describe("SourceTag", () => {
     expect(tag).toHaveTextContent("Source: Davidson One");
   });
 
-  it("shows the 'as of' time as visible text (no hover or focus tooltip, so touch users see it)", () => {
-    const { container } = render(<SourceTag source="handshake" asOf="2026-09-30T13:05:00Z" />);
-    const tag = screen.getByText("Handshake", { exact: false });
-    expect(tag).toHaveTextContent("Source: Handshake");
-    expect(tag).not.toHaveAttribute("tabindex");
-    expect(container).toHaveTextContent("Source: Handshake, as of Sep 30, 9:05 AM");
-    expect(screen.getByTestId("source-as-of")).toHaveTextContent("as of Sep 30, 9:05 AM");
-    expect(screen.getByTestId("source-as-of")).not.toHaveClass("sr-only");
-    expect(container.querySelector("[tabindex]")).toBeNull();
-  });
-
-  it("drops an unparseable 'as of' date instead of throwing", () => {
-    render(<SourceTag source="library" asOf="yesterday-ish" />);
-    const tag = screen.getByText("Library", { exact: false });
-    expect(tag).toHaveTextContent("Source: Library");
-    expect(tag).not.toHaveAttribute("tabindex");
-  });
-
   it("stays Inter inside a Playfair (font-display) heading: labels are never in the display face", () => {
     render(
       <h3 className="font-display">

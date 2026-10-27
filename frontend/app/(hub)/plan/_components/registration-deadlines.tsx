@@ -1,12 +1,11 @@
 import { CalendarClock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { SourceTag } from "@/components/ui/source-tag";
 import { cn } from "@/lib/utils";
 import { describeDeadlines, type DeadlineInput } from "../_lib/deadlines";
 
 /**
- * Registration windows and deadlines for the WebTree term, from the academic calendar (server/content, tag
- * REGISTRAR, each row linked to the Registrar's page). Worded on the server for `now` in Davidson time.
+ * Registration windows and deadlines for the WebTree term, from the academic calendar (server/content, each row
+ * linked to the Registrar's page). Worded on the server for `now` in Davidson time.
  */
 export function RegistrationDeadlines({
   deadlines,
@@ -45,7 +44,6 @@ export function RegistrationDeadlines({
             <li
               key={row.id}
               className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0"
-              data-source={row.source}
               data-state={row.state}
             >
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -57,7 +55,6 @@ export function RegistrationDeadlines({
                 >
                   {row.title}
                 </a>
-                <SourceTag source={row.source} />
               </div>
               <p className="flex flex-wrap items-center gap-2 text-sm text-fg-2">
                 <time dateTime={row.dateTime}>{row.when}</time>

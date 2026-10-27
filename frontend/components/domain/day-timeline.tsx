@@ -1,7 +1,6 @@
 import type * as React from "react";
 import { Clock, Flag } from "lucide-react";
 import { CourseCode } from "@/components/ui/course-code";
-import { SourceTag } from "@/components/ui/source-tag";
 import { COURSE_COLOR_CLASSES, courseColor } from "@/lib/course-color";
 import { wallClockMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -68,7 +67,7 @@ const TWO_LINE_MIN_MINUTES = 40;
 
 /**
  * Container widths from which an overlap group with this many lanes is drawn side by side (every lane then fits a
- * 12px course code and a whole source tag). Below them the group is one "3 at the same time" block and its items are
+ * 12px course code and a full title). Below them the group is one "3 at the same time" block and its items are
  * listed in full under the timeline. Static strings so Tailwind generates them.
  */
 const LANES_FROM: { maxLanes: number; lanes: string; group: string }[] = [
@@ -89,8 +88,8 @@ function groupSpanLabel(group: OverlapGroup): string {
 }
 
 /**
- * Today, to scale: classes coloured by course, campus events with their source tag, deadlines as point markers,
- * free gaps, and a red now-line with a clock pill ("now"). Proportional minutes in ET wall-clock time; renders on
+ * Today, to scale: classes coloured by course, campus events, deadlines as point markers, free gaps, and a red
+ * now-line with a clock pill ("now"). Proportional minutes in ET wall-clock time; renders on
  * the server. The list is chronological for screen readers, with each item's times spelled out.
  *
  * Nothing is drawn over text: the now pill sits in the hour gutter and the now and deadline lines pass under the
@@ -153,7 +152,7 @@ export function DayTimeline({
       .map((d) => ({
         start: d.minute,
         key: `d-${d.item.id}`,
-        node: <DeadlineMarker key={`d-${d.item.id}`} placed={d} timeZone={timeZone} />,
+        node: <DeadlineMarker key={`d-${d.item.id}`} placed={d} />,
       })),
   ].sort((a, b) => a.start - b.start || a.key.localeCompare(b.key));
 
@@ -247,7 +246,6 @@ export function DayTimeline({
             interval: b.interval,
             note: relative(b) ?? undefined,
           }))}
-          timeZone={timeZone}
           className={lanesFrom(g.lanes).group}
           testId="overlap-list"
         />
@@ -260,21 +258,19 @@ export function DayTimeline({
             item: d.item,
             interval: { start: d.minute, end: d.minute, shownEnd: d.minute, pastMidnight: false },
           }))}
-          timeZone={timeZone}
           testId="deadline-list"
         />
       ) : null}
       {layout.earlier.length > 0 ? (
-        <OutsideList heading="Earlier today" entries={layout.earlier} timeZone={timeZone} />
+        <OutsideList heading="Earlier today" entries={layout.earlier} />
       ) : null}
       {layout.later.length > 0 ? (
-        <OutsideList heading="Later today" entries={layout.later} timeZone={timeZone} />
+        <OutsideList heading="Later today" entries={layout.later} />
       ) : null}
       {layout.unscheduled.length > 0 ? (
         <OutsideList
           heading="Time not listed"
           entries={layout.unscheduled.map((item) => ({ item }))}
-          timeZone={timeZone}
         />
       ) : null}
 
@@ -378,14 +374,6 @@ function TimelineBlock({
       {relative}
     </span>
   ) : null;
-  // Tags are never cut short: in a shared lane a long one wraps instead.
-  const tag = !isClass ? (
-    <SourceTag
-      source={item.source}
-      className={density === "narrow" ? "max-w-full whitespace-normal" : "shrink-0"}
-    />
-  ) : null;
-
   let body: React.ReactNode;
   if (density === "tiny") {
     body = (
@@ -396,7 +384,6 @@ function TimelineBlock({
             {item.title}
           </span>
         </span>
-        {tag}
         {/* The time and place are extras here (the list item reads them out): phones drop them, not the title. */}
         <span aria-hidden className={cn("flex min-w-0 shrink-[10]", !rel && "@max-[28rem]:hidden")}>
           {rel ?? (meta ? <span className="truncate text-xs text-fg-2">{meta}</span> : null)}
@@ -405,7 +392,7 @@ function TimelineBlock({
     );
   } else if (density === "narrow") {
     // A shared lane (wide containers only) fits about three short lines: class → code, title, "now"/"in" note
-    // (or room); event → title and its source tag.
+    // (or room); event → title.
     body = (
       <span className="flex min-w-0 flex-col items-start">
         <span aria-hidden className="flex w-full min-w-0 flex-col">
@@ -416,7 +403,6 @@ function TimelineBlock({
               (meta ? <span className="truncate text-xs leading-4 text-fg-2">{meta}</span> : null))
             : null}
         </span>
-        {tag ? <span className="mt-0.5 flex max-w-full min-w-0">{tag}</span> : null}
       </span>
     );
   } else if (isClass) {
@@ -469,7 +455,6 @@ function TimelineBlock({
           {rel}
         </span>
         <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-          {tag}
           {/* A long location (WildcatSync's rain plans) ends in an ellipsis, not cut mid-line by the block. */}
           {meta ? (
             <span
@@ -492,7 +477,6 @@ function TimelineBlock({
 
   return (
     <li
-      data-source={item.source}
       data-kind={item.kind}
       data-density={density}
       data-lane={`${placed.lane + 1}/${placed.lanes}`}
@@ -583,11 +567,10 @@ function FreeGap({ gap }: { gap: TimelineGap }) {
   );
 }
 
-function DeadlineMarker({ placed, timeZone }: { placed: PlacedDeadline; timeZone: string }) {
+function DeadlineMarker({ placed }: { placed: PlacedDeadline }) {
   const { item, minute } = placed;
   return (
     <li
-      data-source={item.source}
       data-kind="deadline"
       className="absolute inset-x-0 h-0"
       style={{ top: percent(placed.top) }}
@@ -610,10 +593,9 @@ function DeadlineMarker({ placed, timeZone }: { placed: PlacedDeadline; timeZone
             {item.title}
           </span>
         </span>
-        {item.code || item.source ? (
+        {item.code ? (
           <span className="flex shrink-0 items-center gap-2">
-            {item.code ? <CourseCode code={item.code} /> : null}
-            <SourceTag source={item.source} timeZone={timeZone} />
+            <CourseCode code={item.code} />
           </span>
         ) : null}
       </div>
@@ -624,14 +606,12 @@ function DeadlineMarker({ placed, timeZone }: { placed: PlacedDeadline; timeZone
 function OutsideList({
   heading,
   entries,
-  timeZone,
   icon,
   className,
   testId,
 }: {
   heading: string;
   entries: { item: TimelineItem; interval?: ItemSpan; note?: string }[];
-  timeZone: string;
   /** Show the deadline flag beside the heading (it matches the flags in the hour gutter). */
   icon?: boolean;
   className?: string;
@@ -647,7 +627,6 @@ function OutsideList({
         {entries.map(({ item, interval, note }) => (
           <li
             key={item.id}
-            data-source={item.source}
             data-kind={item.kind}
             className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md bg-surface-2 px-3 py-2 text-sm"
           >
@@ -660,7 +639,6 @@ function OutsideList({
             {item.code ? <CourseCode code={item.code} /> : null}
             <span className="min-w-0 font-semibold break-words text-fg">{item.title}</span>
             {item.location ? <span className="text-xs text-fg-2">{item.location}</span> : null}
-            {item.kind !== "class" ? <SourceTag source={item.source} timeZone={timeZone} /> : null}
             {note ? <span className="text-xs font-strong text-fg">{note}</span> : null}
           </li>
         ))}

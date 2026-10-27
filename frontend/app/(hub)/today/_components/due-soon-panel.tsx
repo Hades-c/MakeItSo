@@ -1,7 +1,6 @@
 import { AlarmClock, ExternalLink, TriangleAlert } from "lucide-react";
 import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
 import { cn } from "@/lib/utils";
 import {
   buildDueSoon,
@@ -30,8 +29,8 @@ export const DUE_SOON_TITLE = "Due for you";
 
 /**
  * Due for you (PLAN §3 "Due soon"): the academic calendar's deadlines and registration windows, the curated office
- * programs' deadlines and the student's own, for the next two weeks, each with the tag of its stored source and a
- * link to the page that publishes it. The rows for the student (their own, and those whose audience certainly
+ * programs' deadlines and the student's own, for the next two weeks, each with a link to the page that publishes
+ * it. The rows for the student (their own, and those whose audience certainly
  * includes them) come first and are what the count counts, the same number as the header's "N due for you". The
  * others say who they are for and follow under "Also in the next two weeks", by date; past DUE_SOON_SHOWN rows
  * the rest are one press away ("Show N more"), never cut. Only the student's rows are ever drawn in the urgent
@@ -124,7 +123,6 @@ function DueSoonRow({ item, label }: { item: DueSoonItem; label: string }) {
   return (
     <li
       data-testid="due-soon-item"
-      data-aggregated={item.source}
       data-kind={item.kind}
       data-for-you={item.forYou ? "true" : "false"}
       data-urgent={urgent ? "true" : undefined}
@@ -143,7 +141,6 @@ function DueSoonRow({ item, label }: { item: DueSoonItem; label: string }) {
         </p>
         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-2 md:text-sm">
           {item.courseCode ? <CourseCode code={item.courseCode} /> : null}
-          <SourceTag source={item.source} />
           {item.audience && !item.forYou ? <span>For: {item.audience}</span> : null}
         </p>
       </div>

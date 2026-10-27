@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { BookOpen, CalendarPlus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SourceTag } from "@/components/ui/source-tag";
 import { formatTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { loadProfile, loadTerms, safely, webTreeWindow, type WebTreeWindow } from "@/server/today";
@@ -86,11 +85,9 @@ export async function TodayActions({
       {window && text ? (
         <p
           data-testid="webtree-window"
-          data-aggregated={window.source}
           className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-2"
         >
           <span>{text}</span>
-          <SourceTag source={window.source} />
         </p>
       ) : null}
     </div>

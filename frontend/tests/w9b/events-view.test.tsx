@@ -214,7 +214,6 @@ describe("EventsResultsView", () => {
       screen.getByRole("heading", { name: "The campus calendars have not synced yet" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Reload" })).toHaveAttribute("href", "/events");
-    expect(screen.getByRole("list", { name: "Calendars MakeItSo reads" })).toBeInTheDocument();
   });
 
   it("only counts the requested sources for not-synced-yet", () => {
@@ -395,7 +394,7 @@ describe("library hours", () => {
     expect(listedLocations(HOURS).map((l) => l.id)).toEqual(["1", "3", "4", "5"]);
   });
 
-  it("lists the locations with hours, the source and when it was read", () => {
+  it("lists the locations with hours and when it was read", () => {
     render(
       <LibraryHoursView
         today="2026-09-30"
@@ -412,10 +411,6 @@ describe("library hours", () => {
       "Music Library (Sloan 101)7am - 11:59pmOpen now",
       "ArchivesClosed",
     ]);
-    expect(within(card).getByText("Library", { selector: "[data-source]" })).toHaveAttribute(
-      "data-source",
-      "library",
-    );
     expect(card).toHaveTextContent("as of Sep 30, 12:00 PM");
     const site = within(card).getByRole("link", { name: /Library website/ });
     expect(site).toHaveAttribute("rel", "noopener noreferrer");

@@ -53,11 +53,6 @@ async function renderHome() {
   return document.body.textContent ?? "";
 }
 
-function listedSources(): (string | null)[] {
-  const list = screen.getByRole("list", { name: "Sources MakeItSo draws on" });
-  return [...list.querySelectorAll("[data-source]")].map((el) => el.getAttribute("data-source"));
-}
-
 /** The links and buttons drawn as Davidson Red fills (the Button primary variant). */
 function redFills(): string[] {
   return [...document.querySelectorAll("a, button")]
@@ -113,22 +108,12 @@ describe("/ for visitors", () => {
     expect(text).toContain(
       "MakeItSo brings the course schedule, a four-year plan, career paths and campus events together",
     );
-    expect(text).toContain("Club and campus events");
-    expect(text).toContain("Professor ratings, with the date they were checked");
-    expect(text).toContain("Suggestions for your plan");
-    expect(text).toContain("Deadlines, ratings and events keep a tag naming their source");
+    expect(text).toContain(
+      "Events and deadlines from across campus in one list, so fewer things slip through.",
+    );
     expect(screen.getByTestId("landing-ai")).toHaveTextContent(
       "AI-assisted suggestions are grounded in the real course catalog",
     );
-    expect(listedSources()).toEqual([
-      "course-schedule",
-      "registrar",
-      "ratemyprofessors",
-      "wildcatsync",
-      "hurt-hub",
-      "library",
-      "events-digest",
-    ]);
   });
 
   it("says nothing about flagged sections while every flag is off", async () => {
@@ -137,15 +122,12 @@ describe("/ for visitors", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Your courses and your plan, in one place.",
     );
-    expect(text).toContain(
-      "MakeItSo brings the course schedule and a four-year plan together, and labels every item",
-    );
+    expect(text).toContain("MakeItSo brings the course schedule and a four-year plan together");
     expect(featureTitles()).toEqual(["Courses", "My plan"]);
     for (const claim of [
       "career path",
       "verified alumni",
       "campus events",
-      "Club and campus events",
       "Events and deadlines from across campus",
       "Professor ratings",
       "ratings",
@@ -154,12 +136,8 @@ describe("/ for visitors", () => {
     ]) {
       expect(text, claim).not.toContain(claim);
     }
-    expect(text).toContain("Deadlines keep a tag naming their source");
     expect(screen.getByTestId("landing-ai")).toHaveTextContent("AI features are coming.");
     expect(screen.queryByText(/AI · verify with your advisor/)).toBeNull();
-    expect(listedSources()).toEqual(["course-schedule", "registrar"]);
-    // No Davidsonian: no page shows its items.
-    expect(document.querySelector("[data-source=davidsonian]")).toBeNull();
   });
 
   it("drops the alumni promise while the alumni directory is off", async () => {
@@ -188,13 +166,11 @@ describe("/ for visitors", () => {
     expect(text).not.toContain("AI-assisted suggestions");
   });
 
-  it("drops the events card, row, words and feed sources while Events is off", async () => {
+  it("drops the events card, row and words while Events is off", async () => {
     stubEnv({ FEATURE_EVENTS: "false" });
     const text = await renderHome();
     expect(featureTitles()).toEqual(["Courses", "My plan", "Careers"]);
-    expect(text).not.toContain("Club and campus events");
-    expect(text).toContain("Deadlines and ratings keep a tag naming their source");
-    expect(listedSources()).toEqual(["course-schedule", "registrar", "ratemyprofessors"]);
+    expect(text).not.toContain("Events and deadlines from across campus");
   });
 
   it("gives the home link a phone-sized tap target", async () => {
@@ -220,7 +196,7 @@ describe("/ for signed-in students", () => {
 });
 
 describe("LandingFactsView", () => {
-  it("shows each computed number with its words and source", () => {
+  it("shows each computed number with its words", () => {
     render(
       <LandingFactsView
         facts={[
@@ -242,13 +218,9 @@ describe("LandingFactsView", () => {
     const facts = screen.getByRole("region", { name: "MakeItSo right now" });
     const items = within(facts).getAllByRole("listitem");
     expect(items.map((i) => i.textContent)).toEqual([
-      "1,366courses on the Spring 2027 scheduleSource: Course schedule",
+      "1,366courses on the Spring 2027 schedule",
       "24career paths, each with real Davidson courses",
     ]);
-    expect(items[0]!.querySelector("[data-source]")).toHaveAttribute(
-      "data-source",
-      "course-schedule",
-    );
   });
 
   it("renders nothing without facts", () => {

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Clock, MapPin, TriangleAlert } from "lucide-react";
 import { SeatBar } from "@/components/domain/seat-bar";
 import { Chip } from "@/components/ui/chip";
-import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import type { Course, Section } from "@/lib/types/catalog";
 import { cn } from "@/lib/utils";
@@ -207,7 +206,6 @@ export function CourseSections({
   chosenCrn,
   ratings,
   sectionHref,
-  asOf,
   registerAs = {},
   regForTitles = {},
 }: {
@@ -215,7 +213,6 @@ export function CourseSections({
   chosenCrn: string | null;
   ratings: RatingsLookup | null;
   sectionHref: (crn: string) => string;
-  asOf: string | null;
   registerAs?: Readonly<Record<string, RegisterAs>>;
   regForTitles?: Readonly<Record<string, string>>;
 }) {
@@ -223,7 +220,6 @@ export function CourseSections({
     <section
       id="sections"
       aria-labelledby="sections-title"
-      data-aggregated="course-schedule"
       className="min-w-0 rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5"
     >
       <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
@@ -236,7 +232,6 @@ export function CourseSections({
             {course.sections.length}
           </span>
         </h2>
-        <SourceTag source="course-schedule" asOf={asOf} />
       </div>
       <ul className="flex flex-col gap-3">
         {course.sections.map((section) => (

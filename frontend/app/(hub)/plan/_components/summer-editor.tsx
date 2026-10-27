@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Input, controlClass } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
-import { SourceTag } from "@/components/ui/source-tag";
 import { Textarea } from "@/components/ui/textarea";
 import { callApi } from "@/lib/api/client";
 import { planEndpoints } from "@/lib/api/endpoints";
@@ -269,17 +268,12 @@ function ActivityRow({
   }
 
   return (
-    <li
-      className="rounded-lg border border-line bg-surface p-3"
-      data-testid="summer-activity"
-      data-source="my-plan"
-    >
+    <li className="rounded-lg border border-line bg-surface p-3" data-testid="summer-activity">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2">
             <span className="text-base font-semibold text-fg">{activity.title}</span>
             <Badge variant="outline">{KIND_LABEL[activity.kind]}</Badge>
-            <SourceTag source="my-plan" />
           </p>
           <p className="mt-0.5 text-sm text-fg-2">
             {termLabel(activity.termCode)}

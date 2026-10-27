@@ -6,7 +6,6 @@ import {
   type Page,
 } from "@playwright/test";
 import { SOURCES, type SourceId } from "../../lib/sources";
-import { E2E_UNTAGGED_EXEMPTIONS } from "./untagged";
 
 /**
  * Shared helpers for the Playwright specs: accounts, sign-in and mailbox codes, plus the checks PLAN §6.2/§7 asks
@@ -285,38 +284,6 @@ export async function primaryFills(page: Page): Promise<string[]> {
 /** The phone project, or any viewport under the 720px breakpoint. */
 export function isMobile(page: Page): boolean {
   return (page.viewportSize()?.width ?? 1440) < 720;
-}
-
-/**
- * Every aggregated item on the page carries its source tag (PLAN §7): each visible element marked
- * `data-aggregated="<source id>"` contains a visible <SourceTag> of that same source ("Source: …" for screen
- * readers). An item marked `data-aggregated="untagged"` passes only with a `data-untagged` reason from
- * E2E_UNTAGGED_EXEMPTIONS, so a new kind of untagged item fails here instead of passing unmarked. Returns how
- * many items were checked, so a spec can also require that there were some.
- */
-export async function expectAllTagged(page: Page): Promise<number> {
-  const report = await page.evaluate((exempt) => {
-    const items = [...document.querySelectorAll<HTMLElement>("[data-aggregated]")].filter((el) =>
-      el.checkVisibility(),
-    );
-    const untagged = items
-      .filter((item) => {
-        const source = item.dataset.aggregated ?? "";
-        if (source === "untagged") return !exempt.includes(item.dataset.untagged ?? "");
-        const tags = [...item.querySelectorAll<HTMLElement>("[data-source]")].filter(
-          (tag) =>
-            tag.dataset.source === source &&
-            !tag.hasAttribute("data-aggregated") &&
-            tag.checkVisibility() &&
-            (tag.textContent ?? "").trim().startsWith("Source:"),
-        );
-        return tags.length === 0;
-      })
-      .map((item) => `${item.dataset.aggregated}: ${(item.textContent ?? "").trim().slice(0, 60)}`);
-    return { count: items.length, untagged };
-  }, E2E_UNTAGGED_EXEMPTIONS);
-  expect(report.untagged, "aggregated items without their source tag").toEqual([]);
-  return report.count;
 }
 
 /** What an L0 line may call each source (the registry label, plus the short forms the spec's L0 lines use). */

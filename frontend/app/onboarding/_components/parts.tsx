@@ -7,7 +7,6 @@ import { ChevronDown, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CourseCode } from "@/components/ui/course-code";
 import { controlClass } from "@/components/ui/input";
-import { SourceTag } from "@/components/ui/source-tag";
 import { termLabel } from "@/lib/term";
 import type { PlanItem, PlanWarning } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
@@ -188,7 +187,6 @@ export function PlanItemRow({
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <CourseCode code={item.courseCode} />
           <span className="font-semibold text-fg">{item.title}</span>
-          <SourceTag source="my-plan" />
         </p>
         <p className="mt-0.5 text-sm text-fg-2">
           {[

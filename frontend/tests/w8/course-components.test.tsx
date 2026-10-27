@@ -138,7 +138,6 @@ describe("SectionItem", () => {
           { instructor, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
         ])}
         sectionHref={(crn) => `/c?crn=${crn}`}
-        asOf={null}
       />,
     );
     for (const row of screen.getAllByRole("article")) {
@@ -151,18 +150,16 @@ describe("SectionItem", () => {
     }
   });
 
-  it("renders every section in a tagged card", () => {
+  it("renders every section in a card", () => {
     render(
       <CourseSections
         course={csc}
         chosenCrn="20136"
         ratings={null}
         sectionHref={(crn) => `/c?crn=${crn}`}
-        asOf={null}
       />,
     );
     const card = screen.getByRole("region", { name: /Sections/ });
-    expect(card).toHaveAttribute("data-aggregated", "course-schedule");
     expect(within(card).getAllByRole("article")).toHaveLength(2);
     expect(
       within(card).getByRole("link", { name: /^Show in my week\s*\(section A\)$/ }),
@@ -185,7 +182,6 @@ describe("SectionItem", () => {
           { instructor, status: "matched", rmp: { ...rmp, topTags: [...rmp.topTags] } },
         ])}
         sectionHref={(crn) => `/c?crn=${crn}`}
-        asOf={null}
       />,
     );
     const list = screen.getByRole("list", { name: "Instructors on RateMyProfessors" });
@@ -281,7 +277,6 @@ describe("SectionItem", () => {
           { instructor, status: "matched", rmp: { ...rmp, numRatings: 0, topTags: [] } },
         ])}
         sectionHref={(crn) => `/c?crn=${crn}`}
-        asOf={null}
       />,
     );
     expect(screen.queryByTestId("instructor-ratings")).toBeNull();
@@ -294,7 +289,6 @@ describe("SectionItem", () => {
         chosenCrn={null}
         ratings={ratingsLookup([])}
         sectionHref={(crn) => `/c?crn=${crn}`}
-        asOf={null}
       />,
     );
     expect(screen.getByRole("region", { name: /Sections/ })).toHaveTextContent(
@@ -313,7 +307,6 @@ describe("course cards", () => {
         term="202602"
         chosen={csc.sections[1]!}
         departmentName="Computer Science"
-        asOf="2026-09-30T16:00:00.000Z"
         offered
       />,
     );
@@ -341,7 +334,6 @@ describe("course cards", () => {
         term="202602"
         chosen={csc.sections[0]!}
         departmentName="Computer Science"
-        asOf={null}
         offered
         inPlan
       />,
@@ -360,7 +352,6 @@ describe("course cards", () => {
         term="202602"
         chosen={null}
         departmentName="History"
-        asOf={null}
         offered={false}
       />,
     );
@@ -386,7 +377,6 @@ describe("course cards", () => {
           pagesTotal: 52,
         }}
         disclaimer="Unofficial — verify in Degree Works"
-        asOf={null}
       />,
     );
     expect(screen.getByTestId("course-description")).toHaveTextContent(/abstract data types/);
@@ -411,7 +401,6 @@ describe("course cards", () => {
         requirements={[]}
         programs={{ matches: [], pagesRead: 1, pagesTotal: 51 }}
         disclaimer="d"
-        asOf={null}
       />,
     );
     const programs = screen.getByTestId("also-counts-for");
@@ -426,7 +415,6 @@ describe("course cards", () => {
         requirements={[]}
         programs={{ matches: [], pagesRead: 51, pagesTotal: 51 }}
         disclaimer="d"
-        asOf={null}
       />,
     );
     expect(screen.getByTestId("also-counts-for")).toHaveTextContent(
@@ -436,9 +424,7 @@ describe("course cards", () => {
 
   it("about: no prerequisites, no requirement data, no programs", () => {
     const his = course("202601", "HIS 357");
-    render(
-      <CourseAboutCard course={his} requirements={[]} programs={null} disclaimer="d" asOf={null} />,
-    );
+    render(<CourseAboutCard course={his} requirements={[]} programs={null} disclaimer="d" />);
     expect(screen.getByTestId("course-prerequisites")).toHaveTextContent("None listed");
     expect(screen.getByTestId("course-requirements")).toHaveTextContent(
       "No requirement data in the schedule",
@@ -493,7 +479,6 @@ describe("course cards", () => {
       />,
     );
     const card = screen.getByTestId("course-week");
-    expect(card).toHaveAttribute("data-aggregated", "my-plan");
     expect(within(card).getByText("1 conflict")).toBeVisible();
     expect(card).toHaveTextContent("with CSC 221 A dashed (not in your plan yet)");
     expect(within(card).getAllByTestId("week-grid")).toHaveLength(1);
@@ -562,7 +547,6 @@ describe("review fixes: course page parts", () => {
         requirementsBySection={groups}
         programs={{ matches: [], pagesRead: 0, pagesTotal: 51 }}
         disclaimer="d"
-        asOf={null}
       />,
     );
     const list = screen.getByTestId("requirements-by-section");
@@ -582,7 +566,6 @@ describe("review fixes: course page parts", () => {
         requirements={[{ code: "NONE", name: "Not approved for any Ways of Knowing requirement" }]}
         programs={null}
         disclaimer="d"
-        asOf={null}
       />,
     );
     const chip = screen.getByText(/Not approved for any Ways/).closest("span.rounded-full")!;
@@ -647,12 +630,11 @@ describe("/courses parts", () => {
     },
   };
 
-  it("a result row: topics, requirement names, seats, sections, warnings, tagged", () => {
+  it("a result row: topics, requirement names, seats, sections, warnings", () => {
     render(<CourseRow row={row} currentTerm="202601" planHref="/plan" loginHref="/login" />);
     const article = screen.getByRole("article", {
       name: /Writing Program: topics vary by section/,
     });
-    expect(article).toHaveAttribute("data-aggregated", "course-schedule");
     expect(within(article).getByText("Sports Betting and Society")).toBeVisible();
     expect(within(article).getByText("Writing (Composition)")).toBeVisible();
     expect(within(article).getByTestId("row-seats")).toHaveTextContent("No open seats");

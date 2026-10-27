@@ -1,7 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   collectErrors,
-  expectAllTagged,
   horizontalOverflow,
   isMobile,
   newSignedInAccount,
@@ -34,7 +33,6 @@ async function checkPage(page: Page) {
   expect(await horizontalOverflow(page), "scrolls sideways").toBeLessThanOrEqual(0);
   expect(await seriousViolations(page)).toEqual([]);
   if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
-  expect(await expectAllTagged(page)).toBeGreaterThan(0);
 }
 
 test("search: the registration term by default, filters in the URL, back and reload", async ({
@@ -235,7 +233,6 @@ test("the AI panel asks a verified student to turn AI on first", async ({ page, 
   await expect(
     panel.getByRole("link", { name: "Turn on AI features in your profile" }),
   ).toHaveAttribute("href", "/profile");
-  expect(await expectAllTagged(page)).toBeGreaterThan(0);
 });
 
 test("no sideways scroll at 360px on the pages with the longest upstream text", async ({

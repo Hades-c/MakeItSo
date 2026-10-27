@@ -3,7 +3,6 @@ import { CalendarDays, CalendarSearch, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
-import { SourceTagList } from "@/components/ui/source-tag";
 import {
   loadEventSourceStatuses,
   loadEvents,
@@ -11,13 +10,7 @@ import {
   type EventSourceStatus,
   type EventsResult,
 } from "../_lib/load";
-import {
-  DEFAULT_EVENTS_VIEW,
-  EVENT_SOURCE_IDS,
-  eventsHref,
-  hasEventFilters,
-  type EventsView,
-} from "../_lib/params";
+import { DEFAULT_EVENTS_VIEW, eventsHref, hasEventFilters, type EventsView } from "../_lib/params";
 import { windowEndLabel } from "../_lib/present";
 import { EVENT_RANGE_LABELS, type EventsWindow } from "../_lib/range";
 import { EventList } from "./event-list";
@@ -116,13 +109,7 @@ function EventsEmpty({
             <a href={eventsHref(view)}>Reload</a>
           </Button>
         }
-      >
-        <SourceTagList
-          label="Calendars MakeItSo reads"
-          className="justify-center"
-          sources={view.sources.length > 0 ? view.sources : EVENT_SOURCE_IDS}
-        />
-      </EmptyState>
+      />
     );
   }
 

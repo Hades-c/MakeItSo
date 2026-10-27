@@ -2,7 +2,6 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SOURCES, type SourceId } from "@/lib/sources";
 import type { ResolvedTerms } from "@/lib/types/catalog";
 import type { FeedItem } from "@/lib/types/feeds";
 import type { DaySchedule, PlanProgress, PlanView, StudentDeadline } from "@/lib/types/plan";
@@ -14,8 +13,7 @@ import type { Loaded } from "@/server/today/load";
  * The /today panels rendered from server data (the loaders are replaced by fixtures-day values here; the loaders
  * themselves are covered by today-service.test.ts): the h1 day summary and strip, the timeline and its empty
  * states, Due soon, degree progress, This week on campus, Opportunities, quick links, the Plan Spring 2027 call to
- * action and the onboarding nudge. Every aggregated item must carry the tag of its stored source, and every
- * panel must degrade to its small error state on its own.
+ * action and the onboarding nudge. Every panel must degrade to its small error state on its own.
  */
 
 const NOON = new Date("2026-09-30T12:00:00-04:00");
@@ -224,21 +222,6 @@ beforeEach(() => {
   state.curatedThrows = false;
 });
 
-/** Every element marked data-aggregated holds a SourceTag of that source ("Source: <label>"). */
-function expectAllTagged(container: HTMLElement): number {
-  const items = [...container.querySelectorAll<HTMLElement>("[data-aggregated]")];
-  const problems = items.flatMap((item) => {
-    const source = item.dataset.aggregated as SourceId;
-    if (!(source in SOURCES)) return [`unknown source ${source}`];
-    const tag = item.querySelector(`[data-source="${source}"]`);
-    return tag?.textContent === `Source: ${SOURCES[source].label}`
-      ? []
-      : [`${source}: ${item.textContent?.slice(0, 40)}`];
-  });
-  expect(problems).toEqual([]);
-  return items.length;
-}
-
 async function show(node: Promise<React.ReactElement> | React.ReactElement) {
   return render(await node);
 }
@@ -340,14 +323,10 @@ describe("the timeline", () => {
     );
   });
 
-  it("adds tonight's campus event with its tag while events are on", async () => {
+  it("adds tonight's campus event while events are on", async () => {
     await show(panel());
     const event = document.querySelector('[data-kind="event"]');
-    expect(event).toHaveAttribute("data-source", "wildcatsync");
     expect(event).toHaveTextContent("Campus event 1");
-    expect(event?.querySelector('[data-source="wildcatsync"]')).toHaveTextContent(
-      "Source: WildcatSync",
-    );
   });
 
   it("shows another strip day without a now-line, with a way back", async () => {
@@ -360,7 +339,6 @@ describe("the timeline", () => {
     );
     // Thursday: no classes, the student's 11:59 PM deadline and the Hurt Hub event.
     expect(card.querySelector('[data-kind="deadline"]')).toHaveTextContent("Problem set");
-    expect(card.querySelector('[data-kind="event"]')).toHaveAttribute("data-source", "hurt-hub");
   });
 
   it.each([
@@ -435,11 +413,10 @@ describe("the timeline", () => {
   it("lists the day's all-day deadlines for the student, matching the strip's count", async () => {
     state.profile = ok({ ...PROFILE, standing: { standing: "senior", estimated: true } });
     state.plan = ok(plan({ deadlines: [] }));
-    const { container } = await show(panel("2026-10-01", false));
+    await show(panel("2026-10-01", false));
     const allDay = screen.getByTestId("timeline-all-day");
     expect(allDay).toHaveTextContent("Due that day");
     expect(allDay).toHaveTextContent("Minor Declaration Deadline for Seniors");
-    expect(expectAllTagged(container)).toBe(1);
     expect(screen.getByTestId("timeline-empty")).toHaveTextContent("No classes that day.");
   });
 
@@ -470,19 +447,16 @@ describe("the timeline", () => {
 });
 
 describe("Due for you", () => {
-  it("lists the calendar, the programs and the student's deadline, each tagged and linked", async () => {
-    const { container } = await show(DueSoonPanel({ userId: USER, now: NOON }));
+  it("lists the calendar, the programs and the student's deadline, each linked", async () => {
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
     const card = screen.getByRole("region", { name: /^Due for you/ });
     const items = within(card).getAllByTestId("due-soon-item");
     expect(items.length).toBeGreaterThan(3);
-    expect(expectAllTagged(container)).toBe(items.length);
     const own = items.find((li) => li.dataset.kind === "student");
     expect(own).toHaveTextContent("Problem set");
     expect(own).toHaveTextContent("Tomorrow 11:59p");
-    expect(own).toHaveTextContent("Source: Your plan");
     const webtree = items.find((li) => li.textContent?.includes("WebTree Open"));
     expect(webtree).toHaveTextContent("Oct 12 – Nov 3");
-    expect(webtree?.dataset.aggregated).toBe("registrar");
     const minor = items.find((li) => li.textContent?.includes("Minor Declaration"));
     expect(minor).toHaveTextContent("For: Seniors (Class of 2027)");
     for (const link of within(card).getAllByRole("link")) {
@@ -610,7 +584,7 @@ describe("Due for you", () => {
 
 describe("degree progress", () => {
   it("shows credits of 32 and the compact map, unofficially", async () => {
-    const { container } = await show(DegreePanel({ userId: USER }));
+    await show(DegreePanel({ userId: USER }));
     const card = screen.getByRole("region", { name: /Degree progress/ });
     expect(within(card).getByTestId("credits-done")).toHaveTextContent("0");
     expect(card).toHaveTextContent("of 32 credits done");
@@ -625,7 +599,6 @@ describe("degree progress", () => {
       "href",
       "/plan?tab=four-year",
     );
-    expect(expectAllTagged(container)).toBe(1);
   });
 
   it("degrades to a small error state", async () => {
@@ -638,13 +611,12 @@ describe("degree progress", () => {
 });
 
 describe("this week on campus", () => {
-  it("lists the next events with their tags and links", async () => {
-    const { container } = await show(CampusPanel({ now: NOON, timeZone: TZ }));
+  it("lists the next events with their links", async () => {
+    await show(CampusPanel({ now: NOON, timeZone: TZ }));
     const items = screen.getAllByTestId("campus-item");
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent("Today, 7:00 PM · Alvarez Student Union");
     expect(items[1]).toHaveTextContent("Thursday, October 1, 4:00 PM");
-    expect(expectAllTagged(container)).toBe(2);
     expect(screen.getByRole("link", { name: "Events" })).toHaveAttribute("href", "/events");
   });
 
@@ -675,14 +647,10 @@ describe("this week on campus", () => {
 
 describe("opportunities and quick links", () => {
   it("lists curated programs after the Due soon window and the Handshake entry point", async () => {
-    const { container } = await show(
-      OpportunitiesPanel({ userId: USER, now: NOON, careersOn: true }),
-    );
+    await show(OpportunitiesPanel({ userId: USER, now: NOON, careersOn: true }));
     const items = screen.getAllByTestId("opportunity-item");
     expect(items.length).toBeGreaterThan(1);
-    expect(expectAllTagged(container)).toBe(items.length);
     const handshake = items[items.length - 1];
-    expect(handshake).toHaveAttribute("data-aggregated", "handshake");
     expect(within(handshake!).getByRole("link")).toHaveAttribute(
       "href",
       "https://davidson.joinhandshake.com/",
@@ -713,7 +681,7 @@ describe("opportunities and quick links", () => {
     }
   });
 
-  it("links the portals, tagging the platforms", () => {
+  it("links the portals", () => {
     const { container } = render(QuickLinks());
     const links = screen.getAllByRole("link");
     expect(links.length).toBe(8);
@@ -721,11 +689,6 @@ describe("opportunities and quick links", () => {
       expect(link.getAttribute("href")).toMatch(/^https:\/\//);
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
     }
-    expect(expectAllTagged(container)).toBe(2);
-    // The tag sits under the name (a column), so a narrow card never splits the name mid-word.
-    const davidsonOne = links.find((a) => a.textContent?.includes("Davidson One"));
-    const column = davidsonOne?.querySelector("span.flex-col");
-    expect(column?.querySelector('[data-source="davidson-one"]')).not.toBeNull();
     expect(container.querySelector(".break-words")).toBeNull();
   });
 });
@@ -755,8 +718,8 @@ describe("panel boundaries", () => {
 });
 
 describe("the action row", () => {
-  it("offers Plan Spring 2027 only while WebTree is open, with its dates and tag", async () => {
-    const { container } = await show(
+  it("offers Plan Spring 2027 only while WebTree is open, with its dates", async () => {
+    await show(
       TodayActions({ userId: USER, now: new Date("2026-10-20T12:00:00-04:00"), timeZone: TZ }),
     );
     expect(screen.getByRole("link", { name: "Plan Spring 2027" })).toHaveAttribute(
@@ -766,7 +729,6 @@ describe("the action row", () => {
     expect(screen.getByTestId("webtree-window")).toHaveTextContent(
       "WebTree is open for Spring 2027 course preferences until Tue, Nov 3 at 5:00 PM.",
     );
-    expect(expectAllTagged(container)).toBe(1);
     expect(screen.queryByTestId("onboarding-nudge")).toBeNull();
   });
 

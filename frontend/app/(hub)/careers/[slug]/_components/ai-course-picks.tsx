@@ -3,7 +3,6 @@
 import Link from "next/link";
 import useSWR from "swr";
 import { CourseCode } from "@/components/ui/course-code";
-import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { catalogEndpoints } from "@/lib/api/endpoints";
 import { courseSlug, routes } from "@/lib/routes";
@@ -154,10 +153,7 @@ function PickRow({
         ) : null}
       </p>
       <p className="text-sm text-fg-2">{pick.reason}</p>
-      <div
-        className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
-        data-aggregated="course-schedule"
-      >
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         {isLoading ? (
           <span className="text-fg-3">Checking the schedule…</span>
         ) : error || !data ? (
@@ -167,7 +163,6 @@ function PickRow({
             {pickTermText(data.history, pick.termCode, basis)}
           </span>
         )}
-        <SourceTag source="course-schedule" />
       </div>
       {termLines.length > 0 ? (
         <ul

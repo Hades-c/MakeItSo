@@ -2,7 +2,6 @@ import Link from "next/link";
 import { CircleAlert, Clock } from "lucide-react";
 import { CourseCode } from "@/components/ui/course-code";
 import { Chip } from "@/components/ui/chip";
-import { SourceTag } from "@/components/ui/source-tag";
 import type { TermCode } from "@/lib/term";
 import { cn } from "@/lib/utils";
 import { creditsLabel, openSeatsLabel, sectionsLabel } from "../_lib/format";
@@ -14,7 +13,6 @@ import { BREAK_TEXT, WRAP_CHIP } from "./wrap";
  * One /courses result (PLAN §3): code, title (a topics course says "topics vary by section" and lists each
  * section's own title), credits, requirement tags under their official names, open seats, meeting times,
  * instructors, availability across the plan window (the Add to plan tiles) and "Add to <term>" with its warnings.
- * An aggregated item: tagged COURSE SCHEDULE.
  */
 export function CourseRow({
   row,
@@ -33,14 +31,12 @@ export function CourseRow({
   return (
     <article
       aria-labelledby={titleId}
-      data-aggregated="course-schedule"
       data-course={summary.code}
       className="grid min-w-0 gap-4 rounded-xl border border-line bg-surface p-4 shadow-card md:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]"
     >
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <CourseCode code={summary.code} variant="chip" size="md" />
-          <SourceTag source="course-schedule" />
           <span
             className={cn(
               "ml-auto text-sm font-semibold",

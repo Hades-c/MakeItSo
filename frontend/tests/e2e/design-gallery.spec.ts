@@ -118,7 +118,7 @@ function coveredText(page: Page) {
   });
 }
 
-/** Source tags and deadline titles cut short with an ellipsis (should be none). */
+/** Deadline titles (and any remaining source tags) cut short with an ellipsis (should be none). */
 function cutShort(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('span[data-source], [data-testid="deadline-title"]')]

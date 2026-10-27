@@ -1,7 +1,6 @@
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
 import { StatNumber } from "@/components/ui/stat-number";
 import type { Career, ResourceLink } from "@/lib/types/content";
 import { formatContentDate, formatUsd } from "../_lib/format";
@@ -96,7 +95,7 @@ function ResourceFacts({
 }
 
 /**
- * Davidson resources: each with the truthful tag of the office whose page it is (MATTHEWS CENTER, HURT HUB
+ * Davidson resources: each with the office whose page it is named next to it (MATTHEWS CENTER, HURT HUB
  * PROGRAMS, DAVIDSON OFFICES + the office's name), and a program's amount and deadlines exactly as published.
  */
 export function DavidsonResourcesCard({
@@ -110,23 +109,11 @@ export function DavidsonResourcesCard({
     <SectionCard id="davidson-resources" title="At Davidson">
       <ul className="flex flex-col divide-y divide-line">
         {resources.map((resource) => (
-          <li
-            key={resource.url + resource.name}
-            className="py-3 first:pt-0 last:pb-0"
-            // Every item is marked, tagged or not: an untagged one names its exemption, which expectAllTagged
-            // checks against UNTAGGED_EXEMPTIONS (so a new untagged kind fails instead of passing unnoticed).
-            data-aggregated={resource.source ?? "untagged"}
-            data-source={resource.source ?? undefined}
-            data-untagged={resource.source ? undefined : (resource.untagged ?? "")}
-          >
+          <li key={resource.url + resource.name} className="py-3 first:pt-0 last:pb-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <ExternalLink href={resource.url}>{resource.name}</ExternalLink>
-              {resource.source ? <SourceTag source={resource.source} /> : null}
               {resource.officeName ? (
                 <span className="text-xs text-fg-3">{resource.officeName}</span>
-              ) : null}
-              {resource.untagged === "davidson-web" ? (
-                <span className="text-xs text-fg-3">davidson.edu page</span>
               ) : null}
             </div>
             <p className="mt-1 text-sm text-fg-2">{resource.description}</p>
@@ -152,9 +139,8 @@ export function DavidsonResourcesCard({
 export function HandshakeCard({ baseUrl, query }: { baseUrl: string; query: string }) {
   return (
     <SectionCard id="handshake" title="Jobs and internships">
-      <div data-aggregated="handshake" data-source="handshake">
+      <div>
         <div className="flex flex-wrap items-center gap-2">
-          <SourceTag source="handshake" />
           <span className="text-sm text-fg-2">Davidson’s job and internship site</span>
         </div>
         <p className="mt-3 text-sm text-fg-2">Search Handshake for:</p>

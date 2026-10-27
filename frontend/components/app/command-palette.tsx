@@ -13,7 +13,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { SourceTag } from "@/components/ui/source-tag";
 import { cn } from "@/lib/utils";
 import {
   closeCommandPalette,
@@ -394,28 +393,19 @@ function PaletteBody({
                   )}
                 >
                   <Icon aria-hidden strokeWidth={1.8} className="size-4 shrink-0 text-fg-3" />
-                  {/* Phones: the title gets the whole row and the source tag goes under it. */}
-                  <span className="flex min-w-0 flex-1 flex-col md:flex-row md:items-center md:gap-3">
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span
-                        className={cn(
-                          "text-sm font-semibold break-words md:truncate",
-                          index === active ? "text-primary" : "text-fg",
-                        )}
-                      >
-                        {option.title}
-                      </span>
-                      {option.subtitle ? (
-                        <span className="text-xs break-words text-fg-2 md:truncate">
-                          {option.subtitle}
-                        </span>
-                      ) : null}
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span
+                      className={cn(
+                        "text-sm font-semibold break-words md:truncate",
+                        index === active ? "text-primary" : "text-fg",
+                      )}
+                    >
+                      {option.title}
                     </span>
-                    {option.source ? (
-                      <SourceTag
-                        source={option.source}
-                        className="mt-1 self-start md:mt-0 md:shrink-0 md:self-center"
-                      />
+                    {option.subtitle ? (
+                      <span className="text-xs break-words text-fg-2 md:truncate">
+                        {option.subtitle}
+                      </span>
                     ) : null}
                   </span>
                   {index === active ? (

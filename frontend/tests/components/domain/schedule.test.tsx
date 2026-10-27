@@ -294,9 +294,8 @@ describe("DayTimeline", () => {
     // "9a" would sit under the pill, so it is left out; the other hours stay.
     expect(within(gutter).queryByText("9a")).not.toBeInTheDocument();
     expect(within(gutter).getByText("10a")).toBeInTheDocument();
-    // Classes carry no source tag, but still their source.
+    // Classes carry no source tag.
     expect(within(list).queryByText("Source:", { exact: false })).not.toBeInTheDocument();
-    expect(items[0]).toHaveAttribute("data-source", "course-schedule");
   });
 
   it("on phones, a class block leads with the code and a title that may wrap; the room shows only when it fits", () => {
@@ -373,7 +372,7 @@ describe("DayTimeline", () => {
     expect(screen.queryByText(/free/)).not.toBeInTheDocument();
   });
 
-  it("shows source tags on events and deadlines, and a point marker for deadlines", () => {
+  it("shows a point marker for deadlines", () => {
     render(
       <DayTimeline
         timeZone="America/New_York"
@@ -406,13 +405,8 @@ describe("DayTimeline", () => {
     const deadline = screen.getByText("Problem set").closest("li")!;
     expect(deadline).toHaveAttribute("data-kind", "deadline");
     expect(deadline).toHaveTextContent("Due 1:00p");
-    expect(within(deadline).getByText("Your plan").closest("[data-source]")).toHaveAttribute(
-      "data-source",
-      "my-plan",
-    );
     const talk = screen.getByText(/Faculty lunch talk/, { selector: ".sr-only" }).closest("li")!;
     expect(talk).toHaveAttribute("data-kind", "event");
-    expect(within(talk).getByText("Hurt Hub", { selector: "[data-source]" })).toBeInTheDocument();
     // No now given: no line, no countdown.
     expect(screen.queryByTestId("now-line")).not.toBeInTheDocument();
     expect(screen.queryByText(/ in \d/)).not.toBeInTheDocument();
@@ -445,10 +439,8 @@ describe("DayTimeline", () => {
     expect(csc).toHaveAttribute("data-density", "narrow");
     expect(csc).toHaveAttribute("data-lane", "1/2");
     expect(talk).toHaveAttribute("data-lane", "2/2");
-    // Side by side only where two lanes fit 12px text; the tag in a lane is never cut short.
+    // Side by side only where two lanes fit 12px text.
     expect(csc).toHaveClass("hidden", "@min-[28rem]:block");
-    const tag = within(talk!).getByText("Hurt Hub", { selector: "[data-source]" });
-    expect(tag).not.toHaveClass("truncate");
   });
 
   it("on narrow containers draws an overlap as one block and lists its items in full", () => {
@@ -501,16 +493,12 @@ describe("DayTimeline", () => {
     expect(listed).toHaveClass("@min-[38rem]:hidden");
     expect(listed).toHaveTextContent("At the same time, 12:00p–1:30p");
     const rows = within(listed).getAllByRole("listitem");
-    expect(rows.map((r) => r.getAttribute("data-source"))).toEqual([
-      "hurt-hub",
-      "course-schedule",
-      "registrar",
-    ]);
+    expect(rows).toHaveLength(3);
     expect(rows[0]).toHaveTextContent(
-      "12:00p–1:00pFaculty lunch talk (sample)Hurt HubSource: Hurt Hubnow · 20 m left",
+      "12:00p–1:00pFaculty lunch talk (sample)Hurt Hubnow · 20 m left",
     );
     expect(rows[1]).toHaveTextContent("12:15p–1:30pHIS 357 AThe Civil Rights Movement");
-    expect(within(rows[2]!).getByText("Registrar", { selector: "[data-source]" })).toBeVisible();
+    expect(rows[2]).toHaveTextContent("12:30p–1:30pAdvising drop-in (sample)");
   });
 
   it("never puts the now pill or a deadline label over a block", () => {
@@ -558,7 +546,7 @@ describe("DayTimeline", () => {
     const deadlines = screen.getByTestId("deadline-list");
     expect(deadlines).toHaveTextContent("Deadlines");
     expect(within(deadlines).getByRole("listitem")).toHaveTextContent(
-      "Due 11:00aECO 232Reading quizSource: Your plan",
+      "Due 11:00aECO 232Reading quiz",
     );
     // The flag for the listed deadline would meet the pill (15 minutes away), so it is left out.
     expect(within(gutter).queryByTestId("deadline-flag")).not.toBeInTheDocument();
@@ -639,7 +627,6 @@ describe("DayTimeline", () => {
     expect(later).toHaveTextContent("7:00p–8:30pClub open houseUnion");
     expect(later).toHaveTextContent("10:00p–12:30aLate show");
     expect(later).toHaveTextContent("Due 11:59pHousing form");
-    expect(within(later as HTMLElement).getByText("WildcatSync")).toBeInTheDocument();
     expect(screen.getByText("Time not listed").nextElementSibling).toHaveTextContent("Mystery");
     // 7:30 PM is after the view: no now-line.
     expect(screen.queryByTestId("now-line")).not.toBeInTheDocument();

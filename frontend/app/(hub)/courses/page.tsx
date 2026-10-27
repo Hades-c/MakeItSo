@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import { termLabel } from "@/lib/term";
 import { requireUser } from "@/server/auth/session";
@@ -87,12 +86,6 @@ export default async function CoursesPage({
         >
           {status}
         </ResultsHeading>
-        {showsResults ? (
-          <p className="flex flex-wrap items-center gap-2 text-xs text-fg-2">
-            Schedule data
-            <SourceTag source="course-schedule" asOf={result?.asOf ?? null} />
-          </p>
-        ) : null}
       </div>
 
       {view.error ? (

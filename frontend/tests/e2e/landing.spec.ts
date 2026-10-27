@@ -43,9 +43,6 @@ test("landing: live facts for visitors, computed from the catalog", async ({ pag
   await expect(courses).toContainText(
     `${total.toLocaleString("en-US")}courses on the Spring 2027 schedule`,
   );
-  await expect(courses.locator("[data-source=course-schedule]")).toHaveText(
-    "Source: Course schedule",
-  );
   await expect(page.locator("[data-fact=careers]")).toContainText(/^\d+career paths/);
 
   for (const colorScheme of ["light", "dark"] as const) {

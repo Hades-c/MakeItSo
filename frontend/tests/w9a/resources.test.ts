@@ -5,12 +5,10 @@ import {
   normalizeUrl,
   officeForUrl,
   resolveResources,
-  UNTAGGED_EXEMPTIONS,
 } from "@/app/(hub)/careers/_lib/resources";
 import { programSourceForOffice, type Office, type Program } from "@/lib/types/content";
 import { CAREERS } from "@/server/content/careers";
 import { OFFICES, PROGRAMS } from "@/server/content/offices";
-import { E2E_UNTAGGED_EXEMPTIONS } from "../e2e/untagged";
 
 const BASE = "https://www.davidson.edu/offices-and-services";
 
@@ -168,7 +166,7 @@ describe("resolveResources", () => {
     expect(grants).toMatchObject({ source: "matthews-center", officeName: null, program: null });
   });
 
-  it("tags an office page with its office, any other offices page DAVIDSON OFFICES, and exempts department pages", () => {
+  it("sources an office page with its office, any other offices page DAVIDSON OFFICES, and leaves the rest unsourced", () => {
     const [center, galleries, department, elsewhere] = resolveResources(
       [
         resource(`${BASE}/matthews-center-career-development`),
@@ -179,21 +177,14 @@ describe("resolveResources", () => {
       OFFICES_FIXTURE,
       PROGRAMS_FIXTURE,
     );
-    expect(center).toMatchObject({ source: "matthews-center", untagged: null, program: null });
+    expect(center).toMatchObject({ source: "matthews-center", program: null });
     expect(galleries).toMatchObject({
       source: "davidson-offices",
-      untagged: null,
       officeName: null,
       program: null,
     });
-    expect(department).toMatchObject({
-      source: null,
-      untagged: "davidson-web",
-      officeName: null,
-      program: null,
-    });
-    // Not a page anyone has vetted as untagged: no exemption, so the tests below and expectAllTagged fail on it.
-    expect(elsewhere).toMatchObject({ source: null, untagged: null });
+    expect(department).toMatchObject({ source: null, officeName: null, program: null });
+    expect(elsewhere).toMatchObject({ source: null, officeName: null, program: null });
   });
 
   it("finds the program a resource names on a page several programs share", () => {
@@ -288,9 +279,6 @@ describe("resolveResources", () => {
         } else if (item.source !== "davidson-offices") {
           expect(item.officeName).toBeNull();
         }
-        // Tagged, or untagged for an allowed reason: never untagged without one.
-        if (item.source === null) expect(UNTAGGED_EXEMPTIONS).toContain(item.untagged);
-        else expect(item.untagged).toBeNull();
       });
     }
     // The join is doing real work on today's content.
@@ -347,12 +335,11 @@ describe("resolveResources", () => {
     });
   });
 
-  it("on the real content: only department and institute pages on davidson.edu are untagged", () => {
+  it("on the real content: every unsourced resource is a department or institute page on davidson.edu", () => {
     for (const career of CAREERS) {
       for (const item of resolveResources(career.davidsonResources, OFFICES, PROGRAMS)) {
         if (item.source !== null) continue;
-        expect(item.untagged, `${career.slug}: ${item.name}`).toBe("davidson-web");
-        expect(item.url).toMatch(
+        expect(item.url, `${career.slug}: ${item.name}`).toMatch(
           /^https:\/\/www\.davidson\.edu\/(academic-departments|institute-public-good)\//,
         );
       }
@@ -378,11 +365,5 @@ describe("nameKey / namesProgram", () => {
     // Only at a word boundary.
     expect(namesProgram("Premedical Grants", "Medical Grants")).toBe(false);
     expect(namesProgram("Anything", "(only an aside)")).toBe(false);
-  });
-});
-
-describe("the e2e exemption list", () => {
-  it("is the app's list", () => {
-    expect([...E2E_UNTAGGED_EXEMPTIONS]).toEqual([...UNTAGGED_EXEMPTIONS]);
   });
 });

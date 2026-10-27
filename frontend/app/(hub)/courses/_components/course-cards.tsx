@@ -15,7 +15,6 @@ import { WeekGrid } from "@/components/domain/week-grid";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { CourseCode } from "@/components/ui/course-code";
-import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import { compareTerms, termLabel, type TermCode } from "@/lib/term";
 import type { Availability, Course, ReqCode, Section } from "@/lib/types/catalog";
@@ -38,8 +37,7 @@ import { BREAK_TEXT, WRAP_CHIP } from "./wrap";
 /**
  * The course page's cards (PLAN §3 /courses/[term]/[code], Lakeside course.html): the index-card header, About
  * (official description, requirements, "Also counts for", prerequisites), Other terms (availability per term,
- * PLAN §5) and the week grid against the student's plan. Server components; every aggregated block carries its
- * source tag.
+ * PLAN §5) and the week grid against the student's plan. Server components.
  */
 
 const CARD =
@@ -78,7 +76,6 @@ export function CourseHeader({
   term,
   chosen,
   departmentName,
-  asOf,
   offered,
   inPlan = false,
 }: {
@@ -87,7 +84,6 @@ export function CourseHeader({
   term: TermCode;
   chosen: Section | null;
   departmentName: string | null;
-  asOf: string | null;
   /** The course is on this term's schedule. */
   offered: boolean;
   /** The student already has the course in their plan for this page's term (the Add to plan panel says so too). */
@@ -109,11 +105,7 @@ export function CourseHeader({
   ].filter(Boolean);
 
   return (
-    <header
-      className="relative mt-7 mb-5"
-      data-aggregated="course-schedule"
-      data-testid="course-header"
-    >
+    <header className="relative mt-7 mb-5" data-testid="course-header">
       <CourseCode
         code={course.code}
         section={section?.section}
@@ -130,7 +122,6 @@ export function CourseHeader({
                 {part}
               </span>
             ))}
-            <SourceTag source="course-schedule" asOf={asOf} />
           </p>
           <h1
             className={cn(
@@ -267,7 +258,6 @@ export function CourseAboutCard({
   requirementsBySection,
   programs,
   disclaimer,
-  asOf,
 }: {
   course: Course;
   requirements: RequirementTag[];
@@ -278,16 +268,13 @@ export function CourseAboutCard({
   requirementsBySection?: { sections: string[]; reqs: RequirementTag[] | null }[];
   programs: CoursePrograms | null;
   disclaimer: string;
-  asOf: string | null;
 }) {
   const descriptions = distinctBySection(course.sections, (s) => s.descriptionText);
   const prereqs = distinctBySection(course.sections, (s) => s.prerequisitesText);
   const several = (list: { sections: string[] }[]) => list.length > 1;
   return (
-    <section aria-labelledby="about-title" className={CARD} data-aggregated="course-schedule">
-      <CardHeading id="about-title" title="About">
-        <SourceTag source="course-schedule" asOf={asOf} />
-      </CardHeading>
+    <section aria-labelledby="about-title" className={CARD}>
+      <CardHeading id="about-title" title="About" />
       {descriptions.length === 0 ? (
         <p className="text-sm text-fg-2">The schedule has no description for this course.</p>
       ) : (
@@ -337,7 +324,7 @@ export function CourseAboutCard({
         </dd>
 
         <dt className="text-xs font-medium text-fg-3 md:pt-0.5">Also counts for</dt>
-        <dd className="min-w-0" data-aggregated="catalog" data-testid="also-counts-for">
+        <dd className="min-w-0" data-testid="also-counts-for">
           {programs === null ? (
             <span className="text-fg-2">The catalog’s programs can’t be read right now.</span>
           ) : programs.matches.length === 0 && programs.pagesRead === 0 ? (
@@ -369,7 +356,6 @@ export function CourseAboutCard({
             </ul>
           )}
           <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-fg-3">
-            <SourceTag source="catalog" />
             {programs && programs.pagesRead > 0 && programs.pagesRead < programs.pagesTotal
               ? `Based on ${programs.pagesRead} of ${programs.pagesTotal} program pages`
               : null}
@@ -415,10 +401,8 @@ export function OtherTermsCard({
 }) {
   const entries = [...history].sort((a, b) => compareTerms(b.termCode, a.termCode));
   return (
-    <section aria-labelledby="terms-title" className={CARD} data-aggregated="course-schedule">
-      <CardHeading id="terms-title" title="Other terms">
-        <SourceTag source="course-schedule" />
-      </CardHeading>
+    <section aria-labelledby="terms-title" className={CARD}>
+      <CardHeading id="terms-title" title="Other terms" />
       <ul className="divide-y divide-line" data-testid="other-terms">
         {entries.map((entry) => {
           const usually = usuallyOfferedText(entry);
@@ -479,7 +463,6 @@ export function CourseWeekCard({
       id="week"
       aria-labelledby="week-title"
       className={cn(CARD, "scroll-mt-24")}
-      data-aggregated="my-plan"
       data-testid="course-week"
     >
       <CardHeading id="week-title" title={`Your week with ${code}`} focusable>
@@ -497,7 +480,6 @@ export function CourseWeekCard({
               </span>
             )
           ) : null}
-          <SourceTag source="my-plan" />
         </span>
       </CardHeading>
       <p className="mb-3 text-sm text-fg-2">

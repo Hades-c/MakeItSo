@@ -1,6 +1,5 @@
 import { PlanMap } from "@/components/domain/plan-map";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
 import { StatNumber } from "@/components/ui/stat-number";
 import { routes } from "@/lib/routes";
 import { isTermCode, termCodeFor } from "@/lib/term";
@@ -57,13 +56,12 @@ export async function DegreePanel({ userId }: { userId: string }) {
       title="Degree progress"
       link={{ href: routes.plan("four-year"), label: "My plan" }}
     >
-      <div data-aggregated="my-plan" data-testid="degree-progress">
+      <div data-testid="degree-progress">
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
           <StatNumber
             value={<span data-testid="credits-done">{creditsDone}</span>}
             label={`of ${required} credits done`}
           />
-          <SourceTag source="my-plan" />
         </div>
         <p className="mt-1 text-sm text-fg-2">
           {ahead === 0

@@ -1,7 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import {
   collectErrors,
-  expectAllTagged,
   horizontalOverflow,
   isMobile,
   registerViaApi,
@@ -17,7 +16,7 @@ import {
  * Fall 2026, registration Spring 2027, WebTree opens Oct 12). A first-year with three Fall 2026 sections (CSC 221 A
  * MWF 10:30, ECO 232 A MWF 11:30, ENV 237 A MW 14:30) and one deadline sees the deterministic day summary, the
  * timeline with the now-line, the five-day strip, Due for you, degree progress (no Plan Spring 2027 yet: WebTree is
- * not open), this week on campus, opportunities and quick links, every aggregated item tagged with its source. Runs at
+ * not open), this week on campus, opportunities and quick links. Runs at
  * desktop 1440 and phone 390, light and dark, with axe.
  */
 
@@ -190,7 +189,6 @@ test("today: the day summary, timeline, strip and panels for a student with sect
       expect(campusTop).toBeLessThan(degreeTop);
     }
 
-    expect(await expectAllTagged(page)).toBeGreaterThan(8);
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
     expect(await seriousViolations(page)).toEqual([]);
     if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
@@ -237,7 +235,6 @@ test("today: a new student is asked to finish setting up", async ({ page, reques
     "No Fall 2026 class sections in your plan yet.",
   );
   await expect(page.getByTestId("degree-progress")).toContainText("0");
-  expect(await expectAllTagged(page)).toBeGreaterThan(0);
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   expect(await seriousViolations(page)).toEqual([]);
   if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);

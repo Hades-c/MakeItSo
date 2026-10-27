@@ -72,15 +72,10 @@ describe("CareerCard", () => {
 });
 
 describe("OfferedLine", () => {
-  it("counts the courses on the registration schedule, with its source tag", () => {
+  it("counts the courses on the registration schedule", () => {
     render(<OfferedLine offered={5} total={8} termLabel="Spring 2027" />);
     const line = screen.getByTestId("career-card-offered");
     expect(line).toHaveTextContent("5 of 8 courses offered in Spring 2027");
-    expect(line).toHaveAttribute("data-aggregated", "course-schedule");
-    expect(within(line).getByText("Course schedule")).toHaveAttribute(
-      "data-source",
-      "course-schedule",
-    );
   });
 
   it("uses the singular for one course", () => {
@@ -195,14 +190,13 @@ describe("career page sections", () => {
     expect(screen.getByText(/No federal pay data/)).toBeVisible();
   });
 
-  it("shows office programs with their tags and published amounts and deadlines", () => {
+  it("shows office programs with their published amounts and deadlines", () => {
     const resources: ResolvedResource[] = [
       {
         name: "Try It Fund",
         url: "https://www.davidson.edu/try-it",
         description: "Small grants.",
         source: "hurt-hub-programs",
-        untagged: null,
         officeName: null,
         program: {
           slug: "try-it-fund",
@@ -219,7 +213,6 @@ describe("career page sections", () => {
         url: "https://www.davidson.edu/fellows",
         description: "A fellowship.",
         source: "davidson-offices",
-        untagged: null,
         officeName: "Mulliss Center for Civic Engagement",
         program: {
           slug: "fellows",
@@ -236,7 +229,6 @@ describe("career page sections", () => {
         url: "https://www.davidson.edu/academic-departments/dept",
         description: "Research.",
         source: null,
-        untagged: "davidson-web",
         officeName: null,
         program: null,
       },
@@ -245,7 +237,6 @@ describe("career page sections", () => {
         url: "https://www.davidson.edu/prelaw/resources",
         description: "Resources.",
         source: "davidson-offices",
-        untagged: null,
         officeName: "Prelaw Advising",
         program: {
           slug: "fee-grant",
@@ -260,21 +251,12 @@ describe("career page sections", () => {
     ];
     render(<DavidsonResourcesCard resources={resources} verifiedAt="2026-09-30" />);
     const items = screen.getAllByRole("listitem");
-    expect(items[0]).toHaveAttribute("data-aggregated", "hurt-hub-programs");
-    expect(within(items[0]!).getByText("Hurt Hub programs")).toHaveAttribute(
-      "data-source",
-      "hurt-hub-programs",
-    );
     expect(items[0]).toHaveTextContent("AmountUp to $500");
     expect(items[0]).toHaveTextContent("DeadlinesRolling");
     // Same page (a trailing slash apart): no second link, no "Program" line.
     expect(within(items[0]!).getAllByRole("link")).toHaveLength(1);
     expect(items[0]).not.toHaveTextContent("Program");
 
-    expect(within(items[1]!).getByText("Davidson offices")).toHaveAttribute(
-      "data-source",
-      "davidson-offices",
-    );
     expect(items[1]).toHaveTextContent("Mulliss Center for Civic Engagement");
     expect(items[1]).not.toHaveTextContent("Amount");
     expect(items[1]).toHaveTextContent("DeadlinesWinter Break: by October 1");
@@ -283,11 +265,9 @@ describe("career page sections", () => {
       within(items[1]!).getByRole("link", { name: "Where this is published" }),
     ).toHaveAttribute("href", "https://www.davidson.edu/fellows/application-process");
 
-    // Untagged only with its exemption, in plain words (no tag).
-    expect(items[2]).toHaveAttribute("data-aggregated", "untagged");
-    expect(items[2]).toHaveAttribute("data-untagged", "davidson-web");
-    expect(items[2]!.querySelector("[data-source]")).toBeNull();
-    expect(items[2]).toHaveTextContent("davidson.edu page");
+    // No office match: the name and description still show, with no office name beside it.
+    expect(items[2]).toHaveTextContent("Department research");
+    expect(items[2]).toHaveTextContent("Research.");
 
     // Facts of a program the resource's name does not say: the program is named.
     expect(items[3]).toHaveTextContent("ProgramLaw school application fee grant");
@@ -297,28 +277,6 @@ describe("career page sections", () => {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
     }
     expect(screen.getByText(/checked/)).toHaveTextContent("checked Sep 30, 2026");
-  });
-
-  it("marks an untagged item without an exemption so expectAllTagged fails on it", () => {
-    render(
-      <DavidsonResourcesCard
-        verifiedAt="2026-09-30"
-        resources={[
-          {
-            name: "Somewhere",
-            url: "https://example.org/",
-            description: "?",
-            source: null,
-            untagged: null,
-            officeName: null,
-            program: null,
-          },
-        ]}
-      />,
-    );
-    const item = screen.getByRole("listitem");
-    expect(item).toHaveAttribute("data-aggregated", "untagged");
-    expect(item).toHaveAttribute("data-untagged", "");
   });
 
   it("links Handshake by its base URL with words to copy (no invented search URL)", async () => {
@@ -333,7 +291,6 @@ describe("career page sections", () => {
       "https://davidson.joinhandshake.com/",
     );
     expect(screen.getByTestId("handshake-query")).toHaveTextContent("software engineer");
-    expect(screen.getByText("Handshake")).toHaveAttribute("data-source", "handshake");
     await user.click(screen.getByRole("button", { name: "Copy search words" }));
     expect(writeText).toHaveBeenCalledWith("software engineer");
     expect(await screen.findByRole("button", { name: "Copied search words" })).toBeVisible();
@@ -356,7 +313,7 @@ describe("career page sections", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows departments (into the catalog) and official programs with the catalog tag", () => {
+  it("shows departments (into the catalog) and official programs linked to the catalog", () => {
     render(
       <ProgramsList
         departments={SE.departments}
@@ -378,13 +335,11 @@ describe("career page sections", () => {
     ).toHaveAttribute("href", "/courses?dept=CSC");
     const major = screen.getByRole("link", { name: "Major in Computer Science (B.S. Degree)" });
     expect(major).toHaveAttribute("href", expect.stringContaining("preview_program.php"));
-    expect(major.closest("li")).toHaveAttribute("data-aggregated", "catalog");
     const fallback = screen.getByText("Mathematics minor").closest("li")!;
-    expect(fallback).not.toHaveAttribute("data-aggregated");
     expect(within(fallback).queryByRole("link")).toBeNull();
-    // Mixed: only the tagged names are claimed as official.
+    // Mixed: only the linked names are claimed as official.
     expect(screen.getByTestId("programs-note")).toHaveTextContent(
-      "Tagged names are official, from the 2026–2027 Davidson catalog; the others are from the career guide.",
+      "Linked names are official, from the 2026–2027 Davidson catalog; the others are from the career guide.",
     );
   });
 

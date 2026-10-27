@@ -3,7 +3,6 @@ import { DayTimeline, type TimelineNextUp } from "@/components/domain/day-timeli
 import { windowLabel } from "@/components/domain/time-geometry";
 import { SectionCard } from "@/components/ui/section-card";
 import { AlarmClock, ExternalLink } from "lucide-react";
-import { SourceTag } from "@/components/ui/source-tag";
 import { formatLongDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { DaySchedule } from "@/lib/types/plan";
@@ -184,7 +183,7 @@ export async function TimelinePanel({
   );
 }
 
-/** The day's deadlines without a published time ("Due all day"), each tagged and linked to its source page. */
+/** The day's deadlines without a published time ("Due all day"), each linked to its source page. */
 function AllDayList({ items, isToday }: { items: readonly AllDayDeadline[]; isToday: boolean }) {
   return (
     <ul
@@ -195,7 +194,6 @@ function AllDayList({ items, isToday }: { items: readonly AllDayDeadline[]; isTo
       {items.map((item) => (
         <li
           key={item.id}
-          data-aggregated={item.source}
           className="relative flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-line px-3 py-2 text-sm"
         >
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-urgent">
@@ -211,7 +209,6 @@ function AllDayList({ items, isToday }: { items: readonly AllDayDeadline[]; isTo
             {item.title} <span className="sr-only">(opens in a new tab)</span>
             <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
           </a>
-          <SourceTag source={item.source} />
         </li>
       ))}
     </ul>
