@@ -41,16 +41,17 @@ afterEach(() => {
 describe("hubNavKeys (the shell's sections from the flags)", () => {
   const CORE: NavKey[] = ["today", "courses", "plan"];
 
-  // Every combination of the three section flags.
+  // Every combination of the three section flags. Syllabi, like Today/Courses/My plan, has no flag of its own,
+  // so it rides along at the end of every combination.
   it.each([
-    [true, true, true, [...CORE, "careers", "events", "alumni"]],
-    [true, true, false, [...CORE, "careers", "events"]],
-    [true, false, true, [...CORE, "careers", "alumni"]],
-    [true, false, false, [...CORE, "careers"]],
-    [false, true, true, [...CORE, "events"]],
-    [false, true, false, [...CORE, "events"]],
-    [false, false, true, [...CORE]],
-    [false, false, false, [...CORE]],
+    [true, true, true, [...CORE, "careers", "events", "alumni", "syllabi"]],
+    [true, true, false, [...CORE, "careers", "events", "syllabi"]],
+    [true, false, true, [...CORE, "careers", "alumni", "syllabi"]],
+    [true, false, false, [...CORE, "careers", "syllabi"]],
+    [false, true, true, [...CORE, "events", "syllabi"]],
+    [false, true, false, [...CORE, "events", "syllabi"]],
+    [false, false, true, [...CORE, "syllabi"]],
+    [false, false, false, [...CORE, "syllabi"]],
   ] as const)("careers %s, events %s, alumni %s → %j", (careers, events, alumni, expected) => {
     const flags = { careers, events, alumni };
     expect(hubNavKeys(flags)).toEqual(expected);
@@ -68,6 +69,7 @@ describe("hubNavKeys (the shell's sections from the flags)", () => {
       "careers",
       "events",
       "alumni",
+      "syllabi",
     ]);
   });
 });

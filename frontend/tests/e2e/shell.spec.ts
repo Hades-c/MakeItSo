@@ -54,7 +54,6 @@ for (const colorScheme of ["light", "dark"] as const) {
         await expect(page.getByTestId("bottom-tabs")).toBeVisible({ visible: isMobile(page) });
         if (!isMobile(page)) {
           await expect(page.getByRole("search")).toBeVisible();
-          await expect(page.getByRole("region", { name: "Sources" })).toBeVisible();
         }
         const theme = await page.evaluate(
           () => getComputedStyle(document.documentElement).colorScheme,
@@ -84,10 +83,7 @@ test("public pages have no serious accessibility problems in either theme", asyn
   expect(errors).toEqual([]);
 });
 
-test("the 720-1179px rail shows every label, and the Sources panel says its times in words", async ({
-  page,
-  request,
-}) => {
+test("the 720-1179px rail shows every label", async ({ page, request }) => {
   test.skip(isMobile(page), "the rail and the sidebar are tablet and desktop surfaces");
   const email = uniqueEmail("e2e-rail");
   await registerViaApi(request, { name: "Rail Tester", email, password: PASSWORD });
@@ -118,7 +114,7 @@ test("the 720-1179px rail shows every label, and the Sources panel says its time
       expect(
         labels.map((l) => l.text),
         `${route} @${width}`,
-      ).toEqual(["Today", "Courses", "My plan", "Careers", "Events", "Alumni"]);
+      ).toEqual(["Today", "My plan", "Courses", "Careers", "Alumni", "Syllabi", "Events"]);
       for (const label of labels) {
         expect(label, `${route} @${width}`).toMatchObject({
           visible: true,
@@ -132,31 +128,10 @@ test("the 720-1179px rail shows every label, and the Sources panel says its time
     }
   }
 
-  // The full sidebar (1180px and up): every time in the Sources panel follows a visible word.
+  // The full sidebar (1180px and up): no link relies on a tooltip either.
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/today");
-  const panel = page.getByRole("region", { name: "Sources" });
-  await expect(panel).toBeVisible();
   await expect(main.locator("[title]")).toHaveCount(0);
-  const times = await panel.locator("time").evaluateAll((nodes) =>
-    nodes.map((time) => {
-      const status = time.parentElement?.textContent ?? "";
-      return {
-        before: status
-          .slice(0, status.indexOf(time.textContent ?? ""))
-          .replace(/^,\s*/, "")
-          .trim(),
-        title: time.hasAttribute("title"),
-      };
-    }),
-  );
-  expect(times.length).toBeGreaterThan(0);
-  for (const time of times) {
-    expect(time.before).toMatch(
-      /^(Synced|Checked|Out of date · last synced|Sync failed · last synced)$/,
-    );
-    expect(time.title).toBe(false);
-  }
 });
 
 test("bottom tabs are the only fixed bar on phones and every tab is tappable", async ({

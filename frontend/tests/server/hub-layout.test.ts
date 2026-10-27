@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import HubLayout from "@/app/(hub)/layout";
 import { VerifyBanner } from "@/app/(auth)/_components/verify-banner";
 import { AppShell, type AppShellProps } from "@/components/app/app-shell";
-import { SOURCES } from "@/lib/sources";
 import { MissingFixtureError } from "@/server/http/fixtures";
 
 const stubs = vi.hoisted(() => ({
@@ -13,7 +12,6 @@ const stubs = vi.hoisted(() => ({
   getPlanCredits: vi.fn(async () => ({ done: 12, planned: 16, required: 32 as const })),
   onboardedAt: undefined as string | null | undefined,
   returnPath: "/courses" as string | null,
-  statuses: [] as { id: string; lastSync: string; status: string }[],
 }));
 
 vi.mock("@/server/auth/session", () => ({
@@ -30,7 +28,6 @@ vi.mock("next/headers", () => ({
     new Headers(stubs.returnPath === null ? {} : { "x-mis-return-path": stubs.returnPath }),
 }));
 vi.mock("@/server/plan", () => ({ getPlanCredits: stubs.getPlanCredits }));
-vi.mock("@/server/sync", () => ({ getSourceStatuses: async () => stubs.statuses }));
 vi.mock("@/server/catalog", () => ({
   browseTerm: stubs.browseTerm,
   countCourses: stubs.countCourses,
@@ -83,24 +80,39 @@ describe("hub layout: flagged sections", () => {
       "careers",
       "events",
       "alumni",
+      "syllabi",
     ]);
   });
 
   it("leaves out the sections whose flags are off (Alumni with Careers)", async () => {
     vi.stubEnv("FEATURE_EVENTS", "false");
-    expect((await shellProps()).nav).toEqual(["today", "courses", "plan", "careers", "alumni"]);
+    expect((await shellProps()).nav).toEqual([
+      "today",
+      "courses",
+      "plan",
+      "careers",
+      "alumni",
+      "syllabi",
+    ]);
     vi.stubEnv("FEATURE_CAREERS", "false");
-    expect((await shellProps()).nav).toEqual(["today", "courses", "plan"]);
+    expect((await shellProps()).nav).toEqual(["today", "courses", "plan", "syllabi"]);
     vi.stubEnv("FEATURE_CAREERS", "true");
     vi.stubEnv("FEATURE_ALUMNI", "off");
-    expect((await shellProps()).nav).toEqual(["today", "courses", "plan", "careers"]);
+    expect((await shellProps()).nav).toEqual(["today", "courses", "plan", "careers", "syllabi"]);
   });
 
   it("survives a malformed flag: logs it and uses its default", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubEnv("FEATURE_EVENTS", "sometimes");
     vi.stubEnv("FEATURE_ALUMNI", "false");
-    expect((await shellProps()).nav).toEqual(["today", "courses", "plan", "careers", "events"]);
+    expect((await shellProps()).nav).toEqual([
+      "today",
+      "courses",
+      "plan",
+      "careers",
+      "events",
+      "syllabi",
+    ]);
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/FEATURE_EVENTS/));
   });
 });
@@ -196,48 +208,5 @@ describe("hub layout: verify banner", () => {
     stubs.verifyBannerFor.mockRejectedValue(new Error("db down"));
     expect(childrenOf(await shellProps())).toHaveLength(1);
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/verify banner/), expect.any(Error));
-  });
-});
-
-describe("hub layout: Sources panel", () => {
-  it("leaves out the news-only feeds, which no page shows yet", async () => {
-    const at = "2026-09-30T18:40:00.000Z";
-    stubs.statuses = ["course-schedule", "wildcatsync", "davidsonian", "davidson-news"].map(
-      (id) => ({
-        id,
-        lastSync: at,
-        status: "ok",
-      }),
-    );
-    try {
-      const { sources } = await shellProps();
-      const synced = (sources ?? []).filter((source) => !("verifiedAt" in source));
-      expect(synced.map((source) => source.id)).toEqual(["course-schedule", "wildcatsync"]);
-    } finally {
-      stubs.statuses = [];
-    }
-  });
-
-  it("lists the curated sources with the date their content was verified", async () => {
-    const { sources } = await shellProps();
-    const curated = (sources ?? []).filter((source) => "verifiedAt" in source);
-    expect(curated.map((source) => source.id)).toEqual([
-      "registrar",
-      "matthews-center",
-      "hurt-hub-programs",
-      "davidson-offices",
-    ]);
-    for (const source of curated) {
-      expect("verifiedAt" in source && source.verifiedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    }
-  });
-
-  it("links the link-only platforms at their curated links (Handshake, Davidson One, Athletics)", async () => {
-    const { links } = await shellProps();
-    expect(links).toEqual([
-      { id: "handshake", href: "https://davidson.joinhandshake.com/" },
-      { id: "davidson-one", href: SOURCES["davidson-one"].url },
-      { id: "athletics", href: "https://davidsonwildcats.com/calendar" },
-    ]);
   });
 });

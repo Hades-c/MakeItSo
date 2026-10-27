@@ -25,7 +25,7 @@ import { EnvError, readEnv } from "@/server/env";
 /** A nav section with a flag of the same name. */
 type FlaggedSection = NavKey & keyof Flags;
 
-/** Hub sections that a feature flag can switch off. Today, Courses and My plan are always there. */
+/** Hub sections that a feature flag can switch off. Today, Courses, My plan and Syllabi are always there. */
 export const HUB_FEATURES = ["careers", "events", "alumni"] as const satisfies FlaggedSection[];
 export type HubFeature = (typeof HUB_FEATURES)[number];
 

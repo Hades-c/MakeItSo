@@ -4,9 +4,11 @@ import {
   ALL_NAV_KEYS,
   BOTTOM_TAB_KEYS,
   bottomTabItems,
+  isSidebarGroup,
   NAV_ITEMS,
   navSectionOf,
   sidebarItems,
+  sidebarSections,
   type NavKey,
 } from "@/components/app/nav-items";
 
@@ -30,7 +32,7 @@ describe("hub navigation", () => {
     expect(activeNavKey("/alumni", "tabs")).toBe("careers");
   });
 
-  it("has five phone tabs and six sidebar entries with one label each", () => {
+  it("has five phone tabs and seven sidebar entries with one label each", () => {
     expect(BOTTOM_TAB_KEYS).toEqual(["today", "courses", "plan", "careers", "events"]);
     expect(NAV_ITEMS.map((i) => i.label)).toEqual([
       "Today",
@@ -39,6 +41,7 @@ describe("hub navigation", () => {
       "Careers",
       "Events",
       "Alumni",
+      "Syllabi",
     ]);
   });
 
@@ -88,5 +91,38 @@ describe("hub navigation with sections hidden", () => {
     // Careers hidden: no Careers tab to highlight.
     expect(activeNavKey("/alumni", "tabs", [...CORE, "events", "alumni"])).toBeNull();
     expect(activeNavKey("/alumni", "sidebar", [...CORE, "events", "alumni"])).toBe("alumni");
+  });
+});
+
+describe("sidebarSections (My plan nests Courses, Careers, Alumni and Syllabi)", () => {
+  const CORE: NavKey[] = ["today", "courses", "plan", "syllabi"];
+
+  it("nests Courses, Careers, Alumni and Syllabi under My plan; Today and Events stay top-level", () => {
+    const [today, plan, events] = sidebarSections();
+    expect(today).toMatchObject({ key: "today" });
+    expect(events).toMatchObject({ key: "events" });
+    expect(isSidebarGroup(plan!)).toBe(true);
+    if (!isSidebarGroup(plan!)) throw new Error("expected a group");
+    expect(plan.item.key).toBe("plan");
+    expect(plan.children.map((c) => c.key)).toEqual(["courses", "careers", "alumni", "syllabi"]);
+  });
+
+  it("drops a hidden child from the group, keeping the group itself", () => {
+    const sections = sidebarSections([...CORE, "events"]);
+    expect(sections.map((e) => (isSidebarGroup(e) ? e.item.key : e.key))).toEqual([
+      "today",
+      "plan",
+      "events",
+    ]);
+    const [, plan] = sections;
+    if (!isSidebarGroup(plan!)) throw new Error("expected a group");
+    expect(plan.children.map((c) => c.key)).toEqual(["courses", "syllabi"]);
+  });
+
+  it("drops Today or Events entirely when hidden, never an empty top-level entry", () => {
+    expect(sidebarSections(CORE).map((e) => (isSidebarGroup(e) ? e.item.key : e.key))).toEqual([
+      "today",
+      "plan",
+    ]);
   });
 });

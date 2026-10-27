@@ -3,7 +3,6 @@ import { BottomTabs } from "./bottom-tabs";
 import type { NavKey } from "./nav-items";
 import { Sidebar } from "./sidebar";
 import type { NavCounts } from "./sidebar-nav";
-import type { SourceLink, SourceSync } from "./sources-panel";
 import { TopBar } from "./top-bar";
 
 export interface AppShellProps {
@@ -15,17 +14,6 @@ export interface AppShellProps {
    * passes `hubNavKeys(flags)`, which leaves out Careers, Events and Alumni when their feature flags are off.
    */
   nav?: readonly NavKey[];
-  /**
-   * Sources panel: synced feeds with their real last-sync time and curated content with its verified date. List
-   * only sources that are actually synced or verified.
-   */
-  sources?: readonly SourceSync[];
-  /** Platforms MakeItSo only links to (shown under "Links"). */
-  links?: readonly SourceLink[];
-  /** "Now" for relative labels, computed once per request on the server. */
-  now: Date;
-  /** IANA zone for every time shown (APP_TIMEZONE). */
-  timeZone?: string;
   children: React.ReactNode;
 }
 
@@ -34,16 +22,7 @@ export interface AppShellProps {
  * column. Server component; the interactive parts (search, menus, active nav) are small client islands.
  * app/(hub)/layout.tsx passes real data in.
  */
-export function AppShell({
-  user,
-  counts,
-  nav,
-  sources = [],
-  links,
-  now,
-  timeZone,
-  children,
-}: AppShellProps) {
+export function AppShell({ user, counts, nav, children }: AppShellProps) {
   return (
     <div className="min-h-dvh bg-bg">
       <a
@@ -54,14 +33,7 @@ export function AppShell({
       </a>
       <TopBar user={user} nav={nav} />
       <div className="md:grid md:grid-cols-[6rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)]">
-        <Sidebar
-          counts={counts}
-          nav={nav}
-          sources={sources}
-          links={links}
-          now={now}
-          timeZone={timeZone}
-        />
+        <Sidebar counts={counts} nav={nav} />
         <main
           id="main"
           tabIndex={-1}

@@ -421,13 +421,6 @@ export const ADD_TO_PLAN_TERMS: AddToPlanTerm[] = [
 /** The compact plan preview inside "Add to plan". */
 export const PLAN_PREVIEW = PLAN_2029;
 
-/** The sidebar Sources panel in the gallery shell (sample sync times). */
-export const SHELL_SOURCES = [
-  { id: "course-schedule" as const, lastSync: "2026-09-30T10:00:00Z" },
-  { id: "ratemyprofessors" as const, lastSync: "2026-09-29T09:00:00Z" },
-  { id: "registrar" as const, label: "Academic calendar", verifiedAt: "2026-09-28T16:00:00Z" },
-];
-
 /** Sample command-palette results (not real listings). */
 export const SAMPLE_SEARCH_RESULTS: SearchResult[] = [
   {

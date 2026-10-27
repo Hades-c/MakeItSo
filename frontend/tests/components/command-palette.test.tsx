@@ -141,7 +141,7 @@ describe("CommandPalette", () => {
       within(pages)
         .getAllByRole("option")
         .map((o) => o.textContent),
-    ).toEqual(["Today", "Courses", "My plan", "Careers", "Events", "Alumni", "Profile"]);
+    ).toEqual(["Today", "Courses", "My plan", "Careers", "Events", "Alumni", "Syllabi", "Profile"]);
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.keyboard("{Meta>}k{/Meta}");

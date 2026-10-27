@@ -5,10 +5,10 @@ import { getDb } from "@/server/db";
 import { isDuplicateKeyError } from "@/server/http/errors";
 
 /**
- * Sync bookkeeping for the Sources panel (PLAN §4.1.11). Every job that pulls from an upstream (catalog ingest,
- * feeds, RMP roster, Acalog programs) calls `recordSync` once per source per run; the hub layout calls
- * `getSourceStatuses()` and passes the rows to <SourcesPanel sources>. Only sources that have synced at least once
- * are listed (PLAN §3: no placeholders).
+ * Sync bookkeeping (PLAN §4.1.11). Every job that pulls from an upstream (catalog ingest, feeds, RMP roster,
+ * Acalog programs) calls `recordSync` once per source per run; `getSourceStatuses()` reads the rows back (the
+ * Events page uses it for each source's last-sync time). Only sources that have synced at least once are listed
+ * (PLAN §3: no placeholders).
  */
 
 export interface SyncOutcome {

@@ -28,7 +28,6 @@ import {
   REQUIREMENTS,
   REQUIREMENTS_PLANNED,
   SAMPLE_SEARCH_RESULTS,
-  SHELL_SOURCES,
   THURSDAY_EDGE_CASES,
   THURSDAY_NOW,
   TIME_ZONE,
@@ -107,9 +106,6 @@ export default function DesignGalleryPage() {
     <AppShell
       user={{ name: "Taylor Student", email: "tastudent@davidson.edu" }}
       counts={{ courses: 676, plan: { done: 12, total: 32 } }}
-      sources={SHELL_SOURCES}
-      now={NOW}
-      timeZone={TIME_ZONE}
     >
       <PageHeader
         kicker="Design gallery · development only"

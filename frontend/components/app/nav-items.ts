@@ -2,6 +2,7 @@ import {
   BookOpen,
   BriefcaseBusiness,
   CalendarDays,
+  FileText,
   House,
   Map as MapIcon,
   Users,
@@ -28,6 +29,7 @@ const NAV_ITEM_DETAILS: Record<NavKey, Omit<NavItem, "key">> = {
   careers: { href: "/careers", label: "Careers", shortLabel: "Careers", icon: BriefcaseBusiness },
   events: { href: "/events", label: "Events", shortLabel: "Events", icon: CalendarDays },
   alumni: { href: "/alumni", label: "Alumni", shortLabel: "Alumni", icon: Users },
+  syllabi: { href: "/syllabi", label: "Syllabi", shortLabel: "Syllabi", icon: FileText },
 };
 
 /**
@@ -52,6 +54,45 @@ export function sidebarItems(nav: readonly NavKey[] = ALL_NAV_KEYS): NavItem[] {
 /** Phone tabs for the shown sections, in tab order: four when Careers or Events is off, three with neither. */
 export function bottomTabItems(nav: readonly NavKey[] = ALL_NAV_KEYS): NavItem[] {
   return NAV_ITEMS.filter((item) => BOTTOM_TAB_KEYS.includes(item.key) && nav.includes(item.key));
+}
+
+/** My plan's nested children, in the order they are nested under it. */
+const PLAN_GROUP_CHILDREN: readonly NavKey[] = ["courses", "careers", "alumni", "syllabi"];
+
+/** A sidebar group: My plan's own link, plus the sections nested under it (never empty: Courses is always shown). */
+export interface SidebarGroup {
+  item: NavItem;
+  children: readonly NavItem[];
+}
+
+export type SidebarEntry = NavItem | SidebarGroup;
+
+/** True for a sidebar group, as opposed to a plain top-level item (neither NavItem shape has `children`). */
+export function isSidebarGroup(entry: SidebarEntry): entry is SidebarGroup {
+  return "children" in entry;
+}
+
+/**
+ * The sidebar's shape (PLAN-UX §2): Today and Events stay top-level links; My plan becomes a group, its own link
+ * still /plan, nesting Courses, Careers, Alumni and Syllabi under it. Filtered to the shown sections like
+ * `sidebarItems`, in sidebar order; a hidden section is left out of the group's children the same way it would be
+ * dropped from a flat list.
+ */
+export function sidebarSections(nav: readonly NavKey[] = ALL_NAV_KEYS): SidebarEntry[] {
+  const shown = new Map(sidebarItems(nav).map((item) => [item.key, item]));
+  const entries: SidebarEntry[] = [];
+  const today = shown.get("today");
+  if (today) entries.push(today);
+  const plan = shown.get("plan");
+  if (plan) {
+    const children = PLAN_GROUP_CHILDREN.map((key) => shown.get(key)).filter(
+      (item): item is NavItem => item !== undefined,
+    );
+    entries.push({ item: plan, children });
+  }
+  const events = shown.get("events");
+  if (events) entries.push(events);
+  return entries;
 }
 
 function matches(pathname: string, href: string): boolean {

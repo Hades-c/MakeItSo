@@ -1,5 +1,8 @@
 import type * as React from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { routes } from "@/lib/routes";
@@ -81,6 +84,14 @@ export default async function PlanPage({
         <PageHeader
           title="My plan"
           subtitle="Next semester, your four-year plan, suggestions and summers, in one place."
+          actions={
+            <Button asChild variant="secondary">
+              <Link href="/syllabi">
+                <FileText aria-hidden className="size-4" />
+                Syllabi
+              </Link>
+            </Button>
+          }
         />
       </div>
       <PlanTabs active={params.tab}>

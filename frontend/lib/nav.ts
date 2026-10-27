@@ -3,6 +3,14 @@
  * hrefs and icons) and the server (server/features.ts decides which flagged sections are shown) share. Isomorphic
  * and UI-free, so server code never loads a component module to know the sections.
  */
-export const ALL_NAV_KEYS = ["today", "courses", "plan", "careers", "events", "alumni"] as const;
+export const ALL_NAV_KEYS = [
+  "today",
+  "courses",
+  "plan",
+  "careers",
+  "events",
+  "alumni",
+  "syllabi",
+] as const;
 
 export type NavKey = (typeof ALL_NAV_KEYS)[number];
