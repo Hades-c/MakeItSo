@@ -29,7 +29,6 @@ vi.mock("@/app/(hub)/today/_components/today-actions", () => ({ TodayActions: ma
 vi.mock("@/app/(hub)/today/_components/timeline-panel", () => ({
   TimelinePanel: marker("timeline"),
 }));
-vi.mock("@/app/(hub)/today/_components/degree-panel", () => ({ DegreePanel: marker("degree") }));
 vi.mock("@/app/(hub)/today/_components/due-soon-panel", () => ({
   DUE_SOON_TITLE: "Due for you",
   DueSoonPanel: marker("due-soon"),
@@ -59,7 +58,6 @@ describe("/today", () => {
       "header",
       "actions",
       "timeline",
-      "degree",
       "due-soon",
       "campus",
       "opportunities",
@@ -73,7 +71,6 @@ describe("/today", () => {
       timeZone: "America/New_York",
       selected: "2026-09-30",
       stripDays: ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"],
-      eventsOn: true,
     });
     expect(props("timeline")).toMatchObject({ day: "2026-09-30", eventsOn: true });
     expect(props("opportunities")).toMatchObject({ careersOn: true });
@@ -95,7 +92,6 @@ describe("/today", () => {
     vi.stubEnv("FEATURE_CAREERS", "false");
     render(await page.default(search({})));
     expect(screen.queryByTestId("campus")).toBeNull();
-    expect(props("header")).toMatchObject({ eventsOn: false });
     expect(props("timeline")).toMatchObject({ eventsOn: false });
     expect(props("opportunities")).toMatchObject({ careersOn: false });
   });

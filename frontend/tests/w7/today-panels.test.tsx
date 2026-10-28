@@ -4,16 +4,16 @@ import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ResolvedTerms } from "@/lib/types/catalog";
 import type { FeedItem } from "@/lib/types/feeds";
-import type { DaySchedule, PlanProgress, PlanView, StudentDeadline } from "@/lib/types/plan";
+import type { DaySchedule, PlanView, StudentDeadline } from "@/lib/types/plan";
 import type { ProfileView } from "@/server/auth/profile";
 import type * as LoadModule from "@/server/today/load";
 import type { Loaded } from "@/server/today/load";
 
 /**
  * The /today panels rendered from server data (the loaders are replaced by fixtures-day values here; the loaders
- * themselves are covered by today-service.test.ts): the h1 day summary and strip, the timeline and its empty
- * states, Due soon, degree progress, This week on campus, Opportunities, quick links, the Plan Spring 2027 call to
- * action and the onboarding nudge. Every panel must degrade to its small error state on its own.
+ * themselves are covered by today-service.test.ts): the fixed h1 and strip, the timeline and its empty states,
+ * Due soon (All/Classes), This week on campus, Opportunities, quick links and the onboarding nudge. Every panel
+ * must degrade to its small error state on its own.
  */
 
 const NOON = new Date("2026-09-30T12:00:00-04:00");
@@ -128,15 +128,6 @@ const TERMS: ResolvedTerms = {
   asOf: null,
 };
 
-const PROGRESS = {
-  creditsDone: 0,
-  creditsPlanned: 4,
-  required: 32,
-  reqs: {},
-  filledBy: {},
-  warnings: [],
-} as unknown as PlanProgress;
-
 function feed(
   id: string,
   start: string,
@@ -171,7 +162,6 @@ const state = vi.hoisted(() => ({
   profile: null as unknown,
   terms: null as unknown,
   plan: null as unknown,
-  progress: null as unknown,
   schedule: null as unknown as (day: string) => unknown,
   feeds: null as unknown,
   campus: null as unknown,
@@ -190,7 +180,6 @@ vi.mock("@/server/today/load", async (importOriginal) => {
     loadProfile: async () => state.profile,
     loadTerms: async () => state.terms,
     loadPlan: async () => state.plan,
-    loadProgress: async () => state.progress,
     loadSchedule: async (_user: string, day: string) => state.schedule(day),
     loadFeedItems: async () => state.feeds,
     loadCampusEvents: async () => state.campus,
@@ -200,7 +189,6 @@ vi.mock("@/server/today/load", async (importOriginal) => {
 const { TodayHeader } = await import("@/app/(hub)/today/_components/today-header");
 const { TimelinePanel } = await import("@/app/(hub)/today/_components/timeline-panel");
 const { DueSoonPanel } = await import("@/app/(hub)/today/_components/due-soon-panel");
-const { DegreePanel } = await import("@/app/(hub)/today/_components/degree-panel");
 const { CampusPanel } = await import("@/app/(hub)/today/_components/campus-panel");
 const { OpportunitiesPanel } = await import("@/app/(hub)/today/_components/opportunities-panel");
 const { QuickLinks } = await import("@/app/(hub)/today/_components/quick-links");
@@ -215,41 +203,25 @@ beforeEach(() => {
   state.profile = ok(PROFILE);
   state.terms = ok(TERMS);
   state.plan = ok(plan());
-  state.progress = ok(PROGRESS);
   state.schedule = (day: string) => ok(schedule(day));
   state.feeds = ok(FEEDS);
   state.campus = ok(FEEDS);
   state.curatedThrows = false;
 });
 
-async function show(node: Promise<React.ReactElement> | React.ReactElement) {
+async function show(node: Promise<React.ReactElement | null> | React.ReactElement | null) {
   return render(await node);
 }
 
 describe("the header", () => {
-  const header = (selected = "2026-09-30", eventsOn = true) =>
-    TodayHeader({ userId: USER, now: NOON, timeZone: TZ, stripDays: DAYS, selected, eventsOn });
+  const header = (selected = "2026-09-30") =>
+    TodayHeader({ userId: USER, now: NOON, timeZone: TZ, stripDays: DAYS, selected });
 
-  it("is the day summary as the h1, with the date, the term, counts and the strip", async () => {
-    await show(header("2026-09-30", false));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "You're in ECO 232 until 12:20 PM, then one more class, and Problem set (CSC 221) is due tomorrow at 11:59 PM.",
-    );
+  it("is a fixed headline, with the date, the term and the strip", async () => {
+    await show(header());
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your day at Davidson");
     expect(screen.getByText("Wednesday, September 30")).toHaveAttribute("dateTime", "2026-09-30");
     expect(screen.getByText(/· Fall 2026/)).toBeVisible();
-    // Due for the student: their own problem set and the WebTree window (all students), the rows the Due for
-    // you card lists first. Not the seniors' minor declaration or the conditional program applications.
-    const { from, to } = dueSoonRange(NOON);
-    const listed = buildDueSoon({
-      now: NOON,
-      standing: "first-year",
-      contentDeadlines: deadlinesBetween(from, to),
-      studentDeadlines: [DEADLINE],
-    });
-    expect(listed.filter((item) => item.forYou)).toHaveLength(2);
-    expect(screen.getByTestId("day-counts")).toHaveTextContent(
-      "3 classes today · 2 due for you in the next two weeks",
-    );
     const strip = screen.getByRole("navigation", { name: "This school week" });
     const links = within(strip).getAllByRole("link");
     expect(links.map((a) => a.getAttribute("href"))).toEqual([
@@ -266,14 +238,6 @@ describe("the header", () => {
     expect(links[3]).toHaveTextContent("Thursday, October 1: 1 class or deadline");
   });
 
-  it("adds tonight's campus event while events are on", async () => {
-    state.plan = ok(plan({ deadlines: [] }));
-    await show(header("2026-09-30", true));
-    expect(screen.getByTestId("day-summary")).toHaveTextContent(
-      "You're in ECO 232 until 12:20 PM, then one more class, and Campus event 1 is at 7:00 PM.",
-    );
-  });
-
   it("marks another day shown in the strip", async () => {
     await show(header("2026-10-01"));
     const strip = screen.getByRole("navigation", { name: "This school week" });
@@ -284,23 +248,11 @@ describe("the header", () => {
     expect(within(strip).getByRole("link", { current: "date" })).toHaveAttribute("href", "/today");
   });
 
-  it("still has a headline when the schedule and profile fail", async () => {
+  it("still shows the headline when the schedule and profile fail", async () => {
     state.schedule = () => FAIL;
     state.profile = FAIL;
-    state.feeds = FAIL;
     await show(header());
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Problem set (CSC 221) is due tomorrow at 11:59 PM.",
-    );
-  });
-
-  it("asks a student who has not finished setup to do so", async () => {
-    state.profile = ok({ ...PROFILE, onboardedAt: null });
-    state.plan = ok(plan({ deadlines: [] }));
-    await show(header("2026-09-30", false));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Finish setting up MakeItSo to see your classes, deadlines and campus events here.",
-    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your day at Davidson");
   });
 });
 
@@ -446,11 +398,16 @@ describe("the timeline", () => {
   });
 });
 
+/** Items/icons from the hidden Classes tabpanel (or a collapsed ShowMore) don't count as drawn. */
+function live<T extends Element>(elements: T[]): T[] {
+  return elements.filter((el) => !el.closest("[hidden]"));
+}
+
 describe("Due for you", () => {
   it("lists the calendar, the programs and the student's deadline, each linked", async () => {
     await show(DueSoonPanel({ userId: USER, now: NOON }));
     const card = screen.getByRole("region", { name: /^Due for you/ });
-    const items = within(card).getAllByTestId("due-soon-item");
+    const items = live(within(card).getAllByTestId("due-soon-item"));
     expect(items.length).toBeGreaterThan(3);
     const own = items.find((li) => li.dataset.kind === "student");
     expect(own).toHaveTextContent("Problem set");
@@ -480,14 +437,14 @@ describe("Due for you", () => {
     expect(others.every((li) => li.dataset.forYou === "false")).toBe(true);
     expect(others.map((li) => li.textContent).join(" ")).toContain("Minor Declaration");
     // The first rows are the student's, then the others, in the DOM as on screen.
-    const all = within(card).getAllByTestId("due-soon-item");
+    const all = live(within(card).getAllByTestId("due-soon-item"));
     expect(all.slice(0, 2)).toEqual(mine);
   });
 
   it("draws a row in red only when it is the student's and due today", async () => {
     state.plan = ok(plan({ deadlines: [{ ...DEADLINE, dueAt: "2026-09-30T17:00:00-04:00" }] }));
     await show(DueSoonPanel({ userId: USER, now: NOON }));
-    const items = screen.getAllByTestId("due-soon-item");
+    const items = live(screen.getAllByTestId("due-soon-item"));
     // The seniors' Watson nomination is due today at 3 PM too, but it is not this first-year's.
     const watson = items.find((li) => li.textContent?.includes("Watson"));
     expect(watson).toHaveTextContent(/Today/);
@@ -502,7 +459,7 @@ describe("Due for you", () => {
     expect(own?.querySelector(".text-urgent")).toContainElement(
       within(own!).getByTestId("due-urgent-icon"),
     );
-    expect(screen.getAllByTestId("due-urgent-icon")).toHaveLength(1);
+    expect(live(screen.getAllByTestId("due-urgent-icon"))).toHaveLength(1);
     expect(items.filter((li) => li.dataset.urgent === "true")).toEqual([own]);
   });
 
@@ -546,17 +503,44 @@ describe("Due for you", () => {
     expect(screen.getByTestId("due-soon-own-error")).toHaveTextContent(
       "Your own deadlines could not load right now.",
     );
-    const items = screen.getAllByTestId("due-soon-item");
+    const items = live(screen.getAllByTestId("due-soon-item"));
     expect(items.some((li) => li.textContent?.includes("WebTree Open"))).toBe(true);
     expect(items.some((li) => li.dataset.kind === "student")).toBe(false);
   });
 
   it("gives WebTree its registration kind, not a deadline's", async () => {
     await show(DueSoonPanel({ userId: USER, now: NOON }));
-    const webtree = screen
-      .getAllByTestId("due-soon-item")
-      .find((li) => li.textContent?.includes("WebTree Open"));
+    const webtree = live(screen.getAllByTestId("due-soon-item")).find((li) =>
+      li.textContent?.includes("WebTree Open"),
+    );
     expect(webtree).toHaveAttribute("data-kind", "registration");
+  });
+
+  it("filters to the student's class deadlines on the Classes tab, syllabus ones included", async () => {
+    const user = userEvent.setup();
+    state.plan = ok(
+      plan({
+        deadlines: [
+          DEADLINE,
+          {
+            id: "64b7f0a1c2d3e4f5a6b7c8e0",
+            title: "Reading response",
+            courseCode: "ENV 237",
+            dueAt: "2026-10-02T23:59:00-04:00",
+            origin: "syllabus",
+            syllabusId: "64b7f0a1c2d3e4f5a6b7c8e1",
+          },
+        ],
+      }),
+    );
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    const card = screen.getByRole("region", { name: /^Due for you/ });
+    await user.click(within(card).getByRole("tab", { name: "Classes" }));
+    const items = live(within(card).getAllByTestId("due-soon-item"));
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((li) => li.querySelector("[data-course-color]"))).toBe(true);
+    expect(items.some((li) => li.textContent?.includes("Reading response"))).toBe(true);
+    expect(items.some((li) => li.textContent?.includes("WebTree Open"))).toBe(false);
   });
 
   it("degrades to a small error state when building the list throws", async () => {
@@ -579,34 +563,6 @@ describe("Due for you", () => {
     render(<PanelSkeleton id="due-soon" title={DUE_SOON_TITLE} />);
     expect(screen.getByRole("region", { name: "Due for you" })).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("Loading due for you…");
-  });
-});
-
-describe("degree progress", () => {
-  it("shows credits of 32 and the compact map, unofficially", async () => {
-    await show(DegreePanel({ userId: USER }));
-    const card = screen.getByRole("region", { name: /Degree progress/ });
-    expect(within(card).getByTestId("credits-done")).toHaveTextContent("0");
-    expect(card).toHaveTextContent("of 32 credits done");
-    expect(card).toHaveTextContent("4 more credits in progress or planned.");
-    expect(card).toHaveTextContent("Unofficial — verify in Degree Works");
-    expect(
-      within(card).getByRole("img", {
-        name: /Your four-year plan: 0 done, 3 in progress, 1 planned of 32 credits/,
-      }),
-    ).toBeVisible();
-    expect(within(card).getByRole("link", { name: "My plan" })).toHaveAttribute(
-      "href",
-      "/plan?tab=four-year",
-    );
-  });
-
-  it("degrades to a small error state", async () => {
-    state.progress = FAIL;
-    await show(DegreePanel({ userId: USER }));
-    expect(screen.getByTestId("panel-error")).toHaveTextContent(
-      "Your degree progress could not load",
-    );
   });
 });
 
@@ -718,45 +674,14 @@ describe("panel boundaries", () => {
 });
 
 describe("the action row", () => {
-  it("offers Plan Spring 2027 only while WebTree is open, with its dates", async () => {
-    await show(
-      TodayActions({ userId: USER, now: new Date("2026-10-20T12:00:00-04:00"), timeZone: TZ }),
-    );
-    expect(screen.getByRole("link", { name: "Plan Spring 2027" })).toHaveAttribute(
-      "href",
-      "/plan?tab=next",
-    );
-    expect(screen.getByTestId("webtree-window")).toHaveTextContent(
-      "WebTree is open for Spring 2027 course preferences until Tue, Nov 3 at 5:00 PM.",
-    );
+  it("shows nothing once first-run setup is done", async () => {
+    await show(TodayActions({ userId: USER }));
     expect(screen.queryByTestId("onboarding-nudge")).toBeNull();
-  });
-
-  it("has no call to action before WebTree opens (the fixtures day), only Browse courses", async () => {
-    await show(TodayActions({ userId: USER, now: NOON, timeZone: TZ }));
-    expect(screen.queryByTestId("plan-next-cta")).toBeNull();
-    expect(screen.queryByTestId("webtree-window")).toBeNull();
-    expect(screen.getByRole("link", { name: "Browse courses" })).toHaveAttribute(
-      "href",
-      "/courses",
-    );
-  });
-
-  it("hides the call to action outside the window, and when the terms cannot load", async () => {
-    await show(
-      TodayActions({ userId: USER, now: new Date("2026-12-01T12:00:00-05:00"), timeZone: TZ }),
-    );
-    expect(screen.queryByTestId("plan-next-cta")).toBeNull();
-    state.terms = FAIL;
-    await show(
-      TodayActions({ userId: USER, now: new Date("2026-10-20T12:00:00-04:00"), timeZone: TZ }),
-    );
-    expect(screen.queryByTestId("plan-next-cta")).toBeNull();
   });
 
   it("nudges to /onboarding until setup is done", async () => {
     state.profile = ok({ ...PROFILE, onboardedAt: null });
-    await show(TodayActions({ userId: USER, now: NOON, timeZone: TZ }));
+    await show(TodayActions({ userId: USER }));
     const nudge = screen.getByTestId("onboarding-nudge");
     expect(
       within(nudge).getByRole("heading", { name: "Finish setting up MakeItSo" }),
@@ -767,19 +692,9 @@ describe("the action row", () => {
     );
   });
 
-  it("keeps one red button: setup first while it is due, then Plan Spring 2027", async () => {
-    const during = new Date("2026-10-20T12:00:00-04:00");
-    state.profile = ok({ ...PROFILE, onboardedAt: null });
-    const first = await show(TodayActions({ userId: USER, now: during, timeZone: TZ }));
-    const red = () =>
-      [...document.querySelectorAll("a, button")]
-        .filter((el) => el.classList.contains("bg-primary-fill"))
-        .map((el) => el.textContent?.trim());
-    expect(screen.getByTestId("plan-next-cta")).toBeVisible();
-    expect(red()).toEqual(["Set up my plan"]);
-    first.unmount();
-    state.profile = ok(PROFILE);
-    await show(TodayActions({ userId: USER, now: during, timeZone: TZ }));
-    expect(red()).toEqual(["Plan Spring 2027"]);
+  it("stays hidden when the profile cannot load (never shown without a real reason)", async () => {
+    state.profile = FAIL;
+    await show(TodayActions({ userId: USER }));
+    expect(screen.queryByTestId("onboarding-nudge")).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ import {
   type DueSoonItem,
 } from "@/server/today";
 import { STRETCHED_LINK } from "../_lib/styles";
+import { DueSoonTabs } from "./due-soon-tabs";
 import { PanelError } from "./panel-states";
 import { ShowMore } from "./show-more";
 
@@ -36,6 +37,10 @@ export const DUE_SOON_TITLE = "Due for you";
  * the rest are one press away ("Show N more"), never cut. Only the student's rows are ever drawn in the urgent
  * red. When the plan cannot load, the curated rows are still listed, with a one-line note that the student's own
  * are missing.
+ *
+ * All/Classes (PLAN-UX §4): "Classes" is the same rows filtered to those tied to a course — including deadlines a
+ * syllabus upload added, which already carry a courseCode like any other row — grouped and counted the same way.
+ * Both views are built and rendered up front; DueSoonTabs only shows one at a time.
  */
 export async function DueSoonPanel({ userId, now }: { userId: string; now: Date }) {
   const [plan, profile] = await Promise.all([loadPlan(userId), loadProfile(userId)]);
@@ -48,23 +53,14 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
       contentDeadlines: contentDeadlines(from, to),
       studentDeadlines: plan.ok ? plan.value.deadlines : [],
     });
-    const labelled = (rows: readonly DueSoonItem[]) =>
-      rows.map((item) => ({ item, label: dueLabel(item, now) }));
-    const groups = groupDueSoon(items, DUE_SOON_SHOWN);
-    return {
-      total: items.length,
-      forYou: labelled(groups.forYou),
-      also: labelled(groups.also),
-      more: labelled(groups.more),
-    };
+    return { items, forYouCount: groupDueSoon(items, DUE_SOON_SHOWN).forYou.length };
   });
   if (!built) return <PanelError id="due-soon" title={DUE_SOON_TITLE} what={DUE_SOON_TITLE} />;
-  const { total, forYou, also, more } = built;
-  const rows = (list: typeof forYou) =>
-    list.map(({ item, label }) => <DueSoonRow key={item.id} item={item} label={label} />);
+  const { items, forYouCount } = built;
+  const classItems = items.filter((item) => item.courseCode !== null);
 
   return (
-    <SectionCard id="due-soon" title={DUE_SOON_TITLE} count={forYou.length}>
+    <SectionCard id="due-soon" title={DUE_SOON_TITLE} count={forYouCount}>
       {plan.ok ? null : (
         <p
           role="status"
@@ -75,8 +71,37 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
           <span>Your own deadlines could not load right now.</span>
         </p>
       )}
-      {total === 0 ? (
-        <p className="text-sm text-fg-2">Nothing due in the next two weeks.</p>
+      <DueSoonTabs
+        all={<DueSoonList items={items} now={now} />}
+        classes={
+          <DueSoonList
+            items={classItems}
+            now={now}
+            empty="Nothing due for your classes in the next two weeks."
+          />
+        }
+      />
+    </SectionCard>
+  );
+}
+
+function DueSoonList({
+  items,
+  now,
+  empty = "Nothing due in the next two weeks.",
+}: {
+  items: readonly DueSoonItem[];
+  now: Date;
+  empty?: string;
+}) {
+  const { forYou, also, more } = groupDueSoon(items, DUE_SOON_SHOWN);
+  const rows = (list: readonly DueSoonItem[]) =>
+    list.map((item) => <DueSoonRow key={item.id} item={item} label={dueLabel(item, now)} />);
+
+  return (
+    <>
+      {items.length === 0 ? (
+        <p className="text-sm text-fg-2">{empty}</p>
       ) : forYou.length === 0 ? (
         <p className="text-sm text-fg-2" data-testid="due-for-you-none">
           Nothing due for you in the next two weeks.
@@ -112,7 +137,7 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
           ) : null}
         </div>
       ) : null}
-    </SectionCard>
+    </>
   );
 }
 

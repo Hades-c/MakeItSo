@@ -4,20 +4,20 @@ import type { ClassStanding, TermCode } from "@/lib/term";
 import { termLabel } from "@/lib/term";
 import type { ResolvedTerms } from "@/lib/types/catalog";
 import type { FeedItem } from "@/lib/types/feeds";
-import type { DaySchedule, PlanProgress, PlanView } from "@/lib/types/plan";
+import type { DaySchedule, PlanView } from "@/lib/types/plan";
 import { getProfile, type ProfileView } from "@/server/auth/profile";
 import { resolveTerms } from "@/server/catalog";
 import { deadlinesBetween, type ContentDeadline } from "@/server/content/deadlines";
 import { listEvents } from "@/server/feeds";
 import { MissingFixtureError } from "@/server/http/fixtures";
-import { getDaySchedule, getPlan, getProgress } from "@/server/plan";
+import { getDaySchedule, getPlan } from "@/server/plan";
 import { addDaysToKey, dayBounds } from "@/server/today/time";
 
 /**
  * Today's data loaders (server components call these; no self-HTTP). Each is memoised per request with React
- * cache(), so the headline, the strip and the panels share one read of the plan, the terms and each day's
- * schedule. `attempt()` turns a failure into `{ ok: false }` (logged) so one panel's outage never takes the page
- * down; a missing test fixture is never hidden.
+ * cache(), so the header, the strip and the panels share one read of the plan, the terms and each day's schedule.
+ * `attempt()` turns a failure into `{ ok: false }` (logged) so one panel's outage never takes the page down; a
+ * missing test fixture is never hidden.
  */
 
 export type Loaded<T> = { ok: true; value: T } | { ok: false };
@@ -57,10 +57,6 @@ export const loadTerms = cache((): Promise<Loaded<ResolvedTerms>> =>
 
 export const loadPlan = cache((userId: string): Promise<Loaded<PlanView>> =>
   attempt("the plan", () => getPlan(userId)),
-);
-
-export const loadProgress = cache((userId: string): Promise<Loaded<PlanProgress>> =>
-  attempt("degree progress", () => getProgress(userId)),
 );
 
 export const loadSchedule = cache((userId: string, day: string): Promise<Loaded<DaySchedule>> =>

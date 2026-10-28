@@ -1,25 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { FeedItem } from "@/lib/types/feeds";
-import type { DayScheduleEntry, PlanItem, StudentDeadline } from "@/lib/types/plan";
+import type { DayScheduleEntry, StudentDeadline } from "@/lib/types/plan";
 import type { Program } from "@/lib/types/content";
 import { deadlinesBetween } from "@/server/content/deadlines";
-import { ACADEMIC_CALENDAR } from "@/server/content/academic-calendar";
 import {
   agendaWindow,
   audienceIncludes,
   breakOn,
   buildAgenda,
   buildDueSoon,
-  calendarDeadlineRows,
   dayBounds,
-  degreeMapTerms,
   dueForYouCount,
   dueLabel,
   dueSoonRange,
   etClock,
   groupDueSoon,
   MAX_TIMELINE_EVENTS,
-  milestonesOn,
   pickShown,
   pickTimelineEvents,
   quickLinks,
@@ -28,15 +24,14 @@ import {
   stripDay,
   stripDays,
   upcomingOpportunities,
-  webTreeWindow,
   zonedInstant,
 } from "@/server/today";
 import { feedRange, parseDayParam, todayHref } from "@/app/(hub)/today/_lib/params";
 
 /**
- * The pure rules behind /today (PLAN §3, §5 Dates/times and Sources): the academic calendar reading (breaks,
- * milestones, audiences, the WebTree window), the timeline's items and hours, Due soon, the degree map, the week
- * strip, opportunities and quick links, and the URL's ?day=. No database.
+ * The pure rules behind /today (PLAN §3, §5 Dates/times and Sources): the academic calendar reading (breaks and
+ * audiences), the timeline's items and hours, Due soon, the week strip, opportunities and quick links, and the
+ * URL's ?day=. No database.
  */
 
 const edt = (hhmm: string, day = "2026-09-30") => new Date(`${day}T${hhmm}:00-04:00`);
@@ -86,35 +81,6 @@ describe("the academic calendar on Today", () => {
     expect(breakOn("2026-11-25")?.name).toBe("Thanksgiving Break");
   });
 
-  it("names WebTree opening on its first day, at its published time", () => {
-    const [webtree, ...rest] = milestonesOn("2026-10-12", "sophomore");
-    expect(webtree).toEqual({
-      name: "WebTree",
-      verb: "opens",
-      at: edt("07:00", "2026-10-12"),
-      day: "2026-10-12",
-    });
-    // The advising conferences start that day too, but they are not a registration window.
-    expect(rest).toEqual([]);
-    expect(milestonesOn("2026-10-13", "sophomore")).toEqual([]);
-  });
-
-  it("names other openings, a timed break start, and skips single-day notices", () => {
-    expect(milestonesOn("2027-01-05", "sophomore").map((m) => `${m.name} ${m.verb}`)).toEqual([
-      "Banner Self-Service Add/Drop opens",
-    ]);
-    expect(milestonesOn("2026-11-09", "sophomore").map((m) => `${m.name} ${m.verb}`)).toEqual([
-      "Banner Self-Service Add/Drop (Spring 2027) opens",
-    ]);
-    const thanksgiving = milestonesOn("2026-11-20", "sophomore");
-    expect(thanksgiving).toMatchObject([{ name: "Thanksgiving Break", verb: "begins" }]);
-    expect(thanksgiving[0]?.at?.toISOString()).toBe("2026-11-20T21:20:00.000Z"); // 4:20 PM EST
-    // "Spring 2027 Student Schedules Available": a Due soon item, not a milestone.
-    expect(milestonesOn("2026-11-06", "sophomore")).toEqual([]);
-    // Fall Break has no time: the lead says it ("no classes today for Fall Break").
-    expect(milestonesOn("2026-09-21", "sophomore")).toEqual([]);
-  });
-
   it.each([
     [null, "first-year", true],
     ["All students", "first-year", true],
@@ -128,44 +94,6 @@ describe("the academic calendar on Today", () => {
     ["Seniors (Class of 2027)", null, false],
   ] as const)("audience %j for a %s → %s", (audience, standing, expected) => {
     expect(audienceIncludes(audience, standing)).toBe(expected);
-  });
-
-  it("counts deadline rows for the student's year only", () => {
-    expect(calendarDeadlineRows("2026-09-30", "2026-10-03", "senior").map((r) => r.id)).toEqual([
-      "f26-minor-declaration",
-    ]);
-    expect(calendarDeadlineRows("2026-09-30", "2026-10-03", "first-year")).toEqual([]);
-    expect(calendarDeadlineRows("2026-11-01", "2026-11-03", "first-year").map((r) => r.id)).toEqual(
-      ["f26-webtree-closes"],
-    );
-  });
-});
-
-describe("the WebTree window (Plan Spring 2027)", () => {
-  const opens = edt("07:00", "2026-10-12");
-  it("is open from 7 a.m. Oct 12 until 5 p.m. Nov 3, and absent before (PLAN §3: during the window only)", () => {
-    const window = webTreeWindow("202602", opens);
-    expect(window).toMatchObject({ termLabel: "Spring 2027", source: "registrar" });
-    expect(window?.opensAt).toEqual(opens);
-    expect(window?.closesAt.toISOString()).toBe("2026-11-03T22:00:00.000Z"); // 5 PM EST
-    expect(window?.url).toMatch(/^https:\/\/www\.davidson\.edu\//);
-    expect(webTreeWindow("202602", new Date("2026-11-03T21:59:00Z"))).not.toBeNull();
-    expect(webTreeWindow("202602", new Date("2026-11-03T22:00:00Z"))).toBeNull();
-    // The fixtures day (Sep 30) and the minute before it opens: no call to action yet.
-    expect(webTreeWindow("202602", edt("12:00"))).toBeNull();
-    expect(webTreeWindow("202602", new Date(opens.getTime() - 60_000))).toBeNull();
-  });
-
-  it("is null for a term the calendar has no window for, and closes at midnight without a closing row", () => {
-    expect(webTreeWindow("202702", edt("12:00"))).toBeNull();
-    const calendar = ACADEMIC_CALENDAR.filter((row) => row.id !== "f26-webtree-closes");
-    const window = webTreeWindow("202602", edt("12:00", "2026-10-20"), calendar);
-    expect(window?.closesAt.toISOString()).toBe("2026-11-04T05:00:00.000Z");
-  });
-
-  it("covers the Fall 2027 window in the spring", () => {
-    const window = webTreeWindow("202701", edt("12:00", "2027-03-20"));
-    expect(window).toMatchObject({ termLabel: "Fall 2027" });
   });
 });
 
@@ -494,64 +422,6 @@ describe("Due soon", () => {
       ...over,
     };
     expect(dueLabel(item, now)).toBe(label);
-  });
-});
-
-describe("the degree map", () => {
-  const item = (over: Partial<PlanItem>): PlanItem => ({
-    id: ID,
-    termCode: "202601",
-    courseCode: "CSC 221",
-    canonicalCode: "CSC 221",
-    title: "Data Structures",
-    credits: 1,
-    status: "in-progress",
-    passFail: false,
-    source: "catalog",
-    reqCodes: null,
-    unverified: false,
-    ...over,
-  });
-
-  it("lays out the first term through the graduation spring, with statuses as slots", () => {
-    const terms = degreeMapTerms({
-      firstTerm: "202501",
-      graduationYear: 2029,
-      currentTerm: "202601",
-      items: [
-        item({ courseCode: "ECO 232", status: "registered" }),
-        item({}),
-        item({ termCode: "202501", courseCode: "CSC 121", status: "completed" }),
-        item({ termCode: "202501", courseCode: "HIS 101", status: "failed" }),
-        item({ termCode: "202702", courseCode: "HIS 357", status: "planned" }),
-        item({ termCode: null, courseCode: "MAT 112", status: "completed", source: "ap" }),
-        item({ termCode: "202601", courseCode: "DRO 100", status: "dropped" }),
-      ],
-    });
-    expect(terms[0]).toMatchObject({ termCode: "202501", label: "Fall 2025" });
-    expect(terms[terms.length - 1]).toMatchObject({ termCode: "202802", label: "Spring 2029" });
-    expect(terms.filter((t) => t.termCode.endsWith("03"))).toHaveLength(3);
-    const byCode = Object.fromEntries(terms.map((t) => [t.termCode, t]));
-    expect(byCode["202501"]?.slots).toEqual([{ status: "done", code: "CSC 121", credits: 1 }]);
-    expect(byCode["202601"]).toMatchObject({
-      isCurrent: true,
-      slots: [
-        { status: "in-progress", code: "CSC 221", credits: 1 },
-        { status: "in-progress", code: "ECO 232", credits: 1 },
-      ],
-    });
-    expect(byCode["202702"]?.slots).toEqual([{ status: "planned", code: "HIS 357", credits: 1 }]);
-    expect(byCode["202502"]?.isCurrent).toBeUndefined();
-  });
-
-  it("widens the range to a term outside it that holds items", () => {
-    const terms = degreeMapTerms({
-      firstTerm: "202601",
-      graduationYear: 2030,
-      currentTerm: "202601",
-      items: [item({ termCode: "203001", status: "planned" })],
-    });
-    expect(terms[terms.length - 1]?.termCode).toBe("203001");
   });
 });
 
