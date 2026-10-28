@@ -1,20 +1,12 @@
-import {
-  CalendarClock,
-  ChevronDown,
-  Clock,
-  ExternalLink,
-  MapPin,
-  TriangleAlert,
-} from "lucide-react";
+import { CalendarClock, ChevronDown, Clock, ExternalLink, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { SourceTag } from "@/components/ui/source-tag";
+import { SourceNote } from "@/components/ui/source-tag";
+import { formatEventLocation } from "@/lib/event-location";
 import type { FeedItem } from "@/lib/types/feeds";
 import { eventsHref, nextEventsLimit, type EventsView } from "../_lib/params";
 import {
   eventTimeLabel,
-  formatEventLocation,
   groupEvents,
-  hoursChangeNotice,
   isDeadlineItem,
   type EventGroup,
   type PresentOptions,
@@ -117,7 +109,6 @@ function EventRow({
   const deadline = isDeadlineItem(item);
   const time = eventTimeLabel(item, options);
   const location = formatEventLocation(item.location);
-  const hoursNotice = hoursChangeNotice(item);
   return (
     <li
       data-testid="event-item"
@@ -153,19 +144,11 @@ function EventRow({
             <span className="min-w-0 break-words">{location}</span>
           </p>
         ) : null}
-        {hoursNotice ? (
-          <p
-            className="mt-1 flex items-start gap-1.5 text-sm text-warning"
-            data-testid="event-hours-notice"
-          >
-            <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-            <span className="min-w-0 break-words">{hoursNotice}</span>
-          </p>
-        ) : null}
         {item.summaryText ? (
-          <details className="group mt-1">
-            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-sm text-sm font-semibold text-fg-2 hover:text-fg md:min-h-0 [&::-webkit-details-marker]:hidden">
-              Description
+          // Above the title link's stretched ::after (inset-0), or it swallows the taps meant for the toggle.
+          <details className="group relative z-10 mt-1">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-sm text-sm font-semibold text-fg-2 hover:text-fg md:min-h-8 [&::-webkit-details-marker]:hidden">
+              Description<span className="sr-only"> of {item.title}</span>
               <ChevronDown
                 aria-hidden
                 className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
@@ -179,8 +162,8 @@ function EventRow({
             </p>
           </details>
         ) : null}
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <SourceTag source={item.source} />
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+          <SourceNote source={item.source} />
           {deadline ? <Badge variant="warning">Deadline</Badge> : null}
         </div>
       </div>

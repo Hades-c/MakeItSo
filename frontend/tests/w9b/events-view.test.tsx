@@ -115,8 +115,10 @@ describe("EventList", () => {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
       expect(link).toHaveAccessibleName(`${item.title} (opens in a new tab)`);
     });
-    // The tag's accessible text names the source in words.
-    expect(rows[0]!.querySelector("span[data-source]")).toHaveTextContent("Source: WildcatSync");
+    // The note names the source in quiet words (no boxed tag), "Source: " for screen readers.
+    const note = rows[0]!.querySelector("span[data-source]")!;
+    expect(note).toHaveTextContent("Source: via WildcatSync");
+    expect(note.className).not.toMatch(/border|uppercase/);
   });
 
   it("renders deadlines, all-day and ongoing times", () => {
@@ -129,8 +131,6 @@ describe("EventList", () => {
     expect(fair).toHaveTextContent("11:00 AM – 2:00 PM");
     expect(fair).toHaveTextContent("Lilly Family Gallery");
     expect(fallBreak).toHaveTextContent("All day, through Oct 13");
-    // No general hours card anywhere: a slot ready for an hours-change notice, empty until a source feeds it.
-    expect(screen.queryByTestId("event-hours-notice")).toBeNull();
   });
 
   it("holds a summary behind a Description toggle, closed until pressed", async () => {
