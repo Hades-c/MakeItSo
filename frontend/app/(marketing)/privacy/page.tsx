@@ -177,7 +177,10 @@ export default async function PrivacyPage() {
             <p>
               Course, catalog, rating and event information comes from public sources
               (Davidson&apos;s public course schedule and catalog, RateMyProfessors, and public
-              campus feeds), and every item is labelled with its source.
+              campus feeds). Each says where it came from: once for a list from one source
+              (&ldquo;Course schedule &middot; seats as of &hellip;&rdquo;), or on the item itself
+              where a list mixes sources (&ldquo;via Registrar&rdquo;). Deadlines you type in are
+              yours and carry no label, and anything an AI wrote or read carries the AI mark.
             </p>
           </Section>
 

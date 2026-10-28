@@ -106,7 +106,7 @@ describe("/ for visitors", () => {
       "See the real courses, campus programs and verified alumni connected to a career path.",
     );
     expect(text).toContain(
-      "MakeItSo brings the course schedule, a four-year plan, career paths and campus events together",
+      "MakeItSo brings the Registrar’s public course schedule, a four-year plan, career paths and campus events together.",
     );
     expect(text).toContain(
       "Events and deadlines from across campus in one list, so fewer things slip through.",
@@ -122,7 +122,11 @@ describe("/ for visitors", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Your courses and your plan, in one place.",
     );
-    expect(text).toContain("MakeItSo brings the course schedule and a four-year plan together");
+    expect(text).toContain(
+      "MakeItSo brings the Registrar’s public course schedule and a four-year plan together.",
+    );
+    // "in one place" once, in the h1.
+    expect(text.match(/in one place/g)).toHaveLength(1);
     expect(featureTitles()).toEqual(["Courses", "My plan"]);
     for (const claim of [
       "career path",

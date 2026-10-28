@@ -77,12 +77,13 @@ const FEATURE_COLUMNS: Readonly<Record<number, string>> = {
 
 function heroSentence(claims: LandingClaims): string {
   const parts = [
-    "the course schedule",
+    "the Registrar’s public course schedule",
     "a four-year plan",
     ...(claims.careers ? ["career paths"] : []),
     ...(claims.events ? ["campus events"] : []),
   ];
-  return `MakeItSo brings ${joinWords(parts)} together in one place.`;
+  // The h1 already says "in one place": this sentence names what is brought together, and where it comes from.
+  return `MakeItSo brings ${joinWords(parts)} together.`;
 }
 
 export default async function HomePage() {
@@ -110,24 +111,27 @@ export default async function HomePage() {
       </header>
 
       <main>
-        <section className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-20">
-          <p className="mb-4 text-xs font-medium tracking-label text-fg-3 uppercase">
-            For Davidson College students
-          </p>
-          <h1 className="font-display text-xl font-strong md:text-3xl">
-            {claims.events
-              ? "Your courses, your plan and your campus, in one place."
-              : "Your courses and your plan, in one place."}
-          </h1>
-          <p className="mt-5 max-w-xl text-base text-fg-2 md:text-lg">{heroSentence(claims)}</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Suspense fallback={<HeroActionsView signedIn={false} />}>
-              <HeroActions />
+        {/* The same left edge as the header and the sections below (max-w-6xl), the copy kept to a readable width. */}
+        <section className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-20">
+          <div className="max-w-3xl">
+            <p className="mb-4 text-xs font-medium tracking-label text-fg-3 uppercase">
+              For Davidson College students
+            </p>
+            <h1 className="font-display text-xl font-strong md:text-3xl">
+              {claims.events
+                ? "Your courses, your plan and your campus, in one place."
+                : "Your courses and your plan, in one place."}
+            </h1>
+            <p className="mt-5 max-w-xl text-base text-fg-2 md:text-lg">{heroSentence(claims)}</p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Suspense fallback={<HeroActionsView signedIn={false} />}>
+                <HeroActions />
+              </Suspense>
+            </div>
+            <Suspense fallback={null}>
+              <LandingFacts />
             </Suspense>
           </div>
-          <Suspense fallback={null}>
-            <LandingFacts />
-          </Suspense>
         </section>
 
         <section aria-labelledby="features-title" className="border-y border-line bg-surface">

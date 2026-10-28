@@ -54,15 +54,15 @@ MakeItSo/
     │   │                      sign-up with mailbox verification, passwords, profile, mail (console / Resend),
     │   │                      password reset, rate limits
     │   ├── clock.ts           now(): the server's "now" (pinned by FIXTURES_NOW in fixtures mode)
-    │   ├── sync.ts            recordSync / getSourceStatuses: the Sources panel's synced rows
+    │   ├── sync.ts            recordSync / getSourceStatuses: the shell's out-of-date notice
     │   ├── account/           per-user data registry for export and account deletion (incl. the student's
     │   │                      own rows in the hackathon-era collections)
     │   ├── catalog/ programs/ rmp/ feeds/ content/   the live course catalog, Acalog majors and minors,
     │   │                      ratings, campus feeds and curated content; plan/ is a typed stub until it lands
     │   └── search/            global search over pluggable providers
-    ├── components/ui/         UI primitives (Button, Card, SourceTag, CourseCode, Dialog, ...)
-    ├── components/app/        AppShell: TopBar, Sidebar + Sources panel, BottomTabs, theme, user menu
-    ├── lib/                   shared (client + server): term, sources, routes, flags, format, day-summary
+    ├── components/ui/         UI primitives (Button, Card, SourceNote, CourseCode, Dialog, ...)
+    ├── components/app/        AppShell: TopBar, Sidebar, source notice, BottomTabs, theme, user menu
+    ├── lib/                   shared (client + server): term, sources, routes, flags, format, event-location
     │   ├── types/             zod schemas + types for catalog, plan, feeds, content, ratings, AI
     │   └── api/               one contract per route (method, path, auth, schemas) + a typed client
     ├── models/                Mongoose models (new collections; models/legacy/ is read-only)
@@ -75,7 +75,7 @@ MakeItSo/
 ### Contracts
 
 Shared interfaces are frozen and documented in [`frontend/docs/CONTRACTS.md`](frontend/docs/CONTRACTS.md):
-term rules (`lib/term.ts`), source tags (`lib/sources.ts`), domain types (`lib/types/*`), route contracts
+term rules (`lib/term.ts`), sources (`lib/sources.ts`), domain types (`lib/types/*`), route contracts
 (`lib/api/*`, served with `defineRoute` and called with `callApi`), `fetchExternal`, `recordSync`, the account
 data registry, feature flags and the service signatures. Outside services are reached only through
 `fetchExternal` (ESLint forbids raw `fetch` in `server/`, `lib/` and `app/api/`); with `EXTERNAL_MODE=fixtures`
@@ -119,9 +119,13 @@ a requirement it fills) are red, as "now". Focus rings are Lake Blue, never red.
 - **Breakpoints**: `md` = 720px (bottom tabs below, sidebar above), `lg` = 900px (two content columns), `xl` =
   1180px (full 240px sidebar; a 72px icon rail between 720 and 1180px).
 - **Course colours** come from the department (`lib/course-color.ts`); the code is always printed next to the colour.
-- **Provenance**: every aggregated item shows a `<SourceTag>` (COURSE SCHEDULE, REGISTRAR, WILDCATSYNC...; ids in
-  `lib/sources.ts`), and every AI output shows `<AiChip>` ("AI · verify with your advisor"). The Today headline is
-  a one-sentence day summary built deterministically by `lib/day-summary.ts`, never free model text.
+- **Provenance** (quiet labels, minimal repetition; ids in `lib/sources.ts`, components in
+  `components/ui/source-tag.tsx`): no boxed tags. A single-source list says its source once, in one quiet line
+  (`<SourceLine>`: "Course schedule · seats as of Oct 28, 12:00 PM"); a mixed list says it in each row's meta line
+  (`<SourceNote>`: "via Registrar"), once per run of rows from one source, and only where it is not obvious (the
+  student's own deadlines say nothing; a syllabus deadline says "From your syllabus"). Every item still carries
+  `data-source` and "Source: …" for screen readers, and every AI output shows `<AiChip>` ("AI · verify with your
+  advisor"). docs/CONTRACTS.md ("Look") has the rule; `expectAllAttributed` checks it.
 
 ---
 
