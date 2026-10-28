@@ -60,7 +60,7 @@ const INTROS: Readonly<Record<OnboardingStep, (data: OnboardingData) => string>>
   completed: () =>
     "Add courses you have already finished, plus AP, IB or transfer credit, so the requirement tracker starts from where you are.",
   interests: () =>
-    "Choose career paths you want to explore and, if you like, what you hope to do at Davidson. Careers and career plans start from these.",
+    "Choose career paths you want to explore and, if you like, what you hope to do at Davidson. With AI features on, plan suggestions, career plans and cold-email drafts start from these.",
 };
 
 export default async function OnboardingPage({ searchParams }: { searchParams: SearchParams }) {
