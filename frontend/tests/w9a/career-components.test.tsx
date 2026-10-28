@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CareerCard } from "@/app/(hub)/careers/_components/career-card";
+import { CareerCard, firstSentence } from "@/app/(hub)/careers/_components/career-card";
 import { CareerFilters } from "@/app/(hub)/careers/_components/career-filters";
 import { ProgramsList } from "@/app/(hub)/careers/_components/career-programs";
 import {
@@ -28,7 +28,13 @@ describe("CareerCard", () => {
       "href",
       "/careers/software-engineering",
     );
-    expect(card).toHaveTextContent(SE.summary);
+    // The summary's first sentence only; the career page has it in full.
+    expect(card).toHaveTextContent(
+      "Software engineers design, build, test, and maintain the programs and systems that people and organizations rely on.",
+    );
+    expect(card).not.toHaveTextContent("At Davidson, the Computer Science major");
+    expect(firstSentence("One. Two.")).toBe("One.");
+    expect(firstSentence("Only one")).toBe("Only one");
     const pay = within(card).getByTestId("career-card-pay");
     expect(pay).toHaveTextContent(`$135,980 median pay (${SE.pay!.period})`);
     expect(within(card).getByTestId("career-card-occupation")).toHaveTextContent(
@@ -166,8 +172,9 @@ describe("career page sections", () => {
     expect(pay).toHaveTextContent("$135,980");
     expect(pay).toHaveTextContent(`median pay per year (${SE.pay!.period})`);
     expect(pay).toHaveTextContent(SE.pay!.projectedGrowth);
-    // The page's one headline figure: the largest StatNumber size.
-    expect(screen.getByText("$135,980")).toHaveClass("text-5xl");
+    // The headline figure at the largest size the type scale has (no untokened text-5xl), with what it is not.
+    expect(screen.getByText("$135,980")).toHaveClass("text-3xl");
+    expect(pay).toHaveTextContent("All experience levels, not starting pay.");
     expect(
       screen.getByRole("link", { name: /Source: BLS Occupational Outlook Handbook/ }),
     ).toHaveAttribute("href", SE.pay!.url);

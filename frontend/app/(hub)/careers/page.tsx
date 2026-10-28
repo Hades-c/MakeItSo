@@ -50,7 +50,8 @@ export default async function CareersPage({
         subtitle={
           <>
             Where does a major actually lead? Browse <b>{CAREERS.length} career paths</b> with the
-            Davidson courses, real pay data and the people who can help you get there.
+            Davidson courses, pay data from the U.S. Bureau of Labor Statistics (the median across
+            all experience levels, not starting pay) and the people who can help you get there.
           </>
         }
       />

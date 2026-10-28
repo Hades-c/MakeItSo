@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   collectErrors,
+  expectAllAttributed,
   horizontalOverflow,
   isMobile,
   newSignedInAccount,
@@ -136,8 +137,12 @@ test("a career page: live availability per term, Add to plan", async ({ page, re
 
   // Pay with its source, departments into the catalog, official programs, Handshake by its base URL.
   await expect(page.getByTestId("career-pay")).toContainText("May 2025");
-  // Median pay is the page's headline figure: the largest StatNumber size.
-  await expect(page.getByTestId("career-pay").locator(".text-5xl")).toBeVisible();
+  // Median pay is the page's headline figure, at the type scale's largest StatNumber size (a real token).
+  const median = page.getByTestId("career-pay").locator(".text-3xl");
+  await expect(median).toBeVisible();
+  expect(parseFloat(await median.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThan(
+    24,
+  );
   await expect(
     page.getByRole("link", { name: /Source: BLS Occupational Outlook Handbook/ }),
   ).toHaveAttribute("href", /^https:\/\/www\.bls\.gov\/ooh\//);
@@ -162,6 +167,11 @@ test("a career page: live availability per term, Add to plan", async ({ page, re
   await expect(page.locator("[data-alumnus]")).toHaveCount(0);
   // An unverified account gets no AI output: the AI panels show their verify gate, never a generated result.
   await expect(page.getByText(/AI · verify with your advisor/)).toHaveCount(0);
+
+  // Provenance: the courses and the official programs once per list (their source lines), the offices per row.
+  const attribution = await expectAllAttributed(page);
+  expect(attribution.items).toBeGreaterThan(8);
+  expect(attribution.L0).toBeGreaterThanOrEqual(8);
 
   expect(await horizontalOverflow(page), "scrolls sideways").toBeLessThanOrEqual(0);
   expect(await seriousViolations(page)).toEqual([]);
@@ -339,6 +349,12 @@ test("office programs on a career page: published deadlines and amounts", async 
   await expect(rusk.getByTestId("resource-facts")).toContainText(
     "Winter Break: Applications must be submitted by October 1.",
   );
+  // Each office's resources name it once, quietly; screen readers hear it on every row.
+  await expect(rusk).toHaveAttribute("data-source", "davidson-offices");
+  await expect(rusk.locator('[data-source="davidson-offices"]')).toHaveText(
+    /^Source: via Dean Rusk International Studies Program$/,
+  );
+  expect((await expectAllAttributed(page)).items).toBeGreaterThan(0);
 
   await page.goto("/careers/nonprofit");
   await expect(

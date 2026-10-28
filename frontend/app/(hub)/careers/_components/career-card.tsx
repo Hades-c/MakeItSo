@@ -34,8 +34,14 @@ export function CardPay({ pay }: { pay: NonNullable<Career["pay"]> }) {
   );
 }
 
+/** A summary's first sentence (the career page shows it in full); the whole text when it has only one. */
+export function firstSentence(text: string): string {
+  const match = /^[\s\S]+?[.!?](?=\s+[A-Z“"(]|$)/.exec(text.trim());
+  return match ? match[0] : text.trim();
+}
+
 /**
- * One career on /careers: name (the card's link), summary in full, and BLS median pay with its period and
+ * One career on /careers: name (the card's link), the summary's first sentence, and BLS median pay with its period and
  * occupation (linked to the OOH page). The whole card is the link's target area; the BLS link stays its own link.
  */
 export function CareerCard({ career }: { career: Career }) {
@@ -54,7 +60,7 @@ export function CareerCard({ career }: { career: Career }) {
           {career.name}
         </Link>
       </h3>
-      <p className="mt-1.5 text-sm text-fg-2">{career.summary}</p>
+      <p className="mt-1.5 text-sm text-fg-2">{firstSentence(career.summary)}</p>
       <div className="mt-auto flex flex-col gap-2 pt-4">
         {career.pay ? <CardPay pay={career.pay} /> : null}
       </div>

@@ -3,6 +3,7 @@ import { CircleAlert, TriangleAlert } from "lucide-react";
 import type { AddToPlanTerm } from "@/components/domain/add-to-plan-control";
 import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
+import { provenance, SourceLine } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import type { TermCode } from "@/lib/term";
 import type { Availability } from "@/lib/types/catalog";
@@ -214,29 +215,33 @@ export async function CareerCourses({ career }: { career: Career }) {
 
   return (
     <SectionCard id="courses" title="Davidson courses" count={career.courses.length}>
-      <p className="-mt-1.5 mb-4 text-sm text-fg-2">
-        Real courses from the Davidson schedule, with where they run. Adding one puts it in My plan
-        for the term you choose.
-      </p>
-      <ul
-        className="grid divide-y divide-line lg:grid-cols-2 lg:gap-3 lg:divide-y-0"
-        data-testid="career-courses"
-      >
-        {views.map((view) => (
-          <li
-            key={view.code}
-            className="min-w-0 py-4 first:pt-0 last:pb-0 lg:py-0"
-            data-course={view.code}
-          >
-            <CareerCourseItem
-              view={view}
-              currentTerm={terms?.current ?? null}
-              planHref={planHref}
-              loginHref={loginHref}
-            />
-          </li>
-        ))}
-      </ul>
+      {/* The intro is the list's one source line: it names the course schedule once for every course. */}
+      <div {...provenance(["course-schedule"])}>
+        <SourceLine className="-mt-1.5 mb-4 text-sm text-fg-2">
+          Real courses from Davidson’s course schedule, with where they run. Adding one puts it in
+          My plan for the term you choose.
+        </SourceLine>
+        <ul
+          className="grid divide-y divide-line lg:grid-cols-2 lg:gap-3 lg:divide-y-0"
+          data-testid="career-courses"
+        >
+          {views.map((view) => (
+            <li
+              key={view.code}
+              className="min-w-0 py-4 first:pt-0 last:pb-0 lg:py-0"
+              data-course={view.code}
+              data-source="course-schedule"
+            >
+              <CareerCourseItem
+                view={view}
+                currentTerm={terms?.current ?? null}
+                planHref={planHref}
+                loginHref={loginHref}
+              />
+            </li>
+          ))}
+        </ul>
+      </div>
     </SectionCard>
   );
 }

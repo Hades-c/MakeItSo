@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SectionCard } from "@/components/ui/section-card";
+import { provenance, SourceLine } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import type { Career } from "@/lib/types/content";
 import { ACALOG_CATALOG } from "@/server/programs/catalog-info";
@@ -60,11 +61,16 @@ export function ProgramsList({
         </div>
       ) : null}
       {programs.length > 0 ? (
-        <div>
+        // The note under the list is its one source line (it names the catalog once for the official names).
+        <div {...provenance(["catalog"])}>
           <h3 className="text-sm font-semibold text-fg">Majors and minors</h3>
           <ul className="mt-1.5 flex flex-col gap-2">
             {programs.map((program) => (
-              <li key={program.name} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <li
+                key={program.name}
+                className="flex flex-wrap items-center gap-x-2 gap-y-1"
+                data-source={program.official ? "catalog" : undefined}
+              >
                 {program.url ? (
                   <ExternalLink href={program.url} className="text-sm">
                     {program.name}
@@ -75,9 +81,9 @@ export function ProgramsList({
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-fg-3" data-testid="programs-note">
+          <SourceLine className="mt-2" testId="programs-note">
             {programsNote(programs, catalogYear)}
-          </p>
+          </SourceLine>
         </div>
       ) : null}
     </div>
