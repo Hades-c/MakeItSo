@@ -6,6 +6,7 @@ import MoodleConnection from "@/models/MoodleConnection";
 import Plan from "@/models/Plan";
 import { eraseAccountData, loadAccountDataRegistrations } from "@/server/account/erasers";
 import { connectMoodle, disconnectMoodle, getMoodleStatus, syncMoodle } from "@/server/moodle";
+import type * as PlanService from "@/server/plan";
 import { listDeadlines, replaceMoodleDeadlines, startMoodleImport } from "@/server/plan";
 
 /**
@@ -17,7 +18,7 @@ import { listDeadlines, replaceMoodleDeadlines, startMoodleImport } from "@/serv
 let duringSync: (() => Promise<void>) | null = null;
 
 vi.mock("@/server/plan", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/server/plan")>();
+  const actual = await importOriginal<typeof PlanService>();
   return {
     ...actual,
     getPlan: async (...args: Parameters<typeof actual.getPlan>) => {
