@@ -181,7 +181,7 @@ export default async function PrivacyPage() {
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                Resend
+                Resend<span className="sr-only"> (opens in a new tab)</span>
               </a>
               , an email delivery service, which receives your email address and the message
               (including its one-time code or reset link). MakeItSo sends no other email.
@@ -248,7 +248,7 @@ export default async function PrivacyPage() {
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                privacy policy
+                privacy policy<span className="sr-only"> (opens in a new tab)</span>
               </a>
               . AI answers are marked &quot;AI · verify with your advisor&quot;.
             </p>
@@ -372,6 +372,7 @@ export default async function PrivacyPage() {
                 target="_blank"
               >
                 {SUPPORT_CONTACT.label}
+                <span className="sr-only"> (opens in a new tab)</span>
               </a>
               . Please do not post your password, email address or other private details in a public
               issue: ask for a private way to get in touch instead.

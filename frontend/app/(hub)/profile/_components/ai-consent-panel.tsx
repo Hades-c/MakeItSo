@@ -151,7 +151,7 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
           {!props.davidson ? null : props.mailAvailable ? (
             <Link
               href={`${routes.verify()}${queryString({ next: routes.profile() })}`}
-              className="font-semibold link"
+              className="inline-flex min-h-11 items-center font-semibold link md:min-h-0"
             >
               Verify your email
             </Link>
