@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CareerCard, OfferedLine } from "@/app/(hub)/careers/_components/career-card";
+import { CareerCard } from "@/app/(hub)/careers/_components/career-card";
 import { CareerFilters } from "@/app/(hub)/careers/_components/career-filters";
 import { ProgramsList } from "@/app/(hub)/careers/_components/career-programs";
 import {
@@ -22,7 +22,7 @@ afterEach(() => {
 
 describe("CareerCard", () => {
   it("links the career, shows the summary and the BLS pay with its period, occupation and source", () => {
-    render(<CareerCard career={SE} offered={<p>slot</p>} />);
+    render(<CareerCard career={SE} />);
     const card = screen.getByRole("article", { name: "Software Engineering" });
     expect(within(card).getByRole("link", { name: "Software Engineering" })).toHaveAttribute(
       "href",
@@ -41,7 +41,6 @@ describe("CareerCard", () => {
     expect(bls).toHaveAttribute("rel", "noopener noreferrer");
     // Above the whole-card link, and a 44px target on phones.
     expect(bls).toHaveClass("relative", "z-10", "min-h-11", "md:min-h-0");
-    expect(within(card).getByText("slot")).toBeVisible();
   });
 
   it("names the occupation a proxy figure is for, not the career", () => {
@@ -68,19 +67,6 @@ describe("CareerCard", () => {
   it("shows no pay line without pay data", () => {
     render(<CareerCard career={{ ...SE, pay: null }} />);
     expect(screen.queryByTestId("career-card-pay")).toBeNull();
-  });
-});
-
-describe("OfferedLine", () => {
-  it("counts the courses on the registration schedule", () => {
-    render(<OfferedLine offered={5} total={8} termLabel="Spring 2027" />);
-    const line = screen.getByTestId("career-card-offered");
-    expect(line).toHaveTextContent("5 of 8 courses offered in Spring 2027");
-  });
-
-  it("uses the singular for one course", () => {
-    render(<OfferedLine offered={1} total={1} termLabel="Spring 2027" />);
-    expect(screen.getByTestId("career-card-offered")).toHaveTextContent("1 of 1 course offered");
   });
 });
 
@@ -180,6 +166,8 @@ describe("career page sections", () => {
     expect(pay).toHaveTextContent("$135,980");
     expect(pay).toHaveTextContent(`median pay per year (${SE.pay!.period})`);
     expect(pay).toHaveTextContent(SE.pay!.projectedGrowth);
+    // The page's one headline figure: the largest StatNumber size.
+    expect(screen.getByText("$135,980")).toHaveClass("text-5xl");
     expect(
       screen.getByRole("link", { name: /Source: BLS Occupational Outlook Handbook/ }),
     ).toHaveAttribute("href", SE.pay!.url);

@@ -5,19 +5,17 @@ export interface StatNumberProps {
   value: React.ReactNode;
   /** Words after the number, e.g. "of 32 courses". */
   label: React.ReactNode;
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "xl";
   className?: string;
 }
+
+const SIZE = { md: "text-xl", lg: "text-3xl", xl: "text-5xl" } as const;
 
 /** Big number + label ("12 of 32 courses"). Numbers use tabular figures. Compute values; never hardcode them. */
 export function StatNumber({ value, label, size = "lg", className }: StatNumberProps) {
   return (
     <p className={cn("flex items-baseline gap-2", className)}>
-      <span
-        className={cn("font-strong text-fg tabular-nums", size === "lg" ? "text-3xl" : "text-xl")}
-      >
-        {value}
-      </span>{" "}
+      <span className={cn("font-strong text-fg tabular-nums", SIZE[size])}>{value}</span>{" "}
       <span className="text-sm text-fg-2">{label}</span>
     </p>
   );

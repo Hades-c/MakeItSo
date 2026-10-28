@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
 import { SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -17,12 +16,10 @@ import {
 } from "./_lib/filters";
 import { CareerCard } from "./_components/career-card";
 import { CareerFilters } from "./_components/career-filters";
-import { OfferedCount } from "./_components/offered-count";
 
 /**
  * /careers (PLAN §3): the 24 career paths from the curated content (server/content/careers.ts), grouped by cluster,
- * filtered by cluster and text in the URL (`?cluster=technology&q=data`). Each card streams in how many of its
- * courses are on the registration term's schedule (live catalog; nothing when it cannot say).
+ * filtered by cluster and text in the URL (`?cluster=technology&q=data`).
  *
  * Behind FEATURE_CAREERS (404 while it is off; the shell hides Careers then): featureMetadata() is the
  * generateMetadata and requireFeature() the page's first line.
@@ -52,8 +49,8 @@ export default async function CareersPage({
         title="Careers"
         subtitle={
           <>
-            <b>{CAREERS.length} career paths</b>, the Davidson courses that lead to them, pay from
-            the Bureau of Labor Statistics, and the people and programs that can help.
+            Where does a major actually lead? Browse <b>{CAREERS.length} career paths</b> with the
+            Davidson courses, real pay data and the people who can help you get there.
           </>
         }
       />
@@ -102,14 +99,7 @@ export default async function CareersPage({
                 <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {group.careers.map((career) => (
                     <li key={career.slug} className="min-w-0">
-                      <CareerCard
-                        career={career}
-                        offered={
-                          <Suspense fallback={null}>
-                            <OfferedCount codes={career.courses.map((course) => course.code)} />
-                          </Suspense>
-                        }
-                      />
+                      <CareerCard career={career} />
                     </li>
                   ))}
                 </ul>

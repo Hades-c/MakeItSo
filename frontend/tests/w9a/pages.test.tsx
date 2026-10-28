@@ -24,11 +24,6 @@ vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   connection: next.connection,
 }));
-vi.mock("@/app/(hub)/careers/_components/offered-count", () => ({
-  OfferedCount: ({ codes }: { codes: string[] }) => (
-    <span data-testid="offered-slot">{codes.length}</span>
-  ),
-}));
 vi.mock("@/app/(hub)/careers/_components/career-courses", () => ({
   CareerCourses: ({ career }: { career: { slug: string } }) => (
     <div data-testid="courses-slot">{career.slug}</div>
@@ -61,17 +56,14 @@ afterEach(() => {
 });
 
 describe("/careers", () => {
-  it("lists all 24 career paths by cluster, each with its registration-schedule slot", async () => {
+  it("lists all 24 career paths by cluster", async () => {
     render(await careersPage.default(search({})));
     expect(screen.getByRole("heading", { level: 1, name: "Careers" })).toBeVisible();
     expect(screen.getAllByRole("article")).toHaveLength(CAREERS.length);
     expect(CAREERS).toHaveLength(24);
     const clusters = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(clusters[0]).toMatch(/^Technology/);
-    const se = screen.getByRole("article", { name: "Software Engineering" });
-    expect(within(se).getByTestId("offered-slot")).toHaveTextContent(
-      String(getCareer("software-engineering")!.courses.length),
-    );
+    expect(screen.getByRole("article", { name: "Software Engineering" })).toBeVisible();
     expect(screen.queryByTestId("careers-count")).toBeNull();
     // Per request, never at build time.
     expect(next.connection).toHaveBeenCalled();

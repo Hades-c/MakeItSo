@@ -36,6 +36,7 @@ export function PayCard({ pay }: { pay: Career["pay"] }) {
           <StatNumber
             value={formatUsd(pay.medianAnnual)}
             label={`median pay per year (${pay.period})`}
+            size="xl"
           />
           <p className="mt-2 text-sm text-fg-2">{pay.occupation}</p>
           <p className="mt-2 text-sm text-fg">

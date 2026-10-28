@@ -28,13 +28,10 @@ test("the careers index: 24 paths, URL filters, accessible", async ({ page, requ
   const cards = page.getByRole("main").getByRole("article");
   await expect(cards).toHaveCount(24);
 
-  // The registration-schedule counts stream in.
   const se = page.getByRole("article", { name: "Software Engineering" });
-  await expect(se.getByTestId("career-card-offered")).toContainText(
-    /\d of 8 courses offered in Spring 2027/,
-  );
-  await expect(page.getByTestId("career-card-offered")).toHaveCount(24);
   await expect(se.getByTestId("career-card-pay")).toContainText(/\$[\d,]+ median pay \(May 2025\)/);
+  // The full summary, never clamped.
+  await expect(page.locator(".line-clamp-4")).toHaveCount(0);
   // A proxy figure names the occupation it is the median for, in words and in the link's name.
   const ib = page.getByRole("article", { name: "Investment Banking" });
   await expect(ib.getByTestId("career-card-occupation")).toContainText(
@@ -139,6 +136,8 @@ test("a career page: live availability per term, Add to plan", async ({ page, re
 
   // Pay with its source, departments into the catalog, official programs, Handshake by its base URL.
   await expect(page.getByTestId("career-pay")).toContainText("May 2025");
+  // Median pay is the page's headline figure: the largest StatNumber size.
+  await expect(page.getByTestId("career-pay").locator(".text-5xl")).toBeVisible();
   await expect(
     page.getByRole("link", { name: /Source: BLS Occupational Outlook Handbook/ }),
   ).toHaveAttribute("href", /^https:\/\/www\.bls\.gov\/ooh\//);

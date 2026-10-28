@@ -9,8 +9,7 @@ import { FIXTURE_TERMS } from "../helpers/terms";
 
 /**
  * The streamed server sections of the careers and alumni pages, rendered for real with their data loaders
- * replaced: the alumni gate for verified / unverified / legacy accounts, the course list, the programs and the
- * registration-schedule counts.
+ * replaced: the alumni gate for verified / unverified / legacy accounts, the course list and the programs.
  */
 
 const state = vi.hoisted(() => ({
@@ -19,7 +18,6 @@ const state = vi.hoisted(() => ({
   terms: { current: "202601", registration: "202602", next: "202701" } as unknown,
   histories: new Map<string, unknown>(),
   presence: null as unknown,
-  offerings: null as unknown,
   programs: [] as unknown[],
   planCalls: [] as string[],
 }));
@@ -37,7 +35,6 @@ vi.mock("@/app/(hub)/careers/_lib/catalog", async (importOriginal) => ({
   loadCareerTerms: async () => state.terms,
   loadCourseHistories: async (codes: string[]) =>
     new Map(codes.map((code) => [code, state.histories.get(code) ?? null])),
-  loadRegistrationOfferings: async () => state.offerings,
 }));
 vi.mock("@/app/(hub)/careers/_lib/plan", async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -55,7 +52,6 @@ const { AlumniDirectory } = await import("@/app/(hub)/alumni/_components/alumni-
 const { CareerAlumni } = await import("@/app/(hub)/careers/_components/career-alumni");
 const { CareerCourses } = await import("@/app/(hub)/careers/_components/career-courses");
 const { CareerPrograms } = await import("@/app/(hub)/careers/_components/career-programs");
-const { OfferedCount } = await import("@/app/(hub)/careers/_components/offered-count");
 
 const ID = "0123456789abcdef01234567";
 const VERIFIED: SessionUser = {
@@ -73,7 +69,6 @@ beforeEach(() => {
   state.terms = { current: "202601", registration: "202602", next: "202701" };
   state.histories.clear();
   state.presence = null;
-  state.offerings = null;
   state.programs = [];
   state.planCalls = [];
 });
@@ -315,27 +310,5 @@ describe("CareerPrograms", () => {
       screen.getByRole("link", { name: "Major in Computer Science (B.S. Degree)" }),
     ).toBeVisible();
     expect(screen.getByText(/2026–2027 Davidson catalog/)).toBeVisible();
-  });
-});
-
-describe("OfferedCount", () => {
-  const codes = ["CSC 121", "CSC 221", "MAT 230"];
-
-  it("counts the career's courses on the registration schedule", async () => {
-    state.offerings = {
-      term: "202602",
-      label: "Spring 2027",
-      offered: new Set(["CSC 121", "MAT 230"]),
-    };
-    await renderAsync(OfferedCount({ codes }));
-    expect(screen.getByTestId("career-card-offered")).toHaveTextContent(
-      "2 of 3 courses offered in Spring 2027",
-    );
-  });
-
-  it("shows nothing rather than a guess when the catalog cannot say", async () => {
-    await expect(OfferedCount({ codes })).resolves.toBeNull();
-    state.offerings = { term: "202602", label: "Spring 2027", offered: new Set() };
-    await expect(OfferedCount({ codes: [] })).resolves.toBeNull();
   });
 });
