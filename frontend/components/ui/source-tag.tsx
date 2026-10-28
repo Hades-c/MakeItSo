@@ -1,28 +1,82 @@
+import type * as React from "react";
 import { ArrowUpRight } from "lucide-react";
 import { SOURCES, type SourceId } from "@/lib/sources";
 import { cn } from "@/lib/utils";
 
-export interface SourceTagProps {
+/**
+ * Provenance, quietly (owner decision, 2026-10-28: "quiet labels, with minimal visual repetition"). No boxed tags:
+ * the source is said in plain sentence-case words in the meta line an item already has, once per list where a
+ * list has one source.
+ *
+ * - `SourceLine`: ONE quiet line for a single-source list or card ("Course schedule · seats as of Oct 28, 12:00
+ *   PM"). Its container carries `provenance(ids)` (`data-provenance`), its rows `data-source`; the line names
+ *   every id it lists (tests/e2e/helpers.ts expectAllAttributed, the L0 rule).
+ * - `SourceNote`: one item's source inside its existing meta line, for mixed lists ("via Registrar", "via Office
+ *   of Fellowships", "From your syllabus"). It carries `data-source` and the sr-only "Source:" prefix, so screen
+ *   readers and tests get the source per item. `hidden` keeps only that sr-only text, for the rows after the
+ *   first of a run of consecutive rows with the same label (`runHeads`): the run's first row says it once.
+ */
+
+export interface SourceNoteProps {
   source: SourceId;
+  /** What the note says; default "via <source label>". */
+  label?: string;
+  /** Screen readers only (a row after the first of a run with the same label). */
+  hidden?: boolean;
   className?: string;
 }
 
-// font-sans: a tag inside a font-display heading ("Conflict check COURSE SCHEDULE") stays Inter, never Playfair.
-const TAG =
-  "inline-flex items-center whitespace-nowrap rounded-xs border border-line-strong px-1.5 py-px font-sans text-xs leading-4 font-semibold uppercase tracking-label text-fg-2";
+/** "via Registrar": the default words of a SourceNote. */
+export function viaLabel(source: SourceId, name?: string | null): string {
+  return `via ${name ?? SOURCES[source].label}`;
+}
+
+export function SourceNote({ source, label, hidden = false, className }: SourceNoteProps) {
+  const words = label ?? viaLabel(source);
+  if (hidden) {
+    return (
+      <span className="sr-only" data-source={source} data-source-run="">
+        Source: {words}
+      </span>
+    );
+  }
+  // font-sans: a note inside a font-display heading stays Inter, never Playfair.
+  return (
+    <span className={cn("font-sans text-fg-3", className)} data-source={source}>
+      <span className="sr-only">Source: </span>
+      {words}
+    </span>
+  );
+}
 
 /**
- * Small uppercase tag naming where an event item came from: HANDSHAKE, WILDCATSYNC, DAVIDSON ONE, COURSE SITE,
- * REGISTRAR, ... (Broadsheet idea). Every event item renders one. The label is uppercased with CSS so screen
- * readers read the words, not letters.
+ * For each row of a list, whether it is the first of a run of consecutive rows with the same note (null: the row
+ * has no visible note and breaks no run of its own). The rows that are not run heads render `SourceNote hidden`.
  */
-export function SourceTag({ source, className }: SourceTagProps) {
-  const label = SOURCES[source].label;
+export function runHeads(labels: readonly (string | null)[]): boolean[] {
+  return labels.map((label, i) => label !== null && (i === 0 || labels[i - 1] !== label));
+}
+
+/** The container attribute that ties a list's rows to its SourceLine: `<ul {...provenance(["registrar"])}>`. */
+export function provenance(sources: readonly SourceId[]): { "data-provenance": string } {
+  return { "data-provenance": [...new Set(sources)].join(" ") };
+}
+
+/** ONE quiet line naming a list's or card's source (and its freshness), in sentence case. */
+export function SourceLine({
+  children,
+  className,
+  testId,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  testId?: string;
+}) {
+  // "l0": the class the e2e provenance check looks for (tests/e2e/helpers.ts attributionReport).
   return (
-    <span className={cn(TAG, className)} data-source={source}>
-      <span className="sr-only">Source: </span>
-      {label}
-    </span>
+    <p className={cn("l0 font-sans text-xs text-fg-3", className)} data-testid={testId}>
+      {children}
+    </p>
   );
 }
 
@@ -37,7 +91,7 @@ export interface SourceLinkProps {
 
 /**
  * The source named once, as the link to the item's own page there ("RateMyProfessors ↗"), for an item that links
- * its source page: a SourceTag beside a separately worded link would say the source twice. It keeps the SourceTag
+ * its source page: a note beside a separately worded link would say the source twice. It keeps the SourceNote
  * contract, `data-source` and the "Source: <label>" accessible name, and the link's name ends with the new-tab
  * cue. Without a link it is the same words as plain text.
  */
@@ -68,25 +122,5 @@ export function SourceLink({ source, href, what, className }: SourceLinkProps) {
       {label}
       <ArrowUpRight aria-hidden className="size-3.5" />
     </a>
-  );
-}
-
-export interface SourceTagListProps {
-  sources: readonly SourceId[];
-  /** Accessible name for the list, e.g. "Sources for this page". */
-  label: string;
-  className?: string;
-}
-
-/** A wrapping row of source tags. */
-export function SourceTagList({ sources, label, className }: SourceTagListProps) {
-  return (
-    <ul aria-label={label} className={cn("flex flex-wrap gap-1.5", className)}>
-      {sources.map((source) => (
-        <li key={source}>
-          <SourceTag source={source} />
-        </li>
-      ))}
-    </ul>
   );
 }
