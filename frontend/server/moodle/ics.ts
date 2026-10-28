@@ -1,5 +1,6 @@
 import "server-only";
 import ICAL from "ical.js";
+import { IsoDateTimeSchema } from "@/lib/types/common";
 import { icalTimeToInstant } from "@/server/feeds/ics";
 import { cleanLine } from "@/server/feeds/text";
 import { zonedTimeToUtc } from "@/server/feeds/time";
@@ -14,7 +15,8 @@ import { zonedTimeToUtc } from "@/server/feeds/time";
  * an empty calendar. Per event:
  *   - UID and SUMMARY are required (an event without either is skipped and counted);
  *   - the due time is DTSTART (Moodle exports a due date as DTSTART = DTEND); a date without a time is due at
- *     23:59 Davidson time that day;
+ *     23:59 Davidson time that day; a due time more than MOODLE_DUE_WINDOW_DAYS before or after now (the feed
+ *     covers "Recent and next 60 days", so a year 1901 or 2999 date is a typo or damage) is skipped and counted;
  *   - "… opens" events (a quiz or an assignment opening) are not deadlines and are left out; "Problem set 3 is
  *     due" becomes "Problem set 3"; STATUS:CANCELLED events are left out;
  *   - at most MOODLE_MAX_EVENTS events are kept: the soonest upcoming first, then the most recent past ones; the
@@ -26,6 +28,8 @@ export const MOODLE_TITLE_MAX = 120;
 const UID_MAX = 255;
 const CATEGORY_MAX = 100;
 const CAMPUS_TIME_ZONE = "America/New_York";
+/** How far from now a due time may be: well past the feed's own 60 days, never a date no one can read back. */
+export const MOODLE_DUE_WINDOW_DAYS = 400;
 
 export type MoodleFeedProblem = "auth" | "not_calendar" | "not_moodle" | "malformed";
 
@@ -48,7 +52,7 @@ export interface MoodleEvent {
 
 export interface MoodleParseResult {
   events: MoodleEvent[];
-  /** Events that could not be read (no UID, no title, no usable start). */
+  /** Events that could not be read (no UID, no title, no usable start, a start far from now). */
   skipped: number;
   /** Events left out because the feed had more than MOODLE_MAX_EVENTS. */
   capped: number;
@@ -92,6 +96,13 @@ function categoryOf(component: ICAL.Component): string | null {
   return first ? cleanLine(first, CATEGORY_MAX) || null : null;
 }
 
+/** A due time worth storing: within MOODLE_DUE_WINDOW_DAYS of now, and an ISO instant the plan reads back. */
+function dueInWindow(due: Date, now: Date): boolean {
+  const window = MOODLE_DUE_WINDOW_DAYS * 86_400_000;
+  if (Math.abs(due.getTime() - now.getTime()) > window) return false;
+  return IsoDateTimeSchema.safeParse(due.toISOString()).success;
+}
+
 export function parseMoodleCalendar(text: string, now: Date): MoodleParseResult {
   const body = text.replace(/^﻿/, "");
   if (!/^\s*BEGIN:VCALENDAR\r?\n/i.test(body)) {
@@ -124,7 +135,7 @@ export function parseMoodleCalendar(text: string, now: Date): MoodleParseResult 
       due = null;
     }
     const title = titleOf(summary);
-    if (!uid || uid.length > UID_MAX || !title || !due) {
+    if (!uid || uid.length > UID_MAX || !title || !due || !dueInWindow(due, now)) {
       skipped++;
       continue;
     }

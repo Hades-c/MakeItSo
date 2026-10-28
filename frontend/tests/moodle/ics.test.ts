@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { MOODLE_MAX_EVENTS, MoodleFeedError, parseMoodleCalendar } from "@/server/moodle/ics";
+import {
+  MOODLE_DUE_WINDOW_DAYS,
+  MOODLE_MAX_EVENTS,
+  MoodleFeedError,
+  parseMoodleCalendar,
+} from "@/server/moodle/ics";
 
 /** server/moodle/ics.ts on the synthetic Moodle exports in tests/fixtures/external/course-site. */
 
@@ -122,6 +127,36 @@ describe("parseMoodleCalendar", () => {
     const result = parseMoodleCalendar(text, NOW);
     expect(result.skipped).toBe(3);
     expect(result.events.map((event) => event.title)).toEqual(["Essay 1"]);
+  });
+
+  it(`skips a due time more than ${MOODLE_DUE_WINDOW_DAYS} days from now, or one no ISO date can hold, and counts it`, () => {
+    const event = (uid: string, start: string) =>
+      [
+        "BEGIN:VEVENT",
+        `UID:${uid}@moodle.davidson.edu`,
+        `SUMMARY:Task ${uid} is due`,
+        start,
+        "END:VEVENT",
+      ].join("\r\n");
+    const text = [
+      "BEGIN:VCALENDAR",
+      "PRODID:-//Moodle Pty Ltd//NONSGML Moodle Version 2024100700//EN",
+      "VERSION:2.0",
+      // ical.js rolls this over into the year 10007: a valid Date, but not one an ISO date-time can hold.
+      event("huge", "DTSTART:99999999T999999"),
+      event("first", "DTSTART:00010101T000000Z"),
+      event("old", "DTSTART:19010101T120000Z"),
+      event("far", "DTSTART:29991231T000000Z"),
+      event("day", "DTSTART;VALUE=DATE:30000101"),
+      // Inside the window, both ends.
+      event("year-ago", "DTSTART:20251001T120000Z"),
+      event("next-fall", "DTSTART:20270901T120000Z"),
+      "END:VCALENDAR",
+      "",
+    ].join("\r\n");
+    const result = parseMoodleCalendar(text, NOW);
+    expect(result.skipped).toBe(5);
+    expect(result.events.map((e) => e.title)).toEqual(["Task next-fall", "Task year-ago"]);
   });
 
   it(`keeps at most ${MOODLE_MAX_EVENTS} events from a huge feed, the soonest, and counts the rest`, () => {
