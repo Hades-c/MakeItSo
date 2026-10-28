@@ -5,14 +5,16 @@ import type { ClassStanding } from "@/lib/term";
 import type { StudentDeadline } from "@/lib/types/plan";
 import { clockLabel } from "@/components/domain/time-geometry";
 import type { ContentDeadline } from "@/server/content/academic-calendar";
+import { studentDeadlineSource } from "@/server/today/agenda";
 import { audienceIncludes, calendarCategoryOf } from "@/server/today/calendar";
 import { addDaysToKey, etClock, etDay, zonedInstant } from "@/server/today/time";
 
 /**
  * Today's "Due soon" (PLAN §3): the academic calendar's deadlines and registration windows (REGISTRAR, DAVIDSON
  * OFFICES), the curated office programs' deadlines (MATTHEWS CENTER, HURT HUB PROGRAMS, ...; server/content
- * deadlinesBetween) and the student's own deadlines (YOUR PLAN), merged over the next DUE_SOON_DAYS Davidson
- * days. Each item keeps its stored source for its tag (PLAN §5 Sources). Pure.
+ * deadlinesBetween) and the student's own deadlines (YOUR PLAN; the ones imported from their Moodle calendar are
+ * MOODLE, "course-site"), merged over the next DUE_SOON_DAYS Davidson days. Each item keeps its stored source for
+ * its tag (PLAN §5 Sources). Pure.
  *
  * - A window already under way (WebTree Oct 12 - Nov 3) stays while it lasts, sorted as of today.
  * - A deadline with a published time that has passed is gone; an all-day one stays for its whole day.
@@ -111,7 +113,7 @@ function fromStudent(deadline: StudentDeadline): DueSoonItem {
     dueAt: new Date(deadline.dueAt).toISOString(),
     ongoing: false,
     courseCode: deadline.courseCode ?? null,
-    source: "my-plan",
+    source: studentDeadlineSource(deadline),
     url: null,
     verifiedAt: null,
   };

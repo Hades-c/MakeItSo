@@ -1,7 +1,11 @@
+import Link from "next/link";
 import { AlarmClock, ExternalLink, TriangleAlert } from "lucide-react";
 import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
+import { routes } from "@/lib/routes";
+import { sourceLabel } from "@/lib/sources";
 import { cn } from "@/lib/utils";
+import { loadFlags } from "@/server/features";
 import {
   buildDueSoon,
   contentDeadlines,
@@ -10,8 +14,10 @@ import {
   groupDueSoon,
   loadPlan,
   loadProfile,
+  loadTerms,
   safely,
   standingOf,
+  wantsSyllabiPointer,
   type DueSoonItem,
 } from "@/server/today";
 import { STRETCHED_LINK } from "../_lib/styles";
@@ -39,11 +45,23 @@ export const DUE_SOON_TITLE = "Due for you";
  * are missing.
  *
  * All/Classes (PLAN-UX §4): "Classes" is the same rows filtered to those tied to a course — including deadlines a
- * syllabus upload added, which already carry a courseCode like any other row — grouped and counted the same way.
- * Both views are built and rendered up front; DueSoonTabs only shows one at a time.
+ * syllabus added, which already carry a courseCode like any other row — grouped and counted the same way.
+ * Both views are built and rendered up front; DueSoonTabs only shows one at a time. Deadlines imported from the
+ * student's Moodle calendar say "Moodle" on their row.
+ *
+ * A student with classes this term and no syllabus or Moodle connection gets one quiet line at the end pointing to
+ * /syllabi (wantsSyllabiPointer).
  */
 export async function DueSoonPanel({ userId, now }: { userId: string; now: Date }) {
-  const [plan, profile] = await Promise.all([loadPlan(userId), loadProfile(userId)]);
+  const [plan, profile, terms] = await Promise.all([
+    loadPlan(userId),
+    loadProfile(userId),
+    loadTerms(),
+  ]);
+  const moodleOn = loadFlags().moodle;
+  const pointer = plan.ok
+    ? await wantsSyllabiPointer(userId, plan.value, terms.ok ? terms.value.current : null)
+    : false;
   const { from, to } = dueSoonRange(now);
   // The curated rows never depend on the plan: without it, they are still listed, with a note.
   const built = safely(DUE_SOON_TITLE, () => {
@@ -81,6 +99,17 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
           />
         }
       />
+      {pointer ? (
+        <p className="mt-3 border-t border-line pt-1 text-sm md:pt-3" data-testid="syllabi-pointer">
+          <Link
+            href={routes.syllabi()}
+            className="inline-flex min-h-11 items-center font-medium link md:min-h-0"
+          >
+            {moodleOn ? "Add your syllabi or connect Moodle" : "Add your syllabi"} to see your class
+            deadlines here
+          </Link>
+        </p>
+      ) : null}
     </SectionCard>
   );
 }
@@ -167,6 +196,12 @@ function DueSoonRow({ item, label }: { item: DueSoonItem; label: string }) {
         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-2 md:text-sm">
           {item.courseCode ? <CourseCode code={item.courseCode} /> : null}
           {item.audience && !item.forYou ? <span>For: {item.audience}</span> : null}
+          {item.source === "course-site" ? (
+            <span data-source={item.source}>
+              <span className="sr-only">Source: </span>
+              {sourceLabel(item.source)}
+            </span>
+          ) : null}
         </p>
       </div>
       {/* Due today (the student's own): red, and never by colour alone (red is also the accent): an alarm icon and

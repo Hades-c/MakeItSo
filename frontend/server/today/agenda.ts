@@ -78,6 +78,11 @@ function classItems(entries: readonly DayScheduleEntry[]): TimelineItem[] {
   }));
 }
 
+/** A student deadline's source: imported from their Moodle calendar ("course-site", Moodle), else their own plan. */
+export function studentDeadlineSource(deadline: Pick<StudentDeadline, "origin">): SourceId {
+  return deadline.origin === "moodle" ? "course-site" : "my-plan";
+}
+
 function studentDeadlineItems(day: string, deadlines: readonly StudentDeadline[]): TimelineItem[] {
   return deadlines
     .filter((deadline) => etDay(deadline.dueAt) === day)
@@ -86,7 +91,7 @@ function studentDeadlineItems(day: string, deadlines: readonly StudentDeadline[]
       kind: "deadline",
       title: deadline.title,
       start: etClock(deadline.dueAt),
-      source: "my-plan",
+      source: studentDeadlineSource(deadline),
       ...(deadline.courseCode ? { code: deadline.courseCode } : {}),
     }));
 }

@@ -5,6 +5,7 @@ import { now as serverNow } from "@/server/clock";
 import { readEnv } from "@/server/env";
 import { cn } from "@/lib/utils";
 import { featureEnabled, loadFlags } from "@/server/features";
+import { syncMoodleIfDue } from "@/server/moodle";
 import { etDay, stripDays } from "@/server/today";
 import { CampusPanel } from "./_components/campus-panel";
 import { DUE_SOON_TITLE, DueSoonPanel } from "./_components/due-soon-panel";
@@ -55,6 +56,8 @@ export default async function TodayPage({
   const flags = loadFlags();
   const eventsOn = featureEnabled(flags, "events");
   const careersOn = featureEnabled(flags, "careers");
+  // A connected Moodle calendar 6+ hours since its last sync: synced after this page is sent (one indexed read here).
+  if (flags.moodle) await syncMoodleIfDue(user.id);
 
   return (
     <>
