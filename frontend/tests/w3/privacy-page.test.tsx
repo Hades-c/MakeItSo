@@ -69,4 +69,34 @@ describe("/privacy", () => {
     // The alumni directory is still for verified addresses only.
     expect(document.body.textContent).toMatch(/visible only to signed-in students with a verified/);
   });
+
+  it("says what a pasted syllabus sends to Anthropic, and what the Moodle import reads and stores", async () => {
+    render(await PrivacyPage());
+    const ai = (document.getElementById("ai")!.closest("section")!.textContent ?? "").replace(
+      /\s+/g,
+      " ",
+    );
+    expect(ai).toMatch(/the syllabus text you paste \(up to 20,000 characters\)/);
+    expect(ai).toMatch(/does not keep it or log it/);
+    const moodle = (
+      document.getElementById("moodle")!.closest("section")!.textContent ?? ""
+    ).replace(/\s+/g, " ");
+    expect(moodle).toMatch(/stores it encrypted/);
+    expect(moodle).toMatch(/title, due time and course name/);
+    expect(moodle).toMatch(/more than six hours after the last sync/);
+    expect(moodle).not.toMatch(/turned off right now/);
+    const stored = document.getElementById("what-we-store")!.closest("section")!.textContent ?? "";
+    expect(stored.replace(/\s+/g, " ")).toMatch(/Not the text you pasted/);
+    expect(document.body.textContent).not.toMatch(
+      /do not paste Degree Works reports, Moodle content/,
+    );
+  });
+
+  it("says when the Moodle import is turned off", async () => {
+    vi.stubEnv("MOODLE_IMPORT_ENABLED", "false");
+    render(await PrivacyPage());
+    expect(document.getElementById("moodle")!.closest("section")).toHaveTextContent(
+      /Moodle import is turned off right now/,
+    );
+  });
 });
