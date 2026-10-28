@@ -43,13 +43,13 @@ export const SYSTEM = [
   [
     "You receive:",
     '- <catalog_data>: today\'s date, the upcoming terms, the career path (a curated summary, what people in it do, related departments and programs, and Davidson resources), the official major and minor names, and candidate courses with the upcoming terms each can be taken in. A term with basis "past-offerings" is not scheduled yet: the course ran in recent terms.',
-    "- <student_profile>: majors, minors, graduation year, class standing and career interests.",
+    "- <student_profile>: majors, minors, graduation year, class standing, career interests and the student's stated goals (what they are hoping to get out of their time at Davidson).",
     "- <student_plan>: the student's completed, current and planned courses.",
     "- <student_goals>: the career path the student chose.",
   ].join("\n"),
   [
     "Write:",
-    "- overview: two to four sentences on how the student's Davidson studies can build toward this career.",
+    "- overview: two to four sentences on how the student's Davidson studies can build toward this career, touching on their stated goals when one of them fits.",
     `- majors and minors: at most ${MAX_PROGRAMS} each, copied exactly from the official names in <catalog_data>, and only when they fit the career; use empty lists when the student's current programs already fit.`,
     `- courses: at most ${MAX_COURSES} candidates, each with one of its listed term codes, spread over the upcoming terms, and a short "why" (at most 25 words). Pick only from the candidates.`,
     `- experiences: at most ${MAX_EXPERIENCES} kinds of experience (for example research with faculty, an internship, a campus organization, advising appointments), each with "when" and a short "why". Name an organization only if it appears in <catalog_data> as a Davidson resource; otherwise describe the kind of experience without naming an employer, program or deadline.`,

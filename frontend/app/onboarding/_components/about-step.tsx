@@ -23,7 +23,7 @@ import {
   type AboutProblem,
 } from "../_lib/academics";
 import { describeFailure, issueFor } from "../_lib/errors";
-import { nextStep, stepHref } from "../_lib/steps";
+import { isRequiredStep, nextStep, stepHref } from "../_lib/steps";
 import { NativeSelect, StepActions, useFocusRequest, useSetupNext } from "./parts";
 
 /**
@@ -221,6 +221,7 @@ export function AboutStep({ initial, majorNames, minorNames, now }: AboutStepPro
 
       <StepActions
         step="about"
+        hideSkip={isRequiredStep("about")}
         primary={
           <Button type="submit" aria-disabled={saving || undefined}>
             {saving ? "Saving…" : "Save and continue"}

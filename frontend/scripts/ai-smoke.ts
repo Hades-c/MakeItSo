@@ -89,6 +89,7 @@ const PROFILE = {
   graduationYear: 2029,
   standing: "sophomore" as const,
   interests: ["software-engineering"],
+  goals: ["grad-school"],
 };
 
 const CANDIDATES = [

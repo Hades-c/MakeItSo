@@ -40,10 +40,11 @@ const PROFILE = {
   graduationYear: 2029,
   standing: { standing: "sophomore" as const, estimated: true },
   interests: ["software-engineering", "not-a-career", "software-engineering"],
+  goals: ["grad-school", "not-a-goal", "grad-school"],
 };
 
 describe("student profile", () => {
-  it("sends only official program names, graduation year, standing and career slugs", () => {
+  it("sends only official program names, graduation year, standing, career and goal slugs", () => {
     const payload = studentProfilePayload(PROFILE, OFFICIAL);
     expect(payload).toEqual({
       majors: ["Major in Computer Science (B.S. Degree)"],
@@ -51,6 +52,7 @@ describe("student profile", () => {
       graduationYear: 2029,
       standing: "sophomore",
       interests: ["software-engineering"],
+      goals: ["grad-school"],
     });
     const text = JSON.stringify(payload);
     for (const secret of [PROFILE.id, PROFILE.name, PROFILE.email, "SECRET-BIO", "2026-09-01"]) {
@@ -218,6 +220,7 @@ describe("prompts", () => {
             graduationYear: 2029,
             standing: "sophomore",
             interests: [],
+            goals: [],
           },
           plan: { items: [], openRequirements: [] },
         }),

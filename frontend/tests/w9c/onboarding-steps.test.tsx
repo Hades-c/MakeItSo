@@ -4,10 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AboutStep } from "@/app/onboarding/_components/about-step";
 import { ClassesStep } from "@/app/onboarding/_components/classes-step";
 import { CompletedStep } from "@/app/onboarding/_components/completed-step";
+import { GoalsStep } from "@/app/onboarding/_components/goals-step";
 import { InterestsStep } from "@/app/onboarding/_components/interests-step";
 import { SkipSetup } from "@/app/onboarding/_components/skip-setup";
 import { resetStepHeadingForTests, StepHeading } from "@/app/onboarding/_components/step-heading";
 import { StepList } from "@/app/onboarding/_components/step-list";
+import { SyllabiStep } from "@/app/onboarding/_components/syllabi-step";
 import type { CareerOption } from "@/app/onboarding/_lib/load";
 import type { Profile } from "@/lib/api/profile";
 import {
@@ -73,9 +75,11 @@ const PROFILE: Profile = {
   firstTerm: "202501",
   standingOverride: null,
   interests: [],
+  goals: [],
   aiConsentAt: null,
   adultAttestedAt: null,
   onboardedAt: null,
+  newStepsPromptDismissedAt: null,
   createdAt: NOW,
 };
 
@@ -185,7 +189,14 @@ describe("StepList", () => {
       <StepList
         step="classes"
         currentTermLabel="Fall 2026"
-        progress={{ about: true, classes: false, completed: false, interests: false }}
+        progress={{
+          about: true,
+          classes: false,
+          completed: false,
+          syllabi: false,
+          goals: false,
+          interests: false,
+        }}
       />,
     );
     const nav = screen.getByRole("navigation", { name: "Setup steps" });
@@ -194,6 +205,8 @@ describe("StepList", () => {
       "/onboarding?step=about",
       "/onboarding?step=classes",
       "/onboarding?step=completed",
+      "/onboarding?step=syllabi",
+      "/onboarding?step=goals",
       "/onboarding?step=interests",
     ]);
     expect(links[1]).toHaveAttribute("aria-current", "step");
@@ -303,12 +316,9 @@ describe("AboutStep (step 1)", () => {
     expect(calls[0]?.body).toMatchObject({ majors: [MAJORS[1]] });
   });
 
-  it("skips without saving", () => {
+  it("is a required step: no Skip this step link, and no Back on the first step", () => {
     renderAbout();
-    expect(screen.getByRole("link", { name: "Skip this step" })).toHaveAttribute(
-      "href",
-      "/onboarding?step=classes",
-    );
+    expect(screen.queryByRole("link", { name: "Skip this step" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Back" })).toBeNull();
   });
 });
@@ -803,7 +813,72 @@ describe("CompletedStep (step 3)", () => {
   });
 });
 
-describe("InterestsStep (step 4)", () => {
+describe("SyllabiStep (step 4)", () => {
+  it("reuses the /syllabi board and moves on with Continue", () => {
+    render(
+      <SyllabiStep
+        data={{
+          syllabi: [],
+          terms: [{ code: "202601", label: "Fall 2026" }],
+          defaultTerm: "202601",
+          gate: "ready",
+        }}
+        verifyHref={null}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Upload a syllabus" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Your uploads" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
+      "href",
+      "/onboarding?step=goals",
+    );
+    expect(screen.getByRole("link", { name: "Skip this step" })).toHaveAttribute(
+      "href",
+      "/onboarding?step=goals",
+    );
+  });
+});
+
+describe("GoalsStep (step 5)", () => {
+  it("saves the chosen slugs and moves to Interests", async () => {
+    stubFetch([200, { profile: { ...PROFILE, goals: ["grad-school"] } }]);
+    render(<GoalsStep initial={["research", "retired-slug"]} />);
+    expect(screen.getByRole("button", { name: "Do research with a professor" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Do research with a professor" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Go to graduate or professional school" }),
+    );
+    expect(screen.getByTestId("goals-count")).toHaveTextContent("1 chosen.");
+    await userEvent.click(screen.getByRole("button", { name: "Save and continue" }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/onboarding?step=interests"));
+    expect(calls).toEqual([
+      { url: "/api/profile", method: "PATCH", body: { goals: ["grad-school"] } },
+    ]);
+  });
+
+  it("keeps the student here when saving fails", async () => {
+    stubFetch([500, { error: { code: "internal", message: "secret detail" } }]);
+    render(<GoalsStep initial={[]} />);
+    await userEvent.click(screen.getByRole("button", { name: "Save and continue" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Something went wrong. Please try again.",
+    );
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("skips without saving", () => {
+    render(<GoalsStep initial={[]} />);
+    expect(screen.getByRole("link", { name: "Skip this step" })).toHaveAttribute(
+      "href",
+      "/onboarding?step=interests",
+    );
+  });
+});
+
+describe("InterestsStep (step 6)", () => {
   const careers: CareerOption[] = [
     { slug: "software-engineering", name: "Software Engineering", cluster: "Technology" },
     { slug: "data-science", name: "Data Science & Analytics", cluster: "Technology" },

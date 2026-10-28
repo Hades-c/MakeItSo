@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Syllabi" };
  */
 export default async function SyllabiPage() {
   const user = await requireUser();
-  const data = await loadSyllabiPage(user);
+  const data = await loadSyllabiPage(user.id);
   const verifyHref = data.gate === "unverified" ? verifyStepFor(user, routes.syllabi()) : null;
 
   return (

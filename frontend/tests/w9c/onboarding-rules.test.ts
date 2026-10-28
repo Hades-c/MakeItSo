@@ -86,17 +86,26 @@ function meeting(patch: Partial<Meeting> = {}): Meeting {
 describe("steps", () => {
   it("titles each step with its place in the flow (read by the route announcer)", () => {
     expect(stepTitle("classes", "Fall 2026")).toBe(
-      "Step 2 of 4: Your Fall 2026 classes · Get started",
+      "Step 2 of 6: Your Fall 2026 classes · Get started",
     );
-    expect(stepTitle("about", "Fall 2026")).toBe("Step 1 of 4: About you · Get started");
+    expect(stepTitle("about", "Fall 2026")).toBe("Step 1 of 6: About you · Get started");
   });
 
-  it("has the four steps of PLAN §3 in order", () => {
-    expect(ONBOARDING_STEPS).toEqual(["about", "classes", "completed", "interests"]);
+  it("has the six steps of PLAN-UX §8 in order", () => {
+    expect(ONBOARDING_STEPS).toEqual([
+      "about",
+      "classes",
+      "completed",
+      "syllabi",
+      "goals",
+      "interests",
+    ]);
     expect(ONBOARDING_STEPS.map((step) => stepLabel(step, "Fall 2026"))).toEqual([
       "About you",
       "Your Fall 2026 classes",
       "Courses you have taken",
+      "Syllabi",
+      "Goals",
       "Interests",
     ]);
   });
@@ -150,38 +159,71 @@ describe("steps", () => {
       minors: [],
       currentTermItems: 0,
       completedItems: 0,
+      syllabi: 0,
+      goals: [],
       interests: [],
     };
     expect(stepProgress(empty)).toEqual({
       about: false,
       classes: false,
       completed: false,
+      syllabi: false,
+      goals: false,
       interests: false,
     });
     expect(stepProgress({ ...empty, firstTerm: "202501" }).about).toBe(true);
     expect(stepProgress({ ...empty, majors: ["Major in History (A.B. Degree)"] }).about).toBe(true);
     expect(stepProgress({ ...empty, currentTermItems: 2 }).classes).toBe(true);
     expect(stepProgress({ ...empty, completedItems: 1 }).completed).toBe(true);
+    expect(stepProgress({ ...empty, syllabi: 1 }).syllabi).toBe(true);
+    expect(stepProgress({ ...empty, goals: ["grad-school"] }).goals).toBe(true);
     expect(stepProgress({ ...empty, interests: ["law"] }).interests).toBe(true);
   });
 
   it("resumes after the furthest saved step, never forcing skipped steps again", () => {
-    const none = { about: false, classes: false, completed: false, interests: false };
+    const none = {
+      about: false,
+      classes: false,
+      completed: false,
+      syllabi: false,
+      goals: false,
+      interests: false,
+    };
     expect(resumeStep(none, false)).toBe("about");
     expect(resumeStep({ ...none, about: true }, false)).toBe("classes");
     // Skipped step 2, saved step 3 → step 4.
-    expect(resumeStep({ ...none, about: true, completed: true }, false)).toBe("interests");
+    expect(resumeStep({ ...none, about: true, completed: true }, false)).toBe("syllabi");
     // A legacy plan with current classes but nothing else → step 3.
     expect(resumeStep({ ...none, classes: true }, false)).toBe("completed");
     expect(
-      resumeStep({ about: true, classes: true, completed: true, interests: true }, false),
+      resumeStep(
+        {
+          about: true,
+          classes: true,
+          completed: true,
+          syllabi: true,
+          goals: true,
+          interests: true,
+        },
+        false,
+      ),
     ).toBe("interests");
   });
 
   it("starts a re-run from the beginning once onboarded", () => {
-    expect(resumeStep({ about: true, classes: true, completed: true, interests: true }, true)).toBe(
-      "about",
-    );
+    expect(
+      resumeStep(
+        {
+          about: true,
+          classes: true,
+          completed: true,
+          syllabi: true,
+          goals: true,
+          interests: true,
+        },
+        true,
+      ),
+    ).toBe("about");
   });
 });
 

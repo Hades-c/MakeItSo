@@ -4,6 +4,7 @@ import { isDavidsonEmail } from "@/lib/api/account";
 import type { ApiIssue } from "@/lib/api/errors";
 import { type Profile, type ProfilePatchBody, ProfilePatchBodySchema } from "@/lib/api/profile";
 import { dayKey } from "@/lib/format";
+import { isGoalSlug, MAX_GOALS } from "@/lib/goals";
 import {
   CLASS_STANDINGS,
   classStanding,
@@ -37,19 +38,25 @@ import { snapshotOfferingNames } from "@/server/programs/snapshot";
  *     `minor` string is mapped the same way, and dropped when it matches nothing (or is "Undecided").
  *   - graduationYear defaults to the first-year class; `standing` is derived with lib/term classStanding (a
  *     student-set standingOverride wins and is not an estimate).
- *   - interests are the career-path slugs of server/content (the 24 careers); a stored slug that is not one (an
- *     old or hand-edited value) is left out. Missing timestamps are null. Legacy fields (currentYear, bio,
+ *   - interests are the career-path slugs of server/content (the 24 careers); goals are the goal-statement slugs
+ *     of lib/goals.ts (a second, unrelated taxonomy); a stored slug that is not in its own list (an old or
+ *     hand-edited value) is left out of either. Missing timestamps are null. Legacy fields (currentYear, bio,
  *     careerInterests, totalCreditsRequired) are ignored, never deleted.
  *
  * Writing (updateProfile): the strict ProfilePatchBodySchema whitelist, then these rules:
  *   - null clears (`$unset`) the clearable fields firstTerm and standingOverride; [] clears a list;
  *   - majors/minors must be official names or the unlisted programs (profileProgramNames: a CIS major, the Middle
  *     East Studies minor; max 3, de-duplicated); `major`/`minor` are mirrored for rollback;
- *   - interests must be career-path slugs (400 with path `interests.<index>` otherwise), de-duplicated;
+ *   - interests must be career-path slugs (400 with path `interests.<index>` otherwise), de-duplicated; goals
+ *     must be goal-statement slugs (400 with path `goals.<index>` otherwise), de-duplicated;
  *   - firstTerm is a Fall or Spring term between 8 academic years before graduation and the graduation spring;
  *   - aiConsent: true needs the 18+ attestation (stored, or adultAttested: true in the same request) and sets
  *     aiConsentAt once; false clears it. adultAttested: false clears the attestation AND the consent;
- *   - onboarded: true sets onboardedAt once. Nothing else can be written (no email, password, flags, $-keys).
+ *   - onboarded: true sets onboardedAt once, and the first time only, also sets newStepsPromptDismissedAt (the
+ *     current flow already offered the Syllabi and Goals steps, so there is nothing new to notify about); an
+ *     account onboarded before those steps existed reaches this with onboardedAt already set, so this clause
+ *     does not fire for it, and PLAN-UX §8's one-time notice is who dismissNewStepsPrompt: true is for.
+ *     Nothing else can be written (no email, password, flags, $-keys).
  */
 
 export type ProfileView = Profile & {
@@ -171,9 +178,11 @@ type ProfileSource = Pick<
   | "firstTerm"
   | "standingOverride"
   | "interests"
+  | "goals"
   | "aiConsentAt"
   | "adultAttestedAt"
   | "onboardedAt"
+  | "newStepsPromptDismissedAt"
   | "createdAt"
 >;
 
@@ -240,16 +249,24 @@ export function toProfile(
         ),
       ),
     ].slice(0, 24),
+    goals: [
+      ...new Set(
+        (doc.goals ?? []).filter(
+          (slug): slug is string => typeof slug === "string" && isGoalSlug(slug),
+        ),
+      ),
+    ].slice(0, MAX_GOALS),
     aiConsentAt: iso(doc.aiConsentAt),
     adultAttestedAt: iso(doc.adultAttestedAt),
     onboardedAt: iso(doc.onboardedAt),
+    newStepsPromptDismissedAt: iso(doc.newStepsPromptDismissedAt),
     createdAt: iso(doc.createdAt) ?? id.getTimestamp().toISOString(),
     standing: classStanding(graduationYear, at, standingOverride),
   };
 }
 
 const PROFILE_FIELDS =
-  "name email emailVerifiedAt majors minors major minor graduationYear firstTerm standingOverride interests aiConsentAt adultAttestedAt onboardedAt createdAt";
+  "name email emailVerifiedAt majors minors major minor graduationYear firstTerm standingOverride interests goals aiConsentAt adultAttestedAt onboardedAt newStepsPromptDismissedAt createdAt";
 
 async function loadNames() {
   const [majors, minors] = await Promise.all([
@@ -357,6 +374,15 @@ export async function updateProfile(userId: string, patch: ProfilePatchBody): Pr
     set.interests = [...new Set(input.interests)];
   }
 
+  if (input.goals !== undefined) {
+    input.goals.forEach((slug, index) => {
+      if (!isGoalSlug(slug)) {
+        issues.push({ path: `goals.${index}`, message: "Pick a goal from the list." });
+      }
+    });
+    set.goals = [...new Set(input.goals)];
+  }
+
   if (input.adultAttested === true) set.adultAttestedAt = doc.adultAttestedAt ?? at;
   if (input.adultAttested === false) {
     unset.adultAttestedAt = "";
@@ -376,7 +402,17 @@ export async function updateProfile(userId: string, patch: ProfilePatchBody): Pr
   }
   if (input.aiConsent === false) unset.aiConsentAt = "";
 
-  if (input.onboarded === true) set.onboardedAt = doc.onboardedAt ?? at;
+  if (input.onboarded === true) {
+    set.onboardedAt = doc.onboardedAt ?? at;
+    // Completing (or skipping) setup through the current flow means the Syllabi and Goals steps were already
+    // offered, so the first-time completion also counts as having seen the one-time notice about them; only an
+    // account onboarded before those steps existed reaches updateProfile with onboardedAt already set and
+    // newStepsPromptDismissedAt still unset, which is exactly who NewStepsPrompt (app/(hub)/today) is for.
+    if (!doc.onboardedAt) set.newStepsPromptDismissedAt = doc.newStepsPromptDismissedAt ?? at;
+  }
+  if (input.dismissNewStepsPrompt === true) {
+    set.newStepsPromptDismissedAt = doc.newStepsPromptDismissedAt ?? at;
+  }
 
   if (issues.length > 0) {
     throw new ApiError(400, "validation_failed", "Some fields are invalid.", issues);

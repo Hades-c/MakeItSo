@@ -19,7 +19,7 @@ export const SYSTEM = [
   [
     "Rules:",
     "- Use only the alumnus facts in <catalog_data> (name, class year, majors, role, organization). Do not guess anything else about them.",
-    `- Use only the student facts in <student_profile> and <student_goals>. The student's name is unknown: write the exact placeholder ${STUDENT_NAME_PLACEHOLDER} wherever the name belongs, including the sign-off.`,
+    `- Use only the student facts in <student_profile> (majors, minors, graduation year, class standing, career interests, and the student's own stated goals) and <student_goals>. The student's name is unknown: write the exact placeholder ${STUDENT_NAME_PLACEHOLDER} wherever the name belongs, including the sign-off.`,
     "- subject: at most 10 words.",
     "- body: 90 to 160 words in three short paragraphs and a sign-off: who the student is (class year and majors), why this alumnus (their field), one modest, specific ask (a 15 to 20 minute conversation), and thanks.",
     "- Do not flatter, do not claim a connection that is not in the data, do not ask for a job or a referral, and do not include links, phone numbers or e-mail addresses.",

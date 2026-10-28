@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { routes } from "@/lib/routes";
 import { requireUser } from "@/server/auth";
+import { verifyStepFor } from "@/server/auth/banner";
 import { AboutStep } from "./_components/about-step";
 import { ClassesStep } from "./_components/classes-step";
 import { CompletedStep } from "./_components/completed-step";
+import { GoalsStep } from "./_components/goals-step";
 import { InterestsStep } from "./_components/interests-step";
 import { SkipSetup } from "./_components/skip-setup";
 import { StepHeading } from "./_components/step-heading";
 import { StepList } from "./_components/step-list";
+import { SyllabiStep } from "./_components/syllabi-step";
 import { currentTermLabel, loadOnboarding, type OnboardingData } from "./_lib/load";
 import {
   ONBOARDING_STEPS,
@@ -23,12 +26,14 @@ import {
 } from "./_lib/steps";
 
 /**
- * /onboarding (PLAN §3; R1): the first run, in four skippable steps with the step in the URL. Without a step it
- * resumes where the student stopped (./_lib/steps resumeStep). `?next=` (a first-run deep link the hub sent
- * here) is kept on every step link and is where Skip setup and Finish go instead of Today. A server component that reads the profile, the
- * official program names, the terms and the plan (a legacy v1 plan in memory included) once per request
- * (./_lib/load.ts) and renders one client island per step; every change goes through the lib/api specs (W3
- * profile, W5s plan, W1 catalog).
+ * /onboarding (PLAN §3; R1; PLAN-UX §8): the first run, in six steps with the step in the URL. "About you" and
+ * "Your classes" are required (no "Skip this step" link, StepActions hideSkip); the rest can be skipped, and the
+ * global "Skip setup" button only appears once both required steps are saved. Without a step it resumes where the
+ * student stopped (./_lib/steps resumeStep). `?next=` (a first-run deep link the hub sent here) is kept on every
+ * step link and is where Skip setup and Finish go instead of Today. A server component that reads the profile,
+ * the official program names, the terms, the plan (a legacy v1 plan in memory included) and the syllabus uploads
+ * once per request (./_lib/load.ts) and renders one client island per step; every change goes through the lib/api
+ * specs (W3 profile, W5s plan, W1 catalog, the syllabi routes).
  */
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -54,6 +59,9 @@ const INTROS: Readonly<Record<OnboardingStep, (data: OnboardingData) => string>>
     `Pick the section of each class you are taking in ${data.terms.currentLabel}. They show on Today and in your plan.`,
   completed: () =>
     "Add courses you have already finished, plus AP, IB or transfer credit, so the requirement tracker starts from where you are.",
+  syllabi: () =>
+    "Upload a syllabus and MakeItSo pulls its deadlines into your plan, after you review them. You can add more any time from Syllabi.",
+  goals: () => "Choose what you are hoping to get out of your time at Davidson.",
   interests: () =>
     "Choose career paths you want to explore. Careers and suggestions start from these.",
 };
@@ -74,6 +82,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
   }
   const step = requested;
   const firstName = data.profile.name.trim().split(/\s+/)[0];
+  const canSkipSetup = data.progress.about && data.progress.classes;
 
   return (
     <div data-testid="onboarding" data-step={step}>
@@ -86,7 +95,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
           <StepHeading step={step}>{stepLabel(step, data.terms.currentLabel)}</StepHeading>
           <p className="mt-1.5 text-sm text-fg-2 md:text-base">{INTROS[step](data)}</p>
         </div>
-        {data.profile.onboardedAt === null ? <SkipSetup /> : null}
+        {data.profile.onboardedAt === null && canSkipSetup ? <SkipSetup /> : null}
       </header>
 
       <StepList
@@ -127,6 +136,13 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
           />
         ) : step === "completed" ? (
           <CompletedStep terms={data.terms.completedTerms} items={data.items} />
+        ) : step === "syllabi" ? (
+          <SyllabiStep
+            data={data.syllabi}
+            verifyHref={verifyStepFor(user, stepHref("syllabi", next))}
+          />
+        ) : step === "goals" ? (
+          <GoalsStep initial={data.profile.goals} />
         ) : (
           <InterestsStep initial={data.profile.interests} careers={data.careers} />
         )}

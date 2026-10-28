@@ -115,9 +115,11 @@ describe("GET /api/profile", () => {
       firstTerm: null,
       standingOverride: null,
       interests: [],
+      goals: [],
       aiConsentAt: null,
       adultAttestedAt: null,
       onboardedAt: null,
+      newStepsPromptDismissedAt: null,
       createdAt: "2026-09-30T16:00:00.000Z",
       standing: { standing: "first-year", estimated: true },
     });
@@ -290,6 +292,26 @@ describe("PATCH /api/profile (strict whitelist)", () => {
     expect((await profileOf(await get())).interests).toEqual(["law", "medicine"]);
   });
 
+  it("stores goals as de-duplicated goal-statement slugs (400 goals.N otherwise)", async () => {
+    const user = await signedIn();
+    expect(
+      (await profileOf(await patch({ goals: ["grad-school", "research", "research"] }))).goals,
+    ).toEqual(["grad-school", "research"]);
+    const res = await patch({ goals: ["grad-school", "not-a-goal"] });
+    expect(res.status).toBe(400);
+    expect(await errorOf(res)).toMatchObject({
+      code: "validation_failed",
+      issues: [{ path: "goals.1", message: "Pick a goal from the list." }],
+    });
+    // Nothing is written when any slug is unknown.
+    expect((await raw(user.id))?.goals).toEqual(["grad-school", "research"]);
+  });
+
+  it("drops stored goals that are not goal-statement slugs on read", async () => {
+    await signedIn({ goals: ["grad-school", "grad-school", "not-a-goal", 7] });
+    expect((await profileOf(await get())).goals).toEqual(["grad-school"]);
+  });
+
   it("AI consent needs the 18+ attestation; turning either off clears the consent", async () => {
     const user = await signedIn();
     const refused = await patch({ aiConsent: true });
@@ -316,16 +338,30 @@ describe("PATCH /api/profile (strict whitelist)", () => {
     expect(stored && ("aiConsentAt" in stored || "adultAttestedAt" in stored)).toBe(false);
   });
 
-  it("sets onboardedAt once", async () => {
+  it("sets onboardedAt once, and the first time only also newStepsPromptDismissedAt", async () => {
     await signedIn();
-    expect((await profileOf(await patch({ onboarded: true }))).onboardedAt).toBe(
-      "2026-09-30T16:00:00.000Z",
-    );
+    const first = await profileOf(await patch({ onboarded: true }));
+    expect(first.onboardedAt).toBe("2026-09-30T16:00:00.000Z");
+    // Finishing the current flow already offered the Syllabi and Goals steps, so there is nothing new to tell
+    // this account about: the one-time notice is pre-dismissed, not shown after a fresh onboarding.
+    expect(first.newStepsPromptDismissedAt).toBe("2026-09-30T16:00:00.000Z");
     stubNowPlus(86_400_000);
     expect((await profileOf(await patch({ onboarded: true }))).onboardedAt).toBe(
       "2026-09-30T16:00:00.000Z",
     );
     expect((await patch({ onboarded: false })).status).toBe(400);
+  });
+
+  it("dismisses the new-steps notice once, independently of onboarded", async () => {
+    const user = await signedIn({ onboardedAt: new Date("2026-01-01T00:00:00Z") });
+    expect((await raw(user.id))?.newStepsPromptDismissedAt).toBeUndefined();
+    const dismissed = await profileOf(await patch({ dismissNewStepsPrompt: true }));
+    expect(dismissed.newStepsPromptDismissedAt).toBe("2026-09-30T16:00:00.000Z");
+    stubNowPlus(86_400_000);
+    expect(
+      (await profileOf(await patch({ dismissNewStepsPrompt: true }))).newStepsPromptDismissedAt,
+    ).toBe("2026-09-30T16:00:00.000Z");
+    expect((await patch({ dismissNewStepsPrompt: false })).status).toBe(400);
   });
 
   it("rejects every field outside the whitelist, prototype keys and $-keys (no mass assignment)", async () => {

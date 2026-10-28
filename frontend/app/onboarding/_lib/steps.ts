@@ -1,15 +1,17 @@
 import {
   ONBOARDING_STEPS,
   parseOnboardingStep,
+  REQUIRED_ONBOARDING_STEPS,
   routes,
   safeCallbackPath,
   type OnboardingStep,
 } from "@/lib/routes";
 
 /**
- * The first-run steps (PLAN §3 /onboarding). The step lives in the URL (`/onboarding?step=classes`), every step can
- * be skipped, and a student who leaves comes back where they stopped: `/onboarding` without a step resumes after
- * the furthest step that already holds saved data (resumeStep). Pure and isomorphic.
+ * The first-run steps (PLAN §3 /onboarding; PLAN-UX §8). The step lives in the URL (`/onboarding?step=classes`).
+ * "about" and "classes" are required (isRequiredStep); every other step can be skipped, and a student who leaves
+ * comes back where they stopped: `/onboarding` without a step resumes after the furthest step that already holds
+ * saved data (resumeStep). Pure and isomorphic.
  */
 
 export { ONBOARDING_STEPS, type OnboardingStep };
@@ -23,9 +25,18 @@ export function stepLabel(step: OnboardingStep, currentTermLabel: string): strin
       return `Your ${currentTermLabel} classes`;
     case "completed":
       return "Courses you have taken";
+    case "syllabi":
+      return "Syllabi";
+    case "goals":
+      return "Goals";
     case "interests":
       return "Interests";
   }
+}
+
+/** "about" and "classes" cannot be skipped: MakeItSo needs them to mean anything on Today, Courses or Plan. */
+export function isRequiredStep(step: OnboardingStep): boolean {
+  return (REQUIRED_ONBOARDING_STEPS as readonly OnboardingStep[]).includes(step);
 }
 
 /** The document title of a step: "Step 2 of 4: Your Fall 2026 classes · Get started". */
@@ -101,6 +112,9 @@ export interface ProgressInput {
   currentTermItems: number;
   /** Completed plan items, any term (AP/transfer included). */
   completedItems: number;
+  /** Syllabus uploads of any course and term (server/syllabi listSyllabi). */
+  syllabi: number;
+  goals: readonly string[];
   interests: readonly string[];
 }
 
@@ -109,6 +123,8 @@ export function stepProgress(input: ProgressInput): StepProgress {
     about: input.firstTerm !== null || input.majors.length > 0 || input.minors.length > 0,
     classes: input.currentTermItems > 0,
     completed: input.completedItems > 0,
+    syllabi: input.syllabi > 0,
+    goals: input.goals.length > 0,
     interests: input.interests.length > 0,
   };
 }

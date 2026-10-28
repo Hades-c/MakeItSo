@@ -1,4 +1,5 @@
 import "server-only";
+import { isGoalSlug } from "@/lib/goals";
 import type { ClassStanding } from "@/lib/term";
 import type { Course, ReqCode } from "@/lib/types/catalog";
 import type { Alumnus, Career } from "@/lib/types/content";
@@ -13,6 +14,7 @@ import { requirementName } from "@/server/content/requirements";
  * Never sent: the student's name, e-mail address, account id, grades (or anything that implies one: failed,
  * dropped and withdrawn items are left out), free-text bio, notes, consent dates, IP or session data.
  *   - interests: career-path slugs only (unknown slugs dropped);
+ *   - goals: goal-statement slugs only (lib/goals.ts, unknown slugs dropped);
  *   - majors / minors: official Acalog names only (anything else dropped);
  *   - plan items: exactly { termCode, courseCode, status } for active statuses;
  *   - cold e-mail: the student's name is the literal {{studentName}}, filled in by the browser; the alumnus is
@@ -25,6 +27,7 @@ export interface StudentProfilePayload {
   graduationYear: number;
   standing: ClassStanding;
   interests: string[];
+  goals: string[];
 }
 
 export interface ProfileSource {
@@ -33,6 +36,7 @@ export interface ProfileSource {
   graduationYear: number;
   standing: { standing: ClassStanding };
   interests: readonly string[];
+  goals: readonly string[];
 }
 
 export interface OfficialProgramNames {
@@ -40,7 +44,7 @@ export interface OfficialProgramNames {
   minors: readonly string[];
 }
 
-/** The allow-listed profile: official program names, graduation year, standing, interest slugs. */
+/** The allow-listed profile: official program names, graduation year, standing, interest and goal slugs. */
 export function studentProfilePayload(
   profile: ProfileSource,
   official: OfficialProgramNames,
@@ -53,6 +57,7 @@ export function studentProfilePayload(
     graduationYear: profile.graduationYear,
     standing: profile.standing.standing,
     interests: [...new Set(profile.interests.filter((slug) => isCareerSlug(slug)))],
+    goals: [...new Set(profile.goals.filter((slug) => isGoalSlug(slug)))],
   };
 }
 

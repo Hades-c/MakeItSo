@@ -62,9 +62,25 @@ export function parsePlanTab(value: string | string[] | null | undefined): PlanT
     : DEFAULT_PLAN_TAB;
 }
 
-/** /onboarding steps (PLAN §3: the first run, in four skippable steps; the step lives in `?step=`). */
-export const ONBOARDING_STEPS = ["about", "classes", "completed", "interests"] as const;
+/**
+ * /onboarding steps (PLAN §3; PLAN-UX §8: the first run, in six steps; the step lives in `?step=`). "about" and
+ * "classes" are required (no "Skip this step" link); the rest can be skipped.
+ */
+export const ONBOARDING_STEPS = [
+  "about",
+  "classes",
+  "completed",
+  "syllabi",
+  "goals",
+  "interests",
+] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+
+/** Steps that must be saved before setup can be skipped globally (lib/routes.ts ONBOARDING_STEPS order). */
+export const REQUIRED_ONBOARDING_STEPS = [
+  "about",
+  "classes",
+] as const satisfies readonly OnboardingStep[];
 
 /** The step a `?step=` search param names, or null (missing, repeated or unknown). */
 export function parseOnboardingStep(

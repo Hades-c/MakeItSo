@@ -44,7 +44,14 @@ const SUGGEST = planSuggestions.planSuggestionsRequest({
       flags: [],
     })),
   },
-  profile: { majors: [], minors: [], graduationYear: 2029, standing: "sophomore", interests: [] },
+  profile: {
+    majors: [],
+    minors: [],
+    graduationYear: 2029,
+    standing: "sophomore",
+    interests: [],
+    goals: [],
+  },
   plan: { items: [], openRequirements: [] },
 });
 
@@ -74,7 +81,14 @@ const CAREER = careerPlan.careerPlanRequest({
       },
     ],
   },
-  profile: { majors: [], minors: [], graduationYear: 2029, standing: "sophomore", interests: [] },
+  profile: {
+    majors: [],
+    minors: [],
+    graduationYear: 2029,
+    standing: "sophomore",
+    interests: [],
+    goals: [],
+  },
   plan: { items: [] },
   goals: { career: "software-engineering", careerName: "Software Engineering" },
 });
@@ -87,6 +101,7 @@ const EMAIL = coldEmail.coldEmailRequest({
     graduationYear: 2029,
     standing: "sophomore",
     interests: [],
+    goals: [],
   },
   goals: { career: null },
 });

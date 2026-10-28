@@ -151,6 +151,7 @@ describe("POST /api/ai/cold-email", () => {
       graduationYear: 2029,
       standing: "sophomore",
       interests: ["software-engineering"],
+      goals: [],
     });
     expect(blocks.student_goals).toEqual({ career: "Software Engineering" });
     const whole = JSON.stringify(params);

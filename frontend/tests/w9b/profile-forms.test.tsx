@@ -40,9 +40,11 @@ const PROFILE: Profile = {
   firstTerm: null,
   standingOverride: null,
   interests: [],
+  goals: [],
   aiConsentAt: null,
   adultAttestedAt: null,
   onboardedAt: null,
+  newStepsPromptDismissedAt: null,
   createdAt: NOW,
 };
 

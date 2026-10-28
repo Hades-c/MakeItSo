@@ -2,7 +2,6 @@ import type { AiFailureKind } from "@/lib/types/ai-constants";
 import type { Syllabus } from "@/lib/types/syllabus";
 import { aiGateFailure } from "@/lib/types/ai";
 import { aiGateInput } from "@/server/ai";
-import type { SessionUser } from "@/server/auth/session";
 import { resolveTerms } from "@/server/catalog";
 import { listSyllabi } from "@/server/syllabi";
 
@@ -45,11 +44,11 @@ async function loadGate(
   };
 }
 
-export async function loadSyllabiPage(user: SessionUser): Promise<SyllabiPageData> {
+export async function loadSyllabiPage(userId: string): Promise<SyllabiPageData> {
   const [syllabi, resolved, gate] = await Promise.all([
-    safe("your syllabus uploads", () => listSyllabi(user.id)),
+    safe("your syllabus uploads", () => listSyllabi(userId)),
     safe("the term list", () => resolveTerms()),
-    loadGate(user.id),
+    loadGate(userId),
   ]);
   const terms = resolved?.terms.map((term) => ({ code: term.code, label: term.label })) ?? [];
   return {

@@ -11,9 +11,10 @@ import {
 } from "./helpers";
 
 /**
- * /onboarding (W9b-2) end to end against the real profile (W3), catalog (W1, fixtures) and plan (W5s) routes, at
- * desktop 1440 and phone 390: the whole first run with axe on every step and no sideways scrolling, resuming, a
- * re-run that adds nothing twice, Skip setup, and a legacy account whose v1 plan shows up in the steps.
+ * /onboarding (W9b-2; PLAN-UX §8) end to end against the real profile (W3), catalog (W1, fixtures), plan (W5s)
+ * and syllabi routes, at desktop 1440 and phone 390: the whole first run (six steps, including Syllabi and
+ * Goals) with axe on every step and no sideways scrolling, resuming, a re-run that adds nothing twice, Skip
+ * setup gated on About and Classes, and a legacy account whose v1 plan shows up in the steps.
  */
 
 const PASSWORD = "onboarding e2e password";
@@ -111,15 +112,19 @@ test("a new student completes every step, accessibly, and lands on Today", async
   await page.getByRole("button", { name: "Save and continue" }).press("Enter");
 
   await expect(page).toHaveURL(/\/onboarding\?step=classes$/);
-  await expectStepFocus(page, /^Step 2 of 4: Your Fall 2026 classes · Get started/);
+  await expectStepFocus(page, /^Step 2 of 6: Your Fall 2026 classes · Get started/);
   await checkStep(page, "Your Fall 2026 classes");
+  // About and Classes are required: no "Skip this step" link on either.
+  await expect(page.getByRole("link", { name: "Skip this step" })).toHaveCount(0);
   await pickClasses(page);
   await checkStep(page, "Your Fall 2026 classes");
   await page.getByRole("link", { name: "Continue" }).click();
 
   await expect(page).toHaveURL(/\/onboarding\?step=completed$/);
-  await expectStepFocus(page, /^Step 3 of 4: Courses you have taken/);
+  await expectStepFocus(page, /^Step 3 of 6: Courses you have taken/);
   await checkStep(page, "Courses you have taken");
+  // Both required steps are now saved: the global Skip setup button appears from here on.
+  await expect(page.getByRole("button", { name: "Skip setup" })).toBeVisible();
   await expect(page.getByLabel("Term you took it")).toHaveValue("202502");
   await searchFor(page, /Search Spring 2026 courses/, "WRI 101");
   await page.getByRole("button", { name: "Mark WRI 101 completed" }).click();
@@ -129,8 +134,20 @@ test("a new student completes every step, accessibly, and lands on Today", async
   await expect(page.getByTestId("completed-status")).toContainText("Added MAT 113 (AP or IB");
   await page.getByRole("link", { name: "Continue" }).click();
 
+  await expect(page).toHaveURL(/\/onboarding\?step=syllabi$/);
+  await expectStepFocus(page, /^Step 4 of 6: Syllabi/);
+  await checkStep(page, "Syllabi");
+  // Skippable: nothing to upload against the fixture catalog in this flow.
+  await page.getByRole("link", { name: "Skip this step" }).click();
+
+  await expect(page).toHaveURL(/\/onboarding\?step=goals$/);
+  await expectStepFocus(page, /^Step 5 of 6: Goals/);
+  await checkStep(page, "Goals");
+  await page.getByRole("button", { name: "Go to graduate or professional school" }).click();
+  await page.getByRole("button", { name: "Save and continue" }).click();
+
   await expect(page).toHaveURL(/\/onboarding\?step=interests$/);
-  await expectStepFocus(page, /^Step 4 of 4: Interests/);
+  await expectStepFocus(page, /^Step 6 of 6: Interests/);
   await checkStep(page, "Interests");
   await page.getByRole("button", { name: "Software Engineering" }).click();
   await expect(page.getByRole("button", { name: "Software Engineering" })).toHaveAttribute(
@@ -148,6 +165,7 @@ test("a new student completes every step, accessibly, and lands on Today", async
     firstTerm: "202501",
     majors: ["Major in History (A.B. Degree)"],
     interests: ["software-engineering"],
+    goals: ["grad-school"],
     onboardedAt: "2026-09-30T16:00:00.000Z",
   });
   expect((profile.profile.minors as string[]).length).toBe(1);
@@ -190,14 +208,17 @@ test("a new student completes every step, accessibly, and lands on Today", async
   expect(errors).toEqual([]);
 });
 
-test("onboarding resumes where the student stopped, and every step can be skipped", async ({
+test("onboarding resumes where the student stopped, and every later step can be skipped", async ({
   page,
   request,
 }) => {
   await newStudent(page, request, "e2e-onboarding-resume");
   await page.goto("/onboarding?step=about");
+  // About and Classes are required: no "Skip this step" link on either.
+  await expect(page.getByRole("link", { name: "Skip this step" })).toHaveCount(0);
   await page.getByRole("button", { name: "Save and continue" }).click();
   await expect(page).toHaveURL(/\/onboarding\?step=classes$/);
+  await expect(page.getByRole("link", { name: "Skip this step" })).toHaveCount(0);
 
   await page.goto("/today");
   await page.goto("/onboarding");
@@ -206,30 +227,47 @@ test("onboarding resumes where the student stopped, and every step can be skippe
   const privacy = await page.getByRole("link", { name: "Privacy" }).boundingBox();
   if ((page.viewportSize()?.width ?? 1440) < 768)
     expect(privacy?.height).toBeGreaterThanOrEqual(44);
-  await page.getByRole("link", { name: "Skip this step" }).click();
+  // Classes is required, so Continue (not Skip) moves past it without a class chosen.
+  await page.getByRole("link", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/onboarding\?step=completed$/);
-  await expectStepFocus(page, /^Step 3 of 4/);
+  await expectStepFocus(page, /^Step 3 of 6/);
+  await page.getByRole("link", { name: "Skip this step" }).click();
+  await expect(page).toHaveURL(/\/onboarding\?step=syllabi$/);
+  await expectStepFocus(page, /^Step 4 of 6/);
+  await page.getByRole("link", { name: "Skip this step" }).click();
+  await expect(page).toHaveURL(/\/onboarding\?step=goals$/);
+  await expectStepFocus(page, /^Step 5 of 6/);
   await page.getByRole("link", { name: "Skip this step" }).click();
   await expect(page).toHaveURL(/\/onboarding\?step=interests$/);
-  await expectStepFocus(page, /^Step 4 of 4/);
+  await expectStepFocus(page, /^Step 6 of 6/);
   await expect(page.getByRole("link", { name: "Skip this step" })).toHaveCount(0);
   await page.getByRole("link", { name: "Back" }).click();
-  await expect(page).toHaveURL(/\/onboarding\?step=completed$/);
-  await expectStepFocus(page, /^Step 3 of 4/);
+  await expect(page).toHaveURL(/\/onboarding\?step=goals$/);
+  await expectStepFocus(page, /^Step 5 of 6/);
 });
 
-test("Skip setup finishes onboarding without saving anything else", async ({ page, request }) => {
+test("Skip setup only appears once About and Classes are saved, and saves nothing else", async ({
+  page,
+  request,
+}) => {
   await newStudent(page, request, "e2e-onboarding-skip");
   await page.goto("/onboarding?step=about");
+  await expect(page.getByRole("button", { name: "Skip setup" })).toHaveCount(0);
+  await page.getByLabel("Graduation year").selectOption("2029");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await expect(page).toHaveURL(/\/onboarding\?step=classes$/);
+  await expect(page.getByRole("button", { name: "Skip setup" })).toHaveCount(0);
+  await pickClasses(page);
+  await expect(page.getByRole("button", { name: "Skip setup" })).toBeVisible();
   await page.getByRole("button", { name: "Skip setup" }).click();
   await expect(page).toHaveURL(/\/today$/);
   const { profile } = (await (await page.request.get("/api/profile")).json()) as {
-    profile: { onboardedAt: string | null; firstTerm: string | null; majors: string[] };
+    profile: { onboardedAt: string | null; interests: string[]; goals: string[] };
   };
   expect(profile.onboardedAt).not.toBeNull();
-  expect(profile.firstTerm).toBeNull();
-  expect(profile.majors).toEqual([]);
-  expect(await planItems(page)).toEqual([]);
+  expect(profile.interests).toEqual([]);
+  expect(profile.goals).toEqual([]);
+  expect(keys(await planItems(page)).length).toBe(2);
 });
 
 test("signed-out visitors sign in and come back to the same step", async ({ page }) => {

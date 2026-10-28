@@ -22,6 +22,7 @@ import {
   staleClassStatus,
   termItems,
 } from "../_lib/plan-items";
+import { isRequiredStep } from "../_lib/steps";
 import { CourseSearch } from "./course-search";
 import {
   ContinueLink,
@@ -83,7 +84,11 @@ export function ClassesStep(props: ClassesStepProps) {
           You start at Davidson in {termLabel(props.firstTerm)}, so there is nothing to add for{" "}
           {props.termLabel}. You can plan your first semester on the Plan page later.
         </p>
-        <StepActions step="classes" hideSkip primary={<ContinueLink step="classes" />} />
+        <StepActions
+          step="classes"
+          hideSkip={isRequiredStep("classes")}
+          primary={<ContinueLink step="classes" />}
+        />
       </div>
     );
   }
@@ -265,7 +270,11 @@ export function ClassesStep(props: ClassesStepProps) {
         testId="classes-search"
       />
 
-      <StepActions step="classes" primary={<ContinueLink step="classes" />} />
+      <StepActions
+        step="classes"
+        hideSkip={isRequiredStep("classes")}
+        primary={<ContinueLink step="classes" />}
+      />
     </div>
   );
 }
