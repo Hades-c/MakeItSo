@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import {
   aiStudent,
+  expectAllAttributed,
   horizontalOverflow,
   isMobile,
   newSignedInAccount,
@@ -89,14 +90,19 @@ test("connects Moodle and sees its due dates on Today, marked Moodle", async ({
   await shot(page, "syllabi-moodle-connected");
 
   await page.goto("/today");
-  // The All view (the Classes view holds the same rows, hidden).
+  // The All view (the Coursework view holds the same rows, hidden).
   const all = due.getByRole("tabpanel", { name: "All" });
   const row = all.getByTestId("due-soon-item").filter({ hasText: "Problem set 3" });
   await expect(row).toBeVisible();
   await expect(row).toContainText("CSC 221");
-  await expect(row.locator('[data-source="course-site"]')).toHaveText("Source: Moodle");
+  // One provenance rule for every mixed list: "via Moodle" in the row's meta line, like any synced source.
+  await expect(row).toHaveAttribute("data-source", "course-site");
+  await expect(row.locator('[data-source="course-site"]').first()).toHaveText(
+    /^Source: via Moodle$/,
+  );
   await expect(all.getByTestId("due-soon-item").filter({ hasText: "Quiz 2 closes" })).toBeVisible();
   await expect(due.getByTestId("syllabi-pointer")).toHaveCount(0);
+  expect((await expectAllAttributed(page)).NOTE).toBeGreaterThan(0);
   await shot(page, "today-moodle");
 
   // Disconnect, removing what it imported.
