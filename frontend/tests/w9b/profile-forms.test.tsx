@@ -4,6 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { AcademicsForm } from "@/app/(hub)/profile/_components/academics-form";
 import { AiConsentPanel } from "@/app/(hub)/profile/_components/ai-consent-panel";
 import { DeleteAccount, DownloadData } from "@/app/(hub)/profile/_components/data-controls";
+import { GoalsPicker } from "@/app/(hub)/profile/_components/goals-picker";
 import { InterestsPicker } from "@/app/(hub)/profile/_components/interests-picker";
 import { NameForm } from "@/app/(hub)/profile/_components/name-form";
 import { PasswordForm } from "@/app/(hub)/profile/_components/password-form";
@@ -477,6 +478,27 @@ describe("InterestsPicker", () => {
     expect(data).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Law" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("interests-status")).toHaveTextContent("1 of 3 chosen.");
+  });
+});
+
+describe("GoalsPicker", () => {
+  it("edits the goals onboarding asked for, saving each tap at once", async () => {
+    stubFetch([200, { profile: { ...PROFILE, goals: ["research", "study-abroad"] } }]);
+    render(<GoalsPicker initial={["research", "retired-goal"]} />);
+    const group = screen.getByRole("group", { name: "Goals at Davidson" });
+    // A real list inside the group (no role on the <ul>, so its items stay list items).
+    expect(within(group).getByRole("list")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Do research with a professor" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Study abroad" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("goals-status")).toHaveTextContent("2 of 8 chosen, saved."),
+    );
+    expect(calls).toEqual([
+      { url: "/api/profile", method: "PATCH", body: { goals: ["research", "study-abroad"] } },
+    ]);
   });
 });
 
