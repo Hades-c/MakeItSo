@@ -163,3 +163,21 @@ export function windowEndLabel(day: string): string {
   const noonUtc = new Date(`${day}T12:00:00Z`);
   return `${formatWeekday(noonUtc, "UTC")}, ${formatShortDate(noonUtc, "UTC")}`;
 }
+
+/**
+ * A feed item's location, trimmed; null for none (never a blank string, so a caller never prints a stray
+ * separator beside nothing). Shared by every place that shows a feed item's location (the events list, Today's
+ * campus panel), so they read it the same way.
+ */
+export function formatEventLocation(location: string | null): string | null {
+  const trimmed = location?.trim();
+  return trimmed ? trimmed : null;
+}
+
+/**
+ * An hours-change notice for an item's location ("Closes 2 hours early today"), shown on its own card instead of
+ * a general hours card. No source feeds this yet: always null today, kept as the slot event cards render it in.
+ */
+export function hoursChangeNotice(_item: Pick<FeedItem, "source" | "location">): string | null {
+  return null;
+}

@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import { SectionCard } from "@/components/ui/section-card";
+import { formatEventLocation } from "@/app/(hub)/events/_lib/present";
 import { formatLongDate, formatTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { FeedItem } from "@/lib/types/feeds";
@@ -51,6 +52,7 @@ export async function CampusPanel({ now, timeZone }: { now: Date; timeZone: stri
 }
 
 function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZone: string }) {
+  const location = formatEventLocation(item.location);
   const start = item.startsAt ? new Date(item.startsAt) : null;
   // An event already under way (it started before now) shows today's date box.
   const shownDay = start && start.getTime() > now.getTime() ? start : now;
@@ -93,7 +95,7 @@ function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZon
               <span className="sr-only">{formatLongDate(shownDay, timeZone)}, </span>
             )}
             {time}
-            {item.location ? ` · ${item.location}` : ""}
+            {location ? ` · ${location}` : ""}
           </span>
         </p>
       </div>

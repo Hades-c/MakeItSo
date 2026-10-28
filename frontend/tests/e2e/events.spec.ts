@@ -11,8 +11,8 @@ import {
 
 /**
  * /events (W9b): the synced campus feeds from the fixtures, grouped by America/New_York day with the server's
- * pinned "today" (FIXTURES_NOW = Wed 2026-09-30 12:00 ET), filters in the URL, Show more, library hours and the
- * sources' as-of times. Every aggregated item must carry its source tag (expectAllTagged).
+ * pinned "today" (FIXTURES_NOW = Wed 2026-09-30 12:00 ET), filters in the URL, Show more. No general hours card.
+ * Every aggregated item must carry its source tag (expectAllTagged).
  */
 
 const PASSWORD = "events e2e password";
@@ -130,15 +130,11 @@ test("events: grouped by campus day, every item tagged and linked out, accessibl
       expect(rel).toBe("noopener noreferrer");
     }
 
-    // Library hours and sources, from the same fixtures.
-    const hours = page.getByRole("region", { name: /Library hours/ });
-    await expect(hours.getByText("Music Library (Sloan 101)")).toBeVisible();
-    await expect(hours.getByText("Open now").first()).toBeVisible();
-    await expect(hours.getByText(/as of Sep 30/)).toBeVisible();
-    await expect(page.getByRole("region", { name: "Calendars", exact: true })).toBeVisible();
-    const sources = page.getByTestId("event-sources").getByRole("listitem");
-    await expect(sources).toHaveCount(4);
-    await expect(sources.filter({ hasText: "as of Sep 30, 12:00 PM" })).toHaveCount(4);
+    // No general hours card anywhere, and a summary sits behind its own Description toggle, closed at first.
+    await expect(page.getByRole("region", { name: /Library hours/ })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Calendars", exact: true })).toHaveCount(0);
+    const withSummary = items(page).filter({ has: page.getByText("Description", { exact: true }) });
+    await expect(withSummary.first().getByTestId("event-summary")).toBeHidden();
 
     expect(await horizontalOverflow(page), "scrolls sideways").toBeLessThanOrEqual(0);
     expect(await seriousViolations(page), `axe ${colorScheme}`).toEqual([]);

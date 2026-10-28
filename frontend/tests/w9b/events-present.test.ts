@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   eventTimeLabel,
+  formatEventLocation,
   groupEvents,
+  hoursChangeNotice,
   isDeadlineItem,
   lastDay,
   startDay,
@@ -203,5 +205,27 @@ describe("windowEndLabel", () => {
   it("names the day", () => {
     expect(windowEndLabel("2026-10-04")).toBe("Sunday, Oct 4");
     expect(windowEndLabel("2026-10-13")).toBe("Tuesday, Oct 13");
+  });
+});
+
+describe("formatEventLocation", () => {
+  it("trims a real location", () => {
+    expect(formatEventLocation("  Alvarez Student Union  ")).toBe("Alvarez Student Union");
+    expect(formatEventLocation("Chambers 101")).toBe("Chambers 101");
+  });
+
+  it("is null for nothing to show, never a blank string", () => {
+    expect(formatEventLocation(null)).toBeNull();
+    expect(formatEventLocation("")).toBeNull();
+    expect(formatEventLocation("   ")).toBeNull();
+  });
+});
+
+describe("hoursChangeNotice", () => {
+  it("is always null: no source feeds it yet, the slot is ready for one", () => {
+    expect(
+      hoursChangeNotice(item({ source: "library", location: "E.H. Little Library" })),
+    ).toBeNull();
+    expect(hoursChangeNotice(item({ source: "wildcatsync", location: null }))).toBeNull();
   });
 });

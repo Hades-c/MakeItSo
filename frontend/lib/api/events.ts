@@ -1,12 +1,11 @@
 import * as z from "zod";
 import { apiRoute } from "@/lib/api/spec";
-import { IsoDateSchema, IsoDateTimeSchema } from "@/lib/types/common";
+import { IsoDateTimeSchema } from "@/lib/types/common";
 import {
   EventsQuerySchema,
   FeedItemSchema,
   FeedSourceIdSchema,
   FeedSyncResultSchema,
-  LibraryHoursSchema,
 } from "@/lib/types/feeds";
 
 /**
@@ -35,14 +34,6 @@ export const eventsApi = {
     auth: "user",
     query: EventsQuerySchema,
     response: EventsResponseSchema,
-  }),
-  /** GET /api/events/library-hours?date=YYYY-MM-DD (America/New_York; default today). */
-  libraryHours: apiRoute({
-    method: "GET",
-    path: "/api/events/library-hours",
-    auth: "user",
-    query: z.object({ date: IsoDateSchema.optional() }),
-    response: z.object({ hours: LibraryHoursSchema }),
   }),
   /** GET /api/cron/feeds (Vercel Cron, Bearer CRON_SECRET). */
   cronFeeds: apiRoute({

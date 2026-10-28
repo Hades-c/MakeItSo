@@ -1,4 +1,5 @@
 import "server-only";
+import { formatEventLocation } from "@/app/(hub)/events/_lib/present";
 import type { TimelineItem } from "@/components/domain/day-timeline";
 import { itemInterval } from "@/components/domain/timeline-layout";
 import { MINUTES_PER_HOUR, windowForItems } from "@/components/domain/time-geometry";
@@ -194,13 +195,14 @@ function feedItem(item: FeedItem): TimelineItem {
   const isDeadline = item.kind === "deadline";
   const startsAt = item.startsAt as string;
   const span = feedInterval(item);
+  const location = formatEventLocation(item.location);
   return {
     id: `feed-${item.id}`,
     kind: isDeadline ? "deadline" : "event",
     title: item.title,
     start: etClock(startsAt),
     ...(isDeadline || !span ? {} : { end: etClock(new Date(span.end)) }),
-    ...(item.location ? { location: item.location } : {}),
+    ...(location ? { location } : {}),
     source: item.source,
   };
 }

@@ -1,11 +1,20 @@
-import { CalendarClock, Clock, ExternalLink, MapPin } from "lucide-react";
+import {
+  CalendarClock,
+  ChevronDown,
+  Clock,
+  ExternalLink,
+  MapPin,
+  TriangleAlert,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SourceTag } from "@/components/ui/source-tag";
 import type { FeedItem } from "@/lib/types/feeds";
 import { eventsHref, nextEventsLimit, type EventsView } from "../_lib/params";
 import {
   eventTimeLabel,
+  formatEventLocation,
   groupEvents,
+  hoursChangeNotice,
   isDeadlineItem,
   type EventGroup,
   type PresentOptions,
@@ -14,11 +23,12 @@ import { ShowMoreFocus, ShowMoreLink } from "./show-more";
 
 /**
  * The grouped list of feed items (server-compatible, no hooks): one labelled section per America/New_York day
- * (Ongoing first), each item with its time line, an external link to the source page, the location, a short
- * summary and the source tag its stored `source` names (PLAN §5 "Sources (truthfulness)"). Aggregated items carry
- * data-source for expectAllTagged() in e2e. "Show more" is a plain link that raises ?limit; afterwards focus moves
- * to the first newly loaded item (./show-more). The title link is stretched over its whole row, so the tap target
- * is the row on phones (PLAN §7: ≥44px), not one line of text.
+ * (Ongoing first), each item with its time line, an external link to the source page, the location, a
+ * Description toggle, an hours-change notice when the item's location has one, and the source tag its stored
+ * `source` names (PLAN §5 "Sources (truthfulness)"). Aggregated items carry data-source for expectAllTagged() in
+ * e2e. "Show more" is a plain link that raises ?limit; afterwards focus moves to the first newly loaded item
+ * (./show-more). The title link is stretched over its whole row, so the tap target is the row on phones (PLAN §7:
+ * ≥44px), not one line of text.
  */
 
 export interface EventListProps {
@@ -106,6 +116,8 @@ function EventRow({
 }) {
   const deadline = isDeadlineItem(item);
   const time = eventTimeLabel(item, options);
+  const location = formatEventLocation(item.location);
+  const hoursNotice = hoursChangeNotice(item);
   return (
     <li
       data-testid="event-item"
@@ -135,14 +147,37 @@ function EventRow({
             <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
           </a>
         </h3>
-        {item.location ? (
+        {location ? (
           <p className="mt-0.5 flex items-start gap-1.5 text-sm text-fg-2">
             <MapPin aria-hidden className="mt-0.5 size-3.5 shrink-0 text-fg-3" />
-            <span className="min-w-0 break-words">{item.location}</span>
+            <span className="min-w-0 break-words">{location}</span>
+          </p>
+        ) : null}
+        {hoursNotice ? (
+          <p
+            className="mt-1 flex items-start gap-1.5 text-sm text-warning"
+            data-testid="event-hours-notice"
+          >
+            <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+            <span className="min-w-0 break-words">{hoursNotice}</span>
           </p>
         ) : null}
         {item.summaryText ? (
-          <p className="mt-1 line-clamp-2 text-sm text-fg-3">{item.summaryText}</p>
+          <details className="group mt-1">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-sm text-sm font-semibold text-fg-2 hover:text-fg md:min-h-0 [&::-webkit-details-marker]:hidden">
+              Description
+              <ChevronDown
+                aria-hidden
+                className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+              />
+            </summary>
+            <p
+              className="mt-1 text-sm break-words whitespace-pre-line text-fg-3"
+              data-testid="event-summary"
+            >
+              {item.summaryText}
+            </p>
+          </details>
         ) : null}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <SourceTag source={item.source} />

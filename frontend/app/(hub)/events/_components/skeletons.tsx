@@ -31,19 +31,3 @@ export function EventsResultsSkeleton() {
     </div>
   );
 }
-
-export function CardSkeleton({ title }: { title: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5">
-      <p className="mb-3.5 font-display text-lg font-strong tracking-title text-fg">{title}</p>
-      <p role="status" className="sr-only">
-        Loading {title.toLowerCase()}…
-      </p>
-      <div className="flex flex-col gap-2.5">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-        <Skeleton className="h-4 w-2/3" />
-      </div>
-    </div>
-  );
-}
