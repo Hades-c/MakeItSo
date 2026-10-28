@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isPerStudentSource,
   isSourceId,
   isSyncedSourceId,
   SOURCE_IDS,
@@ -7,6 +8,7 @@ import {
   sourceLabel,
   sourcesOfKind,
   sourceTag,
+  PER_STUDENT_SOURCE_IDS,
   SYNCED_SOURCE_IDS,
   type SourceKind,
 } from "@/lib/sources";
@@ -34,6 +36,7 @@ describe("source registry (PLAN §4.1.13)", () => {
       "davidsonian",
       "events-digest",
       "davidson-news",
+      "course-site",
     ]);
     expect(byKind("curated")).toEqual([
       "registrar",
@@ -47,8 +50,11 @@ describe("source registry (PLAN §4.1.13)", () => {
     expect([...SYNCED_SOURCE_IDS]).toEqual([...byKind("api"), ...byKind("feed")]);
   });
 
-  it("keeps course-site reserved and drops the old academic-calendar id", () => {
-    expect(SOURCES["course-site"].reserved).toBe(true);
+  it("syncs course-site (Moodle) per student only, and drops the old academic-calendar id", () => {
+    expect(SOURCES["course-site"]).toMatchObject({ label: "Moodle", kind: "feed" });
+    expect(isSyncedSourceId("course-site")).toBe(true);
+    expect(isPerStudentSource("course-site")).toBe(true);
+    expect(SYNCED_SOURCE_IDS.filter(isPerStudentSource)).toEqual([...PER_STUDENT_SOURCE_IDS]);
     expect(isSourceId("academic-calendar")).toBe(false);
   });
 

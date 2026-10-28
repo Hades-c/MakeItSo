@@ -2,6 +2,7 @@ import type { authExtraApi } from "@/app/(auth)/_lib/contracts";
 import type { accountApi } from "@/lib/api/account";
 import type { aiApi } from "@/lib/api/ai";
 import type { catalogApi } from "@/lib/api/catalog";
+import type { moodleApi } from "@/lib/api/moodle";
 import type { planApi } from "@/lib/api/plan";
 import type { profileApi } from "@/lib/api/profile";
 import type { ApiEndpoints } from "@/lib/api/spec";
@@ -85,6 +86,13 @@ export const syllabiEndpoints: ApiEndpoints<typeof syllabiApi> = {
   upload: { method: "POST", path: "/api/syllabi", aiResult: true },
   remove: { method: "DELETE", path: "/api/syllabi/[id]" },
   saveDeadlines: { method: "POST", path: "/api/syllabi/[id]/deadlines" },
+};
+
+export const moodleEndpoints: ApiEndpoints<typeof moodleApi> = {
+  status: { method: "GET", path: "/api/moodle" },
+  connect: { method: "PUT", path: "/api/moodle" },
+  sync: { method: "POST", path: "/api/moodle/sync" },
+  disconnect: { method: "DELETE", path: "/api/moodle" },
 };
 
 export const authExtraEndpoints: ApiEndpoints<typeof authExtraApi> = {

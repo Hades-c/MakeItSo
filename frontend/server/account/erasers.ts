@@ -47,6 +47,7 @@ const ACCOUNT_DATA_MODULES: ReadonlyArray<() => Promise<unknown>> = [
   () => import("@/server/plan"),
   () => import("@/server/ai"),
   () => import("@/server/syllabi"),
+  () => import("@/server/moodle"),
 ];
 
 const registry = new Map<string, AccountDataHandler>();

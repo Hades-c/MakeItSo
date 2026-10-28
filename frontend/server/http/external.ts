@@ -37,6 +37,8 @@ export const EXTERNAL_HOSTS: Readonly<Record<ExternalServiceId, readonly string[
   davidsonian: ["thedavidsonian.news"],
   "events-digest": ["us6.campaign-archive.com"],
   "davidson-news": ["www.davidson.edu"],
+  // Each student's own Moodle calendar feed (server/moodle); lib/moodle-url.ts accepts only this host and path.
+  "course-site": ["moodle.davidson.edu"],
   // Outbound services.
   resend: ["api.resend.com"],
 };

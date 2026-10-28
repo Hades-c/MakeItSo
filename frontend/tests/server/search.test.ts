@@ -49,6 +49,7 @@ const ALL_ON: Flags = {
   events: true,
   alumni: true,
   ai: true,
+  moodle: true,
   rmp: true,
   rmpSummaries: false,
 };

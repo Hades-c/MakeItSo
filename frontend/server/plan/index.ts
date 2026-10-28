@@ -29,6 +29,12 @@ import { loadPlanContext, userObjectId } from "@/server/plan/context";
 import { addItemImpl, removeItemImpl, updateItemImpl } from "@/server/plan/items";
 import { readLegacyPlanImpl } from "@/server/plan/legacy";
 import {
+  removeMoodleDeadlinesImpl,
+  replaceMoodleDeadlinesImpl,
+  type MoodleDeadlineInput,
+  type MoodleDeadlineSync,
+} from "@/server/plan/moodle";
+import {
   addDeadlineImpl,
   addSummerImpl,
   addSyllabusDeadlinesImpl,
@@ -65,8 +71,9 @@ import {
  * server/plan/items.ts). `userId` is the session user's id (24-hex string).
  *
  * Modules: items (add/update/remove), requirements (the pure engine), conflicts, restrictions, webtree, schedule,
- * records (summer, deadlines, manual inputs, drafts), legacy + legacy-core (v1 conversion), catalog (the facts a
- * plan item takes from server/catalog), context + terms (profile, term range, standing), store (documents).
+ * records (summer, deadlines, manual inputs, drafts), moodle (the deadlines a Moodle calendar sync imports),
+ * legacy + legacy-core (v1 conversion), catalog (the facts a plan item takes from server/catalog), context + terms
+ * (profile, term range, standing), store (documents).
  */
 
 export interface AddItemResult {
@@ -298,6 +305,25 @@ export async function addSyllabusDeadlines(
 /** Remove every plan deadline tied to a syllabus (its replace or delete). */
 export async function removeDeadlinesBySyllabus(userId: string, syllabusId: string): Promise<void> {
   return removeDeadlinesBySyllabusImpl(userId, syllabusId);
+}
+
+export type { MoodleDeadlineInput, MoodleDeadlineSync };
+
+/**
+ * One Moodle sync's result into the plan (server/moodle): add, update by UID, and remove the Moodle deadlines the
+ * feed no longer lists from `windowStart` on, in one atomic update (server/plan/moodle.ts).
+ */
+export async function replaceMoodleDeadlines(
+  userId: string,
+  events: readonly MoodleDeadlineInput[],
+  options: { windowStart: Date },
+): Promise<MoodleDeadlineSync> {
+  return replaceMoodleDeadlinesImpl(userId, events, options);
+}
+
+/** Remove every Moodle deadline from the plan (disconnect with "also remove"). Returns how many. */
+export async function removeMoodleDeadlines(userId: string): Promise<number> {
+  return removeMoodleDeadlinesImpl(userId);
 }
 
 export async function listSummerActivities(userId: string): Promise<SummerActivity[]> {

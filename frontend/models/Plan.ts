@@ -61,9 +61,16 @@ const StudentDeadlineSubSchema = new Schema({
   title: { type: String, required: true, maxlength: 120 },
   dueAt: { type: Date, required: true },
   courseCode: { type: String },
-  origin: { type: String, enum: ["manual", "syllabus"], required: true, default: "manual" },
+  origin: {
+    type: String,
+    enum: ["manual", "syllabus", "moodle"],
+    required: true,
+    default: "manual",
+  },
   /** The syllabus (models/Syllabus.ts) this deadline came from; set only when origin is "syllabus". */
   syllabusId: { type: Schema.Types.ObjectId },
+  /** Moodle's UID for the event (origin "moodle" only): what the next sync matches, updates or removes by. */
+  externalUid: { type: String, maxlength: 255 },
 });
 
 const WebTreeChoiceSubSchema = new Schema(

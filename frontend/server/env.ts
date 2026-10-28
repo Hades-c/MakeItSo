@@ -185,10 +185,23 @@ export const envSchema = z.object({
       .optional(),
   ),
 
+  // --- Moodle calendar import (/syllabi) ------------------------------------------------------------------------------
+  /**
+   * Key material for encrypting each student's Moodle calendar URL at rest (server/moodle/crypto.ts: AES-256-GCM
+   * with a key derived by HKDF). Optional: without it the key is derived from NEXTAUTH_SECRET instead. Changing
+   * either (whichever is in use) makes every saved URL unreadable, and those students are asked to reconnect.
+   */
+  MOODLE_FEED_KEY: z.preprocess(
+    unsetIfBlank,
+    z.string().min(32, "must be at least 32 characters (use `openssl rand -base64 32`)").optional(),
+  ),
+
   // --- Feature flags (read through lib/flags.ts) --------------------------------------------------------------------
   FEATURE_CAREERS: flag(true),
   FEATURE_EVENTS: flag(true),
   FEATURE_ALUMNI: flag(true),
+  /** Moodle calendar import on /syllabi (connect, sync, Today's Moodle deadlines). Default on. */
+  MOODLE_IMPORT_ENABLED: flag(true),
   RMP_ENABLED: flag(true),
   // AI summaries of RMP reviews are a derivative work and a prompt-poisoning vector: off unless the owner opts in
   // (PLAN §1, §4.1.14).
