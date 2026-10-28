@@ -114,8 +114,8 @@ export function InterestsStep({ initial, initialGoals, careers }: InterestsStepP
           Goals at Davidson
         </h2>
         <p id={`${GOALS_HEADING_ID}-hint`} className="mt-0.5 mb-3 text-sm text-fg-2">
-          Optional. What you hope to do while you are here. With AI features on, career plans use
-          these too.
+          Optional. What you hope to do while you are here. With AI features on, career plans and
+          cold-email drafts use these too.
         </p>
         <ul className="flex flex-wrap gap-2">
           {GOALS.map((goal) => (

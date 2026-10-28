@@ -45,8 +45,8 @@ export function GoalsPicker({ initial }: { initial: string[] }) {
           Goals at Davidson
         </h3>
         <p className="mt-0.5 text-sm text-fg-2">
-          Optional. What you hope to do while you are here. With AI features on, career plans use
-          these too.
+          Optional. What you hope to do while you are here. With AI features on, career plans and
+          cold-email drafts use these too.
         </p>
       </div>
       {failure ? (

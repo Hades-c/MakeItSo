@@ -98,7 +98,7 @@ export default async function ProfilePage() {
         <ProfileSection
           id="interests"
           title="Interests"
-          description="Career paths you want to explore, and what you hope to do at Davidson. Careers and suggestions start from these; each choice saves right away."
+          description="Career paths you want to explore (with AI features on, plan suggestions, career plans and cold-email drafts start from these) and, optionally, what you hope to do at Davidson. Each choice saves right away."
         >
           <div className="flex flex-col gap-5">
             <InterestsPicker initial={profile.interests} careers={data.careers} />
