@@ -273,10 +273,12 @@ export default async function PrivacyPage() {
             <p>
               MakeItSo reads the calendar when you connect, when you choose Sync now, and when you
               open Today or Syllabi more than six hours after the last sync. From each event it
-              keeps only the <b>title, due time and course name</b> (to match a course in your
-              plan); descriptions, locations and everything else Moodle sends are dropped. The due
-              dates become deadlines in your plan, marked Moodle, and are updated or removed when
-              Moodle changes them. Nothing is sent to Anthropic or anyone else.
+              keeps only the <b>title</b>, the <b>due time</b>,{" "}
+              <b>Moodle&apos;s id for the event</b> (so a later sync can update or remove it) and,
+              when the course name names a Davidson course, <b>that course&apos;s code</b>.
+              Descriptions, locations, course names and everything else Moodle sends are dropped.
+              The due dates become deadlines in your plan, marked Moodle, and are updated or removed
+              when Moodle changes them. Nothing is sent to Anthropic or anyone else.
             </p>
             <p>
               <b>Disconnect</b> on the Syllabi page deletes the saved link right away, and can also

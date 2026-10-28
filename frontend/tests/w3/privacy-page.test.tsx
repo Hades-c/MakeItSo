@@ -82,7 +82,11 @@ describe("/privacy", () => {
       document.getElementById("moodle")!.closest("section")!.textContent ?? ""
     ).replace(/\s+/g, " ");
     expect(moodle).toMatch(/stores it encrypted/);
-    expect(moodle).toMatch(/title, due time and course name/);
+    // What each event keeps, exactly as server/moodle stores it (plan deadline title, dueAt, externalUid, courseCode).
+    expect(moodle).toMatch(
+      /keeps only the title, the due time, Moodle's id for the event \(so a later sync can update or remove it\) and, when the course name names a Davidson course, that course's code/,
+    );
+    expect(moodle).toMatch(/course names and everything else Moodle sends are dropped/);
     expect(moodle).toMatch(/more than six hours after the last sync/);
     expect(moodle).not.toMatch(/turned off right now/);
     const stored = document.getElementById("what-we-store")!.closest("section")!.textContent ?? "";
