@@ -100,14 +100,20 @@ export function PasteForm({
       <Notice tone="info" data-testid="syllabi-gate" data-gate={gate}>
         <p>{message}</p>
         {gate === "consent_required" ? (
-          <p className="mt-2">
-            <Link href={routes.profile()} className="font-semibold link">
+          <p className="mt-1">
+            <Link
+              href={routes.profile()}
+              className="inline-flex min-h-11 items-center font-semibold link md:min-h-0"
+            >
               Turn on AI features in your profile
             </Link>
           </p>
         ) : gate === "unverified" && verifyHref ? (
-          <p className="mt-2">
-            <Link href={verifyHref} className="font-semibold link">
+          <p className="mt-1">
+            <Link
+              href={verifyHref}
+              className="inline-flex min-h-11 items-center font-semibold link md:min-h-0"
+            >
               Verify your Davidson email
             </Link>
           </p>

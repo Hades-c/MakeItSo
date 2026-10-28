@@ -260,7 +260,10 @@ export function MoodlePanel({ enabled, status: initial, now, primary = false }: 
               <Link2 aria-hidden />
               {action.busy ? "Connecting…" : status.connected ? "Reconnect" : "Connect Moodle"}
             </Button>
-            <Link href={`${routes.privacy()}#moodle`} className="text-sm link">
+            <Link
+              href={`${routes.privacy()}#moodle`}
+              className="inline-flex min-h-11 items-center text-sm link md:min-h-0"
+            >
               What MakeItSo reads and stores
             </Link>
           </div>

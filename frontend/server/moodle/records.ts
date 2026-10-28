@@ -209,6 +209,8 @@ async function applyFeed(
   read: Extract<FeedRead, { ok: true }>,
   at: Date,
 ): Promise<void> {
+  // Disconnected while this sync was reading the feed: import nothing.
+  if (!(await MoodleConnection.exists({ userId: oid }))) return;
   const codes = await planCourseCodes(userId);
   const result = await replaceMoodleDeadlines(
     userId,
