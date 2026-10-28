@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stubAuthEnv } from "../w3/helpers";
+import { encryptV1 } from "./helpers";
 import { insertStudent, setNow, withPlanDb } from "../plan/helpers";
 import MoodleConnection from "@/models/MoodleConnection";
 import Plan from "@/models/Plan";
@@ -47,7 +48,7 @@ function feedUrl(token: string, what = "all"): string {
 async function serveNext(userId: string, token: string): Promise<void> {
   await MoodleConnection.updateOne(
     { userId: new mongoose.Types.ObjectId(userId) },
-    { $set: { feedUrl: encryptFeedUrl(feedUrl(token)) } },
+    { $set: { feedUrl: encryptFeedUrl(feedUrl(token), userId) } },
   );
 }
 
@@ -117,7 +118,7 @@ describe("connectMoodle", () => {
     const raw = await MoodleConnection.collection.findOne({
       userId: new mongoose.Types.ObjectId(userId),
     });
-    expect(String(raw?.feedUrl)).toMatch(/^v1\./);
+    expect(String(raw?.feedUrl)).toMatch(/^v2\./);
     expect(JSON.stringify(raw)).not.toMatch(new RegExp(`${TOKENS.good}|export_execute`));
   });
 
@@ -216,6 +217,39 @@ describe("syncMoodle", () => {
     expect(status.deadlines).toHaveLength(first.deadlines.length);
     // Reconnecting with the same link works again.
     expect((await connectMoodle(userId, feedUrl(TOKENS.good))).problem).toBeNull();
+  });
+
+  it("never syncs a link copied from another student's connection", async () => {
+    const owner = await studentWithCsc221();
+    const other = await studentWithCsc221();
+    await connectMoodle(owner, feedUrl(TOKENS.good));
+    const first = await connectMoodle(other, feedUrl(TOKENS.updated));
+    const stolen = await MoodleConnection.collection.findOne({
+      userId: new mongoose.Types.ObjectId(owner),
+    });
+    await MoodleConnection.updateOne(
+      { userId: new mongoose.Types.ObjectId(other) },
+      { $set: { feedUrl: stolen?.feedUrl } },
+    );
+    const status = await syncMoodle(other);
+    expect(status.problem).toBe("invalid");
+    expect(status.deadlines.map((d) => d.title)).toEqual(first.deadlines.map((d) => d.title));
+  });
+
+  it("reads a link stored before owner binding (v1), and stores it again as v2", async () => {
+    const userId = await studentWithCsc221();
+    await connectMoodle(userId, feedUrl(TOKENS.good));
+    const oid = new mongoose.Types.ObjectId(userId);
+    await MoodleConnection.updateOne(
+      { userId: oid },
+      { $set: { feedUrl: encryptV1(feedUrl(TOKENS.updated), process.env.NEXTAUTH_SECRET!) } },
+    );
+    const status = await syncMoodle(userId);
+    expect(status.problem).toBeNull();
+    expect(status.deadlines.map((d) => d.title)).toContain("Problem set 4");
+    const raw = await MoodleConnection.collection.findOne({ userId: oid });
+    expect(String(raw?.feedUrl)).toMatch(/^v2\./);
+    expect((await syncMoodle(userId)).problem).toBeNull();
   });
 
   it(`allows ${MOODLE_SYNCS_PER_HOUR} syncs an hour per student, then answers 429`, async () => {
@@ -331,7 +365,7 @@ describe("account data", () => {
       feedUrl: expect.stringMatching(/not included/),
       lastSyncedAt: expect.any(Date),
     });
-    expect(JSON.stringify(exported.moodle)).not.toMatch(/v1\.|authtoken/);
+    expect(JSON.stringify(exported.moodle)).not.toMatch(/v[12]\.|authtoken/);
     // The imported deadlines are part of the plan's export.
     expect(JSON.stringify(exported.plans)).toContain("Problem set 3");
 

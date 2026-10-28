@@ -116,7 +116,8 @@ termCode, text })`, `deleteSyllabus`, `getSyllabus`, `syllabusTerms()` (the curr
   `MOODLE_IMPORT_ENABLED` is off; disconnect always works). The URL must pass `lib/moodle.ts checkMoodleFeedUrl`
   (https://moodle.davidson.edu/calendar/export_execute.php with userid, authtoken, preset_what all|courses and
   preset_time recentupcoming, nothing else). It carries the student's Moodle token: stored encrypted
-  (`server/moodle/crypto.ts`, AES-256-GCM, HKDF from `MOODLE_FEED_KEY` or else `NEXTAUTH_SECRET`; a changed key asks
+  (`server/moodle/crypto.ts`, AES-256-GCM, HKDF from `MOODLE_FEED_KEY` or else `NEXTAUTH_SECRET`, the owner's user
+  id as associated data ("v2"; a "v1" value is read and stored again as v2 on its next sync); a changed key asks
   the student to reconnect), never logged (log an `ExternalFetchError`'s `kind` only: its message and `url` hold
   the token), never returned (`MoodleStatus` has no URL), left out of the export. Events become plan deadlines by
   UID (`server/plan replaceMoodleDeadlines`: added, updated in place, removed when the feed stops listing them from

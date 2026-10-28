@@ -7,12 +7,16 @@ import { readEnv } from "@/server/env";
  * reads their Moodle calendar). AES-256-GCM; the key is derived with HKDF-SHA256 from MOODLE_FEED_KEY when set,
  * else from NEXTAUTH_SECRET, with its own salt and info so it is never the session-signing key itself.
  *
- * Stored form: "v1.<keyId>.<iv>.<tag>.<ciphertext>" (base64url). `keyId` is a short hash of the derived key, so a
- * changed key is told apart from a damaged value: decryptFeedUrl throws FeedKeyChangedError, and the student is
- * asked to reconnect. The URL is never logged; errors here never include it.
+ * Stored form: "v2.<keyId>.<iv>.<tag>.<ciphertext>" (base64url), bound to its owner: the student's user id is the
+ * GCM associated data, so a value copied onto another student's connection does not decrypt there. `keyId` is a
+ * short hash of the derived key, so a changed key is told apart from a damaged value: decryptFeedUrl throws
+ * FeedKeyChangedError, and the student is asked to reconnect. "v1" (the same, without associated data) is still
+ * read, and `stale` asks the caller to store it again as v2. The URL is never logged; errors here never include it.
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
+/** Read only: re-encrypted as v2 on the next successful sync (server/moodle/records.ts). */
+const LEGACY_VERSION = "v1";
 const SALT = "makeitso/moodle-feed-url";
 const INFO = "aes-256-gcm v1";
 
@@ -35,10 +39,20 @@ function feedKey(source: Record<string, string | undefined> = process.env): Feed
   return { key, id: id.slice(0, 12) };
 }
 
-export function encryptFeedUrl(url: string, source?: Record<string, string | undefined>): string {
+/** The associated data of a v2 value: whose connection it belongs to. */
+function ownerData(userId: string): Buffer {
+  return Buffer.from(`makeitso/moodle-feed-url/user:${userId}`, "utf8");
+}
+
+export function encryptFeedUrl(
+  url: string,
+  userId: string,
+  source?: Record<string, string | undefined>,
+): string {
   const { key, id } = feedKey(source);
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
+  cipher.setAAD(ownerData(userId));
   const ciphertext = Buffer.concat([cipher.update(url, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return [VERSION, id, iv, tag, ciphertext]
@@ -46,24 +60,37 @@ export function encryptFeedUrl(url: string, source?: Record<string, string | und
     .join(".");
 }
 
-/** The URL back. FeedKeyChangedError when the key is not the one it was stored with; Error when damaged. */
+export interface DecryptedFeedUrl {
+  url: string;
+  /** Stored in the v1 form (no owner binding): store `encryptFeedUrl(url, userId)` in its place. */
+  stale: boolean;
+}
+
+/**
+ * The URL back, for `userId`'s connection. FeedKeyChangedError when the key is not the one it was stored with;
+ * Error when damaged or not this student's.
+ */
 export function decryptFeedUrl(
   stored: string,
+  userId: string,
   source?: Record<string, string | undefined>,
-): string {
+): DecryptedFeedUrl {
   const [version, id, iv, tag, ciphertext, ...rest] = stored.split(".");
-  if (version !== VERSION || !id || !iv || !tag || !ciphertext || rest.length > 0) {
+  const known = version === VERSION || version === LEGACY_VERSION;
+  if (!known || !id || !iv || !tag || !ciphertext || rest.length > 0) {
     throw new Error("The saved Moodle link is not in a readable form");
   }
   const current = feedKey(source);
   if (id !== current.id) throw new FeedKeyChangedError();
   try {
     const decipher = createDecipheriv("aes-256-gcm", current.key, Buffer.from(iv, "base64url"));
+    if (version === VERSION) decipher.setAAD(ownerData(userId));
     decipher.setAuthTag(Buffer.from(tag, "base64url"));
-    return Buffer.concat([
+    const url = Buffer.concat([
       decipher.update(Buffer.from(ciphertext, "base64url")),
       decipher.final(),
     ]).toString("utf8");
+    return { url, stale: version === LEGACY_VERSION };
   } catch {
     throw new Error("The saved Moodle link could not be decrypted");
   }

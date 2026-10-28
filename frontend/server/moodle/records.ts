@@ -321,8 +321,9 @@ export async function syncMoodleImpl(
     const stored = String(doc.feedUrl);
     const target: SyncTarget = { importId, feedUrl: stored };
     let url: string;
+    let stale: boolean;
     try {
-      url = decryptFeedUrl(stored);
+      ({ url, stale } = decryptFeedUrl(stored, userId));
     } catch (error) {
       const problem: MoodleProblem =
         error instanceof FeedKeyChangedError ? "key_changed" : "invalid";
@@ -333,8 +334,15 @@ export async function syncMoodleImpl(
       return getMoodleStatusImpl(userId);
     }
     const read = await readFeed(url, at);
-    if (read.ok) await applyFeed(userId, oid, target, read, at);
-    else {
+    if (read.ok) {
+      if ((await applyFeed(userId, oid, target, read, at)) && stale) {
+        // A link stored before owner binding (v1): stored again as v2, unless it changed meanwhile.
+        await MoodleConnection.updateOne(
+          { userId: oid, feedUrl: stored },
+          { $set: { feedUrl: encryptFeedUrl(url, userId) } },
+        );
+      }
+    } else {
       await MoodleConnection.updateOne(
         { userId: oid, feedUrl: stored },
         { $set: { lastAttemptAt: at, problem: read.problem } },
@@ -402,7 +410,7 @@ export async function connectMoodleImpl(userId: string, rawUrl: string): Promise
   if (!read.ok) throw connectFailure(read.problem);
   // A new import first: a sync of the previous link still running now writes nothing.
   const importId = await startMoodleImport(userId);
-  const feedUrl = encryptFeedUrl(check.url);
+  const feedUrl = encryptFeedUrl(check.url, userId);
   // Another sync's lease is left alone: it ends (writing nothing) on its own.
   await MoodleConnection.updateOne(
     { userId: oid },

@@ -16,7 +16,7 @@ import { MOODLE_PROBLEMS } from "@/lib/moodle";
 const MoodleConnectionSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, required: true },
-    /** "v1.<keyId>.<iv>.<tag>.<ciphertext>": never the plain URL. */
+    /** "v2.<keyId>.<iv>.<tag>.<ciphertext>", bound to `userId` (v1: before that binding): never the plain URL. */
     feedUrl: { type: String, required: true, maxlength: 2_000 },
     connectedAt: { type: Date, required: true },
     /** The last sync attempt, successful or not (what the 6-hour lazy sync is timed from). */
