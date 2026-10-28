@@ -121,6 +121,28 @@ describe("EventList", () => {
     expect(note.className).not.toMatch(/border|uppercase/);
   });
 
+  it("says a feed once per run of rows from it within a day, and keeps it for screen readers", () => {
+    const sameDay: FeedItem[] = ["a", "b", "c"].map((id, i) => ({
+      ...ITEMS[2]!,
+      id,
+      title: `Library event ${id}`,
+      url: `https://davidson.libcal.com/event/${i + 10}`,
+      startsAt: `2026-10-01T1${5 + i}:00:00.000Z`,
+      endsAt: null,
+      source: id === "c" ? "wildcatsync" : "library",
+    }));
+    render(<EventList items={sameDay} hasMore={false} view={view()} now={NOW} timeZone={TZ} />);
+    const notes = screen
+      .getAllByTestId("event-item")
+      .map((row) => row.querySelector("span[data-source]:not(li)")!);
+    expect(notes.map((note) => note.textContent)).toEqual([
+      "Source: via Library",
+      "Source: via Library",
+      "Source: via WildcatSync",
+    ]);
+    expect(notes.map((note) => note.classList.contains("sr-only"))).toEqual([false, true, false]);
+  });
+
   it("renders deadlines, all-day and ongoing times", () => {
     render(<EventList items={ITEMS} hasMore={false} view={view()} now={NOW} timeZone={TZ} />);
     const [rhodes, watson, fair, fallBreak] = screen.getAllByTestId("event-item");

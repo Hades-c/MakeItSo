@@ -1,6 +1,6 @@
 import { BriefcaseBusiness, ExternalLink } from "lucide-react";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceNote, viaLabel } from "@/components/ui/source-tag";
+import { runHeads, SourceNote, viaLabel } from "@/components/ui/source-tag";
 import { formatShortDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import {
@@ -22,7 +22,8 @@ function shortDay(day: string): string {
 /**
  * Opportunities (PLAN §3): curated office programs (fellowships, grants, funded internships) whose next published
  * deadline comes after the Due soon window, with the office that runs them (their source note, "via Office of
- * Fellowships": the office is the source, so it is said once, on every row), that deadline and, when the published
+ * Fellowships": the office is the source, said once per run of consecutive rows from one office, `runHeads`; the
+ * others keep it for screen readers), that deadline and, when the published
  * audience does not certainly include the student, who it is for; plus the Davidson Handshake entry point for jobs
  * and internships ("via Handshake"). Curated content only: no postings or employers of our own.
  */
@@ -42,6 +43,8 @@ export async function OpportunitiesPanel({
   }));
   if (!built) return <PanelError id="opportunities" title="Opportunities" what="Opportunities" />;
   const { programs, handshake } = built;
+  const notes = programs.map((program) => viaLabel(program.source, program.office));
+  const heads = runHeads(notes);
   return (
     <SectionCard
       id="opportunities"
@@ -49,7 +52,7 @@ export async function OpportunitiesPanel({
       {...(careersOn ? { link: { href: routes.careers(), label: "Careers" } } : {})}
     >
       <ol className="-mt-1 divide-y divide-line">
-        {programs.map((program) => (
+        {programs.map((program, i) => (
           <li
             key={program.slug}
             data-testid="opportunity-item"
@@ -73,10 +76,7 @@ export async function OpportunitiesPanel({
               </p>
               <p className="mt-1 text-xs text-fg-2 md:text-sm">{program.deadline.label}</p>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-2 md:text-sm">
-                <SourceNote
-                  source={program.source}
-                  label={viaLabel(program.source, program.office)}
-                />
+                <SourceNote source={program.source} label={notes[i]} hidden={!heads[i]} />
                 {program.audience && !program.forYou ? (
                   <span data-testid="opportunity-audience">For: {program.audience}</span>
                 ) : null}

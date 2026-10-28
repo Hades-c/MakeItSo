@@ -1,6 +1,6 @@
 import { CalendarClock, ChevronDown, Clock, ExternalLink, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { SourceNote } from "@/components/ui/source-tag";
+import { runHeads, SourceNote } from "@/components/ui/source-tag";
 import { formatEventLocation } from "@/lib/event-location";
 import type { FeedItem } from "@/lib/types/feeds";
 import { eventsHref, nextEventsLimit, type EventsView } from "../_lib/params";
@@ -16,11 +16,11 @@ import { ShowMoreFocus, ShowMoreLink } from "./show-more";
 /**
  * The grouped list of feed items (server-compatible, no hooks): one labelled section per America/New_York day
  * (Ongoing first), each item with its time line, an external link to the source page, the location, a
- * Description toggle, an hours-change notice when the item's location has one, and the source tag its stored
- * `source` names (PLAN §5 "Sources (truthfulness)"). Aggregated items carry data-source for expectAllTagged() in
- * e2e. "Show more" is a plain link that raises ?limit; afterwards focus moves to the first newly loaded item
- * (./show-more). The title link is stretched over its whole row, so the tap target is the row on phones (PLAN §7:
- * ≥44px), not one line of text.
+ * Description toggle and the feed its stored `source` names ("via WildcatSync", PLAN §5 "Sources
+ * (truthfulness)"), said once per run of consecutive rows from one feed within a day (`runHeads`; the others keep
+ * it for screen readers). Every item carries data-source for expectAllAttributed() in e2e. "Show more" is a plain
+ * link that raises ?limit; afterwards focus moves to the first newly loaded item (./show-more). The title link is
+ * stretched over its whole row, so the tap target is the row on phones (PLAN §7: ≥44px), not one line of text.
  */
 
 export interface EventListProps {
@@ -66,6 +66,7 @@ function EventGroupSection({
   options: PresentOptions;
 }) {
   const headingId = `events-day-${group.key}`;
+  const heads = runHeads(group.items.map((item) => item.source));
   return (
     <section
       aria-labelledby={headingId}
@@ -89,8 +90,14 @@ function EventGroupSection({
         </span>
       </h2>
       <ol className="mt-2 divide-y divide-line">
-        {group.items.map((item) => (
-          <EventRow key={item.id} item={item} index={order.get(item.id)} options={options} />
+        {group.items.map((item, i) => (
+          <EventRow
+            key={item.id}
+            item={item}
+            index={order.get(item.id)}
+            options={options}
+            showSource={heads[i] ?? true}
+          />
         ))}
       </ol>
     </section>
@@ -101,10 +108,13 @@ function EventRow({
   item,
   index,
   options,
+  showSource,
 }: {
   item: FeedItem;
   index: number | undefined;
   options: PresentOptions;
+  /** False for a row after the first of a run from the same feed: screen readers only. */
+  showSource: boolean;
 }) {
   const deadline = isDeadlineItem(item);
   const time = eventTimeLabel(item, options);
@@ -162,10 +172,14 @@ function EventRow({
             </p>
           </details>
         ) : null}
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
-          <SourceNote source={item.source} />
-          {deadline ? <Badge variant="warning">Deadline</Badge> : null}
-        </div>
+        {showSource || deadline ? (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+            <SourceNote source={item.source} hidden={!showSource} />
+            {deadline ? <Badge variant="warning">Deadline</Badge> : null}
+          </div>
+        ) : (
+          <SourceNote source={item.source} hidden />
+        )}
       </div>
     </li>
   );

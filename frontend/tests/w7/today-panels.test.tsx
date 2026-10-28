@@ -833,6 +833,19 @@ describe("opportunities and quick links", () => {
     expect(screen.getByRole("link", { name: "Careers" })).toHaveAttribute("href", "/careers");
   });
 
+  it("names a program's office once per run of rows from that office", async () => {
+    await show(OpportunitiesPanel({ userId: USER, now: NOON, careersOn: true }));
+    const rows = screen.getAllByTestId("opportunity-item").slice(0, -1);
+    const notes = rows.map((li) => li.querySelector("span[data-source]")!);
+    expect(notes.every((note) => /^Source: via /.test(note.textContent ?? ""))).toBe(true);
+    notes.forEach((note, i) => {
+      const repeat = i > 0 && note.textContent === notes[i - 1]!.textContent;
+      expect(note.classList.contains("sr-only"), note.textContent ?? "").toBe(repeat);
+    });
+    // The fixture has a run (two Office of Fellowships programs in a row).
+    expect(notes.some((note) => note.classList.contains("sr-only"))).toBe(true);
+  });
+
   it("leaves out the Careers link while careers is off", async () => {
     await show(OpportunitiesPanel({ userId: USER, now: NOON, careersOn: false }));
     expect(screen.queryByRole("link", { name: "Careers" })).toBeNull();
