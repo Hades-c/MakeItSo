@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import {
   collectErrors,
+  expectAllAttributed,
   horizontalOverflow,
   isMobile,
   registerViaApi,
@@ -141,6 +142,29 @@ test("today: the headline, timeline, strip and panels for a student with section
     const webtree = due.filter({ hasText: "WebTree Open" });
     await expect(webtree).toContainText("Oct 12 – Nov 3");
     await expect(webtree).toHaveAttribute("data-kind", "registration");
+    // Quiet provenance in the meta line: the Registrar's row says it, the student's own deadline does not.
+    await expect(webtree).toHaveAttribute("data-source", "registrar");
+    await expect(webtree).toContainText("via Registrar");
+    const own = allPanel.locator('[data-testid="due-soon-item"][data-kind="student"]');
+    await expect(own).toHaveAttribute("data-source", "my-plan");
+    await expect(own.getByText("Source: your plan")).toHaveClass(/sr-only/);
+    // The header's one line counts the same rows as the card ("All").
+    await expect(page.getByTestId("due-for-you-line")).toHaveText(
+      "2 due for you in the next two weeks",
+    );
+    await expect(page.getByTestId("due-for-you-line")).toHaveAttribute("href", "#due-soon");
+    // Coursework: the student's course deadline only, with a line saying where the college's are.
+    await dueCard.getByRole("tab", { name: /^Coursework/ }).click();
+    await expect(dueCard.getByTestId("due-coursework-note")).toBeVisible();
+    await expect(
+      dueCard.getByRole("tabpanel").getByTestId("due-for-you").getByTestId("due-soon-item"),
+    ).toHaveCount(1);
+    await dueCard.getByRole("tab", { name: /^Coursework/ }).press("ArrowLeft");
+    await expect(dueCard.getByRole("tab", { name: /^All/ })).toBeFocused();
+    await expect(dueCard.getByRole("tab", { name: /^All/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     expect(await page.getByTestId("campus-item").count()).toBeGreaterThan(0);
     expect(await page.getByTestId("opportunity-item").count()).toBeGreaterThan(1);
     await expect(page.getByTestId("panel-error")).toHaveCount(0);
@@ -166,7 +190,7 @@ test("today: the headline, timeline, strip and panels for a student with section
     expect(narrow, "squeezed titles").toEqual([]);
     await expect(
       page.locator("section[aria-labelledby='quick-links-title'] a > span.flex-col"),
-    ).toHaveCount(8);
+    ).toHaveCount(9);
     if (isMobile(page)) {
       // Phone order (Lakeside home-390): Today, Due for you, then This week on campus.
       const top = async (name: RegExp) =>
@@ -179,6 +203,11 @@ test("today: the headline, timeline, strip and panels for a student with section
       expect(timelineTop).toBeLessThan(dueTop);
       expect(dueTop).toBeLessThan(campusTop);
     }
+
+    // Every aggregated item says where it came from: in its meta line, once per run, or by its list's line.
+    const attribution = await expectAllAttributed(page);
+    expect(attribution.items).toBeGreaterThan(8);
+    await expect(page.getByTestId("timeline-sources")).toContainText("the course schedule");
 
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
     expect(await seriousViolations(page)).toEqual([]);

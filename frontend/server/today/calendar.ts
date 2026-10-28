@@ -1,15 +1,20 @@
 import "server-only";
-import type { ClassStanding } from "@/lib/term";
+import { formatTime } from "@/lib/format";
+import type { SourceId } from "@/lib/sources";
+import { termLabel, type ClassStanding, type TermCode } from "@/lib/term";
 import type { CalendarEvent } from "@/lib/types/content";
 import {
   ACADEMIC_CALENDAR,
   eventEndDay,
   type ContentDeadline,
 } from "@/server/content/academic-calendar";
+import { addDays } from "@/server/content/define";
+import { zonedInstant } from "@/server/today/time";
 
 /**
  * Today's reading of the Registrar's academic calendar (server/content/academic-calendar.ts): which break a day
- * falls in, and whether a row's audience is the student. Pure over curated content.
+ * falls in, the WebTree window behind Today's "WebTree is open … · Plan Spring 2027" line, and whether a row's
+ * audience is the student. Pure over curated content.
  */
 
 /** The break (category "break") covering `day`, e.g. "Fall Break"; null on a regular day. */
@@ -105,4 +110,68 @@ export function calendarCategoryOf(
   deadline: Pick<ContentDeadline, "kind" | "category">,
 ): CalendarEvent["category"] | null {
   return deadline.kind === "calendar" ? deadline.category : null;
+}
+
+export interface WebTreeWindow {
+  termCode: TermCode;
+  /** "Spring 2027". */
+  termLabel: string;
+  opensAt: Date;
+  closesAt: Date;
+  source: SourceId;
+  url: string;
+  verifiedAt: string;
+}
+
+/**
+ * The WebTree preference window for the registration term, from the calendar's "WebTree Open: Submit <term> Course
+ * Preferences" row (opening day and time) and its "WebTree Closes (<term> Preferences Due)" row (closing time; the
+ * window's last day at midnight when there is none). Null outside [opens, closes) (PLAN §3: the "Plan <term>"
+ * link is shown during the WebTree window only) or when the calendar has no window for that term.
+ */
+export function webTreeWindow(
+  registrationTerm: TermCode,
+  at: Date,
+  calendar: readonly CalendarEvent[] = ACADEMIC_CALENDAR,
+): WebTreeWindow | null {
+  const label = termLabel(registrationTerm);
+  const open = calendar.find(
+    (row) =>
+      row.category === "registration" && /webtree/i.test(row.title) && row.title.includes(label),
+  );
+  if (!open) return null;
+  const lastDay = eventEndDay(open);
+  const close = calendar.find(
+    (row) =>
+      row.category === "deadline" &&
+      /webtree closes/i.test(row.title) &&
+      row.title.includes(label) &&
+      row.start === lastDay,
+  );
+  const opensAt = zonedInstant(open.start, open.time ?? "00:00");
+  const closesAt = close?.time
+    ? zonedInstant(lastDay, close.time)
+    : zonedInstant(addDays(lastDay, 1), "00:00");
+  const t = at.getTime();
+  if (t >= closesAt.getTime() || t < opensAt.getTime()) return null;
+  return {
+    termCode: registrationTerm,
+    termLabel: label,
+    opensAt,
+    closesAt,
+    source: open.source,
+    url: open.sources[0] ?? "",
+    verifiedAt: open.verifiedAt,
+  };
+}
+
+/** "WebTree is open for Spring 2027 course preferences until Tue, Nov 3 at 5:00 PM." in `timeZone`. */
+export function webTreeWindowText(window: WebTreeWindow, timeZone: string): string {
+  const day = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone,
+  }).format(window.closesAt);
+  return `WebTree is open for ${window.termLabel} course preferences until ${day} at ${formatTime(window.closesAt, timeZone)}.`;
 }

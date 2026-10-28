@@ -1,6 +1,9 @@
 import type * as React from "react";
 import { Clock, Flag } from "lucide-react";
+import { AiChip } from "@/components/ui/ai-chip";
 import { CourseCode } from "@/components/ui/course-code";
+import { provenance, SourceLine } from "@/components/ui/source-tag";
+import { SOURCES, type SourceId } from "@/lib/sources";
 import { COURSE_COLOR_CLASSES, courseColor } from "@/lib/course-color";
 import { wallClockMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -87,10 +90,40 @@ function groupSpanLabel(group: OverlapGroup): string {
   return `${clockLabel(start)}–${clockLabel(last.interval.shownEnd)}`;
 }
 
+/** How the timeline's source line names a source: "your plan", "the course schedule", "WildcatSync". */
+function sourceWords(source: SourceId): string {
+  if (source === "my-plan") return "your plan";
+  if (source === "course-schedule") return "the course schedule";
+  if (source === "registrar") return "the Registrar";
+  return SOURCES[source].label;
+}
+
+/** "Sources: your plan, the course schedule, WildcatSync and Hurt Hub" for the items shown, in that order. */
+export function timelineSourcesText(items: readonly TimelineItem[]): string {
+  const order = (s: SourceId) => (s === "my-plan" ? 0 : s === "course-schedule" ? 1 : 2);
+  const sources = [...new Set(items.map((item) => item.source))].sort(
+    (a, b) => order(a) - order(b),
+  );
+  const words = sources.map(sourceWords);
+  const joined =
+    words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+  return `${words.length === 1 ? "Source" : "Sources"}: ${joined}`;
+}
+
+/** Screen readers hear each item's source; a class's is the course schedule, said once in the source line. */
+function spokenSource(item: TimelineItem): string | null {
+  return item.kind === "class" ? null : `Source: ${sourceWords(item.source)}`;
+}
+
 /**
  * Today, to scale: classes coloured by course, campus events, deadlines as point markers, free gaps, and a red
  * now-line with a clock pill ("now"). Proportional minutes in ET wall-clock time; renders on
  * the server. The list is chronological for screen readers, with each item's times spelled out.
+ *
+ * Provenance (docs/CONTRACTS.md "Look"): blocks are sized to their minutes and have no room for a label, so the
+ * timeline says its sources ONCE, in a quiet line under it ("Sources: your plan, the course schedule and
+ * WildcatSync"); every item carries `data-source` and its source for screen readers. A deadline read from a
+ * syllabus by AI carries the AI chip wherever it is drawn.
  *
  * Nothing is drawn over text: the now pill sits in the hour gutter and the now and deadline lines pass under the
  * blocks; a deadline's label goes only into free time (else it is listed under the view); and when overlapping items
@@ -160,7 +193,11 @@ export function DayTimeline({
   const height = "h-[calc(var(--tl-hours)*4rem)] md:h-[calc(var(--tl-hours)*4.125rem)]";
 
   return (
-    <div className={cn("@container", className)} data-testid="day-timeline">
+    <div
+      className={cn("@container", className)}
+      data-testid="day-timeline"
+      {...provenance(items.map((item) => item.source))}
+    >
       <div className="grid grid-cols-[3.5rem_minmax(0,1fr)] py-2" style={style}>
         <div aria-hidden data-testid="timeline-gutter" className={cn("relative", height)}>
           {shownHours.map((hour) => (
@@ -274,6 +311,12 @@ export function DayTimeline({
         />
       ) : null}
 
+      {items.length > 0 ? (
+        <SourceLine className="mt-2" testId="timeline-sources">
+          {timelineSourcesText(items)}
+        </SourceLine>
+      ) : null}
+
       {nextUp ? (
         <p className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md bg-surface-2 px-3 py-2.5 text-sm text-fg-2">
           {nextUp.code ? <CourseCode code={nextUp.code} /> : null}
@@ -345,6 +388,7 @@ function TimelineBlock({
     item.detail,
     item.location,
     relative,
+    spokenSource(item),
   ]
     .filter(Boolean)
     .join(", ");
@@ -478,6 +522,7 @@ function TimelineBlock({
   return (
     <li
       data-kind={item.kind}
+      data-source={item.source}
       data-density={density}
       data-lane={`${placed.lane + 1}/${placed.lanes}`}
       data-course-color={item.code ? courseColor(item.code) : undefined}
@@ -572,6 +617,7 @@ function DeadlineMarker({ placed }: { placed: PlacedDeadline }) {
   return (
     <li
       data-kind="deadline"
+      data-source={item.source}
       className="absolute inset-x-0 h-0"
       style={{ top: percent(placed.top) }}
     >
@@ -592,15 +638,22 @@ function DeadlineMarker({ placed }: { placed: PlacedDeadline }) {
           <span className="min-w-0 font-semibold break-words text-fg" data-testid="deadline-title">
             {item.title}
           </span>
+          <span className="sr-only">, {spokenSource(item)}</span>
         </span>
-        {item.code ? (
+        {item.code || item.fromSyllabus ? (
           <span className="flex shrink-0 items-center gap-2">
-            <CourseCode code={item.code} />
+            {item.code ? <CourseCode code={item.code} /> : null}
+            {item.fromSyllabus ? <SyllabusChip /> : null}
           </span>
         ) : null}
       </div>
     </li>
   );
+}
+
+/** The AI chip of a deadline read from a syllabus (the smallest one: the line has no room for words). */
+function SyllabusChip() {
+  return <AiChip compact label="read from your syllabus: check the date" />;
 }
 
 function OutsideList({
@@ -628,6 +681,7 @@ function OutsideList({
           <li
             key={item.id}
             data-kind={item.kind}
+            data-source={item.source}
             className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-md bg-surface-2 px-3 py-2 text-sm"
           >
             {interval ? (
@@ -639,7 +693,9 @@ function OutsideList({
             {item.code ? <CourseCode code={item.code} /> : null}
             <span className="min-w-0 font-semibold break-words text-fg">{item.title}</span>
             {item.location ? <span className="text-xs text-fg-2">{item.location}</span> : null}
+            {item.fromSyllabus ? <SyllabusChip /> : null}
             {note ? <span className="text-xs font-strong text-fg">{note}</span> : null}
+            {spokenSource(item) ? <span className="sr-only">{spokenSource(item)}</span> : null}
           </li>
         ))}
       </ul>

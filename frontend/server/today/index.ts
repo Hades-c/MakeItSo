@@ -10,7 +10,7 @@ import "server-only";
  *   week        the five-day strip and the timeline's "next up" label
  *   campus      This week on campus: the next dated happenings (long-running items under way left out)
  *   due-soon    calendar deadlines + registration windows + program deadlines + the student's own, merged
- *   calendar    breaks, milestones ("WebTree opens"), the WebTree window behind "Plan <term>", audiences
+ *   calendar    breaks, the WebTree window behind the header's "Plan <term>" line, audiences
  *   opportunities  curated office programs with upcoming deadlines, the Handshake entry point, quick links
  *   time        ET date helpers
  *

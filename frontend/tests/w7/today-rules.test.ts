@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { FeedItem } from "@/lib/types/feeds";
 import type { DayScheduleEntry, StudentDeadline } from "@/lib/types/plan";
 import type { Program } from "@/lib/types/content";
+import { ACADEMIC_CALENDAR } from "@/server/content/academic-calendar";
 import { deadlinesBetween } from "@/server/content/deadlines";
 import {
   agendaWindow,
@@ -24,6 +25,8 @@ import {
   stripDay,
   stripDays,
   upcomingOpportunities,
+  webTreeWindow,
+  webTreeWindowText,
   zonedInstant,
 } from "@/server/today";
 import { feedRange, parseDayParam, todayHref } from "@/app/(hub)/today/_lib/params";
@@ -94,6 +97,43 @@ describe("the academic calendar on Today", () => {
     ["Seniors (Class of 2027)", null, false],
   ] as const)("audience %j for a %s → %s", (audience, standing, expected) => {
     expect(audienceIncludes(audience, standing)).toBe(expected);
+  });
+});
+
+describe("the WebTree window (the header's Plan Spring 2027 line)", () => {
+  const opens = edt("07:00", "2026-10-12");
+  it("is open from 7 a.m. Oct 12 until 5 p.m. Nov 3, and absent before (PLAN §3: during the window only)", () => {
+    const window = webTreeWindow("202602", opens);
+    expect(window).toMatchObject({ termLabel: "Spring 2027", source: "registrar" });
+    expect(window?.opensAt).toEqual(opens);
+    // Nov 3 is after DST ends (Nov 1): 5 PM is EST, 22:00 UTC.
+    expect(window?.closesAt.toISOString()).toBe("2026-11-03T22:00:00.000Z");
+    expect(window?.url).toMatch(/^https:\/\/www\.davidson\.edu\//);
+    expect(webTreeWindow("202602", new Date("2026-11-03T21:59:00Z"))).not.toBeNull();
+    expect(webTreeWindow("202602", new Date("2026-11-03T22:00:00Z"))).toBeNull();
+    // The fixtures day (Sep 30) and the minute before it opens: no line yet.
+    expect(webTreeWindow("202602", edt("12:00"))).toBeNull();
+    expect(webTreeWindow("202602", new Date(opens.getTime() - 60_000))).toBeNull();
+  });
+
+  it("is null for a term the calendar has no window for, and closes at midnight without a closing row", () => {
+    expect(webTreeWindow("202702", edt("12:00"))).toBeNull();
+    const calendar = ACADEMIC_CALENDAR.filter((row) => row.id !== "f26-webtree-closes");
+    const window = webTreeWindow("202602", edt("12:00", "2026-10-20"), calendar);
+    // Midnight after Nov 3, in EST.
+    expect(window?.closesAt.toISOString()).toBe("2026-11-04T05:00:00.000Z");
+  });
+
+  it("covers the Fall 2027 window in the spring", () => {
+    const window = webTreeWindow("202701", edt("12:00", "2027-03-20"));
+    expect(window).toMatchObject({ termLabel: "Fall 2027" });
+  });
+
+  it("says when it closes in Davidson time, across the DST change", () => {
+    const window = webTreeWindow("202602", edt("12:00", "2026-10-20"))!;
+    expect(webTreeWindowText(window, "America/New_York")).toBe(
+      "WebTree is open for Spring 2027 course preferences until Tue, Nov 3 at 5:00 PM.",
+    );
   });
 });
 
@@ -417,6 +457,8 @@ describe("Due soon", () => {
       ongoing: false,
       courseCode: null,
       source: "registrar" as const,
+      office: null,
+      fromSyllabus: false,
       url: null,
       verifiedAt: null,
       ...over,

@@ -1,5 +1,6 @@
 import { BriefcaseBusiness, ExternalLink } from "lucide-react";
 import { SectionCard } from "@/components/ui/section-card";
+import { SourceNote, viaLabel } from "@/components/ui/source-tag";
 import { formatShortDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import {
@@ -20,9 +21,10 @@ function shortDay(day: string): string {
 
 /**
  * Opportunities (PLAN §3): curated office programs (fellowships, grants, funded internships) whose next published
- * deadline comes after the Due soon window, with the office that runs them, that deadline and, when the published
- * audience does not certainly include the student, who it is for; plus the Davidson
- * Handshake entry point for jobs and internships. Curated content only: no postings or employers of our own.
+ * deadline comes after the Due soon window, with the office that runs them (their source note, "via Office of
+ * Fellowships": the office is the source, so it is said once, on every row), that deadline and, when the published
+ * audience does not certainly include the student, who it is for; plus the Davidson Handshake entry point for jobs
+ * and internships ("via Handshake"). Curated content only: no postings or employers of our own.
  */
 export async function OpportunitiesPanel({
   userId,
@@ -51,6 +53,7 @@ export async function OpportunitiesPanel({
           <li
             key={program.slug}
             data-testid="opportunity-item"
+            data-source={program.source}
             className="relative flex min-h-11 items-start justify-between gap-3 py-3"
           >
             <div className="min-w-0">
@@ -70,7 +73,10 @@ export async function OpportunitiesPanel({
               </p>
               <p className="mt-1 text-xs text-fg-2 md:text-sm">{program.deadline.label}</p>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-2 md:text-sm">
-                {program.office ? <span>{program.office}</span> : null}
+                <SourceNote
+                  source={program.source}
+                  label={viaLabel(program.source, program.office)}
+                />
                 {program.audience && !program.forYou ? (
                   <span data-testid="opportunity-audience">For: {program.audience}</span>
                 ) : null}
@@ -84,6 +90,7 @@ export async function OpportunitiesPanel({
         ))}
         <li
           data-testid="opportunity-item"
+          data-source="handshake"
           className="relative flex min-h-11 items-start gap-3 py-3"
         >
           <span
@@ -100,12 +107,12 @@ export async function OpportunitiesPanel({
                 rel="noopener noreferrer"
                 className={STRETCHED_LINK}
               >
-                Jobs and internships on Handshake{" "}
-                <span className="sr-only">(opens in a new tab)</span>
+                Jobs and internships <span className="sr-only">(opens in a new tab)</span>
                 <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
               </a>
             </p>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-2 md:text-sm">
+              <SourceNote source="handshake" />
               <span>Sign in with your Davidson account</span>
             </p>
           </div>

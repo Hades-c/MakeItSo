@@ -251,6 +251,57 @@ describe("the header", () => {
     expect(within(strip).getByRole("link", { current: "date" })).toHaveAttribute("href", "/today");
   });
 
+  it("says how many are due for the student, linking the card, outside the WebTree window", async () => {
+    await show(header());
+    const line = screen.getByTestId("due-for-you-line");
+    expect(line).toHaveTextContent(/^\d+ due for you in the next two weeks$/);
+    expect(line).toHaveAttribute("href", "#due-soon");
+    expect(screen.queryByTestId("webtree-window")).toBeNull();
+  });
+
+  it("is the WebTree window, with Plan Spring 2027, while WebTree is open", async () => {
+    await show(
+      TodayHeader({
+        userId: USER,
+        now: new Date("2026-10-20T12:00:00-04:00"),
+        timeZone: TZ,
+        stripDays: DAYS,
+        selected: "2026-09-30",
+      }),
+    );
+    expect(screen.getByTestId("webtree-window")).toHaveTextContent(
+      "WebTree is open for Spring 2027 course preferences until Tue, Nov 3 at 5:00 PM. · Plan Spring 2027",
+    );
+    expect(screen.getByRole("link", { name: "Plan Spring 2027" })).toHaveAttribute(
+      "href",
+      "/plan?tab=next",
+    );
+    // A text link, never a second red button.
+    expect(screen.getByRole("link", { name: "Plan Spring 2027" })).not.toHaveClass(
+      "bg-primary-fill",
+    );
+    expect(screen.queryByTestId("due-for-you-line")).toBeNull();
+  });
+
+  it("leaves the line out when the terms and the deadlines cannot load", async () => {
+    state.terms = FAIL;
+    state.curatedThrows = true;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    await show(
+      TodayHeader({
+        userId: USER,
+        now: new Date("2026-10-20T12:00:00-04:00"),
+        timeZone: TZ,
+        stripDays: DAYS,
+        selected: "2026-09-30",
+      }),
+    );
+    expect(screen.queryByTestId("webtree-window")).toBeNull();
+    expect(screen.queryByTestId("due-for-you-line")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your day at Davidson");
+    log.mockRestore();
+  });
+
   it("still shows the headline when the schedule and profile fail", async () => {
     state.schedule = () => FAIL;
     state.profile = FAIL;
@@ -278,10 +329,20 @@ describe("the timeline", () => {
     );
   });
 
-  it("adds tonight's campus event while events are on", async () => {
+  it("adds tonight's campus event while events are on, and says the timeline's sources once", async () => {
     await show(panel());
     const event = document.querySelector('[data-kind="event"]');
     expect(event).toHaveTextContent("Campus event 1");
+    // No label on the block (no room); its source for screen readers, and in the one line under the timeline.
+    expect(event).toHaveAttribute("data-source", "wildcatsync");
+    expect(event).toHaveTextContent("Source: WildcatSync");
+    expect(screen.getByTestId("timeline-sources")).toHaveTextContent(
+      "Sources: the course schedule and WildcatSync",
+    );
+    expect(screen.getByTestId("day-timeline")).toHaveAttribute(
+      "data-provenance",
+      "course-schedule wildcatsync",
+    );
   });
 
   it("shows another strip day without a now-line, with a way back", async () => {
@@ -419,6 +480,17 @@ describe("Due for you", () => {
     expect(webtree).toHaveTextContent("Oct 12 – Nov 3");
     const minor = items.find((li) => li.textContent?.includes("Minor Declaration"));
     expect(minor).toHaveTextContent("For: Seniors (Class of 2027)");
+    // Every row carries its source and says it to screen readers; on screen, in its meta line, once per run.
+    for (const li of items) {
+      expect(li.dataset.source, li.textContent ?? "").toBeTruthy();
+      expect(li.querySelector(`[data-source="${li.dataset.source}"]`)).toHaveTextContent(
+        /^Source: /,
+      );
+    }
+    expect(webtree).toHaveAttribute("data-source", "registrar");
+    expect(within(webtree!).getByText("via Registrar", { exact: false })).not.toHaveClass(
+      "sr-only",
+    );
     for (const link of within(card).getAllByRole("link")) {
       expect(link.getAttribute("href")).toMatch(/^https:\/\//);
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
@@ -538,12 +610,35 @@ describe("Due for you", () => {
     );
     await show(DueSoonPanel({ userId: USER, now: NOON }));
     const card = screen.getByRole("region", { name: /^Due for you/ });
-    await user.click(within(card).getByRole("tab", { name: "Classes" }));
+    // Each tab says how many of its rows are for the student, so the number follows the view.
+    expect(within(card).getByRole("tab", { name: "All 3 for you" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await user.click(within(card).getByRole("tab", { name: "Coursework 2 for you" }));
+    expect(within(card).getByTestId("due-coursework-note")).toHaveTextContent(
+      "Only deadlines for your courses. Registrar and office deadlines are under All.",
+    );
     const items = live(within(card).getAllByTestId("due-soon-item"));
     expect(items.length).toBeGreaterThan(0);
     expect(items.every((li) => li.querySelector("[data-course-color]"))).toBe(true);
-    expect(items.some((li) => li.textContent?.includes("Reading response"))).toBe(true);
+    const reading = items.find((li) => li.textContent?.includes("Reading response"))!;
     expect(items.some((li) => li.textContent?.includes("WebTree Open"))).toBe(false);
+    // A syllabus deadline says where it came from, with the smallest AI chip (an AI read it).
+    expect(reading).toHaveAttribute("data-source", "my-plan");
+    expect(reading).toHaveTextContent("From your syllabus");
+    expect(within(reading).getByText(/^AI-generated content:/)).toHaveClass("sr-only");
+    // The student's own typed deadline says nothing on screen; screen readers hear it is theirs.
+    const own = items.find((li) => li.textContent?.includes("Problem set"))!;
+    expect(own).not.toHaveTextContent("From your syllabus");
+    expect(within(own).getByText("Source: your plan")).toHaveClass("sr-only");
+    // Arrow keys move between the tabs.
+    await user.keyboard("{ArrowLeft}");
+    expect(within(card).getByRole("tab", { name: /^All/ })).toHaveFocus();
+    expect(within(card).getByRole("tab", { name: /^All/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("degrades to a small error state when building the list throws", async () => {
@@ -643,7 +738,7 @@ describe("opportunities and quick links", () => {
   it("links the portals", () => {
     const { container } = render(QuickLinks());
     const links = screen.getAllByRole("link");
-    expect(links.length).toBe(8);
+    expect(links.length).toBe(9);
     for (const link of links) {
       expect(link.getAttribute("href")).toMatch(/^https:\/\//);
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
@@ -671,7 +766,7 @@ describe("panel boundaries", () => {
     );
     expect(screen.getByTestId("panel-error")).toHaveTextContent("Due for you could not load");
     expect(screen.getByRole("region", { name: /Quick links/ })).toBeVisible();
-    expect(screen.getAllByRole("link").length).toBe(8);
+    expect(screen.getAllByRole("link").length).toBe(9);
     log.mockRestore();
   });
 });

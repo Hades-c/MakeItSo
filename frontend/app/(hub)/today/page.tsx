@@ -33,8 +33,9 @@ const SLOT = "min-w-0 lg:order-none";
  * /today (PLAN §3, W7): the student's day on one page, rendered on the server in America/New_York from the
  * server clock (server/clock.ts now()).
  *
- * - h1: a fixed headline, the date and term, and the five-day strip (?day= shows another strip day on the
- *   timeline).
+ * - h1: a fixed headline, the date and term, one line under it (the WebTree window while it is open, with "Plan
+ *   <term>"; else "N due for you in the next two weeks"), and the five-day strip (?day= shows another strip day on
+ *   the timeline).
  * - An onboarding nudge until first-run setup is done; nothing else in the action row.
  * - Left: the day timeline. Right: Due for you; This week on campus (FEATURE_EVENTS only); Opportunities;
  *   Quick links.

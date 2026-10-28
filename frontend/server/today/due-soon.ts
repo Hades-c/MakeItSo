@@ -5,6 +5,7 @@ import type { ClassStanding } from "@/lib/term";
 import type { StudentDeadline } from "@/lib/types/plan";
 import { clockLabel } from "@/components/domain/time-geometry";
 import type { ContentDeadline } from "@/server/content/academic-calendar";
+import { getOffice, officeShortName } from "@/server/content/offices";
 import { audienceIncludes, calendarCategoryOf } from "@/server/today/calendar";
 import { addDaysToKey, etClock, etDay, zonedInstant } from "@/server/today/time";
 
@@ -12,7 +13,7 @@ import { addDaysToKey, etClock, etDay, zonedInstant } from "@/server/today/time"
  * Today's "Due soon" (PLAN §3): the academic calendar's deadlines and registration windows (REGISTRAR, DAVIDSON
  * OFFICES), the curated office programs' deadlines (MATTHEWS CENTER, HURT HUB PROGRAMS, ...; server/content
  * deadlinesBetween) and the student's own deadlines (YOUR PLAN), merged over the next DUE_SOON_DAYS Davidson
- * days. Each item keeps its stored source for its tag (PLAN §5 Sources). Pure.
+ * days. Each item keeps its stored source for its source note (PLAN §5 Sources). Pure.
  *
  * - A window already under way (WebTree Oct 12 - Nov 3) stays while it lasts, sorted as of today.
  * - A deadline with a published time that has passed is gone; an all-day one stays for its whole day.
@@ -50,8 +51,25 @@ export interface DueSoonItem {
   ongoing: boolean;
   courseCode: string | null;
   source: SourceId;
+  /**
+   * The office a DAVIDSON OFFICES program deadline is from, as its source note names it ("Office of
+   * Fellowships", officeShortName); null for every other row.
+   */
+  office: string | null;
+  /** A student deadline read from a syllabus (/syllabi): AI-extracted, so its row shows the AI chip. */
+  fromSyllabus: boolean;
   url: string | null;
   verifiedAt: string | null;
+}
+
+/**
+ * The source a student deadline is shown with: the student's own (YOUR PLAN), whether typed in or read from their
+ * syllabus, or the course site it was imported from (by its `origin`). An origin not listed here is the student's.
+ */
+const ORIGIN_SOURCES: Readonly<Record<string, SourceId>> = { moodle: "course-site" };
+
+export function studentDeadlineSource(deadline: Pick<StudentDeadline, "origin">): SourceId {
+  return ORIGIN_SOURCES[deadline.origin ?? "manual"] ?? "my-plan";
 }
 
 export interface DueSoonInput {
@@ -65,6 +83,12 @@ export interface DueSoonInput {
 export function dueSoonRange(now: Date): { from: string; to: string } {
   const from = etDay(now);
   return { from, to: addDaysToKey(from, DUE_SOON_DAYS - 1) };
+}
+
+function officeOf(deadline: ContentDeadline): string | null {
+  if (deadline.source !== "davidson-offices" || !deadline.officeSlug) return null;
+  const office = getOffice(deadline.officeSlug);
+  return office ? officeShortName(office) : null;
 }
 
 function fromContent(deadline: ContentDeadline, today: string, standing: ClassStanding | null) {
@@ -92,6 +116,8 @@ function fromContent(deadline: ContentDeadline, today: string, standing: ClassSt
     ongoing: deadline.date < today,
     courseCode: null,
     source: deadline.source,
+    office: officeOf(deadline),
+    fromSyllabus: false,
     url: deadline.url,
     verifiedAt: deadline.verifiedAt,
   } satisfies DueSoonItem;
@@ -111,7 +137,9 @@ function fromStudent(deadline: StudentDeadline): DueSoonItem {
     dueAt: new Date(deadline.dueAt).toISOString(),
     ongoing: false,
     courseCode: deadline.courseCode ?? null,
-    source: "my-plan",
+    source: studentDeadlineSource(deadline),
+    office: null,
+    fromSyllabus: deadline.origin === "syllabus",
     url: null,
     verifiedAt: null,
   };

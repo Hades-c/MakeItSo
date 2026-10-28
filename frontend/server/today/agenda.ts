@@ -1,5 +1,5 @@
 import "server-only";
-import { formatEventLocation } from "@/app/(hub)/events/_lib/present";
+import { formatEventLocation } from "@/lib/event-location";
 import type { TimelineItem } from "@/components/domain/day-timeline";
 import { itemInterval } from "@/components/domain/timeline-layout";
 import { MINUTES_PER_HOUR, windowForItems } from "@/components/domain/time-geometry";
@@ -10,6 +10,7 @@ import type { DaySchedule, DayScheduleEntry, StudentDeadline } from "@/lib/types
 import type { ContentDeadline } from "@/server/content/academic-calendar";
 import { mergeListings } from "@/server/feeds/merge";
 import { audienceIncludes, calendarCategoryOf } from "@/server/today/calendar";
+import { studentDeadlineSource } from "@/server/today/due-soon";
 import { etClock, etDay, TODAY_TIME_ZONE } from "@/server/today/time";
 
 /**
@@ -17,10 +18,11 @@ import { etClock, etDay, TODAY_TIME_ZONE } from "@/server/today/time";
  * Lakeside DayTimeline draws it. Pure: the loaders (server/today/load.ts) pass the day's schedule, the student's
  * deadlines, the curated deadlines and the feed items.
  *
- * - Classes: every meeting of the day schedule (server/plan getDaySchedule), tagged COURSE SCHEDULE (where the
- *   meeting times come from; the timeline draws classes by course colour, without a tag).
- * - Deadlines: the student's own (YOUR PLAN) due that day, and the curated deadline rows of that day for the
- *   student (dayContentDeadlines: REGISTRAR, office tags): points on the line when they have a published time,
+ * - Classes: every meeting of the day schedule (server/plan getDaySchedule), sourced COURSE SCHEDULE (where the
+ *   meeting times come from; the timeline draws classes by course colour, and its one source line names it).
+ * - Deadlines: the student's own (YOUR PLAN, or the course site one was imported from; a syllabus one is marked
+ *   `fromSyllabus`) due that day, and the curated deadline rows of that day for the student
+ *   (dayContentDeadlines: REGISTRAR, the offices): points on the line when they have a published time,
  *   else in `allDay` (listed with the timeline). Registration openings are never drawn as deadlines.
  * - Campus events: see pickTimelineEvents (at most MAX_TIMELINE_EVENTS, ≤ 4 h, open-ended = 2 h, never over one
  *   of the student's classes); the rest are counted in `moreEvents`. Feed deadlines are drawn as deadlines. One
@@ -86,7 +88,8 @@ function studentDeadlineItems(day: string, deadlines: readonly StudentDeadline[]
       kind: "deadline",
       title: deadline.title,
       start: etClock(deadline.dueAt),
-      source: "my-plan",
+      source: studentDeadlineSource(deadline),
+      ...(deadline.origin === "syllabus" ? { fromSyllabus: true } : {}),
       ...(deadline.courseCode ? { code: deadline.courseCode } : {}),
     }));
 }

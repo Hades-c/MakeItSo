@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DayTimeline, type TimelineNextUp } from "@/components/domain/day-timeline";
 import { windowLabel } from "@/components/domain/time-geometry";
 import { SectionCard } from "@/components/ui/section-card";
+import { runHeads, SourceNote } from "@/components/ui/source-tag";
 import { AlarmClock, ExternalLink } from "lucide-react";
 import { formatLongDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
@@ -183,17 +184,22 @@ export async function TimelinePanel({
   );
 }
 
-/** The day's deadlines without a published time ("Due all day"), each linked to its source page. */
+/**
+ * The day's deadlines without a published time ("Due all day"), each linked to its source page and saying it
+ * ("via Registrar"), once per run of rows from one source.
+ */
 function AllDayList({ items, isToday }: { items: readonly AllDayDeadline[]; isToday: boolean }) {
+  const heads = runHeads(items.map((item) => item.source));
   return (
     <ul
       data-testid="timeline-all-day"
       aria-label={isToday ? "Due today, no set time" : "Due that day, no set time"}
       className="mb-3 flex flex-col gap-1.5"
     >
-      {items.map((item) => (
+      {items.map((item, i) => (
         <li
           key={item.id}
+          data-source={item.source}
           className="relative flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-line px-3 py-2 text-sm"
         >
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-urgent">
@@ -209,6 +215,7 @@ function AllDayList({ items, isToday }: { items: readonly AllDayDeadline[]; isTo
             {item.title} <span className="sr-only">(opens in a new tab)</span>
             <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
           </a>
+          <SourceNote source={item.source} hidden={!heads[i]} className="text-xs" />
         </li>
       ))}
     </ul>
