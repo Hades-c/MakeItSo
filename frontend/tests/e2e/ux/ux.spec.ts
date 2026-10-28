@@ -62,8 +62,8 @@ interface UxPage {
 
 const RAIL: Budget[] = [
   { check: "overflow", op: "==", target: 0 },
-  // QW17: the 720–1179px rail names all six destinations in visible 13px labels.
-  { check: "railLabelsVisible", op: "==", target: 6, hard: true },
+  // QW17: the 720–1179px rail names all seven destinations (Syllabi too) in visible 13px labels.
+  { check: "railLabelsVisible", op: "==", target: 7, hard: true },
 ];
 const PHONE: Budget[] = [
   { check: "overflow", op: "==", target: 0, hard: true },

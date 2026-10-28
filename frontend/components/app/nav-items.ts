@@ -106,8 +106,9 @@ export function navSectionOf(pathname: string): NavKey | null {
 
 /**
  * Which nav entry is current for a path, among the shown sections (`nav`, default all). On the tab bar, /alumni
- * highlights Careers. A hidden section is never current (its pages answer 404, see requireFeature): with Alumni
- * hidden nothing is highlighted on /alumni, and with Careers hidden /alumni highlights no tab.
+ * highlights Careers and /syllabi My plan (neither has a tab). A hidden section is never current (its pages answer
+ * 404, see requireFeature): with Alumni hidden nothing is highlighted on /alumni, and with Careers hidden /alumni
+ * highlights no tab.
  */
 export function activeNavKey(
   pathname: string,
@@ -117,5 +118,7 @@ export function activeNavKey(
   const section = navSectionOf(pathname);
   if (!section || !nav.includes(section)) return null;
   if (surface === "tabs" && section === "alumni") return nav.includes("careers") ? "careers" : null;
+  // Syllabi has no phone tab: it belongs to My plan (it is nested under it in the sidebar).
+  if (surface === "tabs" && section === "syllabi") return nav.includes("plan") ? "plan" : null;
   return section;
 }

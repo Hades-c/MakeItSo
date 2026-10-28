@@ -13,31 +13,24 @@ import {
 } from "./nav-items";
 
 export interface NavCounts {
-  /** Courses in the catalog for the selected term. */
-  courses?: number;
-  /** Plan progress: done (or planned) out of required courses/credits. */
+  /** Plan progress: credits done out of the credits required. */
   plan?: { done: number; total: number };
 }
 
+/**
+ * My plan's "8/32". Only My plan has a count: a course count beside Courses, nested under "My plan 8/32", read as
+ * that many courses in the plan. Screen readers get the words in one string ("My plan, 8 of 32 credits"): the
+ * link is a flex box, where hidden pieces between visible ones lose their spaces.
+ */
 function CountLabel({ navKey, counts }: { navKey: NavKey; counts?: NavCounts }) {
-  if (navKey === "courses" && counts?.courses !== undefined) {
-    return (
-      <span className="ml-auto text-xs text-fg-3 tabular-nums max-xl:hidden">
-        <span className="sr-only">, </span>
-        {counts.courses.toLocaleString("en-US")}
-        <span className="sr-only"> courses</span>
-      </span>
-    );
-  }
   if (navKey === "plan" && counts?.plan) {
+    const { done, total } = counts.plan;
     return (
       <span className="ml-auto text-xs text-fg-3 tabular-nums max-xl:hidden">
-        <span className="sr-only">, </span>
-        {counts.plan.done}
-        <span aria-hidden>/</span>
-        <span className="sr-only"> of </span>
-        {counts.plan.total}
-        <span className="sr-only"> credits</span>
+        <span aria-hidden>
+          {done}/{total}
+        </span>
+        <span className="sr-only">{`, ${done} of ${total} credits`}</span>
       </span>
     );
   }

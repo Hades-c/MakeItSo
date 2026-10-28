@@ -32,6 +32,11 @@ describe("hub navigation", () => {
     expect(activeNavKey("/alumni", "tabs")).toBe("careers");
   });
 
+  it("puts Syllabi under My plan on the phone tab bar (it has no tab)", () => {
+    expect(activeNavKey("/syllabi", "sidebar")).toBe("syllabi");
+    expect(activeNavKey("/syllabi", "tabs")).toBe("plan");
+  });
+
   it("has five phone tabs and seven sidebar entries with one label each", () => {
     expect(BOTTOM_TAB_KEYS).toEqual(["today", "courses", "plan", "careers", "events"]);
     expect(NAV_ITEMS.map((i) => i.label)).toEqual([

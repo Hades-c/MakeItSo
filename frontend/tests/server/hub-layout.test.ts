@@ -3,11 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import HubLayout from "@/app/(hub)/layout";
 import { VerifyBanner } from "@/app/(auth)/_components/verify-banner";
 import { AppShell, type AppShellProps } from "@/components/app/app-shell";
+import { SourceStatusNotice } from "@/components/app/source-status-notice";
+import type { SourceStatus } from "@/server/sync";
 import { MissingFixtureError } from "@/server/http/fixtures";
 
 const stubs = vi.hoisted(() => ({
-  browseTerm: vi.fn(async () => "202602"),
-  countCourses: vi.fn(async () => 612),
+  getSourceStatuses: vi.fn(async (): Promise<SourceStatus[]> => []),
   verifyBannerFor: vi.fn(async (): Promise<unknown> => null),
   getPlanCredits: vi.fn(async () => ({ done: 12, planned: 16, required: 32 as const })),
   onboardedAt: undefined as string | null | undefined,
@@ -28,15 +29,11 @@ vi.mock("next/headers", () => ({
     new Headers(stubs.returnPath === null ? {} : { "x-mis-return-path": stubs.returnPath }),
 }));
 vi.mock("@/server/plan", () => ({ getPlanCredits: stubs.getPlanCredits }));
-vi.mock("@/server/catalog", () => ({
-  browseTerm: stubs.browseTerm,
-  countCourses: stubs.countCourses,
-}));
+vi.mock("@/server/sync", () => ({ getSourceStatuses: stubs.getSourceStatuses }));
 vi.mock("@/server/auth/banner", () => ({ verifyBannerFor: stubs.verifyBannerFor }));
 
 afterEach(() => {
-  stubs.browseTerm.mockReset().mockResolvedValue("202602");
-  stubs.countCourses.mockReset().mockResolvedValue(612);
+  stubs.getSourceStatuses.mockReset().mockResolvedValue([]);
   stubs.verifyBannerFor.mockReset().mockResolvedValue(null);
   stubs.getPlanCredits.mockReset().mockResolvedValue({ done: 12, planned: 16, required: 32 });
   stubs.onboardedAt = undefined;
@@ -158,31 +155,67 @@ describe("hub layout: sidebar counts", () => {
   it("shows no plan count when the plan cannot be read, and never fails the shell", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     stubs.getPlanCredits.mockRejectedValue(new Error("db down"));
-    expect((await shellProps()).counts).toEqual({ courses: 612 });
+    expect((await shellProps()).counts).toEqual({});
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/plan credits/), expect.any(Error));
   });
 
-  it("counts the courses of the term browsing defaults to", async () => {
-    expect((await shellProps()).counts).toEqual({ courses: 612, plan: { done: 12, total: 32 } });
-    expect(stubs.browseTerm).toHaveBeenCalledWith({ now: expect.any(Date) });
-    expect(stubs.countCourses).toHaveBeenCalledWith("202602");
-  });
-
-  it("shows no count when the catalog cannot answer, and never fails the shell", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    stubs.countCourses.mockRejectedValue(new Error("Schedule data is temporarily unavailable."));
-    const plan = { done: 12, total: 32 };
-    expect((await shellProps()).counts).toEqual({ plan });
-    stubs.browseTerm.mockRejectedValue(new Error("db down"));
-    expect((await shellProps()).counts).toEqual({ plan });
-    expect(log).toHaveBeenCalledWith(expect.stringMatching(/course count/), expect.any(Error));
+  it("gives Courses no count (it read as that many courses in the plan)", async () => {
+    expect((await shellProps()).counts).toEqual({ plan: { done: 12, total: 32 } });
   });
 
   it("never hides a missing test fixture", async () => {
-    stubs.countCourses.mockRejectedValue(
+    stubs.getPlanCredits.mockRejectedValue(
       new MissingFixtureError("course-schedule", "GET", "https://api.davidson.edu/x"),
     );
     await expect(HubLayout({ children: null })).rejects.toBeInstanceOf(MissingFixtureError);
+  });
+});
+
+describe("hub layout: the source notice", () => {
+  const row = (over: Partial<SourceStatus>): SourceStatus => ({
+    id: "wildcatsync",
+    label: "WildcatSync",
+    lastSync: new Date("2026-09-29T16:00:00Z"),
+    lastAttemptAt: new Date("2026-09-30T15:00:00Z"),
+    status: "ok",
+    count: 10,
+    error: null,
+    ...over,
+  });
+
+  it("renders nothing while every source is current", async () => {
+    stubs.getSourceStatuses.mockResolvedValue([row({}), row({ id: "course-schedule" })]);
+    expect(childrenOf(await shellProps())).toHaveLength(1);
+  });
+
+  it("names each source the pages show that is stale or failing, once, above the page", async () => {
+    stubs.getSourceStatuses.mockResolvedValue([
+      row({ status: "stale" }),
+      row({ id: "ratemyprofessors", label: "RateMyProfessors", status: "error", lastSync: null }),
+      row({ id: "course-schedule", label: "Course schedule" }),
+      // A news-only feed: synced, but no page shows it.
+      row({ id: "davidsonian", label: "The Davidsonian", status: "error" }),
+    ]);
+    const [notice, page] = childrenOf(await shellProps()) as ReactElement<{
+      problems: unknown[];
+    }>[];
+    expect(notice?.type).toBe(SourceStatusNotice);
+    expect(notice?.props.problems).toEqual([
+      { label: "WildcatSync", status: "stale", lastSync: new Date("2026-09-29T16:00:00Z") },
+      { label: "RateMyProfessors", status: "error", lastSync: null },
+    ]);
+    expect(page).toBeDefined();
+  });
+
+  it("leaves out the feeds of a flagged-off Events, and never fails the shell", async () => {
+    vi.stubEnv("FEATURE_EVENTS", "false");
+    stubs.getSourceStatuses.mockResolvedValue([row({ status: "stale" })]);
+    expect(childrenOf(await shellProps())).toHaveLength(1);
+    vi.unstubAllEnvs();
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    stubs.getSourceStatuses.mockRejectedValue(new Error("db down"));
+    expect(childrenOf(await shellProps())).toHaveLength(1);
+    expect(log).toHaveBeenCalledWith(expect.stringMatching(/source statuses/), expect.any(Error));
   });
 });
 

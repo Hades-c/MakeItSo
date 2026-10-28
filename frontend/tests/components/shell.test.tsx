@@ -31,12 +31,11 @@ describe("SidebarNav", () => {
     expect(within(main).getByRole("link", { name: "Today" }).className).not.toMatch(/nav-mark/);
     expect(main).not.toHaveTextContent("676");
 
-    rerender(<SidebarNav counts={{ courses: 676, plan: { done: 12, total: 32 } }} />);
-    expect(within(main).getByRole("link", { name: /Courses/ })).toHaveTextContent(
-      "Courses, 676 courses",
-    );
-    expect(within(main).getByRole("link", { name: /My plan/ })).toHaveTextContent(
-      "My plan, 12/ of 32 credits",
+    rerender(<SidebarNav counts={{ plan: { done: 12, total: 32 } }} />);
+    // Only My plan has a count; its name says it in words, in one string.
+    expect(within(main).getByRole("link", { name: /^Courses$/ })).toBeInTheDocument();
+    expect(within(main).getByRole("link", { name: "My plan, 12 of 32 credits" })).toHaveTextContent(
+      "12/32",
     );
   });
 });
