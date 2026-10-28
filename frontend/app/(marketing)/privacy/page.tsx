@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 /** When this notice last changed (update it with every change to the text). */
-const LAST_UPDATED = "October 25, 2026";
+const LAST_UPDATED = "October 28, 2026";
 
 /**
  * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Rendered per request only because of the owner's
@@ -122,9 +122,9 @@ export default async function PrivacyPage() {
                 that lets you sign out on every device.
               </li>
               <li>
-                <b>Profile:</b> the majors and minors, graduation year, first term, class standing
-                and career interests you choose, whether you finished onboarding, and when you
-                turned AI features on and confirmed you are 18 or older.
+                <b>Profile:</b> the majors and minors, graduation year, first term, class standing,
+                career interests and goals at Davidson you choose, whether you finished onboarding,
+                and when you turned AI features on and confirmed you are 18 or older.
               </li>
               <li>
                 <b>Your plan:</b> the courses you add (term, course, credits and a status such as
@@ -205,7 +205,8 @@ export default async function PrivacyPage() {
               <li>course codes and public catalog information;</li>
               <li>
                 the courses in your plan and which requirements they fill, your majors and minors,
-                graduation year and career interests;
+                graduation year and career interests, and for career plans and cold-email drafts,
+                the goals at Davidson you chose;
               </li>
               <li>the goal or question you type into that feature.</li>
             </ul>

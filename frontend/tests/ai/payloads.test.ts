@@ -6,6 +6,7 @@ import { buildParams } from "@/server/ai/client";
 import {
   alumnusPayload,
   careerPayload,
+  careerProfilePayload,
   courseAboutPayload,
   studentPlanPayload,
   studentProfilePayload,
@@ -44,7 +45,7 @@ const PROFILE = {
 };
 
 describe("student profile", () => {
-  it("sends only official program names, graduation year, standing, career and goal slugs", () => {
+  it("sends only official program names, graduation year, standing and career slugs", () => {
     const payload = studentProfilePayload(PROFILE, OFFICIAL);
     expect(payload).toEqual({
       majors: ["Major in Computer Science (B.S. Degree)"],
@@ -52,12 +53,20 @@ describe("student profile", () => {
       graduationYear: 2029,
       standing: "sophomore",
       interests: ["software-engineering"],
-      goals: ["grad-school"],
     });
     const text = JSON.stringify(payload);
     for (const secret of [PROFILE.id, PROFILE.name, PROFILE.email, "SECRET-BIO", "2026-09-01"]) {
       expect(text).not.toContain(secret);
     }
+    // Goals reach only the career features (careerProfilePayload), never plan suggestions.
+    expect(text).not.toContain("grad-school");
+  });
+
+  it("adds the goal slugs as aspirations for the career features (unknown slugs dropped)", () => {
+    expect(careerProfilePayload(PROFILE, OFFICIAL)).toEqual({
+      ...studentProfilePayload(PROFILE, OFFICIAL),
+      aspirations: ["grad-school"],
+    });
   });
 });
 
@@ -220,7 +229,6 @@ describe("prompts", () => {
             graduationYear: 2029,
             standing: "sophomore",
             interests: [],
-            goals: [],
           },
           plan: { items: [], openRequirements: [] },
         }),
