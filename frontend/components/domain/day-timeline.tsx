@@ -90,11 +90,11 @@ function groupSpanLabel(group: OverlapGroup): string {
   return `${clockLabel(start)}–${clockLabel(last.interval.shownEnd)}`;
 }
 
-/** How the timeline's source line names a source: "your plan", "the course schedule", "WildcatSync". */
+/** How the timeline's source line names a source: "your plan", "the course schedule", "the Library", "WildcatSync". */
 function sourceWords(source: SourceId): string {
   if (source === "my-plan") return "your plan";
   if (source === "course-schedule") return "the course schedule";
-  if (source === "registrar") return "the Registrar";
+  if (source === "registrar" || source === "library") return `the ${SOURCES[source].label}`;
   return SOURCES[source].label;
 }
 
