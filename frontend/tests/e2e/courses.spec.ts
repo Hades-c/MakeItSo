@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   collectErrors,
+  expectAllAttributed,
   horizontalOverflow,
   isMobile,
   newSignedInAccount,
@@ -30,6 +31,8 @@ async function addViaApi(page: Page, body: Record<string, unknown>) {
 }
 
 async function checkPage(page: Page) {
+  // Every schedule row and section is attributed: once per list, by its quiet source line.
+  expect((await expectAllAttributed(page)).items).toBeGreaterThan(0);
   expect(await horizontalOverflow(page), "scrolls sideways").toBeLessThanOrEqual(0);
   expect(await seriousViolations(page)).toEqual([]);
   if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
@@ -49,6 +52,10 @@ test("search: the registration term by default, filters in the URL, back and rel
   await expect(page.getByLabel("Term")).toHaveValue("202602");
   await expect(page.getByTestId("results-count")).toContainText(/of \d+ courses in Spring 2027/);
   await expect(page.getByTestId("course-results").getByRole("article")).toHaveCount(20);
+  // The schedule is said once, next to the count, with when the seats were read.
+  await expect(page.getByTestId("courses-source")).toHaveText(
+    /^Course schedule · seats as of \w{3} \d+, \d+:\d{2} [AP]M$/,
+  );
   await checkPage(page);
 
   // Text search through the form: the URL carries it.
@@ -65,7 +72,12 @@ test("search: the registration term by default, filters in the URL, back and rel
   ).toHaveAttribute("aria-live", "polite");
   const csc = page.getByRole("article", { name: /Data Structures/ });
   await expect(csc).toBeVisible();
-  await expect(csc.getByText("Mathematical and Quantitative Thought")).toBeVisible();
+  // The requirement chip (the row's hidden Description may name the same words).
+  await expect(
+    csc
+      .getByRole("list", { name: "Requirements" })
+      .getByText("Mathematical and Quantitative Thought"),
+  ).toBeVisible();
   await expect(csc.getByTestId("row-sections")).toContainText("MWF 10:30a–11:20a");
   await expect(csc.getByRole("button", { name: "Add to Spring 2027" })).toBeVisible();
 

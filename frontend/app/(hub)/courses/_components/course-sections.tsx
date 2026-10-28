@@ -52,6 +52,7 @@ export function SectionItem({
     <article
       aria-label={`Section ${section.section}, CRN ${section.crn}`}
       data-crn={section.crn}
+      data-source="course-schedule"
       data-chosen={chosen ? "" : undefined}
       className={cn(
         "flex min-w-0 flex-col gap-3 rounded-lg border p-4",

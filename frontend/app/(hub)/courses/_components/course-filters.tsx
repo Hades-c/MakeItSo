@@ -134,7 +134,7 @@ export function CourseFilters({
         aria-label="Course search"
         className="rounded-xl border border-line bg-surface p-4 shadow-card"
       >
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] md:items-end">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,14rem)] md:items-end">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="courses-q">Search the schedule</Label>
             <Input
@@ -163,56 +163,58 @@ export function CourseFilters({
               ))}
             </select>
           </div>
-          <Button type="submit">
-            <Search aria-hidden className="group-data-[pending]/search:hidden" />
-            <LoaderCircle
-              aria-hidden
-              className="hidden animate-spin group-data-[pending]/search:inline motion-reduce:animate-none"
-            />
-            Search
-          </Button>
-        </div>
 
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="courses-dept">Department</Label>
-            <select
-              id="courses-dept"
-              name="dept"
-              defaultValue={dept ?? ""}
-              autoComplete="off"
-              className={SELECT}
-            >
-              <option value="">All departments</option>
-              {(filters?.departments ?? []).map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.name} ({option.code})
-                </option>
+          {/* Department, Requirement, then Search: the button comes after the fields it searches with, on screen
+              and in the tab order. */}
+          <div className="grid gap-3 md:col-span-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="courses-dept">Department</Label>
+              <select
+                id="courses-dept"
+                name="dept"
+                defaultValue={dept ?? ""}
+                autoComplete="off"
+                className={SELECT}
+              >
+                <option value="">All departments</option>
+                {(filters?.departments ?? []).map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.name} ({option.code})
+                  </option>
+                ))}
+              </select>
+              {extraDepts.map((value) => (
+                <input key={value} type="hidden" name="dept" value={value} />
               ))}
-            </select>
-            {extraDepts.map((value) => (
-              <input key={value} type="hidden" name="dept" value={value} />
-            ))}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="courses-req">Requirement</Label>
-            <select
-              id="courses-req"
-              name="req"
-              defaultValue={req ?? ""}
-              autoComplete="off"
-              className={SELECT}
-            >
-              <option value="">Any requirement</option>
-              {(filters?.requirements ?? []).map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.name} ({option.code})
-                </option>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="courses-req">Requirement</Label>
+              <select
+                id="courses-req"
+                name="req"
+                defaultValue={req ?? ""}
+                autoComplete="off"
+                className={SELECT}
+              >
+                <option value="">Any requirement</option>
+                {(filters?.requirements ?? []).map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.name} ({option.code})
+                  </option>
+                ))}
+              </select>
+              {extraReqs.map((value) => (
+                <input key={value} type="hidden" name="req" value={value} />
               ))}
-            </select>
-            {extraReqs.map((value) => (
-              <input key={value} type="hidden" name="req" value={value} />
-            ))}
+            </div>
+            <Button type="submit">
+              <Search aria-hidden className="group-data-[pending]/search:hidden" />
+              <LoaderCircle
+                aria-hidden
+                className="hidden animate-spin group-data-[pending]/search:inline motion-reduce:animate-none"
+              />
+              Search
+            </Button>
           </div>
         </div>
 
@@ -220,7 +222,12 @@ export function CourseFilters({
           <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-sm font-semibold text-fg md:min-h-9 [&::-webkit-details-marker]:hidden">
             <SlidersHorizontal aria-hidden className="size-4" />
             Filters
-            {advanced > 0 ? <Badge variant="primary">{advanced}</Badge> : null}
+            {advanced > 0 ? (
+              <Badge variant="neutral">
+                {advanced}
+                <span className="sr-only"> active</span>
+              </Badge>
+            ) : null}
           </summary>
           <div className="mt-2 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="flex flex-col gap-1.5">

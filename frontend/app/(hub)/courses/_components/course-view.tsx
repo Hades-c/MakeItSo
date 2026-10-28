@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { provenance } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import { termLabel } from "@/lib/term";
 import { REQUIREMENTS_DISCLAIMER, requirementName } from "@/server/content/requirements";
@@ -13,7 +14,8 @@ import { requirementGroups } from "../_lib/format";
 /**
  * The course page's body (app/(hub)/courses/[term]/[code]/page.tsx resolves the data and the 404s first):
  * breadcrumb, the index-card header, About + Add to plan, then Sections, the AI About panel and Other terms beside
- * the week grid. Mobile stacks them in that order.
+ * the week grid. Mobile stacks them in that order. One source, said once: the header's quiet line under the seats
+ * ("Course schedule · seats as of …") stands for the page's schedule data (its sections, About, Other terms).
  */
 
 const CRUMB = "inline-flex min-h-11 items-center rounded-sm font-semibold link md:min-h-0";
@@ -38,7 +40,7 @@ export function CourseView({
   }));
 
   return (
-    <>
+    <div {...provenance(["course-schedule"])}>
       <WeekFocus crn={chosen?.crn ?? null} />
       <nav aria-label="Breadcrumb" className="mb-1 md:mb-2">
         <ol className="flex flex-wrap items-center gap-1.5 text-sm text-fg-3">
@@ -73,6 +75,8 @@ export function CourseView({
         departmentName={data.departmentName}
         offered={course !== null}
         inPlan={add.inPlanTerms.includes(params.term)}
+        asOf={data.asOf}
+        {...(timeZone ? { timeZone } : {})}
       />
 
       <div className="flex flex-col gap-5">
@@ -155,6 +159,6 @@ export function CourseView({
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
