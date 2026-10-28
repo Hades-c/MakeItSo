@@ -83,7 +83,7 @@ export const profileEndpoints: ApiEndpoints<typeof profileApi> = {
 
 export const syllabiEndpoints: ApiEndpoints<typeof syllabiApi> = {
   list: { method: "GET", path: "/api/syllabi" },
-  upload: { method: "POST", path: "/api/syllabi", aiResult: true },
+  paste: { method: "POST", path: "/api/syllabi", aiResult: true },
   remove: { method: "DELETE", path: "/api/syllabi/[id]" },
   saveDeadlines: { method: "POST", path: "/api/syllabi/[id]/deadlines" },
 };

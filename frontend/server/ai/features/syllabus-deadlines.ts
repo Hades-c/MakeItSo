@@ -2,6 +2,7 @@ import "server-only";
 import { parseTermCode, type TermCode } from "@/lib/term";
 import type { AiResult } from "@/lib/types/ai";
 import type { ExtractedDeadline } from "@/lib/types/syllabus";
+import { MAX_SYLLABUS_CHARS, MAX_SYLLABUS_DEADLINES } from "@/lib/syllabus-text";
 import { requestDeadline } from "@/server/ai/client";
 import {
   callModel,
@@ -19,9 +20,9 @@ import { cleanText, truncate } from "@/server/ai/sanitize";
 import { ApiError } from "@/server/http/errors";
 
 /**
- * Deadlines extracted from an uploaded syllabus (PLAN-UX §3 /syllabi). Personal, one-off: nothing is cached, so
- * every upload (including a replace) spends one generation. The student reviews the result before any of it is
- * saved to their plan (server/syllabi/records.ts uploadSyllabusImpl saves this as the syllabus's own record;
+ * Deadlines extracted from a pasted syllabus (PLAN-UX §3 /syllabi). Personal, one-off: nothing is cached, so
+ * every paste (including a replace) spends one generation. The student reviews the result before any of it is
+ * saved to their plan (server/syllabi/records.ts addSyllabusImpl saves this as the syllabus's own record;
  * server/plan addSyllabusDeadlines is the separate, later save the review step calls).
  */
 
@@ -29,9 +30,8 @@ export interface SyllabusDeadlinesResult {
   deadlines: ExtractedDeadline[];
 }
 
-/** The syllabus text sent to the model; longer text is cut (a syllabus's deadlines are rarely past the first
- * several pages, and a long cut costs tokens without finding more). */
-export const MAX_SYLLABUS_TEXT_CHARS = 20_000;
+/** The syllabus text sent to the model: the paste limit (lib/syllabus-text.ts), applied again here as a guard. */
+export const MAX_SYLLABUS_TEXT_CHARS = MAX_SYLLABUS_CHARS;
 
 /** A deadline's date must fall within this many days of the term's academic year (misread dates, wrong years). */
 const YEAR_SLACK_DAYS = 400;
@@ -44,7 +44,10 @@ function inRange(dueAt: string, academicYear: number): boolean {
   return date.getTime() >= start && date.getTime() <= end;
 }
 
-/** Post-validate the model's list: clean titles, drop anything with no usable title or an out-of-range date. */
+/**
+ * Post-validate the model's list: clean titles, drop anything with no usable title or an out-of-range date, and
+ * keep at most MAX_SYLLABUS_DEADLINES (what one review can save).
+ */
 export function cleanSyllabusDeadlines(
   raw: { title: string; dueAt: string }[],
   academicYear: number,
@@ -58,6 +61,7 @@ export function cleanSyllabusDeadlines(
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ title, dueAt: item.dueAt });
+    if (out.length >= MAX_SYLLABUS_DEADLINES) break;
   }
   return out;
 }

@@ -6,12 +6,13 @@ import mongoose, {
 } from "mongoose";
 
 /**
- * A student's syllabus uploads, one document per (student, course, term), collection `syllabi` (PLAN-UX §3). The
- * uploaded file itself is never stored (server/syllabi/extract.ts reads it once, in memory, then discards it):
- * this document keeps only the course code, term, the original filename, when it was uploaded, and the
- * deadlines the AI extracted from it. Uploading again for the same course and term replaces this document
- * (server/syllabi/records.ts uploadSyllabusImpl); deleting it also removes the plan deadlines that trace back to
- * it (server/plan removeDeadlinesBySyllabus).
+ * A student's syllabi, one document per (student, course, term), collection `syllabi` (PLAN-UX §3). The pasted
+ * text itself is never stored (server/syllabi/records.ts sends it to the AI extraction once, then drops it): this
+ * document keeps only the course code, term, when it was added, and the deadlines the AI extracted from it.
+ * Pasting again for the same course and term replaces this document (server/syllabi/records.ts
+ * addSyllabusImpl); deleting it also removes the plan deadlines that trace back to it (server/plan
+ * removeDeadlinesBySyllabus). Documents from the earlier file-upload version may still hold a `filename`
+ * (and `uploadedAt`); they are read as `addedAt` and the filename is ignored.
  */
 
 const ExtractedDeadlineSubSchema = new Schema(
@@ -27,8 +28,7 @@ const SyllabusSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, required: true },
     courseCode: { type: String, required: true },
     termCode: { type: String, required: true },
-    filename: { type: String, required: true, maxlength: 200 },
-    uploadedAt: { type: Date, default: Date.now },
+    addedAt: { type: Date, required: true },
     extractedDeadlines: { type: [ExtractedDeadlineSubSchema], default: [] },
   },
   { collection: "syllabi", timestamps: true },

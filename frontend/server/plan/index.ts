@@ -293,12 +293,15 @@ export async function removeDeadline(userId: string, deadlineId: string): Promis
   return removeDeadlineImpl(userId, deadlineId);
 }
 
-/** Push the reviewed deadlines from one syllabus upload (/syllabi) into the plan, origin "syllabus". */
+/**
+ * Push the reviewed deadlines from one syllabus (/syllabi) into the plan, origin "syllabus"; one already there
+ * (same syllabus, title and due time) is not added twice. `added` counts the new ones.
+ */
 export async function addSyllabusDeadlines(
   userId: string,
   syllabusId: string,
   inputs: readonly Omit<StudentDeadline, "id" | "origin" | "syllabusId">[],
-): Promise<StudentDeadline[]> {
+): Promise<{ deadlines: StudentDeadline[]; added: number }> {
   return addSyllabusDeadlinesImpl(userId, syllabusId, inputs);
 }
 
