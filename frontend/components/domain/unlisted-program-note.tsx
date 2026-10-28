@@ -20,7 +20,7 @@ export function UnlistedProgramNote({ kind }: { kind: UnlistedProgram["kind"] })
             className="font-semibold link"
           >
             {program.sourceLabel}
-            <span className="sr-only"> (opens in a new tab)</span>
+            <span className="sr-only">&nbsp;(opens in a new tab)</span>
           </a>
           .
         </p>

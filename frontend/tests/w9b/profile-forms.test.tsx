@@ -206,8 +206,9 @@ describe("AcademicsForm", () => {
     expect(majors.getByTestId("unlisted-major")).toHaveTextContent(
       "Student-designed major (Center for Interdisciplinary Studies): A major through the Center for Interdisciplinary Studies is applied for and approved there",
     );
+    // jsdom drops the space before the sr-only cue from the computed name; browsers keep it.
     const cis = majors.getByRole("link", {
-      name: "Center for Interdisciplinary Studies in the catalog",
+      name: /^Center for Interdisciplinary Studies in the catalog\s?\(opens in a new tab\)$/,
     });
     expect(cis).toHaveAttribute(
       "href",
@@ -217,7 +218,9 @@ describe("AcademicsForm", () => {
     expect(cis).toHaveClass("link");
     expect(cis).not.toHaveClass("text-primary");
     const minors = within(screen.getByRole("group", { name: "Minors" }));
-    expect(minors.getByRole("link", { name: "Arab Studies in the catalog" })).toHaveAttribute(
+    expect(
+      minors.getByRole("link", { name: /^Arab Studies in the catalog\s?\(opens in a new tab\)$/ }),
+    ).toHaveAttribute(
       "href",
       "https://catalog.davidson.edu/preview_program.php?catoid=28&poid=1791",
     );
