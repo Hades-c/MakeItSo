@@ -58,9 +58,6 @@ export interface IUser {
   aiConsentAt?: Date;
   adultAttestedAt?: Date;
   onboardedAt?: Date;
-  /** Set once a student who onboarded before the Syllabi/Goals steps existed dismisses the one-time notice about
-   * them. Never set for a student who onboards through those steps directly. */
-  newStepsPromptDismissedAt?: Date;
 
   // ---- Legacy (read-only except the major/minor mirror) --------------------------------------------------------
   major?: string;
@@ -96,7 +93,6 @@ const UserSchema = new Schema<IUser>(
     aiConsentAt: { type: Date },
     adultAttestedAt: { type: Date },
     onboardedAt: { type: Date },
-    newStepsPromptDismissedAt: { type: Date },
 
     major: { type: String },
     minor: { type: String },

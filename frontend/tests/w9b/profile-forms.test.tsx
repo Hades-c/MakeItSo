@@ -44,7 +44,6 @@ const PROFILE: Profile = {
   aiConsentAt: null,
   adultAttestedAt: null,
   onboardedAt: null,
-  newStepsPromptDismissedAt: null,
   createdAt: NOW,
 };
 
