@@ -85,7 +85,7 @@ async function studentWithCsc221(): Promise<string> {
 }
 
 describe("connectMoodle", () => {
-  it("imports the feed's events as Moodle deadlines, course codes from the student's plan", async () => {
+  it("imports the feed's events as Moodle deadlines, with the course codes Moodle's course names give", async () => {
     const userId = await studentWithCsc221();
     const status = await connectMoodle(userId, feedUrl(TOKENS.good));
     expect(status).toMatchObject({
@@ -100,10 +100,10 @@ describe("connectMoodle", () => {
         ["Reading quiz 1", "2026-09-20T03:59:00.000Z", "CSC 221", "moodle"],
         ["Problem set 2", "2026-09-26T03:59:00.000Z", "CSC 221", "moodle"],
         ["Problem set 3", "2026-10-02T03:59:00.000Z", "CSC 221", "moodle"],
-        // ENG 260 is not in this student's plan: no course code.
-        ["Response paper 2", "2026-10-03T03:00:00.000Z", null, "moodle"],
+        // ENG 260 is not in this student's plan, but it is a real course: the row still says which class.
+        ["Response paper 2", "2026-10-03T03:00:00.000Z", "ENG 260", "moodle"],
         ["Quiz 2 closes", "2026-10-06T03:59:00.000Z", "CSC 221", "moodle"],
-        ["Reading journal", "2026-10-09T03:59:00.000Z", null, "moodle"],
+        ["Reading journal", "2026-10-09T03:59:00.000Z", "ENG 260", "moodle"],
         ["Advising worksheet", "2026-10-09T17:00:00.000Z", null, "moodle"],
         ["Final project proposal", "2026-10-21T03:59:00.000Z", "CSC 221", "moodle"],
       ],
@@ -349,6 +349,12 @@ describe("account data", () => {
 
 describe("courseCodeFor", () => {
   const codes = new Set(["CSC 221", "ENG 260", "BIO 395"]);
+  it("prefers a plan course, then a catalog course, and never makes one up", () => {
+    const catalog = new Set(["MAT 110", "CSC 221", "HIS 357"]);
+    expect(courseCodeFor("MAT 110 and CSC 221", codes, catalog)).toBe("CSC 221");
+    expect(courseCodeFor("MAT110-A-F26", codes, catalog)).toBe("MAT 110");
+    expect(courseCodeFor("ABC 123 Club", codes, catalog)).toBeUndefined();
+  });
   it.each([
     ["CSC221-A-F26", "CSC 221"],
     ["202601_CSC_221_A", "CSC 221"],

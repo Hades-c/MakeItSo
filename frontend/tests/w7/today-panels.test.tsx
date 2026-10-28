@@ -677,6 +677,28 @@ describe("Due for you", () => {
     expect(typed.querySelector('[data-source="course-site"]')).toBeNull();
   });
 
+  it("counts a Moodle deadline as coursework even when its course name gives no course code", async () => {
+    const user = userEvent.setup();
+    state.plan = ok(
+      plan({
+        deadlines: [
+          DEADLINE,
+          {
+            id: "64b7f0a1c2d3e4f5a6b7c8e3",
+            title: "Advising worksheet",
+            dueAt: "2026-10-02T13:00:00-04:00",
+            origin: "moodle",
+          },
+        ],
+      }),
+    );
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    const card = screen.getByRole("region", { name: /^Due for you/ });
+    await user.click(within(card).getByRole("tab", { name: "Coursework 2 for you" }));
+    const items = live(within(card).getAllByTestId("due-soon-item"));
+    expect(items.map((li) => li.dataset.source).sort()).toEqual(["course-site", "my-plan"]);
+  });
+
   it("points to /syllabi while the student has classes but no syllabus or Moodle connection", async () => {
     state.plan = ok(plan({ deadlines: [DEADLINE] }));
     const { unmount } = await show(DueSoonPanel({ userId: USER, now: NOON }));

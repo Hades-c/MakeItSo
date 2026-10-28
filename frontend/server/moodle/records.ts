@@ -10,6 +10,7 @@ import type { MoodleStatus } from "@/lib/types/moodle";
 import type { StudentDeadline } from "@/lib/types/plan";
 import MoodleConnection from "@/models/MoodleConnection";
 import { registerAccountData } from "@/server/account/erasers";
+import { validateCourseCodes } from "@/server/catalog";
 import { now } from "@/server/clock";
 import { getDb, trusted } from "@/server/db";
 import { ApiError } from "@/server/http/errors";
@@ -131,24 +132,49 @@ async function planCourseCodes(userId: string): Promise<Set<string>> {
   }
 }
 
-/**
- * The plan course a Moodle course name names ("CSC221-A Fall 2026", "202601_CSC_221_A"), or undefined: a code in the
- * name counts only when it is one of the student's plan courses. "CSC 221A" also tries "CSC 221" (section A).
- */
-export function courseCodeFor(
-  category: string | null,
-  codes: ReadonlySet<string>,
-): string | undefined {
-  if (!category) return undefined;
+/** The course codes a Moodle course name may name ("CSC221-A Fall 2026" → CSC 221A, CSC 221), in order. */
+function codeCandidates(category: string | null): string[] {
+  if (!category) return [];
+  const out: string[] = [];
   for (const match of category
     .toUpperCase()
     .matchAll(/(?<![A-Z])([A-Z]{2,4})[\s_-]*(\d{3})([A-Z]?)(?!\d)/g)) {
     const [, dept, number, suffix] = match;
     for (const code of [`${dept} ${number}${suffix}`, `${dept} ${number}`]) {
-      if (codes.has(code)) return code;
+      if (!out.includes(code)) out.push(code);
     }
   }
-  return undefined;
+  return out;
+}
+
+/** The candidates that are real Davidson courses (any ingested term). A catalog outage: none (no codes, no failure). */
+async function catalogCourseCodes(events: readonly MoodleEvent[]): Promise<Set<string>> {
+  const candidates = [...new Set(events.flatMap((event) => codeCandidates(event.category)))];
+  if (candidates.length === 0) return new Set();
+  try {
+    return new Set((await validateCourseCodes(candidates)).valid);
+  } catch (error) {
+    if (error instanceof MissingFixtureError) throw error;
+    console.error("[moodle] could not check course names against the catalog");
+    return new Set();
+  }
+}
+
+/**
+ * The course a Moodle course name names ("CSC221-A Fall 2026", "202601_CSC_221_A"), or undefined: one of the
+ * student's plan courses first, else any real course in the catalog (a class not in the plan yet still says which
+ * class it is). "CSC 221A" also tries "CSC 221" (section A).
+ */
+export function courseCodeFor(
+  category: string | null,
+  planCodes: ReadonlySet<string>,
+  catalogCodes: ReadonlySet<string> = new Set(),
+): string | undefined {
+  const candidates = codeCandidates(category);
+  return (
+    candidates.find((code) => planCodes.has(code)) ??
+    candidates.find((code) => catalogCodes.has(code))
+  );
 }
 
 // ---- Status ------------------------------------------------------------------------------------------------------
@@ -226,11 +252,14 @@ async function applyFeed(
   read: Extract<FeedRead, { ok: true }>,
   at: Date,
 ): Promise<boolean> {
-  const codes = await planCourseCodes(userId);
+  const [planCodes, catalogCodes] = await Promise.all([
+    planCourseCodes(userId),
+    catalogCourseCodes(read.events),
+  ]);
   const result = await replaceMoodleDeadlines(
     userId,
     read.events.map((event) => {
-      const courseCode = courseCodeFor(event.category, codes);
+      const courseCode = courseCodeFor(event.category, planCodes, catalogCodes);
       return {
         uid: event.uid,
         title: event.title,

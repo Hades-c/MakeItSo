@@ -48,10 +48,11 @@ export const DUE_SOON_TITLE = "Due for you";
  * red. When the plan cannot load, the curated rows are still listed, with a one-line note that the student's own
  * are missing.
  *
- * All/Coursework (PLAN-UX §4): "Coursework" is the same rows filtered to those tied to a course — including
- * deadlines a syllabus added or the student's Moodle calendar imported, which already carry a courseCode like any
- * other row — grouped and counted the same way; each tab says how many rows in it are for the student. Both views
- * are built and rendered up front; DueSoonTabs only shows one at a time.
+ * All/Coursework (PLAN-UX §4): "Coursework" is the same rows filtered to class work (`isCoursework`): every row
+ * tied to a course, and every deadline a syllabus added or the student's Moodle calendar imported, with or without
+ * a course code (a Moodle course name that names no Davidson course, such as an advising site, gives none),
+ * grouped and counted the same way; each tab says how many rows in it are for the student. Both views are built
+ * and rendered up front; DueSoonTabs only shows one at a time.
  *
  * A student with classes this term and no syllabus or Moodle connection gets one quiet line at the end pointing to
  * /syllabi (wantsSyllabiPointer).
@@ -79,7 +80,7 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
   });
   if (!built) return <PanelError id="due-soon" title={DUE_SOON_TITLE} what={DUE_SOON_TITLE} />;
   const { items, forYouCount } = built;
-  const classItems = items.filter((item) => item.courseCode !== null);
+  const classItems = items.filter(isCoursework);
 
   return (
     <SectionCard id="due-soon" title={DUE_SOON_TITLE} count={forYouCount}>
@@ -122,6 +123,11 @@ export async function DueSoonPanel({ userId, now }: { userId: string; now: Date 
       ) : null}
     </SectionCard>
   );
+}
+
+/** Class work: a row tied to a course, or one read from a syllabus or imported from Moodle (Coursework tab). */
+export function isCoursework(item: DueSoonItem): boolean {
+  return item.courseCode !== null || item.fromSyllabus || item.source === "course-site";
 }
 
 function DueSoonList({
