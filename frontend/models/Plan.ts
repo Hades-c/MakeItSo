@@ -136,6 +136,11 @@ const PlanSchema = new Schema(
       },
     },
     /**
+     * The Moodle calendar import taking deadlines into this plan now (server/plan/moodle.ts startMoodleImport): a
+     * random id, set on connect and cleared on disconnect, that a sync must match to write. Absent: none.
+     */
+    moodleImportId: { type: String, default: undefined },
+    /**
      * Set when this v2 document was first written from the student's legacy v1 plan (server/plan: on the first
      * mutation, or scripts/migrate-plans.ts --apply). The v1 document itself is never touched.
      */

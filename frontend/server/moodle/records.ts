@@ -17,10 +17,12 @@ import { ExternalFetchError, fetchExternal } from "@/server/http/external";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { consumeRateLimit } from "@/server/http/rate-limit";
 import {
+  currentMoodleImport,
+  endMoodleImport,
   getPlan,
   listDeadlines,
-  removeMoodleDeadlines,
   replaceMoodleDeadlines,
+  startMoodleImport,
 } from "@/server/plan";
 import { isActiveItem } from "@/server/plan/requirements";
 import { decryptFeedUrl, encryptFeedUrl, FeedKeyChangedError } from "@/server/moodle/crypto";
@@ -37,6 +39,11 @@ import { MoodleFeedError, parseMoodleCalendar, type MoodleEvent } from "@/server
  * opens Today or /syllabi and the last attempt is older than MOODLE_SYNC_MAX_AGE_MS (6 hours). Every sync counts
  * toward MOODLE_SYNCS_PER_HOUR per student, one runs at a time per student (a lease on the connection), the
  * request times out after 10 s and the answer is capped at 1 MB and 500 events (server/moodle/ics.ts).
+ *
+ * Each connect starts a new import in the plan (server/plan startMoodleImport) and disconnect ends it; a sync reads
+ * the import id before the feed and writes only while the plan still has it, and updates the connection only while
+ * it still holds the same stored link. So a sync still reading when the student disconnects, reconnects another
+ * feed or deletes their account writes nothing, and connecting never takes over another sync's lease.
  *
  * The URL carries the student's Moodle authtoken: it is never logged (fetch errors are logged by kind only),
  * never sent to the browser (MoodleStatus has no URL) and never included in "Download my data".
@@ -202,15 +209,23 @@ function tooManySyncs(): ApiError {
   );
 }
 
-/** Store a feed's events in the plan and the outcome on the connection. */
+/** Which connection a sync works for: the plan's import id and the stored link it read (both checked on write). */
+interface SyncTarget {
+  importId: string;
+  feedUrl: string;
+}
+
+/**
+ * Store a feed's events in the plan and the outcome on the connection. False: the target is no longer the
+ * student's connection (disconnected, reconnected or erased while the feed was read), and nothing was written.
+ */
 async function applyFeed(
   userId: string,
   oid: mongoose.Types.ObjectId,
+  target: SyncTarget,
   read: Extract<FeedRead, { ok: true }>,
   at: Date,
-): Promise<void> {
-  // Disconnected while this sync was reading the feed: import nothing.
-  if (!(await MoodleConnection.exists({ userId: oid }))) return;
+): Promise<boolean> {
   const codes = await planCourseCodes(userId);
   const result = await replaceMoodleDeadlines(
     userId,
@@ -223,10 +238,11 @@ async function applyFeed(
         ...(courseCode ? { courseCode } : {}),
       };
     }),
-    { windowStart: new Date(at.getTime() - RECENT_DAYS * 86_400_000) },
+    { windowStart: new Date(at.getTime() - RECENT_DAYS * 86_400_000), importId: target.importId },
   );
+  if (!result) return false;
   await MoodleConnection.updateOne(
-    { userId: oid },
+    { userId: oid, feedUrl: target.feedUrl },
     {
       $set: {
         lastAttemptAt: at,
@@ -237,6 +253,7 @@ async function applyFeed(
       },
     },
   );
+  return true;
 }
 
 /**
@@ -269,20 +286,28 @@ export async function syncMoodleImpl(
   if (!doc) return getMoodleStatusImpl(userId);
 
   try {
+    // Read before the feed: an import ended or replaced after this point makes the write below a no-op.
+    const importId = await currentMoodleImport(userId);
+    if (!importId) return getMoodleStatusImpl(userId);
+    const stored = String(doc.feedUrl);
+    const target: SyncTarget = { importId, feedUrl: stored };
     let url: string;
     try {
-      url = decryptFeedUrl(String(doc.feedUrl));
+      url = decryptFeedUrl(stored);
     } catch (error) {
       const problem: MoodleProblem =
         error instanceof FeedKeyChangedError ? "key_changed" : "invalid";
-      await MoodleConnection.updateOne({ userId: oid }, { $set: { lastAttemptAt: at, problem } });
+      await MoodleConnection.updateOne(
+        { userId: oid, feedUrl: stored },
+        { $set: { lastAttemptAt: at, problem } },
+      );
       return getMoodleStatusImpl(userId);
     }
     const read = await readFeed(url, at);
-    if (read.ok) await applyFeed(userId, oid, read, at);
+    if (read.ok) await applyFeed(userId, oid, target, read, at);
     else {
       await MoodleConnection.updateOne(
-        { userId: oid },
+        { userId: oid, feedUrl: stored },
         { $set: { lastAttemptAt: at, problem: read.problem } },
       );
     }
@@ -346,15 +371,19 @@ export async function connectMoodleImpl(userId: string, rawUrl: string): Promise
 
   const read = await readFeed(check.url, at);
   if (!read.ok) throw connectFailure(read.problem);
+  // A new import first: a sync of the previous link still running now writes nothing.
+  const importId = await startMoodleImport(userId);
+  const feedUrl = encryptFeedUrl(check.url);
+  // Another sync's lease is left alone: it ends (writing nothing) on its own.
   await MoodleConnection.updateOne(
     { userId: oid },
-    {
-      $set: { feedUrl: encryptFeedUrl(check.url), connectedAt: at, syncLeaseUntil: null },
-      $setOnInsert: { userId: oid },
-    },
+    { $set: { feedUrl, connectedAt: at }, $setOnInsert: { userId: oid } },
     { upsert: true },
   );
-  await applyFeed(userId, oid, read, at);
+  if (!(await applyFeed(userId, oid, { importId, feedUrl }, read, at))) {
+    // Disconnected (or connected again) while this connect was under way: the later choice stands.
+    await MoodleConnection.deleteOne({ userId: oid, feedUrl });
+  }
   return getMoodleStatusImpl(userId);
 }
 
@@ -365,8 +394,9 @@ export async function disconnectMoodleImpl(
 ): Promise<{ removed: number }> {
   const oid = ownerOf(userId);
   await getDb();
+  // The connection first, then the import: a sync running now can no longer write to either.
   await MoodleConnection.deleteOne({ userId: oid });
-  return { removed: removeDeadlines ? await removeMoodleDeadlines(userId) : 0 };
+  return { removed: await endMoodleImport(userId, { removeDeadlines }) };
 }
 
 // ---- Account data (PLAN §4.1.12): "Download my data" and "Delete account" ---------------------------------------

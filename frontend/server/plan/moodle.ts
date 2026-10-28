@@ -1,4 +1,5 @@
 import "server-only";
+import { randomBytes } from "node:crypto";
 import mongoose from "mongoose";
 import { COURSE_CODE_PATTERN } from "@/lib/course-code";
 import type { StudentDeadline } from "@/lib/types/plan";
@@ -19,6 +20,12 @@ import { ensurePlanDoc, MAX_DEADLINES, readPlanDoc } from "@/server/plan/store";
  *   - the other deadlines (typed, syllabus) are never touched, and the list stays within MAX_DEADLINES: when room
  *     runs short, the feed's events come first (upcoming soonest first, as the caller orders them), then the
  *     newest history; what did not fit is counted in `capped`.
+ *
+ * One connection at a time writes them: connecting starts an import (`startMoodleImport`, a fresh `moodleImportId`
+ * on the plan) and disconnecting ends it (`endMoodleImport` clears it, and with `removeDeadlines` takes the Moodle
+ * deadlines out in the same update). A sync names the import it read the feed for, and its update matches only
+ * while the plan still has that id: a sync that was still reading when the student disconnected, reconnected
+ * another feed or deleted their account writes nothing (null), and never creates a plan.
  */
 
 export interface MoodleDeadlineInput {
@@ -50,14 +57,30 @@ function dueMs(raw: Raw): number {
   return raw.dueAt instanceof Date ? raw.dueAt.getTime() : Date.parse(String(raw.dueAt));
 }
 
+/** Start a Moodle import (connect): its id, which every sync of this connection names. Creates the plan if need be. */
+export async function startMoodleImportImpl(userId: string): Promise<string> {
+  const oid = userObjectId(userId);
+  await ensurePlanDoc(userId, oid, { create: true });
+  const importId = randomBytes(12).toString("hex");
+  await Plan.updateOne({ userId: oid }, { $set: { moodleImportId: importId } });
+  return importId;
+}
+
+/** The import the plan is taking Moodle deadlines from now, or null (never connected, disconnected, no plan). */
+export async function currentMoodleImportImpl(userId: string): Promise<string | null> {
+  const doc = await readPlanDoc(userObjectId(userId), { moodleImportId: 1 });
+  return typeof doc?.moodleImportId === "string" ? doc.moodleImportId : null;
+}
+
 export async function replaceMoodleDeadlinesImpl(
   userId: string,
   events: readonly MoodleDeadlineInput[],
-  { windowStart }: { windowStart: Date },
-): Promise<MoodleDeadlineSync> {
+  { windowStart, importId }: { windowStart: Date; importId: string },
+): Promise<MoodleDeadlineSync | null> {
   const oid = userObjectId(userId);
-  await ensurePlanDoc(userId, oid, { create: true });
-  const current = rawDeadlines(await readPlanDoc(oid, { deadlines: 1 }));
+  const plan = await readPlanDoc(oid, { deadlines: 1, moodleImportId: 1 });
+  if (!plan || plan.moodleImportId !== importId) return null;
+  const current = rawDeadlines(plan);
   const others = current.filter((raw) => raw.origin !== "moodle");
   const moodle = current.filter((raw) => raw.origin === "moodle");
   const byUid = new Map(moodle.map((raw) => [String(raw.externalUid ?? ""), raw]));
@@ -105,8 +128,8 @@ export async function replaceMoodleDeadlinesImpl(
 
   // One update: keep every non-Moodle deadline as it is now (one added since the read above included), swap in
   // the new Moodle list, and never exceed MAX_DEADLINES (Moodle ones go first if a concurrent add left no room).
-  await Plan.updateOne(
-    { userId: oid },
+  const write = await Plan.updateOne(
+    { userId: oid, moodleImportId: importId },
     [
       {
         $set: {
@@ -132,17 +155,33 @@ export async function replaceMoodleDeadlinesImpl(
     ],
     { updatePipeline: true },
   );
+  // Ended or replaced between the read above and this update.
+  if (write.matchedCount === 0) return null;
   return { imported: next.length, added, updated, removed, capped: dropped };
 }
 
-/** Remove every Moodle deadline from the plan (disconnect with "also remove"). Returns how many. */
-export async function removeMoodleDeadlinesImpl(userId: string): Promise<number> {
+/**
+ * End the Moodle import (disconnect): a sync still running writes nothing after this. With `removeDeadlines`, the
+ * Moodle deadlines leave the plan in the same update. Returns how many were removed.
+ */
+export async function endMoodleImportImpl(
+  userId: string,
+  { removeDeadlines }: { removeDeadlines: boolean },
+): Promise<number> {
   const oid = userObjectId(userId);
   await getDb();
   const doc = await readPlanDoc(oid, { deadlines: 1 });
-  const count = rawDeadlines(doc).filter((raw) => raw.origin === "moodle").length;
-  if (count === 0) return 0;
-  await Plan.updateOne({ userId: oid }, { $pull: { deadlines: { origin: "moodle" } } });
+  if (!doc) return 0;
+  const count = removeDeadlines
+    ? rawDeadlines(doc).filter((raw) => raw.origin === "moodle").length
+    : 0;
+  await Plan.updateOne(
+    { userId: oid },
+    {
+      $unset: { moodleImportId: "" },
+      ...(removeDeadlines ? { $pull: { deadlines: { origin: "moodle" } } } : {}),
+    },
+  );
   return count;
 }
 

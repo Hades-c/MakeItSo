@@ -120,7 +120,11 @@ termCode, text })`, `deleteSyllabus`, `getSyllabus`, `syllabusTerms()` (the curr
   the student to reconnect), never logged (log an `ExternalFetchError`'s `kind` only: its message and `url` hold
   the token), never returned (`MoodleStatus` has no URL), left out of the export. Events become plan deadlines by
   UID (`server/plan replaceMoodleDeadlines`: added, updated in place, removed when the feed stops listing them from
-  5 days ago on). 10 syncs an hour per student, one at a time, 10 s, 1 MB, 500 events.
+  5 days ago on). Connect starts an import (`startMoodleImport`, a random `moodleImportId` on the plan) and
+  disconnect ends it (`endMoodleImport`, with or without the deadlines); a sync reads `currentMoodleImport` before
+  the feed and its write matches only that id (null otherwise), so a sync still running after a disconnect,
+  reconnect or account deletion writes nothing and never creates a plan. 10 syncs an hour per student, one at a
+  time, 10 s, 1 MB, 500 events, due times within 400 days of now.
 - `course-site` is a synced source fetched per student (`PER_STUDENT_SOURCE_IDS`): `fetchExternal` accepts it
   (host `moodle.davidson.edu`), `recordSync` refuses it and `getSourceStatuses()` never lists it. Content still
   never links Moodle pages (see Content).
