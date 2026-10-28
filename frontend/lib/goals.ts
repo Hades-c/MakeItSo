@@ -1,8 +1,9 @@
 /**
- * Goal statements the onboarding Goals step offers (PLAN-UX §8): a small, fixed taxonomy, same shape as the
- * career-path interests (server/content/careers.ts) but with no curated content behind it, so it lives here
- * rather than under server/content. Isomorphic: the step renders these slugs directly, and server/auth/profile.ts
- * validates stored values against isGoalSlug the same way it checks interests against isCareerSlug.
+ * Goals: what a student hopes to get out of Davidson (PLAN-UX §8), the optional second half of the onboarding
+ * Interests step and of the Profile Interests section. A small, fixed taxonomy, same shape as the career-path
+ * interests (server/content/careers.ts) but with no curated content behind it, so it lives here rather than under
+ * server/content. Isomorphic: both pickers render these slugs directly, and server/auth/profile.ts validates
+ * stored values against isGoalSlug the same way it checks interests against isCareerSlug.
  */
 
 export interface GoalOption {
