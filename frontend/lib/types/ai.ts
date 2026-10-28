@@ -187,7 +187,7 @@ export const ProfessorSummarySchema = z.object({
 });
 export type ProfessorSummary = z.infer<typeof ProfessorSummarySchema>;
 
-/** Deadlines extracted from an uploaded syllabus (/syllabi). Dates only: a syllabus rarely gives a time. */
+/** Deadlines extracted from a pasted syllabus (/syllabi). Dates only: a syllabus rarely gives a time. */
 export const SyllabusDeadlinesSchema = z.object({
   deadlines: z.array(z.object({ title: z.string(), dueAt: IsoDateSchema })),
 });

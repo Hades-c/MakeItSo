@@ -107,6 +107,7 @@ describe("loadFlags", () => {
       events: true,
       alumni: true,
       ai: true,
+      moodle: true,
       rmp: true,
       rmpSummaries: true,
     });

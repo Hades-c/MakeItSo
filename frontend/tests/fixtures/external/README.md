@@ -15,6 +15,7 @@ manifest format and matching rules.
 | `davidsonian/`      | `thedavidsonian.news/feed/`                                                               | RSS                                                                                                                                     |
 | `events-digest/`    | `us6.campaign-archive.com` (Mailchimp)                                                    | RSS                                                                                                                                     |
 | `davidson-news/`    | `www.davidson.edu/rss.xml`                                                                | RSS (includes the two stale sticky items)                                                                                               |
+| `course-site/`      | `moodle.davidson.edu/calendar/export_execute.php` (each student's own Moodle calendar)    | **Synthetic** Moodle exports (one per fixture token): the connected feed, the same a day later, "Invalid authentication", a non-Moodle calendar, a sign-in page, a broken VEVENT, a 503 |
 | `resend/`           | `api.resend.com` (an outbound service, not a data source: `OUTBOUND_SERVICE_IDS`)          | **Synthetic** success answer of `POST /emails` (the Resend mailer in fixtures mode)                                                   |
 
 ## Rules

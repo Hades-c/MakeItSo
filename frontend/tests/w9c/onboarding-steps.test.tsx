@@ -826,8 +826,8 @@ describe("SyllabiStep (step 4)", () => {
         verifyHref={null}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Upload a syllabus" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Your uploads" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Paste a syllabus" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Your syllabi" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
       "href",
       "/onboarding?step=goals",

@@ -3,6 +3,7 @@
 import { FileText, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CourseCode } from "@/components/ui/course-code";
 import { EmptyState } from "@/components/ui/empty-state";
 import { notify } from "@/components/ui/notify";
 import { callApi } from "@/lib/api/client";
@@ -20,8 +21,15 @@ export interface SyllabusListProps {
   onReplace: (syllabus: Syllabus) => void;
 }
 
-/** Every syllabus the student has uploaded (PLAN-UX §3): its course, term, filename and when, with Review,
- * Replace and Delete per syllabus. */
+/**
+ * Every syllabus the student has added (PLAN-UX §3): its course, term, when, how many deadlines it gave and how
+ * many of them are in the plan, with Review, Replace and Delete per syllabus. Delete says how many plan deadlines
+ * go with it.
+ */
+function count(n: number): string {
+  return n === 1 ? "1 deadline" : `${n} deadlines`;
+}
+
 export function SyllabusList({ syllabi, reviewingId, onReview, onReplace }: SyllabusListProps) {
   const action = useSyllabusAction();
 
@@ -29,14 +37,14 @@ export function SyllabusList({ syllabi, reviewingId, onReview, onReplace }: Syll
     return (
       <EmptyState
         icon={FileText}
-        title="No syllabi uploaded yet"
-        description={<p>Upload one above to pull its deadlines into your plan.</p>}
+        title="No syllabi yet"
+        description={<p>Paste one above to find its deadlines and add them to your plan.</p>}
       />
     );
   }
 
   return (
-    <ul className="flex flex-col gap-2" aria-label="Your syllabus uploads">
+    <ul className="flex flex-col gap-2" aria-label="Your syllabi">
       {syllabi.map((syllabus) => (
         <li
           key={syllabus.id}
@@ -45,15 +53,13 @@ export function SyllabusList({ syllabi, reviewingId, onReview, onReplace }: Syll
         >
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-2">
-              <span className="text-base font-semibold text-fg">{syllabus.courseCode}</span>
+              <CourseCode code={syllabus.courseCode} size="md" className="font-semibold" />
               <Badge variant="outline">{termLabel(syllabus.termCode)}</Badge>
             </p>
-            <p className="mt-0.5 truncate text-sm text-fg-2">{syllabus.filename}</p>
-            <p className="mt-0.5 text-xs text-fg-3">
-              Uploaded {formatShortDate(syllabus.uploadedAt)} ·{" "}
-              {syllabus.extractedDeadlines.length === 1
-                ? "1 deadline found"
-                : `${syllabus.extractedDeadlines.length} deadlines found`}
+            <p className="mt-0.5 text-sm text-fg-2">
+              Added {formatShortDate(syllabus.addedAt)} ·{" "}
+              {count(syllabus.extractedDeadlines.length)} found · {syllabus.planDeadlineCount} in
+              your plan
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -72,6 +78,11 @@ export function SyllabusList({ syllabi, reviewingId, onReview, onReplace }: Syll
             </Button>
             <ConfirmButton
               question={`Delete the syllabus for ${syllabus.courseCode}?`}
+              details={
+                syllabus.planDeadlineCount > 0
+                  ? `This also removes the ${count(syllabus.planDeadlineCount)} it added to your plan.`
+                  : "None of its deadlines are in your plan."
+              }
               confirmLabel="Yes, delete"
               disabled={action.busy}
               onConfirm={() => {

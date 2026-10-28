@@ -19,12 +19,13 @@ describe("syllabus types (PLAN-UX §3)", () => {
       id: "0123456789abcdef01234567",
       courseCode: "CSC 221",
       termCode: "202601",
-      filename: "CSC221-syllabus.pdf",
-      uploadedAt: "2026-09-30T12:00:00.000Z",
+      addedAt: "2026-09-30T12:00:00.000Z",
       extractedDeadlines: [{ title: "Midterm exam", dueAt: "2026-10-15" }],
+      planDeadlineCount: 1,
     };
     expect(SyllabusSchema.parse(syllabus)).toEqual(syllabus);
     expect(SyllabusSchema.safeParse({ ...syllabus, courseCode: "not a code" }).success).toBe(false);
     expect(SyllabusSchema.safeParse({ ...syllabus, termCode: "not-a-term" }).success).toBe(false);
+    expect(SyllabusSchema.safeParse({ ...syllabus, planDeadlineCount: -1 }).success).toBe(false);
   });
 });

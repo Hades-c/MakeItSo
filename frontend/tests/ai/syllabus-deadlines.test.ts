@@ -215,4 +215,14 @@ describe("cleanSyllabusDeadlines", () => {
       { title: "Midterm exam", dueAt: "2026-10-16" },
     ]);
   });
+
+  it("keeps at most the 50 deadlines one review can save", () => {
+    const many = Array.from({ length: 80 }, (_, i) => ({
+      title: `Problem set ${i + 1}`,
+      dueAt: `2026-${String(9 + Math.floor(i / 28)).padStart(2, "0")}-${String((i % 28) + 1).padStart(2, "0")}`,
+    }));
+    const kept = cleanSyllabusDeadlines(many, 2026);
+    expect(kept).toHaveLength(50);
+    expect(kept[0]?.title).toBe("Problem set 1");
+  });
 });

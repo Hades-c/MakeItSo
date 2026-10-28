@@ -170,7 +170,13 @@ const state = vi.hoisted(() => ({
   campus: null as unknown,
   /** Make the curated-deadlines read throw (a pure computation failing inside a panel). */
   curatedThrows: false,
+  /** The student's syllabi and Moodle connection (Due for you's pointer to /syllabi). */
+  syllabi: 0,
+  moodle: false,
 }));
+
+vi.mock("@/server/syllabi", () => ({ countSyllabi: async () => state.syllabi }));
+vi.mock("@/server/moodle", () => ({ isMoodleConnected: async () => state.moodle }));
 
 vi.mock("@/server/today/load", async (importOriginal) => {
   const original = await importOriginal<typeof LoadModule>();
@@ -210,6 +216,8 @@ beforeEach(() => {
   state.feeds = ok(FEEDS);
   state.campus = ok(FEEDS);
   state.curatedThrows = false;
+  state.syllabi = 0;
+  state.moodle = false;
 });
 
 async function show(node: Promise<React.ReactElement | null> | React.ReactElement | null) {
@@ -491,7 +499,8 @@ describe("Due for you", () => {
     expect(within(webtree!).getByText("via Registrar", { exact: false })).not.toHaveClass(
       "sr-only",
     );
-    for (const link of within(card).getAllByRole("link")) {
+    // Every row's link goes to the page that publishes it (the /syllabi pointer under the list is not a row).
+    for (const link of items.flatMap((li) => within(li).queryAllByRole("link"))) {
       expect(link.getAttribute("href")).toMatch(/^https:\/\//);
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
       expect(link).toHaveAttribute("target", "_blank");
@@ -639,6 +648,70 @@ describe("Due for you", () => {
       "aria-selected",
       "true",
     );
+  });
+
+  it("says Moodle on a deadline imported from the student's Moodle calendar, and only there", async () => {
+    state.plan = ok(
+      plan({
+        deadlines: [
+          DEADLINE,
+          {
+            id: "64b7f0a1c2d3e4f5a6b7c8e2",
+            title: "Problem set 3",
+            courseCode: "CSC 221",
+            dueAt: "2026-10-01T23:59:00-04:00",
+            origin: "moodle",
+          },
+        ],
+      }),
+    );
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    const card = screen.getByRole("region", { name: /^Due for you/ });
+    const rows = live(within(card).getAllByTestId("due-soon-item"));
+    const moodle = rows.find((li) => li.textContent?.includes("Problem set 3"))!;
+    // The same rule as every other synced source: "via Moodle" in its meta line.
+    expect(moodle).toHaveAttribute("data-source", "course-site");
+    expect(moodle.querySelector('[data-source="course-site"]')).toHaveTextContent(
+      "Source: via Moodle",
+    );
+    expect(within(moodle).getByText("via Moodle", { exact: false })).not.toHaveClass("sr-only");
+    const typed = rows.find((li) => li.textContent?.startsWith("Problem set"))!;
+    expect(typed.querySelector('[data-source="course-site"]')).toBeNull();
+  });
+
+  it("points to /syllabi while the student has classes but no syllabus or Moodle connection", async () => {
+    state.plan = ok(plan({ deadlines: [DEADLINE] }));
+    const { unmount } = await show(DueSoonPanel({ userId: USER, now: NOON }));
+    expect(
+      screen.getByRole("link", { name: /Add your syllabi or connect Moodle/ }),
+    ).toHaveAttribute("href", "/syllabi");
+    unmount();
+
+    state.moodle = true;
+    const second = await show(DueSoonPanel({ userId: USER, now: NOON }));
+    expect(screen.queryByTestId("syllabi-pointer")).not.toBeInTheDocument();
+    second.unmount();
+
+    state.moodle = false;
+    state.syllabi = 1;
+    const third = await show(DueSoonPanel({ userId: USER, now: NOON }));
+    expect(screen.queryByTestId("syllabi-pointer")).not.toBeInTheDocument();
+    third.unmount();
+
+    // No classes this term: nothing to add syllabi for.
+    state.syllabi = 0;
+    state.plan = ok(plan({ items: [], deadlines: [] }));
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    expect(screen.queryByTestId("syllabi-pointer")).not.toBeInTheDocument();
+  });
+
+  it("says only syllabi in the pointer while the Moodle import is off", async () => {
+    vi.stubEnv("MOODLE_IMPORT_ENABLED", "false");
+    await show(DueSoonPanel({ userId: USER, now: NOON }));
+    expect(screen.getByTestId("syllabi-pointer")).toHaveTextContent(
+      "Add your syllabi to see your class deadlines here",
+    );
+    vi.unstubAllEnvs();
   });
 
   it("degrades to a small error state when building the list throws", async () => {

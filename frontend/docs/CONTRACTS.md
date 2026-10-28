@@ -20,7 +20,7 @@ The frozen interfaces every workstream codes against. They change only through t
 | `lib/api/*.ts`         | One `apiRoute({ method, path, auth, query, body, params, response, cache, aiResult? })` per route and family                                                                              | server: `defineRoute(planApi.addItem, handler)`; client islands: `callApi(planEndpoints.addItem, { body })` (`lib/api/endpoints.ts`: method, path, AI flag, no zod; responses re-checked outside production only). Client islands import constants from the zod-free modules (`lib/course-code.ts`, `lib/types/plan-constants.ts`, `lib/types/ai-constants.ts`, `lib/api/error-codes.ts`): a module that builds schemas puts all of zod on the page |
 | `lib/api/search.ts`    | **GET /api/search?q=&limit≤20 → `{ results: { kind, id, title, subtitle?, href, source? }[] }`**                                                                                          | the CommandPalette's contract                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `lib/api/errors.ts`    | Error body `{ error: { code, message, issues? } }` and the nine codes                                                                                                                     | `ApiClientError.code` on the client                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `lib/flags.ts`         | Server-only `getFlags()` → `{ careers, events, alumni, ai, rmp, rmpSummaries }`                                                                                                           | read in a server component, pass as props (`import type { Flags }` on the client); a link or block into a flagged section needs `featureEnabled(loadFlags(), f)`                                                                                                                                                                                                                                                                                    |
+| `lib/flags.ts`         | Server-only `getFlags()` → `{ careers, events, alumni, ai, moodle, rmp, rmpSummaries }`                                                                                                   | read in a server component, pass as props (`import type { Flags }` on the client); a link or block into a flagged section needs `featureEnabled(loadFlags(), f)`                                                                                                                                                                                                                                                                                    |
 
 ## Server (`server-only`)
 
@@ -98,6 +98,32 @@ The frozen interfaces every workstream codes against. They change only through t
 - `ContentDeadline.category`: the calendar row's category (`deadline` | `registration`), null for a program deadline.
 - Every course code content quotes exists in the fixture terms (gate (a), no exemptions).
 - The alumni search result links `routes.alumnus(id)`: the directory renders each card with `id={alumnus.id}`.
+
+## Syllabi and Moodle (`server/syllabi`, `server/moodle`, /syllabi)
+
+- `StudentDeadline.origin`: `manual` | `syllabus` (reviewed from a pasted syllabus, with `syllabusId`) | `moodle`
+  (imported from the student's Moodle calendar; its source is `course-site`, label "Moodle", by
+  `server/today studentDeadlineSource`, so Today says "via Moodle" under the provenance rule in "Look").
+- `server/syllabi`: `listSyllabi` (with `planDeadlineCount`), `countSyllabi`, `addSyllabus(userId, { courseCode,
+termCode, text })`, `deleteSyllabus`, `getSyllabus`, `syllabusTerms()` (the current term, the default, and the
+  next). Pasted text only, at most `MAX_SYLLABUS_CHARS` (20,000, `lib/syllabus-text.ts`, checked by the form and
+  `PasteSyllabusBodySchema`); it goes once to the `syllabus-deadlines` AI feature inside `<untrusted_syllabus>` and is
+  never stored or logged. Deadlines reach the plan only through the review (`server/plan addSyllabusDeadlines`,
+  deduped by syllabus + title + due time).
+- `server/moodle`: `getMoodleStatus`, `isMoodleConnected`, `connectMoodle(userId, url)`, `syncMoodle`,
+  `syncMoodleIfDue` (Today and /syllabi, in the background, when the last attempt is 6 hours old; no cron),
+  `disconnectMoodle(userId, { removeDeadlines })`, `requireMoodleImport()` (routes: 404 while
+  `MOODLE_IMPORT_ENABLED` is off; disconnect always works). The URL must pass `lib/moodle.ts checkMoodleFeedUrl`
+  (https://moodle.davidson.edu/calendar/export_execute.php with userid, authtoken, preset_what all|courses and
+  preset_time recentupcoming, nothing else). It carries the student's Moodle token: stored encrypted
+  (`server/moodle/crypto.ts`, AES-256-GCM, HKDF from `MOODLE_FEED_KEY` or else `NEXTAUTH_SECRET`; a changed key asks
+  the student to reconnect), never logged (log an `ExternalFetchError`'s `kind` only: its message and `url` hold
+  the token), never returned (`MoodleStatus` has no URL), left out of the export. Events become plan deadlines by
+  UID (`server/plan replaceMoodleDeadlines`: added, updated in place, removed when the feed stops listing them from
+  5 days ago on). 10 syncs an hour per student, one at a time, 10 s, 1 MB, 500 events.
+- `course-site` is a synced source fetched per student (`PER_STUDENT_SOURCE_IDS`): `fetchExternal` accepts it
+  (host `moodle.davidson.edu`), `recordSync` refuses it and `getSourceStatuses()` never lists it. Content still
+  never links Moodle pages (see Content).
 
 ## Ratings (`lib/types/ratings.ts`, `server/rmp`)
 
@@ -259,7 +285,7 @@ like `getFlags()`) or `loadAiAllowsUnverified()` for pages and copy (never throw
 
 ## Models (collections)
 
-New data goes only to new collections: `plans`, `catalogsections`, `catalogmeta`, `programs`, `rmpteachers`, `rmptagsyncs`,
+New data goes only to new collections: `plans`, `syllabi`, `moodleconnections`, `catalogsections`, `catalogmeta`, `programs`, `rmpteachers`, `rmptagsyncs`,
 `feeditems`, `sourcesyncs`, `aicache_v2`, `aiusages`, `ratelimits` (TTL), `verificationcodes` (TTL). The legacy
 `courseplans` collection is read through `models/legacy/CoursePlanV1.ts` only: READ-ONLY, never write, except that
 account deletion erases the student's own documents (the `courseplans-legacy` built-in eraser). The same holds for
@@ -305,8 +331,8 @@ Lakeside palette and Instrument Sans named in PLAN §1 ("Visual") and §7 ("Colo
     Center", "via <office short name>", the feed's name on Events), once per run of consecutive rows with the
     same words (`runHeads`; the others keep the sr-only "Source: …"). Only what is not obvious is said: the
     student's own typed deadlines say nothing on screen (the card is "Due for you"; screen readers hear "Source:
-    your plan"); a deadline read from a syllabus says "From your syllabus" with the compact `AiChip`; an imported
-    one names its course site (`studentDeadlineSource`);
+    your plan"); a deadline read from a syllabus says "From your syllabus" with the compact `AiChip`; one imported
+    from the student's Moodle calendar says "via Moodle", like any synced source (`studentDeadlineSource`);
   - the Today timeline's blocks have no room for words: one `SourceLine` under it names its sources ("Sources:
     your plan, the course schedule and WildcatSync") and each item says its source to screen readers.
     `tests/e2e/helpers.ts expectAllAttributed` checks it (NOTE, RUN, YOURS, AI, L0) on Today, Courses, Plan and

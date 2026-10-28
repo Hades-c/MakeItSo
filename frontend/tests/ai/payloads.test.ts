@@ -15,6 +15,7 @@ import * as coldEmail from "@/server/ai/prompts/cold-email";
 import * as courseAbout from "@/server/ai/prompts/course-about";
 import * as planSuggestions from "@/server/ai/prompts/plan-suggestions";
 import * as professorSummary from "@/server/ai/prompts/professor-summary";
+import * as syllabusDeadlines from "@/server/ai/prompts/syllabus-deadlines";
 import { getAlumnus } from "@/server/content/alumni";
 import { getCareer } from "@/server/content/careers";
 
@@ -165,7 +166,14 @@ describe("alumni and careers", () => {
 });
 
 describe("prompts", () => {
-  const prompts = [courseAbout, planSuggestions, careerPlan, coldEmail, professorSummary];
+  const prompts = [
+    courseAbout,
+    planSuggestions,
+    careerPlan,
+    coldEmail,
+    professorSummary,
+    syllabusDeadlines,
+  ];
 
   it.each(prompts.map((p) => [p.PROMPT_VERSION, p] as const))(
     "%s: a versioned, frozen system prompt with the data rules and no dates or ids",

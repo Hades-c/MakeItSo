@@ -108,6 +108,7 @@ describe("fetchExternal in fixtures mode (the test default)", () => {
       [
         "catalog",
         "course-schedule",
+        "course-site",
         "davidson-news",
         "davidsonian",
         "events-digest",
@@ -120,6 +121,8 @@ describe("fetchExternal in fixtures mode (the test default)", () => {
     );
     // An outbound service is allow-listed like a source, but only for its own host.
     expect(EXTERNAL_HOSTS.resend).toEqual(["api.resend.com"]);
+    // Each student's Moodle feed: Davidson's Moodle only.
+    expect(EXTERNAL_HOSTS["course-site"]).toEqual(["moodle.davidson.edu"]);
     await expect(fetchExternal("resend", "https://api.davidson.edu/emails")).rejects.toMatchObject({
       kind: "blocked",
     });

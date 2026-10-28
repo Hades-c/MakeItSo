@@ -122,10 +122,10 @@ a requirement it fills) are red, as "now". Focus rings are Lake Blue, never red.
 - **Provenance** (quiet labels, minimal repetition; ids in `lib/sources.ts`, components in
   `components/ui/source-tag.tsx`): no boxed tags. A single-source list says its source once, in one quiet line
   (`<SourceLine>`: "Course schedule · seats as of Oct 28, 12:00 PM"); a mixed list says it in each row's meta line
-  (`<SourceNote>`: "via Registrar"), once per run of rows from one source, and only where it is not obvious (the
-  student's own deadlines say nothing; a syllabus deadline says "From your syllabus"). Every item still carries
-  `data-source` and "Source: …" for screen readers, and every AI output shows `<AiChip>` ("AI · verify with your
-  advisor"). docs/CONTRACTS.md ("Look") has the rule; `expectAllAttributed` checks it.
+  (`<SourceNote>`: "via Registrar", "via Moodle"), once per run of rows from one source, and only where it is not
+  obvious (the student's own deadlines say nothing; a syllabus deadline says "From your syllabus"). Every item still
+  carries `data-source` and "Source: …" for screen readers, and every AI output shows `<AiChip>` ("AI · verify with
+  your advisor"). docs/CONTRACTS.md ("Look") has the rule; `expectAllAttributed` checks it.
 
 ---
 
@@ -174,6 +174,18 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `APP_TIMEZONE`          | no           | IANA time zone for "today" logic. Default `America/New_York`                                              |
 | `RMP_ENABLED`           | no           | RateMyProfessors ratings on/off. Default `true`                                                           |
 | `RMP_SUMMARIES_ENABLED` | no           | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)                           |
+| `MOODLE_IMPORT_ENABLED` | no           | Moodle calendar import on /syllabi on/off. Default `true` (off: no connecting or syncing)                 |
+| `MOODLE_FEED_KEY`       | no           | Key (≥ 32 characters) for the encrypted Moodle calendar URLs. Default: derived from `NEXTAUTH_SECRET`     |
+
+**Moodle calendar import.** On /syllabi a student can paste the calendar URL Moodle gives them (Calendar → Import or
+export calendars → Export calendar → All courses, Recent and next 60 days → Get calendar URL); its due dates come in
+as plan deadlines marked Moodle (`frontend/server/moodle`). That URL carries the student's Moodle token, so it is
+stored encrypted (AES-256-GCM with a key derived by HKDF from `MOODLE_FEED_KEY`, or from `NEXTAUTH_SECRET` when it is
+unset), never logged and never sent back to the browser. Set `MOODLE_FEED_KEY` (`openssl rand -base64 32`) to be able
+to rotate `NEXTAUTH_SECRET` without touching the Moodle links. Changing whichever key is in use makes every saved link
+unreadable: those students are asked to paste their calendar URL again, and their imported deadlines stay until then.
+Syncs happen on connect, on "Sync now" and when the student opens Today or /syllabi six hours after the last one (no
+cron). `MOODLE_IMPORT_ENABLED=false` turns it off without deleting anything.
 
 `AI_ALLOW_UNVERIFIED` exists only while email verification cannot work in production (no mail provider). With it
 on, an @davidson.edu account that has not verified its address may use AI after consenting (18+ attestation

@@ -63,6 +63,8 @@ describe("getEnv", () => {
       FEATURE_CAREERS: true,
       FEATURE_EVENTS: true,
       FEATURE_ALUMNI: true,
+      MOODLE_IMPORT_ENABLED: true,
+      MOODLE_FEED_KEY: undefined,
       RMP_ENABLED: true,
       RMP_SUMMARIES_ENABLED: false,
     });

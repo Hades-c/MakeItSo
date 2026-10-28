@@ -58,7 +58,9 @@ describe("tests/fixtures/external (PLAN §4.1.10)", () => {
         (address) =>
           address !== "contact@example.edu" &&
           !roleAddresses.has(address.toLowerCase()) &&
-          !/^\d[\d-]*@hurthub\.davidson\.edu$/.test(address),
+          !/^\d[\d-]*@hurthub\.davidson\.edu$/.test(address) &&
+          // Moodle event UIDs ("90001@moodle.davidson.edu"), not mailboxes.
+          !/^\d+@moodle\.davidson\.edu$/.test(address),
       );
       expect(personal, path.relative(root, file)).toEqual([]);
     }
@@ -111,17 +113,20 @@ describe("tests/fixtures/external (PLAN §4.1.10)", () => {
     expect(names.filter((name) => name.endsWith("|Smith")).length).toBeGreaterThanOrEqual(2);
   });
 
-  it.each(["wildcatsync/events.ics", "hurt-hub/events.ics", "wildcatsync/news.rss"])(
-    "keeps %s byte-exact with its upstream CRLF line endings",
-    (file) => {
-      // RFC 5545 content lines end in CRLF: a parser that splits on "\n" alone would leave "\r" in DTSTART and
-      // URL values, so the fixtures must keep the real line endings (.gitattributes turns conversion off).
-      const text = readFileSync(path.join(root, file), "utf8");
-      const lines = text.split("\n").length - 1;
-      expect(lines).toBeGreaterThan(10);
-      expect(text.split("\r\n").length - 1).toBe(lines);
-    },
-  );
+  it.each([
+    "wildcatsync/events.ics",
+    "hurt-hub/events.ics",
+    "wildcatsync/news.rss",
+    "course-site/export.ics",
+    "course-site/export-updated.ics",
+  ])("keeps %s byte-exact with its upstream CRLF line endings", (file) => {
+    // RFC 5545 content lines end in CRLF: a parser that splits on "\n" alone would leave "\r" in DTSTART and
+    // URL values, so the fixtures must keep the real line endings (.gitattributes turns conversion off).
+    const text = readFileSync(path.join(root, file), "utf8");
+    const lines = text.split("\n").length - 1;
+    expect(lines).toBeGreaterThan(10);
+    expect(text.split("\r\n").length - 1).toBe(lines);
+  });
 
   it("keeps every cross-listed section's siblings (by CRN) in each course fixture", () => {
     const dir = path.join(root, "course-schedule");
