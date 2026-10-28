@@ -1,18 +1,19 @@
 import Link from "next/link";
-import { CircleAlert, Clock } from "lucide-react";
+import { ChevronDown, CircleAlert, Clock } from "lucide-react";
 import { CourseCode } from "@/components/ui/course-code";
 import { Chip } from "@/components/ui/chip";
 import type { TermCode } from "@/lib/term";
 import { cn } from "@/lib/utils";
-import { creditsLabel, openSeatsLabel, sectionsLabel } from "../_lib/format";
+import { openSeatsLabel, sectionsLabel } from "../_lib/format";
 import type { CourseRow as Row } from "../_lib/search";
 import { AddCourse } from "./add-course";
 import { BREAK_TEXT, WRAP_CHIP } from "./wrap";
 
 /**
  * One /courses result (PLAN §3): code, title (a topics course says "topics vary by section" and lists each
- * section's own title), credits, requirement tags under their official names, open seats, meeting times,
- * instructors, availability across the plan window (the Add to plan tiles) and "Add to <term>" with its warnings.
+ * section's own title), a Description toggle, requirement tags under their official names, open seats, meeting
+ * times, instructors, availability across the plan window (the Add to plan tiles) and "Add to <term>" with its
+ * warnings.
  */
 export function CourseRow({
   row,
@@ -61,11 +62,28 @@ export function CourseRow({
           </Link>
         </h3>
         <p className="text-sm text-fg-2">
-          {creditsLabel(summary.credits)} · {sectionsLabel(summary.sectionCount)}
+          {sectionsLabel(summary.sectionCount)}
           {summary.crossListings.length > 0 ? (
             <> · Also listed as {summary.crossListings.join(", ")}</>
           ) : null}
         </p>
+        {row.description ? (
+          <details className="group">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-sm text-sm font-semibold text-fg-2 hover:text-fg md:min-h-0 [&::-webkit-details-marker]:hidden">
+              Description
+              <ChevronDown
+                aria-hidden
+                className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+              />
+            </summary>
+            <p
+              className={cn("mt-1.5 text-sm whitespace-pre-line text-fg-2", BREAK_TEXT)}
+              data-testid="row-description"
+            >
+              {row.description}
+            </p>
+          </details>
+        ) : null}
         {row.reqs.length > 0 ? (
           <ul aria-label="Requirements" className="flex flex-wrap gap-1.5">
             {row.reqs.map((req) => (

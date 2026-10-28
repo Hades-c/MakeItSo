@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoaderCircle, Search, SlidersHorizontal, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { controlClass, Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +21,10 @@ import { CleanGetForm } from "./clean-get-form";
 
 /**
  * /courses search and filters (PLAN §3, §7 "State"): one GET form, so every choice lands in the URL and back,
- * reload and shared links reproduce the search; it works without JavaScript. Text, term, department,
- * requirement, the days the student is free, a time window, open seats only and level. Active filters are listed
- * as links that remove one filter each.
+ * reload and shared links reproduce the search; it works without JavaScript. Text, term, department and
+ * requirement are always visible; the days the student is free, a time window, open seats only and level sit
+ * behind "Filters", with a count badge of how many of those are active. Active filters are listed as links that
+ * remove one filter each.
  *
  * The department and requirement selects pick one value; a URL with several (?dept=CSC&dept=MAT, from a shared
  * link) keeps the others as hidden fields, listed under "Active filters" where each can be removed.
@@ -112,7 +114,11 @@ export function CourseFilters({
   const deptNames = new Map(filters?.departments.map((d) => [d.code, d.name]) ?? []);
   const reqNames = new Map(filters?.requirements.map((r) => [r.code, r.name]) ?? []);
   const active = activeFilters(query, term, { dept: deptNames, req: reqNames });
-  const advanced = active.filter((filter) => filter.key !== "q").length;
+  // The badge on "Filters" counts only what is behind it; department and requirement are visible above.
+  const advanced = active.filter(
+    (filter) =>
+      !filter.key.startsWith("dept-") && !filter.key.startsWith("req-") && filter.key !== "q",
+  ).length;
   const [dept, ...extraDepts] = query.dept;
   const [req, ...extraReqs] = query.req;
   // Keyed on the URL: after a client-side navigation the form shows the URL's state, not stale typing. The remount
@@ -167,53 +173,56 @@ export function CourseFilters({
           </Button>
         </div>
 
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="courses-dept">Department</Label>
+            <select
+              id="courses-dept"
+              name="dept"
+              defaultValue={dept ?? ""}
+              autoComplete="off"
+              className={SELECT}
+            >
+              <option value="">All departments</option>
+              {(filters?.departments ?? []).map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.name} ({option.code})
+                </option>
+              ))}
+            </select>
+            {extraDepts.map((value) => (
+              <input key={value} type="hidden" name="dept" value={value} />
+            ))}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="courses-req">Requirement</Label>
+            <select
+              id="courses-req"
+              name="req"
+              defaultValue={req ?? ""}
+              autoComplete="off"
+              className={SELECT}
+            >
+              <option value="">Any requirement</option>
+              {(filters?.requirements ?? []).map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.name} ({option.code})
+                </option>
+              ))}
+            </select>
+            {extraReqs.map((value) => (
+              <input key={value} type="hidden" name="req" value={value} />
+            ))}
+          </div>
+        </div>
+
         <details className="group mt-3" open={advanced > 0 || undefined}>
           <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-sm font-semibold text-fg md:min-h-9 [&::-webkit-details-marker]:hidden">
             <SlidersHorizontal aria-hidden className="size-4" />
             Filters
-            {advanced > 0 ? <span className="text-xs text-fg-2">{advanced} active</span> : null}
+            {advanced > 0 ? <Badge variant="primary">{advanced}</Badge> : null}
           </summary>
           <div className="mt-2 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="courses-dept">Department</Label>
-              <select
-                id="courses-dept"
-                name="dept"
-                defaultValue={dept ?? ""}
-                autoComplete="off"
-                className={SELECT}
-              >
-                <option value="">All departments</option>
-                {(filters?.departments ?? []).map((option) => (
-                  <option key={option.code} value={option.code}>
-                    {option.name} ({option.code})
-                  </option>
-                ))}
-              </select>
-              {extraDepts.map((value) => (
-                <input key={value} type="hidden" name="dept" value={value} />
-              ))}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="courses-req">Requirement</Label>
-              <select
-                id="courses-req"
-                name="req"
-                defaultValue={req ?? ""}
-                autoComplete="off"
-                className={SELECT}
-              >
-                <option value="">Any requirement</option>
-                {(filters?.requirements ?? []).map((option) => (
-                  <option key={option.code} value={option.code}>
-                    {option.name} ({option.code})
-                  </option>
-                ))}
-              </select>
-              {extraReqs.map((value) => (
-                <input key={value} type="hidden" name="req" value={value} />
-              ))}
-            </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="courses-after">Starts at or after</Label>
               <select

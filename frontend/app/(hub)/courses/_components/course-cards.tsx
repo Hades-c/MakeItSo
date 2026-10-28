@@ -1,11 +1,9 @@
 import Link from "next/link";
 import {
-  BookOpen,
   Calendar,
   CircleAlert,
   CircleCheck,
   Clock,
-  ListChecks,
   MapPin,
   Plus,
   TriangleAlert,
@@ -22,7 +20,6 @@ import type { PlanItem } from "@/lib/types/plan";
 import { cn } from "@/lib/utils";
 import {
   availabilityText,
-  creditsLabel,
   instructorName,
   longDays,
   meetingRoom,
@@ -97,7 +94,6 @@ export function CourseHeader({
       (section?.meetings ?? []).map(meetingRoom).filter((room): room is string => room !== null),
     ),
   ];
-  const prereqs = new Set(course.sections.map((s) => s.prerequisitesText).filter(Boolean));
   const kicker = [
     departmentName ?? course.code.split(" ")[0],
     section ? `CRN ${section.crn}` : null,
@@ -141,7 +137,6 @@ export function CourseHeader({
               <span className="font-semibold">
                 {section.instructors.map(instructorName).join(", ")}
               </span>
-              {departmentName ? <span className="text-fg-2"> · {departmentName}</span> : null}
             </p>
           ) : null}
           <ul aria-label="Course facts" className="flex flex-wrap gap-2">
@@ -163,18 +158,6 @@ export function CourseHeader({
                 </Chip>
               </li>
             ) : null}
-            <li>
-              <Chip variant="neutral" className={cn(WRAP_CHIP, "text-sm text-fg")}>
-                <BookOpen aria-hidden />
-                {section ? creditsLabel([section.credits]) : creditsLabel(course.credits)}
-              </Chip>
-            </li>
-            <li>
-              <Chip variant="neutral" className={cn(WRAP_CHIP, "text-sm text-fg")}>
-                <ListChecks aria-hidden />
-                {prereqs.size > 0 ? "Prerequisites listed below" : "No prerequisites listed"}
-              </Chip>
-            </li>
           </ul>
         </div>
         <div className="flex min-w-0 flex-col justify-center gap-4 border-line lg:border-l lg:pl-8">

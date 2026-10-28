@@ -1,4 +1,5 @@
 import { render as rtlRender, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { describe, expect, it, vi } from "vitest";
 import { CourseSections, SectionItem } from "@/app/(hub)/courses/_components/course-sections";
@@ -190,19 +191,18 @@ describe("SectionItem", () => {
     const item = items[0]!;
     expect(item).toHaveAttribute("data-aggregated", "ratemyprofessors");
     expect(within(item).getByText(`${instructor.first} ${instructor.last}`)).toBeVisible();
-    // The source is said once per instructor: one provenance line, the date and the profile link.
+    // The source is said once per instructor: one provenance line with the profile link.
     expect(seenText(item)).toBe(
       "Katy Williams 4.2 / 5 17 ratings · Difficulty 3.0 of 5 · 80% would take again " +
-        "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12), " +
-        "Get ready to read (9), Caring (8) as of Sep 28, 2026 · RateMyProfessors",
+        "Most common tags (from 17 ratings): Participation matters (12), " +
+        "Get ready to read (9), Caring (8) RateMyProfessors",
     );
     expect(spokenText(item)).toContain(
       "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, 80% would take again " +
-        "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12 ratings), " +
-        "Get ready to read (9 ratings), Caring (8 ratings) as of Sep 28, 2026, " +
+        "Most common tags (from 17 ratings): Participation matters (12 ratings), " +
+        "Get ready to read (9 ratings), Caring (8 ratings) " +
         "Source: RateMyProfessors",
     );
-    expect(within(item).getByText("as of Sep 28, 2026")).toBeVisible();
     expect(item.querySelectorAll('[data-source="ratemyprofessors"]')).toHaveLength(1);
     expect(within(item).getAllByRole("link")).toHaveLength(1);
     expect(
@@ -314,9 +314,9 @@ describe("course cards", () => {
     expect(screen.getByText("CSC 221 B")).toBeVisible();
     expect(screen.getByText("CRN 20136")).toBeVisible();
     expect(screen.getByText("Mon · Wed · Fri 11:30a–12:20p")).toBeVisible();
-    expect(screen.getByText("1 course credit")).toBeVisible();
-    expect(screen.getByText("Prerequisites listed below")).toBeVisible();
     expect(screen.getByText(/of 24 seats open/)).toBeVisible();
+    // The department name is said once (the kicker), never again beside the instructors.
+    expect(screen.getAllByText("Computer Science")).toHaveLength(1);
     expect(screen.getByRole("link", { name: "Add to plan" })).toHaveAttribute(
       "href",
       "#add-to-plan",
@@ -609,6 +609,7 @@ describe("/courses parts", () => {
     },
     href: "/courses/202602/WRI-101",
     reqs: [{ code: "COMP", name: "Writing (Composition)" }],
+    description: "An examination of sports betting as a lens on American culture.",
     sections: [
       {
         crn: "20500",
@@ -630,7 +631,8 @@ describe("/courses parts", () => {
     },
   };
 
-  it("a result row: topics, requirement names, seats, sections, warnings", () => {
+  it("a result row: topics, requirement names, seats, sections, warnings", async () => {
+    const user = userEvent.setup();
     render(<CourseRow row={row} currentTerm="202601" planHref="/plan" loginHref="/login" />);
     const article = screen.getByRole("article", {
       name: /Writing Program: topics vary by section/,
@@ -638,6 +640,14 @@ describe("/courses parts", () => {
     expect(within(article).getByText("Sports Betting and Society")).toBeVisible();
     expect(within(article).getByText("Writing (Composition)")).toBeVisible();
     expect(within(article).getByTestId("row-seats")).toHaveTextContent("No open seats");
+    // The description sits behind its own toggle, closed until pressed.
+    const descriptionToggle = within(article).getByText("Description").closest("details")!;
+    expect(descriptionToggle).not.toHaveAttribute("open");
+    await user.click(within(article).getByText("Description"));
+    expect(descriptionToggle).toHaveAttribute("open");
+    expect(within(article).getByTestId("row-description")).toHaveTextContent(
+      "An examination of sports betting as a lens on American culture.",
+    );
     expect(
       within(article).getByText("Closed if you have met the writing requirement"),
     ).toBeVisible();

@@ -1,5 +1,4 @@
 import { SourceLink } from "@/components/ui/source-tag";
-import { DEFAULT_TIME_ZONE, formatMediumDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type RatingStatus = "matched" | "unmatched" | "staff" | "disabled" | "review";
@@ -25,19 +24,12 @@ export interface RatingSummaryProps {
   wouldTakeAgainPct?: number | null;
   /**
    * The teacher's most used RMP tags, most used first, as server/rmp serves them. Shown as "Most common tags (from
-   * 39 ratings, as of Oct 25, 2026): …" (the date only when it is not the provenance line's day): the first
-   * SHOWN_TAGS used at least MIN_TAG_COUNT times, once at least MIN_DETAIL_RATINGS ratings were counted.
+   * 39 ratings): …": the first SHOWN_TAGS used at least MIN_TAG_COUNT times, once at least MIN_DETAIL_RATINGS
+   * ratings were counted.
    */
   topTags?: readonly { tag: string; count: number }[];
   /** How many ratings `topTags` was counted from (the tags line says so). */
   tagRatingsCounted?: number;
-  /**
-   * When `topTags` was counted: the tags line's own "as of" (the roster's `asOf` is for the rest), left out when it
-   * is the same day as `asOf`, which the provenance line below already prints.
-   */
-  tagsAsOf?: Date | string | null;
-  /** When the roster was synced: printed as "as of Sep 30, 2026" before the source link. */
-  asOf?: Date | string | null;
   /** The professor's RateMyProfessors page. Only https://www.ratemyprofessors.com/ links are rendered. */
   url?: string;
   /** Professor's name as RMP lists it, e.g. "Daniel Aldridge" (read out with the count). */
@@ -46,7 +38,6 @@ export interface RatingSummaryProps {
   nameShown?: boolean;
   /** What to render without a rating: nothing (default) or a quiet "No rating". */
   empty?: "hide" | "quiet";
-  timeZone?: string;
   className?: string;
 }
 
@@ -61,13 +52,6 @@ export function safeRmpUrl(url: string | undefined): string | null {
   } catch {
     return null;
   }
-}
-
-/** "Sep 30, 2026", or null for a missing or unreadable date. */
-function dayText(at: Date | string | null | undefined, timeZone: string): string | null {
-  if (!at) return null;
-  const date = new Date(at);
-  return Number.isNaN(date.getTime()) ? null : formatMediumDate(date, timeZone);
 }
 
 function ratingsCount(n: number): string {
@@ -99,16 +83,6 @@ export function shownTags(
   return topTags
     .filter(({ tag, count }) => tag.trim() && Number.isFinite(count) && count >= MIN_TAG_COUNT)
     .slice(0, SHOWN_TAGS);
-}
-
-/**
- * "from 39 ratings, as of Oct 25, 2026". With the year, like the roster's line: stored counts are kept while every
- * count run fails, so the date can be a year old. The date is left out when missing or unreadable, and when it is
- * `syncedDay`, the day the provenance line prints, so one entry never shows the same date twice.
- */
-function tagsFreshness(counted: number, tagsDay: string | null, syncedDay: string | null): string {
-  const when = tagsDay && tagsDay !== syncedDay ? `, as of ${tagsDay}` : "";
-  return `from ${ratingsCount(counted)}${when}`;
 }
 
 /** "3.1", or null when there is no difficulty to show (RMP's scale is 1–5). */
@@ -156,14 +130,12 @@ function RatingDots({ value }: { value: number }) {
 
 /**
  * A professor's RateMyProfessors rating, shown once per instructor on a course page (InstructorRatings): the
- * average, how many ratings, the difficulty and "would take again", the most common tags (RMP's fixed tags with how
- * many ratings used each, how many ratings were counted and, when it is another day than the roster's, when),
- * then one provenance line: when the roster was synced (visible text, so phones see it too) and the source, named
- * once as the link to the professor's RMP page (SourceLink: data-source and "Source: RateMyProfessors" for screen
- * readers). Each date and the source appear once per entry. Difficulty, "would take again" and the tags need
- * MIN_DETAIL_RATINGS ratings. Nothing else from RMP is shown (PLAN §5). Both numbers out of 5 carry their label
- * ("Rating" is read out, "Difficulty" is printed). Unmatched, staff, disabled and under-review instructors get
- * nothing, or a quiet "No rating" when asked.
+ * average, how many ratings, the difficulty and "would take again", the most common tags (RMP's fixed tags with
+ * how many ratings used each and how many ratings were counted), then the source, named once as the link to the
+ * professor's RMP page (SourceLink: data-source and "Source: RateMyProfessors" for screen readers). Difficulty,
+ * "would take again" and the tags need MIN_DETAIL_RATINGS ratings. Nothing else from RMP is shown (PLAN §5). Both
+ * numbers out of 5 carry their label ("Rating" is read out, "Difficulty" is printed). Unmatched, staff, disabled
+ * and under-review instructors get nothing, or a quiet "No rating" when asked.
  */
 export function RatingSummary({
   status,
@@ -173,13 +145,10 @@ export function RatingSummary({
   wouldTakeAgainPct,
   topTags,
   tagRatingsCounted,
-  tagsAsOf,
-  asOf,
   url,
   instructorName,
   nameShown = false,
   empty = "hide",
-  timeZone = DEFAULT_TIME_ZONE,
   className,
 }: RatingSummaryProps) {
   const count =
@@ -202,16 +171,11 @@ export function RatingSummary({
   const shown = rating.toFixed(1);
   const href = safeRmpUrl(url);
   const who = instructorName ? ` for ${instructorName}` : "";
-  const synced = dayText(asOf, timeZone);
   // Difficulty and "would take again" only from MIN_DETAIL_RATINGS ratings (like the tags).
   const detailed = count >= MIN_DETAIL_RATINGS;
   const difficulty = detailed ? difficultyText(avgDifficulty) : null;
   const takeAgain = detailed ? takeAgainText(wouldTakeAgainPct) : null;
   const tags = shownTags(topTags, tagRatingsCounted);
-  const tagsCounted =
-    tags.length > 0
-      ? tagsFreshness(tagRatingsCounted ?? 0, dayText(tagsAsOf, timeZone), synced)
-      : "";
   return (
     <div className={cn("flex flex-col gap-3", className)} data-rating={shown}>
       <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
@@ -248,10 +212,8 @@ export function RatingSummary({
         </p>
       </div>
       {tags.length > 0 ? (
-        // Its own freshness: the tags are counted daily from `tagRatingsCounted` ratings, apart from the roster
-        // (their date only when it is not the line below's). The source is named once, on the line below.
         <p className="text-sm text-fg-2" data-testid="rating-tags">
-          Most common tags ({tagsCounted}):{" "}
+          Most common tags (from {ratingsCount(tagRatingsCounted ?? 0)}):{" "}
           {tags.map(({ tag, count: uses }, index) => (
             <span key={tag}>
               {index > 0 ? ", " : null}
@@ -265,12 +227,6 @@ export function RatingSummary({
         className="flex flex-wrap items-center gap-x-1.5 text-sm text-fg-2"
         data-testid="rating-source"
       >
-        {synced ? (
-          <>
-            <span>{`as of ${synced}`}</span>
-            <Sep />
-          </>
-        ) : null}
         <SourceLink
           source="ratemyprofessors"
           href={href}

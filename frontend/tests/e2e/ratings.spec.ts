@@ -50,7 +50,7 @@ const ARIANNA = {
   ],
   tagRatingsCounted: 8,
   tagsNumRatings: 8,
-  // The daily tag count ran a day before this roster row was fetched: the tags line says its own date.
+  // The daily tag count ran a day before this roster row was fetched (server/rmp's own bookkeeping).
   tagsFetchedAt: new Date("2026-09-29T16:05:00Z"),
 };
 
@@ -119,9 +119,8 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   await expect(arianna).toContainText("8 ratings");
   await expect(arianna).toContainText("Difficulty 2.4 of 5");
   await expect(arianna).toContainText("14% would take again");
-  // The tags' own freshness: how many ratings they were counted from, and when (not the roster's date).
   await expect(arianna.getByTestId("rating-tags")).toContainText(
-    "Most common tags (from 8 ratings, as of Sep 29, 2026): Extra credit (4)",
+    "Most common tags (from 8 ratings): Extra credit (4)",
   );
   // The source once per instructor: no "via" on the tags line, one provenance line with the profile link.
   await expect(arianna.getByTestId("rating-tags")).not.toContainText("RateMyProfessors");
@@ -134,12 +133,7 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
     copy.querySelectorAll(".sr-only").forEach((hidden) => hidden.remove());
     return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
   });
-  expect(seen).toBe("as of Sep 30, 2026 · RateMyProfessors");
-  await expect(arianna.getByText("as of Sep 30, 2026")).toBeVisible();
-  // Each date once in the entry (a tags count on the roster's day would leave its date out).
-  const entryText = (await arianna.textContent()) ?? "";
-  expect(entryText.match(/Sep 29, 2026/g)).toHaveLength(1);
-  expect(entryText.match(/Sep 30, 2026/g)).toHaveLength(1);
+  expect(seen).toBe("RateMyProfessors");
   await expect(arianna.locator("[data-source]")).toHaveCount(1);
   await expect(arianna.getByRole("link")).toHaveCount(1);
   await expect(

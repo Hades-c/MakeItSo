@@ -69,9 +69,10 @@ test("search: the registration term by default, filters in the URL, back and rel
   await expect(csc.getByTestId("row-sections")).toContainText("MWF 10:30a–11:20a");
   await expect(csc.getByRole("button", { name: "Add to Spring 2027" })).toBeVisible();
 
-  // Filters: department, days free, open seats.
-  await page.getByText("Filters", { exact: true }).click();
+  // Department is visible without opening Filters; days free and open seats sit behind it, with a count badge.
+  await expect(page.getByLabel("Department")).toBeVisible();
   await page.getByLabel("Department").selectOption("CSC");
+  await page.getByText("Filters", { exact: true }).click();
   await page.getByRole("checkbox", { name: "Tuesday" }).check();
   await page.getByRole("checkbox", { name: "Thursday" }).check();
   await page.getByRole("checkbox", { name: "Open seats only" }).check();
@@ -84,6 +85,8 @@ test("search: the registration term by default, filters in the URL, back and rel
   const active = page.getByTestId("active-filters");
   await expect(active.getByRole("link", { name: /Only Tue, Thu/ })).toBeVisible();
   await expect(page.getByLabel("Department")).toHaveValue("CSC");
+  // The badge counts only what is behind "Filters" (days + open seats), not department.
+  await expect(page.locator("summary", { hasText: "Filters" })).toContainText("2");
 
   // Reload and back keep the state.
   await page.reload();
