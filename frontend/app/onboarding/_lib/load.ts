@@ -1,6 +1,4 @@
 import "server-only";
-import type { SyllabiPageData } from "@/app/(hub)/syllabi/_lib/load";
-import { loadSyllabiPage } from "@/app/(hub)/syllabi/_lib/load";
 import type { Profile } from "@/lib/api/profile";
 import { currentTermFrom, termLabel, type TermCode } from "@/lib/term";
 import type { TermInfo } from "@/lib/types/catalog";
@@ -28,7 +26,7 @@ import { stepProgress, type StepProgress } from "./steps";
  *   profile       getProfile (W3): official names already mapped; firstTerm null until saved
  *   majors/...    official Acalog names (W3 officialNames: server/programs, else the checked-in snapshot), then
  *                 the unlisted programs (W3 profileProgramNames: a CIS major, the Middle East Studies minor)
- *   careers       the interests taxonomy (career-path slugs, server/content)
+ *   careers       the interests taxonomy (career-path slugs, server/content); goals come from lib/goals.ts
  *   terms         the current term (step 2 "Your Fall 2026 classes"), the status its classes get, and the
  *                 terms a completed course can come from (first term → the term before the current one)
  *   items         the plan as getPlan returns it: v2, or a legacy v1 plan converted in memory (legacy: true),
@@ -74,8 +72,6 @@ export interface OnboardingData {
   items: PlanItem[];
   /** The plan is a legacy (v1) plan shown in memory; it is copied to the new plan on the first change. */
   legacyPlan: boolean;
-  /** The syllabi step reuses the whole /syllabi upload board (app/(hub)/syllabi). */
-  syllabi: SyllabiPageData;
   progress: StepProgress;
   now: string;
 }
@@ -107,13 +103,12 @@ export async function currentTermLabel(): Promise<string> {
 
 export async function loadOnboarding(userId: string): Promise<OnboardingData> {
   const at = now();
-  const [view, majors, minors, plan, current, syllabi] = await Promise.all([
+  const [view, majors, minors, plan, current] = await Promise.all([
     getProfile(userId),
     profileProgramNames("major"),
     profileProgramNames("minor"),
     getPlan(userId),
     loadCurrentTerm(at),
-    loadSyllabiPage(userId),
   ]);
   const firstTerm = view.firstTerm ?? defaultFirstTerm(view.graduationYear);
   const startsLater = startsAfter(firstTerm, current.code);
@@ -143,16 +138,15 @@ export async function loadOnboarding(userId: string): Promise<OnboardingData> {
     },
     items,
     legacyPlan: plan.legacy,
-    syllabi,
     progress: stepProgress({
       firstTerm: view.firstTerm,
       majors: view.majors,
       minors: view.minors,
       currentTermItems: termItems(items, current.code).length,
+      startsLater,
       completedItems: completedItems(items).length,
-      syllabi: syllabi.syllabi.length,
-      goals: view.goals,
       interests: view.interests,
+      goals: view.goals,
     }),
     now: at.toISOString(),
   };

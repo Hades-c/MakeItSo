@@ -4,12 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AboutStep } from "@/app/onboarding/_components/about-step";
 import { ClassesStep } from "@/app/onboarding/_components/classes-step";
 import { CompletedStep } from "@/app/onboarding/_components/completed-step";
-import { GoalsStep } from "@/app/onboarding/_components/goals-step";
 import { InterestsStep } from "@/app/onboarding/_components/interests-step";
 import { SkipSetup } from "@/app/onboarding/_components/skip-setup";
 import { resetStepHeadingForTests, StepHeading } from "@/app/onboarding/_components/step-heading";
 import { StepList } from "@/app/onboarding/_components/step-list";
-import { SyllabiStep } from "@/app/onboarding/_components/syllabi-step";
 import type { CareerOption } from "@/app/onboarding/_lib/load";
 import type { Profile } from "@/lib/api/profile";
 import {
@@ -79,7 +77,6 @@ const PROFILE: Profile = {
   aiConsentAt: null,
   adultAttestedAt: null,
   onboardedAt: null,
-  newStepsPromptDismissedAt: null,
   createdAt: NOW,
 };
 
@@ -189,14 +186,7 @@ describe("StepList", () => {
       <StepList
         step="classes"
         currentTermLabel="Fall 2026"
-        progress={{
-          about: true,
-          classes: false,
-          completed: false,
-          syllabi: false,
-          goals: false,
-          interests: false,
-        }}
+        progress={{ about: true, classes: false, completed: false, interests: false }}
       />,
     );
     const nav = screen.getByRole("navigation", { name: "Setup steps" });
@@ -205,14 +195,30 @@ describe("StepList", () => {
       "/onboarding?step=about",
       "/onboarding?step=classes",
       "/onboarding?step=completed",
-      "/onboarding?step=syllabi",
-      "/onboarding?step=goals",
       "/onboarding?step=interests",
     ]);
     expect(links[1]).toHaveAttribute("aria-current", "step");
     expect(links[0]).not.toHaveAttribute("aria-current");
     expect(links[0]).toHaveTextContent("Step 1: About you (saved)");
     expect(links[1]).toHaveTextContent("Step 2: Your Fall 2026 classes");
+  });
+
+  it("keeps the later steps as text, not links, until About is saved in a first run", () => {
+    const none = { about: false, classes: false, completed: false, interests: false };
+    const { unmount } = render(
+      <StepList step="about" currentTermLabel="Fall 2026" progress={none} />,
+    );
+    const nav = screen.getByRole("navigation", { name: "Setup steps" });
+    expect(within(nav).getAllByRole("link")).toHaveLength(1);
+    expect(within(nav).getAllByRole("listitem")[3]).toHaveTextContent(
+      "Step 4: Interests and goals (opens after About you)",
+    );
+    unmount();
+    // A re-run: every step stays open.
+    render(<StepList step="about" currentTermLabel="Fall 2026" progress={none} onboarded />);
+    expect(
+      within(screen.getByRole("navigation", { name: "Setup steps" })).getAllByRole("link"),
+    ).toHaveLength(4);
   });
 });
 
@@ -365,6 +371,13 @@ describe("ClassesStep (step 2)", () => {
     const current = screen.getByTestId("current-classes");
     expect(within(current).getByText("Title of HIS 357")).toBeVisible();
     expect(within(current).getByText(/CRN 10274/)).toBeVisible();
+    // The server part of the page (the step list's checks, the header) follows the plan.
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
+      "href",
+      "/onboarding?step=completed",
+    );
+    expect(screen.queryByRole("link", { name: "Add classes later" })).toBeNull();
   });
 
   it("lists the sections of a multi-section course as radio buttons", async () => {
@@ -599,6 +612,21 @@ describe("ClassesStep (step 2)", () => {
     expect(await screen.findByText("Removed CSC 121.")).toBeVisible();
     expect(calls[0]).toMatchObject({ method: "DELETE", url: `/api/plan/items/${existing.id}` });
     expect(screen.queryByTestId("current-classes")).toBeNull();
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("never blocks: with no class chosen the way on is Add classes later", () => {
+    render(<ClassesStep {...base} items={[]} />);
+    expect(screen.getByRole("link", { name: "Add classes later" })).toHaveAttribute(
+      "href",
+      "/onboarding?step=completed",
+    );
+    expect(screen.queryByRole("link", { name: "Continue" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Skip this step" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute(
+      "href",
+      "/onboarding?step=about",
+    );
   });
 
   it("shows a search failure without listing anything", async () => {
@@ -622,6 +650,7 @@ describe("ClassesStep (step 2)", () => {
       "href",
       "/onboarding?step=completed",
     );
+    expect(screen.queryByRole("link", { name: "Add classes later" })).toBeNull();
   });
 });
 
@@ -813,72 +842,7 @@ describe("CompletedStep (step 3)", () => {
   });
 });
 
-describe("SyllabiStep (step 4)", () => {
-  it("reuses the /syllabi board and moves on with Continue", () => {
-    render(
-      <SyllabiStep
-        data={{
-          syllabi: [],
-          terms: [{ code: "202601", label: "Fall 2026" }],
-          defaultTerm: "202601",
-          gate: "ready",
-        }}
-        verifyHref={null}
-      />,
-    );
-    expect(screen.getByRole("heading", { name: "Paste a syllabus" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Your syllabi" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
-      "href",
-      "/onboarding?step=goals",
-    );
-    expect(screen.getByRole("link", { name: "Skip this step" })).toHaveAttribute(
-      "href",
-      "/onboarding?step=goals",
-    );
-  });
-});
-
-describe("GoalsStep (step 5)", () => {
-  it("saves the chosen slugs and moves to Interests", async () => {
-    stubFetch([200, { profile: { ...PROFILE, goals: ["grad-school"] } }]);
-    render(<GoalsStep initial={["research", "retired-slug"]} />);
-    expect(screen.getByRole("button", { name: "Do research with a professor" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Do research with a professor" }));
-    await userEvent.click(
-      screen.getByRole("button", { name: "Go to graduate or professional school" }),
-    );
-    expect(screen.getByTestId("goals-count")).toHaveTextContent("1 chosen.");
-    await userEvent.click(screen.getByRole("button", { name: "Save and continue" }));
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/onboarding?step=interests"));
-    expect(calls).toEqual([
-      { url: "/api/profile", method: "PATCH", body: { goals: ["grad-school"] } },
-    ]);
-  });
-
-  it("keeps the student here when saving fails", async () => {
-    stubFetch([500, { error: { code: "internal", message: "secret detail" } }]);
-    render(<GoalsStep initial={[]} />);
-    await userEvent.click(screen.getByRole("button", { name: "Save and continue" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Something went wrong. Please try again.",
-    );
-    expect(router.push).not.toHaveBeenCalled();
-  });
-
-  it("skips without saving", () => {
-    render(<GoalsStep initial={[]} />);
-    expect(screen.getByRole("link", { name: "Skip this step" })).toHaveAttribute(
-      "href",
-      "/onboarding?step=interests",
-    );
-  });
-});
-
-describe("InterestsStep (step 6)", () => {
+describe("InterestsStep (step 4)", () => {
   const careers: CareerOption[] = [
     { slug: "software-engineering", name: "Software Engineering", cluster: "Technology" },
     { slug: "data-science", name: "Data Science & Analytics", cluster: "Technology" },
@@ -887,25 +851,60 @@ describe("InterestsStep (step 6)", () => {
 
   it("saves the chosen slugs, finishes onboarding and opens Today", async () => {
     stubFetch([200, { profile: { ...PROFILE, interests: ["law"], onboardedAt: NOW } }]);
-    render(<InterestsStep initial={["data-science", "retired-slug"]} careers={careers} />);
+    render(
+      <InterestsStep
+        initial={["data-science", "retired-slug"]}
+        initialGoals={["research", "retired-goal"]}
+        careers={careers}
+      />,
+    );
     expect(screen.getByRole("button", { name: "Data Science & Analytics" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Do research with a professor" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
     await userEvent.click(screen.getByRole("button", { name: "Data Science & Analytics" }));
     await userEvent.click(screen.getByRole("button", { name: "Law" }));
-    expect(screen.getByTestId("interests-count")).toHaveTextContent("1 chosen.");
+    expect(screen.getByTestId("interests-count")).toHaveTextContent(
+      "1 career path and 1 goal chosen.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Study abroad" }));
+    expect(screen.getByTestId("interests-count")).toHaveTextContent(
+      "1 career path and 2 goals chosen.",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Finish" }));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/today"));
     expect(calls).toEqual([
-      { url: "/api/profile", method: "PATCH", body: { interests: ["law"], onboarded: true } },
+      {
+        url: "/api/profile",
+        method: "PATCH",
+        body: { interests: ["law"], goals: ["research", "study-abroad"], onboarded: true },
+      },
     ]);
     expect(screen.getByRole("group", { name: "Technology" })).toBeVisible();
+    // Goals are optional, in a labelled group of their own (a real list: no role on the <ul>).
+    const goals = screen.getByRole("group", { name: "Goals at Davidson" });
+    expect(goals).toHaveAccessibleDescription(/^Optional\./);
+    expect(within(goals).getByRole("list")).toBeVisible();
+  });
+
+  it("finishes with nothing chosen", async () => {
+    stubFetch([200, { profile: { ...PROFILE, onboardedAt: NOW } }]);
+    render(<InterestsStep initial={[]} initialGoals={[]} careers={careers} />);
+    expect(screen.getByTestId("interests-count")).toHaveTextContent(
+      "None chosen yet. You can change these any time on your profile.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Finish" }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/today"));
+    expect(calls[0]?.body).toEqual({ interests: [], goals: [], onboarded: true });
   });
 
   it("keeps the student here when saving fails", async () => {
     stubFetch([500, { error: { code: "internal", message: "secret detail" } }]);
-    render(<InterestsStep initial={[]} careers={careers} />);
+    render(<InterestsStep initial={[]} initialGoals={[]} careers={careers} />);
     await userEvent.click(screen.getByRole("button", { name: "Finish" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Something went wrong. Please try again.",

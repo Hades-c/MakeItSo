@@ -3,24 +3,17 @@ import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/lib/routes";
 import { loadProfile } from "@/server/today";
-import { NewStepsPrompt } from "./new-steps-prompt";
 
 /**
  * The action row under the headline: while the student has not finished first-run setup, a nudge to /onboarding
- * (PLAN §3). Once onboarded, an account that onboarded before the Syllabi and Goals steps existed sees a
- * one-time dismissible notice about them instead (NewStepsPrompt, PLAN-UX §8). Nothing else: the "Browse
- * courses" and "Plan <term>" buttons are gone (the sidebar and command palette reach Courses and Plan directly;
- * Due for you already lists the WebTree window itself).
+ * (PLAN §3). Nothing else: the "Browse courses" and "Plan <term>" buttons are gone (the sidebar and command
+ * palette reach Courses and Plan directly; Due for you already lists the WebTree window itself).
  */
 export async function TodayActions({ userId }: { userId: string }) {
   const profile = await loadProfile(userId);
-  if (!profile.ok) return null;
-  if (profile.value.onboardedAt === null) return <SetupNudge />;
-  if (profile.value.newStepsPromptDismissedAt === null) return <NewStepsPrompt />;
-  return null;
-}
+  const needsSetup = profile.ok && profile.value.onboardedAt === null;
+  if (!needsSetup) return null;
 
-function SetupNudge() {
   return (
     <div className="mb-5">
       <section

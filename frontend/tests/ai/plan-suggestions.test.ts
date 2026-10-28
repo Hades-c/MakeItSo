@@ -184,7 +184,6 @@ describe("retrieve-then-rank", () => {
       graduationYear: 2029,
       standing: "sophomore",
       interests: ["software-engineering"],
-      goals: [],
     });
     expect(blocks.student_plan).toEqual({
       items: [

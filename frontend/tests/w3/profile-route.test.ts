@@ -119,7 +119,6 @@ describe("GET /api/profile", () => {
       aiConsentAt: null,
       adultAttestedAt: null,
       onboardedAt: null,
-      newStepsPromptDismissedAt: null,
       createdAt: "2026-09-30T16:00:00.000Z",
       standing: { standing: "first-year", estimated: true },
     });
@@ -338,30 +337,16 @@ describe("PATCH /api/profile (strict whitelist)", () => {
     expect(stored && ("aiConsentAt" in stored || "adultAttestedAt" in stored)).toBe(false);
   });
 
-  it("sets onboardedAt once, and the first time only also newStepsPromptDismissedAt", async () => {
+  it("sets onboardedAt once", async () => {
     await signedIn();
-    const first = await profileOf(await patch({ onboarded: true }));
-    expect(first.onboardedAt).toBe("2026-09-30T16:00:00.000Z");
-    // Finishing the current flow already offered the Syllabi and Goals steps, so there is nothing new to tell
-    // this account about: the one-time notice is pre-dismissed, not shown after a fresh onboarding.
-    expect(first.newStepsPromptDismissedAt).toBe("2026-09-30T16:00:00.000Z");
+    expect((await profileOf(await patch({ onboarded: true }))).onboardedAt).toBe(
+      "2026-09-30T16:00:00.000Z",
+    );
     stubNowPlus(86_400_000);
     expect((await profileOf(await patch({ onboarded: true }))).onboardedAt).toBe(
       "2026-09-30T16:00:00.000Z",
     );
     expect((await patch({ onboarded: false })).status).toBe(400);
-  });
-
-  it("dismisses the new-steps notice once, independently of onboarded", async () => {
-    const user = await signedIn({ onboardedAt: new Date("2026-01-01T00:00:00Z") });
-    expect((await raw(user.id))?.newStepsPromptDismissedAt).toBeUndefined();
-    const dismissed = await profileOf(await patch({ dismissNewStepsPrompt: true }));
-    expect(dismissed.newStepsPromptDismissedAt).toBe("2026-09-30T16:00:00.000Z");
-    stubNowPlus(86_400_000);
-    expect(
-      (await profileOf(await patch({ dismissNewStepsPrompt: true }))).newStepsPromptDismissedAt,
-    ).toBe("2026-09-30T16:00:00.000Z");
-    expect((await patch({ dismissNewStepsPrompt: false })).status).toBe(400);
   });
 
   it("rejects every field outside the whitelist, prototype keys and $-keys (no mass assignment)", async () => {

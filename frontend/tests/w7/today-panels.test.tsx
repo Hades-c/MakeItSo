@@ -81,8 +81,6 @@ const PROFILE = {
   aiConsentAt: null,
   adultAttestedAt: null,
   onboardedAt: "2026-09-01T12:00:00.000Z",
-  // Already dismissed by default, so the default fixture keeps showing nothing in the action row.
-  newStepsPromptDismissedAt: "2026-09-01T12:00:00.000Z",
   createdAt: "2026-09-01T12:00:00.000Z",
   standing: { standing: "first-year", estimated: true },
 } satisfies ProfileView;
@@ -866,19 +864,6 @@ describe("the action row", () => {
   it("stays hidden when the profile cannot load (never shown without a real reason)", async () => {
     state.profile = FAIL;
     await show(TodayActions({ userId: USER }));
-    expect(screen.queryByTestId("onboarding-nudge")).toBeNull();
-    expect(screen.queryByTestId("new-steps-prompt")).toBeNull();
-  });
-
-  it("offers the new Syllabi and Goals steps once to an account onboarded before they existed", async () => {
-    state.profile = ok({ ...PROFILE, newStepsPromptDismissedAt: null });
-    await show(TodayActions({ userId: USER }));
-    const prompt = screen.getByTestId("new-steps-prompt");
-    expect(within(prompt).getByRole("heading", { name: "New: syllabi and goals" })).toBeVisible();
-    expect(within(prompt).getByRole("link", { name: "Add them now" })).toHaveAttribute(
-      "href",
-      "/onboarding?step=syllabi",
-    );
     expect(screen.queryByTestId("onboarding-nudge")).toBeNull();
   });
 });

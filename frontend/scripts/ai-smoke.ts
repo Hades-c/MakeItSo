@@ -89,8 +89,9 @@ const PROFILE = {
   graduationYear: 2029,
   standing: "sophomore" as const,
   interests: ["software-engineering"],
-  goals: ["grad-school"],
 };
+/** Career plans and cold e-mails also get the goal slugs (server/ai/payloads.ts careerProfilePayload). */
+const CAREER_PROFILE = { ...PROFILE, aspirations: ["grad-school"] };
 
 const CANDIDATES = [
   {
@@ -251,7 +252,7 @@ async function main(): Promise<number> {
             },
           ],
         },
-        profile: PROFILE,
+        profile: CAREER_PROFILE,
         plan: { items: [{ termCode: "202501", courseCode: "CSC 121", status: "completed" }] },
         goals: { career: "software-engineering", careerName: "Software Engineering" },
       }),
@@ -271,7 +272,7 @@ async function main(): Promise<number> {
             summary: "Designing, building and maintaining software systems.",
           },
         },
-        profile: PROFILE,
+        profile: CAREER_PROFILE,
         goals: { career: "Software Engineering" },
       }),
       check: (data) =>
