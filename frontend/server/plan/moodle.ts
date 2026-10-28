@@ -34,6 +34,8 @@ export interface MoodleDeadlineInput {
   /** ISO instant. */
   dueAt: string;
   courseCode?: string;
+  /** Moodle gave a date, no time (stored `allDay`). */
+  allDay?: boolean;
 }
 
 export interface MoodleDeadlineSync {
@@ -101,6 +103,7 @@ export async function replaceMoodleDeadlinesImpl(
       title: event.title,
       dueAt: new Date(event.dueAt),
       ...(courseCode ? { courseCode } : {}),
+      ...(event.allDay ? { allDay: true } : {}),
       origin: "moodle",
       externalUid: event.uid,
     };
@@ -108,7 +111,8 @@ export async function replaceMoodleDeadlinesImpl(
     else if (
       previous.title !== doc.title ||
       dueMs(previous) !== (doc.dueAt as Date).getTime() ||
-      (previous.courseCode ?? undefined) !== courseCode
+      (previous.courseCode ?? undefined) !== courseCode ||
+      (previous.allDay === true) !== (event.allDay === true)
     ) {
       updated++;
     }

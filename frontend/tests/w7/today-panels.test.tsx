@@ -442,6 +442,34 @@ describe("the timeline", () => {
     expect(screen.getByTestId("timeline-empty")).toHaveTextContent("No classes that day.");
   });
 
+  it("lists a syllabus deadline with the day's all-day ones: no time, no link, its source said", async () => {
+    state.plan = ok(
+      plan({
+        deadlines: [
+          {
+            id: "64b7f0a1c2d3e4f5a6b7c8e4",
+            title: "Midterm exam",
+            courseCode: "CSC 221",
+            dueAt: "2026-10-01T23:59:00-04:00",
+            origin: "syllabus",
+            syllabusId: "64b7f0a1c2d3e4f5a6b7c8e1",
+            allDay: true,
+          },
+        ],
+      }),
+    );
+    await show(panel("2026-10-01", false));
+    const row = within(screen.getByTestId("timeline-all-day"))
+      .getByText("Midterm exam")
+      .closest("li")!;
+    expect(row).toHaveAttribute("data-source", "my-plan");
+    expect(row).toHaveTextContent("Due that day");
+    expect(row).toHaveTextContent("From your syllabus");
+    expect(row).not.toHaveTextContent("11:59");
+    expect(within(row).queryByRole("link")).toBeNull();
+    expect(document.querySelector('[data-kind="deadline"]')).toBeNull();
+  });
+
   it("never draws WebTree's opening as a deadline", async () => {
     state.plan = ok(plan({ deadlines: [] }));
     state.schedule = (day: string) => ok(schedule(day, { entries: [], empty: "no-classes-today" }));

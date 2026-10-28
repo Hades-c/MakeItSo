@@ -398,6 +398,18 @@ describe("MoodlePanel", () => {
     expect(document.body.textContent).not.toMatch(/authtoken/);
   });
 
+  it("shows a Moodle date without a time as the day alone", () => {
+    const journal = {
+      id: "cccccccccccccccccccccccc",
+      title: "Reading journal",
+      dueAt: "2026-10-09T03:59:00.000Z",
+      origin: "moodle" as const,
+      allDay: true as const,
+    };
+    render(<MoodlePanel enabled status={{ ...CONNECTED, deadlines: [journal] }} now={NOW} />);
+    expect(screen.getByTestId("moodle-deadline")).toHaveTextContent(/^Reading journalThu Oct 8$/);
+  });
+
   it("says what went wrong and offers a new link when Moodle refused the old one", () => {
     render(<MoodlePanel enabled status={{ ...CONNECTED, problem: "auth" }} now={NOW} />);
     expect(screen.getByTestId("moodle-problem")).toHaveTextContent(

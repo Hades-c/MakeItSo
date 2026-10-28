@@ -142,6 +142,8 @@ export function deadlineFromDoc(raw: Raw): StudentDeadline | null {
     // Absent on a deadline stored before origin existed: the schema's own default ("manual") applies.
     ...(typeof raw.origin === "string" ? { origin: raw.origin } : {}),
     ...(raw.syllabusId ? { syllabusId: hex(raw.syllabusId) } : {}),
+    // A syllabus gives a day, never a time (app/api/syllabi/[id]/deadlines stores 23:59 that day).
+    ...(raw.allDay === true || raw.origin === "syllabus" ? { allDay: true } : {}),
   });
   if (!parsed.success) {
     logInvalid("deadline", id, parsed.error);

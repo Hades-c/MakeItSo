@@ -84,7 +84,7 @@ describe("/privacy", () => {
     expect(moodle).toMatch(/stores it encrypted/);
     // What each event keeps, exactly as server/moodle stores it (plan deadline title, dueAt, externalUid, courseCode).
     expect(moodle).toMatch(
-      /keeps only the title, the due time, Moodle's id for the event \(so a later sync can update or remove it\) and, when the course name names a Davidson course, that course's code/,
+      /keeps only the title, the due date and time \(or the date alone\), Moodle's id for the event \(so a later sync can update or remove it\) and, when the course name names a Davidson course, that course's code/,
     );
     expect(moodle).toMatch(/course names and everything else Moodle sends are dropped/);
     expect(moodle).toMatch(/more than six hours after the last sync/);

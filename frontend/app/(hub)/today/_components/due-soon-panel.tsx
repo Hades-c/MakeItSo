@@ -201,7 +201,9 @@ function DueSoonList({
  * your plan"). A syllabus deadline says "From your syllabus" with the AI chip (an AI read it); an imported one
  * names its course site; a calendar or program row says "via Registrar", "via Matthews Center" or "via <office>".
  */
-export function dueSourceNote(item: DueSoonItem): { label: string; ai: boolean } | null {
+export function dueSourceNote(
+  item: Pick<DueSoonItem, "source" | "fromSyllabus" | "office">,
+): { label: string; ai: boolean } | null {
   if (item.source === "my-plan") {
     return item.fromSyllabus ? { label: "From your syllabus", ai: true } : null;
   }

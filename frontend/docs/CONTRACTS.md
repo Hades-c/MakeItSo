@@ -104,6 +104,9 @@ The frozen interfaces every workstream codes against. They change only through t
 - `StudentDeadline.origin`: `manual` | `syllabus` (reviewed from a pasted syllabus, with `syllabusId`) | `moodle`
   (imported from the student's Moodle calendar; its source is `course-site`, label "Moodle", by
   `server/today studentDeadlineSource`, so Today says "via Moodle" under the provenance rule in "Look").
+- `StudentDeadline.allDay`: due on a day at no time the source gave (every syllabus deadline, by origin; a Moodle
+  event exported as a date, stored). `dueAt` is 23:59 Davidson time that day, for ordering only: Today and /syllabi
+  show the day alone, like the calendar's all-day rows, and the timeline lists it with them, never on the line.
 - `server/syllabi`: `listSyllabi` (with `planDeadlineCount`), `countSyllabi`, `addSyllabus(userId, { courseCode,
 termCode, text })`, `deleteSyllabus`, `getSyllabus`, `syllabusTerms()` (the current term, the default, and the
   next). Pasted text only, at most `MAX_SYLLABUS_CHARS` (20,000, `lib/syllabus-text.ts`, checked by the form and

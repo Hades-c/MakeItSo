@@ -266,9 +266,65 @@ describe("the timeline's items and hours", () => {
         title: "Minor Declaration Deadline for Seniors",
         source: "registrar",
         url: expect.stringMatching(/^https:\/\//),
+        courseCode: null,
+        fromSyllabus: false,
+        office: null,
       },
     ]);
     expect(buildAgenda({ ...input, standing: "first-year" }).allDay).toEqual([]);
+  });
+
+  it("lists the student's deadlines with no stated time with the all-day ones, never on the line", () => {
+    const agenda = buildAgenda({
+      day: "2026-10-01",
+      schedule: { entries: [] },
+      studentDeadlines: [
+        deadline({
+          title: "Midterm exam",
+          courseCode: "CSC 221",
+          dueAt: edt("23:59", "2026-10-01").toISOString(),
+          origin: "syllabus",
+          allDay: true,
+        }),
+        deadline({
+          id: "64b7f0a1c2d3e4f5a6b7c8d2",
+          title: "Reading journal",
+          dueAt: edt("23:59", "2026-10-01").toISOString(),
+          origin: "moodle",
+          allDay: true,
+        }),
+        deadline({
+          id: "64b7f0a1c2d3e4f5a6b7c8d3",
+          title: "Problem set 3",
+          dueAt: edt("23:59", "2026-10-01").toISOString(),
+          origin: "moodle",
+        }),
+      ],
+      contentDeadlines: [],
+      standing: "first-year",
+      feedItems: [],
+    });
+    expect(agenda.items.map((item) => item.title)).toEqual(["Problem set 3"]);
+    expect(agenda.allDay).toEqual([
+      {
+        id: `deadline-${ID}`,
+        title: "Midterm exam",
+        source: "my-plan",
+        url: null,
+        courseCode: "CSC 221",
+        fromSyllabus: true,
+        office: null,
+      },
+      {
+        id: "deadline-64b7f0a1c2d3e4f5a6b7c8d2",
+        title: "Reading journal",
+        source: "course-site",
+        url: null,
+        courseCode: null,
+        fromSyllabus: false,
+        office: null,
+      },
+    ]);
   });
 
   it("counts an open-ended event as 2 h and never draws one over a class", () => {
@@ -366,6 +422,39 @@ describe("Due soon", () => {
       );
       expect(item.url).toMatch(/^https:\/\//);
     }
+  });
+
+  it("shows the day alone for a deadline due at no stated time, and keeps it all that day", () => {
+    const syllabus = deadline({
+      title: "Midterm exam",
+      dueAt: edt("23:59", "2026-10-02").toISOString(),
+      origin: "syllabus",
+      allDay: true,
+    });
+    const today = deadline({
+      id: "64b7f0a1c2d3e4f5a6b7c8d4",
+      title: "Reading journal",
+      dueAt: edt("23:59", "2026-09-30").toISOString(),
+      origin: "moodle",
+      allDay: true,
+    });
+    const yesterday = deadline({
+      id: "64b7f0a1c2d3e4f5a6b7c8d5",
+      title: "Old journal",
+      dueAt: edt("23:59", "2026-09-29").toISOString(),
+      origin: "moodle",
+      allDay: true,
+    });
+    const items = buildDueSoon({
+      now,
+      standing: "first-year",
+      contentDeadlines: [],
+      studentDeadlines: [syllabus, today, yesterday],
+    });
+    expect(items.map((i) => [i.title, i.time, i.dueAt, dueLabel(i, now)])).toEqual([
+      ["Reading journal", null, null, "Today"],
+      ["Midterm exam", null, null, "Fri"],
+    ]);
   });
 
   it("keeps a window under way while it lasts, sorted as of today", () => {

@@ -109,6 +109,10 @@ describe("connectMoodle", () => {
         ["Final project proposal", "2026-10-21T03:59:00.000Z", "CSC 221", "moodle"],
       ],
     );
+    // Moodle exported "Reading journal" as a date without a time: all day, never shown at 11:59 PM.
+    expect(status.deadlines.filter((d) => d.allDay).map((d) => d.title)).toEqual([
+      "Reading journal",
+    ]);
     expect(await isMoodleConnected(userId)).toBe(true);
   });
 

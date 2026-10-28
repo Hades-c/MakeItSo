@@ -226,6 +226,9 @@ describe("addSyllabusDeadlines (review-before-save)", () => {
     const second = await addSyllabusDeadlines(userId, syllabus.id, chosen);
     expect(second).toEqual({ deadlines: first.deadlines, added: 0 });
     expect(await listDeadlines(userId)).toHaveLength(2);
+    // A syllabus gives a day, not a time: saved and read back as all-day.
+    expect(first.deadlines.every((d) => d.allDay === true)).toBe(true);
+    expect(await listDeadlines(userId)).toEqual(first.deadlines);
   });
 
   it("adds only the new ones of a review that repeats a row, and counts them", async () => {

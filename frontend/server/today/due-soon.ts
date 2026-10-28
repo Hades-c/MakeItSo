@@ -17,7 +17,9 @@ import { addDaysToKey, etClock, etDay, zonedInstant } from "@/server/today/time"
  * its source note (PLAN §5 Sources). Pure.
  *
  * - A window already under way (WebTree Oct 12 - Nov 3) stays while it lasts, sorted as of today.
- * - A deadline with a published time that has passed is gone; an all-day one stays for its whole day.
+ * - A deadline with a published time that has passed is gone; an all-day one stays for its whole day. A student
+ *   deadline due on a day at no stated time (`allDay`: from a syllabus, or a Moodle date) is all-day like the
+ *   calendar's rows: no clock time is shown for it.
  * - `forYou` is false when the row names other class years or a conditional audience: listed with the audience
  *   under "Also in the next two weeks", never counted as due for the student (the header, the card's count and
  *   the day summary count only `forYou` items), and never drawn in the urgent red.
@@ -86,7 +88,8 @@ export function dueSoonRange(now: Date): { from: string; to: string } {
   return { from, to: addDaysToKey(from, DUE_SOON_DAYS - 1) };
 }
 
-function officeOf(deadline: ContentDeadline): string | null {
+/** The office a DAVIDSON OFFICES program deadline is from, as its source note names it, else null. */
+export function contentOffice(deadline: ContentDeadline): string | null {
   if (deadline.source !== "davidson-offices" || !deadline.officeSlug) return null;
   const office = getOffice(deadline.officeSlug);
   return office ? officeShortName(office) : null;
@@ -117,7 +120,7 @@ function fromContent(deadline: ContentDeadline, today: string, standing: ClassSt
     ongoing: deadline.date < today,
     courseCode: null,
     source: deadline.source,
-    office: officeOf(deadline),
+    office: contentOffice(deadline),
     fromSyllabus: false,
     url: deadline.url,
     verifiedAt: deadline.verifiedAt,
@@ -134,8 +137,8 @@ function fromStudent(deadline: StudentDeadline): DueSoonItem {
     forYou: true,
     day: etDay(deadline.dueAt),
     endDay: null,
-    time: etClock(deadline.dueAt),
-    dueAt: new Date(deadline.dueAt).toISOString(),
+    time: deadline.allDay ? null : etClock(deadline.dueAt),
+    dueAt: deadline.allDay ? null : new Date(deadline.dueAt).toISOString(),
     ongoing: false,
     courseCode: deadline.courseCode ?? null,
     source: studentDeadlineSource(deadline),
@@ -170,7 +173,7 @@ export function buildDueSoon(input: DueSoonInput): DueSoonItem[] {
     ...input.contentDeadlines
       .filter((deadline) => (deadline.endDate ?? deadline.date) >= from && deadline.date <= to)
       .map((deadline) => fromContent(deadline, from, input.standing)),
-    ...input.studentDeadlines.map(fromStudent).filter((item) => item.day <= to),
+    ...input.studentDeadlines.map(fromStudent).filter((item) => item.day >= from && item.day <= to),
   ].filter((item) => item.dueAt === null || Date.parse(item.dueAt) >= t);
   const sortDay = (item: DueSoonItem) => (item.ongoing ? from : item.day);
   return items.sort(

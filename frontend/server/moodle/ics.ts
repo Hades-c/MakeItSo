@@ -14,8 +14,8 @@ import { zonedTimeToUtc } from "@/server/feeds/time";
  * token with HTTP 200 and the text "Invalid authentication" (or "Invalid user"), which is an `auth` failure, not
  * an empty calendar. Per event:
  *   - UID and SUMMARY are required (an event without either is skipped and counted);
- *   - the due time is DTSTART (Moodle exports a due date as DTSTART = DTEND); a date without a time is due at
- *     23:59 Davidson time that day; a due time more than MOODLE_DUE_WINDOW_DAYS before or after now (the feed
+ *   - the due time is DTSTART (Moodle exports a due date as DTSTART = DTEND); a date without a time is `allDay`,
+ *     due at 23:59 Davidson time that day (for ordering; it is shown as the day alone); a due time more than MOODLE_DUE_WINDOW_DAYS before or after now (the feed
  *     covers "Recent and next 60 days", so a year 1901 or 2999 date is a typo or damage) is skipped and counted;
  *   - "… opens" events (a quiz or an assignment opening) are not deadlines and are left out; "Problem set 3 is
  *     due" becomes "Problem set 3"; STATUS:CANCELLED events are left out;
@@ -48,6 +48,8 @@ export interface MoodleEvent {
   dueAt: string;
   /** The course's short name as Moodle labels the event, or null. */
   category: string | null;
+  /** Exported as a date without a time (DTSTART;VALUE=DATE). */
+  allDay: boolean;
 }
 
 export interface MoodleParseResult {
@@ -69,15 +71,16 @@ function titleOf(summary: string): string {
   return cleanLine(line, MOODLE_TITLE_MAX);
 }
 
-function dueOf(component: ICAL.Component): Date | null {
+function dueOf(component: ICAL.Component): { due: Date; allDay: boolean } | null {
   const property = component.getFirstProperty("dtstart");
   const value = property?.getFirstValue();
   if (!(value instanceof ICAL.Time)) return null;
   if (value.isDate) {
-    return zonedTimeToUtc(
+    const due = zonedTimeToUtc(
       { year: value.year, month: value.month, day: value.day, hour: 23, minute: 59 },
       CAMPUS_TIME_ZONE,
     );
+    return { due, allDay: true };
   }
   const tzid = property?.getParameter("tzid");
   const instant = icalTimeToInstant(
@@ -85,7 +88,7 @@ function dueOf(component: ICAL.Component): Date | null {
     typeof tzid === "string" ? tzid : null,
     CAMPUS_TIME_ZONE,
   );
-  return Number.isNaN(instant.getTime()) ? null : instant;
+  return Number.isNaN(instant.getTime()) ? null : { due: instant, allDay: false };
 }
 
 function categoryOf(component: ICAL.Component): string | null {
@@ -128,21 +131,27 @@ export function parseMoodleCalendar(text: string, now: Date): MoodleParseResult 
       continue;
     const uid = (stringValue(vevent, "uid") ?? "").trim();
     const summary = stringValue(vevent, "summary") ?? "";
-    let due: Date | null = null;
+    let due: ReturnType<typeof dueOf> = null;
     try {
       due = dueOf(vevent);
     } catch {
       due = null;
     }
     const title = titleOf(summary);
-    if (!uid || uid.length > UID_MAX || !title || !due || !dueInWindow(due, now)) {
+    if (!uid || uid.length > UID_MAX || !title || !due || !dueInWindow(due.due, now)) {
       skipped++;
       continue;
     }
     if (/\bopens$/i.test(title)) continue;
     if (seen.has(uid)) continue;
     seen.add(uid);
-    events.push({ uid, title, dueAt: due.toISOString(), category: categoryOf(vevent) });
+    events.push({
+      uid,
+      title,
+      dueAt: due.due.toISOString(),
+      category: categoryOf(vevent),
+      allDay: due.allDay,
+    });
   }
 
   // Upcoming soonest first, then the most recent past ones: what a cap keeps.

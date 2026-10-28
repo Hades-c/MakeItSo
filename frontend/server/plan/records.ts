@@ -226,7 +226,7 @@ export async function addDeadlineImpl(
 export async function addSyllabusDeadlinesImpl(
   userId: string,
   syllabusId: string,
-  inputs: readonly Omit<StudentDeadline, "id" | "origin" | "syllabusId">[],
+  inputs: readonly Omit<StudentDeadline, "id" | "origin" | "syllabusId" | "allDay">[],
 ): Promise<{ deadlines: StudentDeadline[]; added: number }> {
   const oid = userObjectId(userId);
   const syllabusOid = objectId(syllabusId, "syllabus");
@@ -253,7 +253,7 @@ export async function addSyllabusDeadlinesImpl(
     for (const input of chosen) {
       const key = keyOf(input);
       if (existing.has(key) || fresh.has(key)) continue;
-      fresh.set(key, { id: newId(), ...input, origin: "syllabus", syllabusId });
+      fresh.set(key, { id: newId(), ...input, origin: "syllabus", syllabusId, allDay: true });
     }
     const adding = [...fresh.values()];
     // Every chosen deadline once, as the plan holds it after this save.

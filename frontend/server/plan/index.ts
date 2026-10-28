@@ -302,7 +302,7 @@ export async function removeDeadline(userId: string, deadlineId: string): Promis
 export async function addSyllabusDeadlines(
   userId: string,
   syllabusId: string,
-  inputs: readonly Omit<StudentDeadline, "id" | "origin" | "syllabusId">[],
+  inputs: readonly Omit<StudentDeadline, "id" | "origin" | "syllabusId" | "allDay">[],
 ): Promise<{ deadlines: StudentDeadline[]; added: number }> {
   return addSyllabusDeadlinesImpl(userId, syllabusId, inputs);
 }

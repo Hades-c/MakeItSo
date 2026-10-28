@@ -265,6 +265,7 @@ async function applyFeed(
         title: event.title,
         dueAt: event.dueAt,
         ...(courseCode ? { courseCode } : {}),
+        ...(event.allDay ? { allDay: true } : {}),
       };
     }),
     { windowStart: new Date(at.getTime() - RECENT_DAYS * 86_400_000), importId: target.importId },

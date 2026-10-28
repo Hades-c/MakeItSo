@@ -273,7 +273,7 @@ export default async function PrivacyPage() {
             <p>
               MakeItSo reads the calendar when you connect, when you choose Sync now, and when you
               open Today or Syllabi more than six hours after the last sync. From each event it
-              keeps only the <b>title</b>, the <b>due time</b>,{" "}
+              keeps only the <b>title</b>, the <b>due date and time</b> (or the date alone),{" "}
               <b>Moodle&apos;s id for the event</b> (so a later sync can update or remove it) and,
               when the course name names a Davidson course, <b>that course&apos;s code</b>.
               Descriptions, locations, course names and everything else Moodle sends are dropped.

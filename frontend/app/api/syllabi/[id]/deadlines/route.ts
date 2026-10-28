@@ -8,9 +8,10 @@ import { getSyllabus } from "@/server/syllabi";
 
 /**
  * POST /api/syllabi/[id]/deadlines → 201 { deadlines, added }. Review-before-save: the body is whatever subset of
- * the syllabus's extracted deadlines the student kept, possibly with edited titles or dates. Each is due at the
- * end of its day (23:59, Davidson time: a syllabus gives a day, not a time) and tagged with the syllabus's own
- * course and this syllabusId, origin "syllabus". Saving the same review twice adds nothing the second time.
+ * the syllabus's extracted deadlines the student kept, possibly with edited titles or dates. A syllabus gives a
+ * day, not a time: each is stored at the end of its day (23:59, Davidson time, for ordering) and read back as
+ * `allDay` (shown as the day alone), tagged with the syllabus's own course and this syllabusId, origin
+ * "syllabus". Saving the same review twice adds nothing the second time.
  */
 export const POST = defineRoute(syllabiApi.saveDeadlines, async ({ user, params, body }) => {
   const syllabus = await getSyllabus(user.id, params.id);

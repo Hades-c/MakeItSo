@@ -33,37 +33,43 @@ describe("parseMoodleCalendar", () => {
         title: "Problem set 3",
         dueAt: "2026-10-02T03:59:00.000Z",
         category: "CSC221-A-F26",
+        allDay: false,
       },
       {
         uid: "90004@moodle.davidson.edu",
         title: "Response paper 2",
         dueAt: "2026-10-03T03:00:00.000Z",
         category: "ENG260-B-F26",
+        allDay: false,
       },
       {
         uid: "90003@moodle.davidson.edu",
         title: "Quiz 2 closes",
         dueAt: "2026-10-06T03:59:00.000Z",
         category: "CSC221-A-F26",
+        allDay: false,
       },
-      // A date without a time: 23:59 Davidson time that day.
+      // A date without a time: all day, at 23:59 Davidson time that day for ordering.
       {
         uid: "90011@moodle.davidson.edu",
         title: "Reading journal",
         dueAt: "2026-10-09T03:59:00.000Z",
         category: "ENG260-B-F26",
+        allDay: true,
       },
       {
         uid: "90006@moodle.davidson.edu",
         title: "Advising worksheet",
         dueAt: "2026-10-09T17:00:00.000Z",
         category: "First-Year Advising F26",
+        allDay: false,
       },
       {
         uid: "90007@moodle.davidson.edu",
         title: "Final project proposal",
         dueAt: "2026-10-21T03:59:00.000Z",
         category: "CSC221-A-F26",
+        allDay: false,
       },
       // Past ones after the upcoming, the most recent first.
       {
@@ -71,12 +77,14 @@ describe("parseMoodleCalendar", () => {
         title: "Problem set 2",
         dueAt: "2026-09-26T03:59:00.000Z",
         category: "CSC221-A-F26",
+        allDay: false,
       },
       {
         uid: "90009@moodle.davidson.edu",
         title: "Reading quiz 1",
         dueAt: "2026-09-20T03:59:00.000Z",
         category: "CSC221-A-F26",
+        allDay: false,
       },
     ]);
     // "Quiz 2 opens" is not a deadline, the cancelled retake is gone, and no description or location is kept.

@@ -71,6 +71,8 @@ const StudentDeadlineSubSchema = new Schema({
   syllabusId: { type: Schema.Types.ObjectId },
   /** Moodle's UID for the event (origin "moodle" only): what the next sync matches, updates or removes by. */
   externalUid: { type: String, maxlength: 255 },
+  /** A Moodle event exported as a date, no time (syllabus deadlines are all-day by origin: server/plan/store.ts). */
+  allDay: { type: Boolean },
 });
 
 const WebTreeChoiceSubSchema = new Schema(

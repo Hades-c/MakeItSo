@@ -38,9 +38,10 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** "Thu Oct 1, 11:59p" in Davidson time. */
-function dueText(dueAt: string): string {
-  return `${formatWeekday(dueAt).slice(0, 3)} ${formatShortDate(dueAt)}, ${formatClock(dueAt)}`;
+/** "Thu Oct 1, 11:59p" in Davidson time; "Thu Oct 8" for a Moodle date without a time (`allDay`). */
+function dueText(deadline: Pick<StudentDeadline, "dueAt" | "allDay">): string {
+  const day = `${formatWeekday(deadline.dueAt).slice(0, 3)} ${formatShortDate(deadline.dueAt)}`;
+  return deadline.allDay ? day : `${day}, ${formatClock(deadline.dueAt)}`;
 }
 
 /**
@@ -358,9 +359,7 @@ function ImportedList({
                 {deadline.courseCode ? <CourseCode code={deadline.courseCode} /> : null}
                 <span className="min-w-0">{deadline.title}</span>
               </span>
-              <span className="shrink-0 text-xs font-medium text-fg-2">
-                {dueText(deadline.dueAt)}
-              </span>
+              <span className="shrink-0 text-xs font-medium text-fg-2">{dueText(deadline)}</span>
             </li>
           ))}
         </ul>
