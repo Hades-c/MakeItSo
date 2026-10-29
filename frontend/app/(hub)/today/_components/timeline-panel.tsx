@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { DayTimeline, type TimelineNextUp } from "@/components/domain/day-timeline";
 import { windowLabel } from "@/components/domain/time-geometry";
+import { AiChip } from "@/components/ui/ai-chip";
+import { CourseCode } from "@/components/ui/course-code";
 import { SectionCard } from "@/components/ui/section-card";
+import { runHeads, SourceNote } from "@/components/ui/source-tag";
 import { AlarmClock, ExternalLink } from "lucide-react";
-import { SourceTag } from "@/components/ui/source-tag";
 import { formatLongDate } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { DaySchedule } from "@/lib/types/plan";
@@ -28,6 +30,7 @@ import {
 import { feedRange } from "../_lib/params";
 import { cn } from "@/lib/utils";
 import { STRETCHED_LINK, TEXT_LINK } from "../_lib/styles";
+import { dueSourceNote } from "./due-soon-panel";
 import { PanelError } from "./panel-states";
 
 export interface TimelinePanelProps {
@@ -184,36 +187,66 @@ export async function TimelinePanel({
   );
 }
 
-/** The day's deadlines without a published time ("Due all day"), each tagged and linked to its source page. */
+/**
+ * The day's deadlines without a published time ("Due all day"): the calendar's, each linked to its source page,
+ * and the student's own due that day at no stated time (a syllabus's, a Moodle date). Each says its source as
+ * Due for you does (dueSourceNote: "via Registrar", "From your syllabus" with the AI chip, "via Moodle"; nothing
+ * on screen for one the student typed), once per run of rows with the same words.
+ */
 function AllDayList({ items, isToday }: { items: readonly AllDayDeadline[]; isToday: boolean }) {
+  const notes = items.map((item) => dueSourceNote(item));
+  const heads = runHeads(notes.map((note) => note?.label ?? null));
   return (
     <ul
       data-testid="timeline-all-day"
       aria-label={isToday ? "Due today, no set time" : "Due that day, no set time"}
       className="mb-3 flex flex-col gap-1.5"
     >
-      {items.map((item) => (
+      {items.map((item, i) => (
         <li
           key={item.id}
-          data-aggregated={item.source}
+          data-source={item.source}
           className="relative flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-line px-3 py-2 text-sm"
         >
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-urgent">
             <AlarmClock aria-hidden className="size-3.5 shrink-0" />
             Due {isToday ? "today" : "that day"}
           </span>
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(STRETCHED_LINK, "font-semibold text-fg")}
-          >
-            {item.title} <span className="sr-only">(opens in a new tab)</span>
-            <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
-          </a>
-          <SourceTag source={item.source} />
+          {item.courseCode ? <CourseCode code={item.courseCode} /> : null}
+          {item.url ? (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(STRETCHED_LINK, "font-semibold text-fg")}
+            >
+              {item.title} <span className="sr-only">(opens in a new tab)</span>
+              <ExternalLink aria-hidden className="inline size-3.5 align-[-0.125em] text-fg-3" />
+            </a>
+          ) : (
+            <span className="font-semibold text-fg">{item.title}</span>
+          )}
+          <AllDayNote item={item} note={notes[i] ?? null} show={heads[i] ?? true} />
         </li>
       ))}
     </ul>
+  );
+}
+
+function AllDayNote({
+  item,
+  note,
+  show,
+}: {
+  item: AllDayDeadline;
+  note: ReturnType<typeof dueSourceNote>;
+  show: boolean;
+}) {
+  if (!note) return <SourceNote source={item.source} label="your plan" hidden />;
+  return (
+    <>
+      <SourceNote source={item.source} label={note.label} hidden={!show} className="text-xs" />
+      {note.ai ? <AiChip compact label="read from your syllabus: check the dates" /> : null}
+    </>
   );
 }

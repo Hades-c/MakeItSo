@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { WRAP_CHIP } from "./wrap";
 import { Chip } from "@/components/ui/chip";
-import { SourceTag } from "@/components/ui/source-tag";
 import type { CourseAboutResultSchema } from "@/lib/api/ai";
 import { ApiClientError, callApi } from "@/lib/api/client";
 import { aiEndpoints } from "@/lib/api/endpoints";
@@ -68,7 +67,6 @@ function Heading() {
       </h2>
       <span className="flex items-center gap-2">
         <AiChip />
-        <SourceTag source="ai" />
       </span>
     </div>
   );
@@ -290,7 +288,6 @@ export function CourseAboutPanel({
   return (
     <section
       aria-labelledby="about-ai-title"
-      data-aggregated="ai"
       data-testid="course-about-ai"
       className="min-w-0 rounded-xl border border-dashed border-line-strong bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5"
     >

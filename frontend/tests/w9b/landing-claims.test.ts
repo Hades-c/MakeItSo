@@ -3,9 +3,7 @@ import {
   aiProviderConfigured,
   joinWords,
   landingClaims,
-  landingSources,
   loadLandingClaims,
-  type LandingClaims,
 } from "@/app/(marketing)/_lib/claims";
 import type { Flags } from "@/lib/flags";
 
@@ -16,6 +14,7 @@ const ON: Flags = {
   events: true,
   alumni: true,
   ai: true,
+  moodle: true,
   rmp: true,
   rmpSummaries: false,
 };
@@ -109,32 +108,11 @@ describe("loadLandingClaims", () => {
   });
 });
 
-describe("joinWords and landingSources", () => {
+describe("joinWords", () => {
   it("joins words the way the copy reads", () => {
     expect(joinWords([])).toBe("");
     expect(joinWords(["Deadlines"])).toBe("Deadlines");
     expect(joinWords(["a", "b"])).toBe("a and b");
     expect(joinWords(["a", "b", "c"])).toBe("a, b and c");
-  });
-
-  it("names only sources some page shows items from", () => {
-    const none: LandingClaims = {
-      careers: false,
-      alumni: false,
-      events: false,
-      ai: false,
-      ratings: false,
-    };
-    expect(landingSources(none)).toEqual(["course-schedule", "registrar"]);
-    expect(landingSources({ ...none, ratings: true, events: true })).toEqual([
-      "course-schedule",
-      "registrar",
-      "ratemyprofessors",
-      "wildcatsync",
-      "hurt-hub",
-      "library",
-      "events-digest",
-    ]);
-    expect(landingSources({ ...none, ratings: true, events: true })).not.toContain("davidsonian");
   });
 });

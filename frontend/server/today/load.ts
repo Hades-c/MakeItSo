@@ -4,20 +4,23 @@ import type { ClassStanding, TermCode } from "@/lib/term";
 import { termLabel } from "@/lib/term";
 import type { ResolvedTerms } from "@/lib/types/catalog";
 import type { FeedItem } from "@/lib/types/feeds";
-import type { DaySchedule, PlanProgress, PlanView } from "@/lib/types/plan";
+import type { DaySchedule, PlanView } from "@/lib/types/plan";
 import { getProfile, type ProfileView } from "@/server/auth/profile";
 import { resolveTerms } from "@/server/catalog";
 import { deadlinesBetween, type ContentDeadline } from "@/server/content/deadlines";
 import { listEvents } from "@/server/feeds";
 import { MissingFixtureError } from "@/server/http/fixtures";
-import { getDaySchedule, getPlan, getProgress } from "@/server/plan";
+import { isMoodleConnected } from "@/server/moodle";
+import { getDaySchedule, getPlan } from "@/server/plan";
+import { isActiveItem } from "@/server/plan/requirements";
+import { countSyllabi } from "@/server/syllabi";
 import { addDaysToKey, dayBounds } from "@/server/today/time";
 
 /**
  * Today's data loaders (server components call these; no self-HTTP). Each is memoised per request with React
- * cache(), so the headline, the strip and the panels share one read of the plan, the terms and each day's
- * schedule. `attempt()` turns a failure into `{ ok: false }` (logged) so one panel's outage never takes the page
- * down; a missing test fixture is never hidden.
+ * cache(), so the header, the strip and the panels share one read of the plan, the terms and each day's schedule.
+ * `attempt()` turns a failure into `{ ok: false }` (logged) so one panel's outage never takes the page down; a
+ * missing test fixture is never hidden.
  */
 
 export type Loaded<T> = { ok: true; value: T } | { ok: false };
@@ -57,10 +60,6 @@ export const loadTerms = cache((): Promise<Loaded<ResolvedTerms>> =>
 
 export const loadPlan = cache((userId: string): Promise<Loaded<PlanView>> =>
   attempt("the plan", () => getPlan(userId)),
-);
-
-export const loadProgress = cache((userId: string): Promise<Loaded<PlanProgress>> =>
-  attempt("degree progress", () => getProgress(userId)),
 );
 
 export const loadSchedule = cache((userId: string, day: string): Promise<Loaded<DaySchedule>> =>
@@ -118,6 +117,28 @@ export async function nextClassDay(
     if (loaded.value.empty === "no-term" || loaded.value.empty === "no-sections") return null;
   }
   return null;
+}
+
+/**
+ * Whether Due for you points to /syllabi ("Add your syllabi or connect Moodle"): the student has classes this
+ * term, and no syllabus and no Moodle connection yet. Quiet on any failure (false).
+ */
+export async function wantsSyllabiPointer(
+  userId: string,
+  plan: PlanView,
+  currentTerm: TermCode | null,
+): Promise<boolean> {
+  if (!currentTerm) return false;
+  const hasClasses = plan.items.some(
+    (item) => item.termCode === currentTerm && isActiveItem(item) && item.status !== "completed",
+  );
+  if (!hasClasses) return false;
+  if (plan.deadlines.some((d) => d.origin === "syllabus" || d.origin === "moodle")) return false;
+  const loaded = await attempt("the syllabi and Moodle connection", async () => {
+    const [syllabi, moodle] = await Promise.all([countSyllabi(userId), isMoodleConnected(userId)]);
+    return syllabi === 0 && !moodle;
+  });
+  return loaded.ok && loaded.value;
 }
 
 /** "Fall 2026" for the schedule's term, else the current term. */

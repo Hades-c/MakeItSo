@@ -5,7 +5,6 @@ import {
   CircleAlert,
   CircleCheck,
   Clock,
-  ListChecks,
   MapPin,
   Plus,
   TriangleAlert,
@@ -15,7 +14,8 @@ import { WeekGrid } from "@/components/domain/week-grid";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { CourseCode } from "@/components/ui/course-code";
-import { SourceTag } from "@/components/ui/source-tag";
+import { provenance, SourceLine } from "@/components/ui/source-tag";
+import { DEFAULT_TIME_ZONE, formatAsOf } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { compareTerms, termLabel, type TermCode } from "@/lib/term";
 import type { Availability, Course, ReqCode, Section } from "@/lib/types/catalog";
@@ -38,8 +38,8 @@ import { BREAK_TEXT, WRAP_CHIP } from "./wrap";
 /**
  * The course page's cards (PLAN §3 /courses/[term]/[code], Lakeside course.html): the index-card header, About
  * (official description, requirements, "Also counts for", prerequisites), Other terms (availability per term,
- * PLAN §5) and the week grid against the student's plan. Server components; every aggregated block carries its
- * source tag.
+ * PLAN §5) and the week grid against the student's plan. Server components. The header's quiet line under the
+ * seats is the page's one source line ("Course schedule · seats as of Sep 30, 12:00 PM").
  */
 
 const CARD =
@@ -78,22 +78,26 @@ export function CourseHeader({
   term,
   chosen,
   departmentName,
-  asOf,
   offered,
   inPlan = false,
+  asOf = null,
+  timeZone = DEFAULT_TIME_ZONE,
 }: {
   /** The course in this term, or the latest offering when it is not on this term's schedule. */
   course: Course;
   term: TermCode;
   chosen: Section | null;
   departmentName: string | null;
-  asOf: string | null;
   /** The course is on this term's schedule. */
   offered: boolean;
   /** The student already has the course in their plan for this page's term (the Add to plan panel says so too). */
   inPlan?: boolean;
+  /** When this term's schedule was fetched: the seats' "as of" (null: unknown, or not on this term's schedule). */
+  asOf?: string | null;
+  timeZone?: string;
 }) {
   const section = chosen;
+  const credits = section ? creditsLabel([section.credits]) : creditsLabel(course.credits);
   const title = course.topics && section ? section.title : course.title;
   const timed = section?.meetings.filter((meeting) => meetingTime(meeting)) ?? [];
   const rooms = [
@@ -101,7 +105,6 @@ export function CourseHeader({
       (section?.meetings ?? []).map(meetingRoom).filter((room): room is string => room !== null),
     ),
   ];
-  const prereqs = new Set(course.sections.map((s) => s.prerequisitesText).filter(Boolean));
   const kicker = [
     departmentName ?? course.code.split(" ")[0],
     section ? `CRN ${section.crn}` : null,
@@ -109,11 +112,7 @@ export function CourseHeader({
   ].filter(Boolean);
 
   return (
-    <header
-      className="relative mt-7 mb-5"
-      data-aggregated="course-schedule"
-      data-testid="course-header"
-    >
+    <header className="relative mt-7 mb-5" data-testid="course-header">
       <CourseCode
         code={course.code}
         section={section?.section}
@@ -130,7 +129,6 @@ export function CourseHeader({
                 {part}
               </span>
             ))}
-            <SourceTag source="course-schedule" asOf={asOf} />
           </p>
           <h1
             className={cn(
@@ -150,7 +148,6 @@ export function CourseHeader({
               <span className="font-semibold">
                 {section.instructors.map(instructorName).join(", ")}
               </span>
-              {departmentName ? <span className="text-fg-2"> · {departmentName}</span> : null}
             </p>
           ) : null}
           <ul aria-label="Course facts" className="flex flex-wrap gap-2">
@@ -172,18 +169,14 @@ export function CourseHeader({
                 </Chip>
               </li>
             ) : null}
-            <li>
-              <Chip variant="neutral" className={cn(WRAP_CHIP, "text-sm text-fg")}>
-                <BookOpen aria-hidden />
-                {section ? creditsLabel([section.credits]) : creditsLabel(course.credits)}
-              </Chip>
-            </li>
-            <li>
-              <Chip variant="neutral" className={cn(WRAP_CHIP, "text-sm text-fg")}>
-                <ListChecks aria-hidden />
-                {prereqs.size > 0 ? "Prerequisites listed below" : "No prerequisites listed"}
-              </Chip>
-            </li>
+            {credits ? (
+              <li>
+                <Chip variant="neutral" className={cn(WRAP_CHIP, "text-sm text-fg")}>
+                  <BookOpen aria-hidden />
+                  {credits}
+                </Chip>
+              </li>
+            ) : null}
           </ul>
         </div>
         <div className="flex min-w-0 flex-col justify-center gap-4 border-line lg:border-l lg:pl-8">
@@ -202,6 +195,9 @@ export function CourseHeader({
                 : `Not on the ${termLabel(term)} schedule. Shown from ${termLabel(course.termCode)}.`}
             </p>
           )}
+          <SourceLine className="-mt-2" testId="course-source">
+            {scheduleSourceText(asOf, timeZone)}
+          </SourceLine>
           {inPlan ? (
             <Button asChild size="lg" variant="secondary" className="w-full">
               <a href="#add-to-plan" data-testid="header-in-plan">
@@ -222,6 +218,20 @@ export function CourseHeader({
       </div>
     </header>
   );
+}
+
+/**
+ * "Course schedule · seats as of Sep 30, 12:00 PM": the schedule named once, with when its seats were read (the
+ * seats move all through registration). Just "Course schedule" when the time is unknown or unparseable.
+ */
+export function scheduleSourceText(
+  asOf: string | null,
+  timeZone: string = DEFAULT_TIME_ZONE,
+): string {
+  const at = asOf ? new Date(asOf) : null;
+  return at && !Number.isNaN(at.getTime())
+    ? `Course schedule · seats as of ${formatAsOf(at, timeZone)}`
+    : "Course schedule";
 }
 
 // ---- About -------------------------------------------------------------------------------------------------------
@@ -267,7 +277,6 @@ export function CourseAboutCard({
   requirementsBySection,
   programs,
   disclaimer,
-  asOf,
 }: {
   course: Course;
   requirements: RequirementTag[];
@@ -278,16 +287,18 @@ export function CourseAboutCard({
   requirementsBySection?: { sections: string[]; reqs: RequirementTag[] | null }[];
   programs: CoursePrograms | null;
   disclaimer: string;
-  asOf: string | null;
 }) {
   const descriptions = distinctBySection(course.sections, (s) => s.descriptionText);
   const prereqs = distinctBySection(course.sections, (s) => s.prerequisitesText);
   const several = (list: { sections: string[] }[]) => list.length > 1;
+  // "Course catalog" (and how much of it was read), under the programs found or a partial read of it.
+  const catalogLine =
+    programs !== null &&
+    programs.pagesRead > 0 &&
+    (programs.matches.length > 0 || programs.pagesRead < programs.pagesTotal);
   return (
-    <section aria-labelledby="about-title" className={CARD} data-aggregated="course-schedule">
-      <CardHeading id="about-title" title="About">
-        <SourceTag source="course-schedule" asOf={asOf} />
-      </CardHeading>
+    <section aria-labelledby="about-title" className={CARD}>
+      <CardHeading id="about-title" title="About" />
       {descriptions.length === 0 ? (
         <p className="text-sm text-fg-2">The schedule has no description for this course.</p>
       ) : (
@@ -337,7 +348,11 @@ export function CourseAboutCard({
         </dd>
 
         <dt className="text-xs font-medium text-fg-3 md:pt-0.5">Also counts for</dt>
-        <dd className="min-w-0" data-aggregated="catalog" data-testid="also-counts-for">
+        <dd
+          className="min-w-0"
+          data-testid="also-counts-for"
+          {...(catalogLine ? provenance(["catalog"]) : {})}
+        >
           {programs === null ? (
             <span className="text-fg-2">The catalog’s programs can’t be read right now.</span>
           ) : programs.matches.length === 0 && programs.pagesRead === 0 ? (
@@ -354,7 +369,7 @@ export function CourseAboutCard({
           ) : (
             <ul className="flex flex-col gap-1">
               {programs.matches.map((match) => (
-                <li key={match.name}>
+                <li key={match.name} data-source="catalog">
                   <a
                     href={match.url}
                     target="_blank"
@@ -362,18 +377,20 @@ export function CourseAboutCard({
                     className="inline-flex min-h-11 items-center link md:inline md:min-h-0"
                   >
                     {match.name}
-                    <span className="sr-only"> (catalog page, opens in a new tab)</span>
+                    <span className="sr-only">, catalog page (opens in a new tab)</span>
                   </a>
                 </li>
               ))}
             </ul>
           )}
-          <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-fg-3">
-            <SourceTag source="catalog" />
-            {programs && programs.pagesRead > 0 && programs.pagesRead < programs.pagesTotal
-              ? `Based on ${programs.pagesRead} of ${programs.pagesTotal} program pages`
-              : null}
-          </p>
+          {programs && catalogLine ? (
+            <SourceLine className="mt-1.5">
+              Course catalog
+              {programs.pagesRead < programs.pagesTotal
+                ? ` · based on ${programs.pagesRead} of ${programs.pagesTotal} program pages`
+                : null}
+            </SourceLine>
+          ) : null}
         </dd>
 
         <dt id="prerequisites" className="text-xs font-medium text-fg-3 md:pt-0.5">
@@ -415,10 +432,8 @@ export function OtherTermsCard({
 }) {
   const entries = [...history].sort((a, b) => compareTerms(b.termCode, a.termCode));
   return (
-    <section aria-labelledby="terms-title" className={CARD} data-aggregated="course-schedule">
-      <CardHeading id="terms-title" title="Other terms">
-        <SourceTag source="course-schedule" />
-      </CardHeading>
+    <section aria-labelledby="terms-title" className={CARD}>
+      <CardHeading id="terms-title" title="Other terms" />
       <ul className="divide-y divide-line" data-testid="other-terms">
         {entries.map((entry) => {
           const usually = usuallyOfferedText(entry);
@@ -426,6 +441,7 @@ export function OtherTermsCard({
           return (
             <li
               key={entry.termCode}
+              data-source="course-schedule"
               data-term={entry.termCode}
               data-status={entry.status}
               className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
@@ -479,7 +495,6 @@ export function CourseWeekCard({
       id="week"
       aria-labelledby="week-title"
       className={cn(CARD, "scroll-mt-24")}
-      data-aggregated="my-plan"
       data-testid="course-week"
     >
       <CardHeading id="week-title" title={`Your week with ${code}`} focusable>
@@ -497,7 +512,6 @@ export function CourseWeekCard({
               </span>
             )
           ) : null}
-          <SourceTag source="my-plan" />
         </span>
       </CardHeading>
       <p className="mb-3 text-sm text-fg-2">

@@ -115,6 +115,7 @@ describe("GET /api/profile", () => {
       firstTerm: null,
       standingOverride: null,
       interests: [],
+      goals: [],
       aiConsentAt: null,
       adultAttestedAt: null,
       onboardedAt: null,
@@ -288,6 +289,26 @@ describe("PATCH /api/profile (strict whitelist)", () => {
   it("drops stored interests that are not career-path slugs on read", async () => {
     await signedIn({ interests: ["astronaut", "law", "Law", "law", "medicine", 7] });
     expect((await profileOf(await get())).interests).toEqual(["law", "medicine"]);
+  });
+
+  it("stores goals as de-duplicated goal-statement slugs (400 goals.N otherwise)", async () => {
+    const user = await signedIn();
+    expect(
+      (await profileOf(await patch({ goals: ["grad-school", "research", "research"] }))).goals,
+    ).toEqual(["grad-school", "research"]);
+    const res = await patch({ goals: ["grad-school", "not-a-goal"] });
+    expect(res.status).toBe(400);
+    expect(await errorOf(res)).toMatchObject({
+      code: "validation_failed",
+      issues: [{ path: "goals.1", message: "Pick a goal from the list." }],
+    });
+    // Nothing is written when any slug is unknown.
+    expect((await raw(user.id))?.goals).toEqual(["grad-school", "research"]);
+  });
+
+  it("drops stored goals that are not goal-statement slugs on read", async () => {
+    await signedIn({ goals: ["grad-school", "grad-school", "not-a-goal", 7] });
+    expect((await profileOf(await get())).goals).toEqual(["grad-school"]);
   });
 
   it("AI consent needs the 18+ attestation; turning either off clears the consent", async () => {

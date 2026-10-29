@@ -1,7 +1,7 @@
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
+import { runHeads, SourceNote, viaLabel } from "@/components/ui/source-tag";
 import { StatNumber } from "@/components/ui/stat-number";
 import type { Career, ResourceLink } from "@/lib/types/content";
 import { formatContentDate, formatUsd } from "../_lib/format";
@@ -38,6 +38,7 @@ export function PayCard({ pay }: { pay: Career["pay"] }) {
             value={formatUsd(pay.medianAnnual)}
             label={`median pay per year (${pay.period})`}
           />
+          <p className="mt-1 text-sm text-fg-2">All experience levels, not starting pay.</p>
           <p className="mt-2 text-sm text-fg-2">{pay.occupation}</p>
           <p className="mt-2 text-sm text-fg">
             <span className="font-semibold">Projected growth:</span> {pay.projectedGrowth}
@@ -96,8 +97,10 @@ function ResourceFacts({
 }
 
 /**
- * Davidson resources: each with the truthful tag of the office whose page it is (MATTHEWS CENTER, HURT HUB
- * PROGRAMS, DAVIDSON OFFICES + the office's name), and a program's amount and deadlines exactly as published.
+ * Davidson resources: each with the office whose page it is, named quietly next to it ("via Matthews Center", "via
+ * Hurt Hub programs", "via <office short name>" for the other offices; once per run of rows from one office), and
+ * a program's amount and deadlines exactly as published. A page no curated source covers (a department's) names
+ * no office.
  */
 export function DavidsonResourcesCard({
   resources,
@@ -106,27 +109,28 @@ export function DavidsonResourcesCard({
   resources: readonly ResolvedResource[];
   verifiedAt: string;
 }) {
+  const labels = resources.map((resource) =>
+    resource.source ? viaLabel(resource.source, resource.officeName) : null,
+  );
+  const heads = runHeads(labels);
   return (
     <SectionCard id="davidson-resources" title="At Davidson">
       <ul className="flex flex-col divide-y divide-line">
-        {resources.map((resource) => (
+        {resources.map((resource, i) => (
           <li
             key={resource.url + resource.name}
             className="py-3 first:pt-0 last:pb-0"
-            // Every item is marked, tagged or not: an untagged one names its exemption, which expectAllTagged
-            // checks against UNTAGGED_EXEMPTIONS (so a new untagged kind fails instead of passing unnoticed).
-            data-aggregated={resource.source ?? "untagged"}
             data-source={resource.source ?? undefined}
-            data-untagged={resource.source ? undefined : (resource.untagged ?? "")}
           >
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <ExternalLink href={resource.url}>{resource.name}</ExternalLink>
-              {resource.source ? <SourceTag source={resource.source} /> : null}
-              {resource.officeName ? (
-                <span className="text-xs text-fg-3">{resource.officeName}</span>
-              ) : null}
-              {resource.untagged === "davidson-web" ? (
-                <span className="text-xs text-fg-3">davidson.edu page</span>
+              {resource.source ? (
+                <SourceNote
+                  source={resource.source}
+                  label={labels[i]!}
+                  hidden={!heads[i]}
+                  className="text-xs"
+                />
               ) : null}
             </div>
             <p className="mt-1 text-sm text-fg-2">{resource.description}</p>
@@ -152,11 +156,11 @@ export function DavidsonResourcesCard({
 export function HandshakeCard({ baseUrl, query }: { baseUrl: string; query: string }) {
   return (
     <SectionCard id="handshake" title="Jobs and internships">
-      <div data-aggregated="handshake" data-source="handshake">
-        <div className="flex flex-wrap items-center gap-2">
-          <SourceTag source="handshake" />
-          <span className="text-sm text-fg-2">Davidson’s job and internship site</span>
-        </div>
+      <div>
+        <p className="text-sm text-fg-2" data-source="handshake">
+          <span className="sr-only">Source: </span>
+          Handshake, Davidson’s job and internship site
+        </p>
         <p className="mt-3 text-sm text-fg-2">Search Handshake for:</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <code

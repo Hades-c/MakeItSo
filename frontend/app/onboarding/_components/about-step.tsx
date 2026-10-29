@@ -23,14 +23,14 @@ import {
   type AboutProblem,
 } from "../_lib/academics";
 import { describeFailure, issueFor } from "../_lib/errors";
-import { nextStep, stepHref } from "../_lib/steps";
+import { isRequiredStep, nextStep, stepHref } from "../_lib/steps";
 import { NativeSelect, StepActions, useFocusRequest, useSetupNext } from "./parts";
 
 /**
  * Step 1: graduation year, first term at Davidson (default Fall of graduationYear − 4, following the year until
  * the student picks a term themselves), and majors/minors from the official Acalog names. The first major row
  * offers "Undecided" (UI only: it saves `majors: []`). "Save and continue" sends PATCH /api/profile, then moves
- * to step 2; "Skip this step" moves on without saving.
+ * to step 2. A required step: no "Skip this step", and the later steps open once it is saved.
  *
  * A stored major or minor the catalog no longer lists stays visible as "(no longer offered)" and must be replaced
  * or removed before saving. Any error (before or after saving) is announced in one alert and focuses the first
@@ -221,6 +221,7 @@ export function AboutStep({ initial, majorNames, minorNames, now }: AboutStepPro
 
       <StepActions
         step="about"
+        hideSkip={isRequiredStep("about")}
         primary={
           <Button type="submit" aria-disabled={saving || undefined}>
             {saving ? "Saving…" : "Save and continue"}

@@ -26,7 +26,7 @@ import { stepProgress, type StepProgress } from "./steps";
  *   profile       getProfile (W3): official names already mapped; firstTerm null until saved
  *   majors/...    official Acalog names (W3 officialNames: server/programs, else the checked-in snapshot), then
  *                 the unlisted programs (W3 profileProgramNames: a CIS major, the Middle East Studies minor)
- *   careers       the interests taxonomy (career-path slugs, server/content)
+ *   careers       the interests taxonomy (career-path slugs, server/content); goals come from lib/goals.ts
  *   terms         the current term (step 2 "Your Fall 2026 classes"), the status its classes get, and the
  *                 terms a completed course can come from (first term → the term before the current one)
  *   items         the plan as getPlan returns it: v2, or a legacy v1 plan converted in memory (legacy: true),
@@ -56,7 +56,14 @@ export interface OnboardingTerms {
 export interface OnboardingData {
   profile: Pick<
     Profile,
-    "name" | "majors" | "minors" | "graduationYear" | "firstTerm" | "interests" | "onboardedAt"
+    | "name"
+    | "majors"
+    | "minors"
+    | "graduationYear"
+    | "firstTerm"
+    | "interests"
+    | "goals"
+    | "onboardedAt"
   >;
   majors: string[];
   minors: string[];
@@ -115,6 +122,7 @@ export async function loadOnboarding(userId: string): Promise<OnboardingData> {
       graduationYear: view.graduationYear,
       firstTerm: view.firstTerm,
       interests: view.interests,
+      goals: view.goals,
       onboardedAt: view.onboardedAt,
     },
     majors: majors.names,
@@ -135,8 +143,10 @@ export async function loadOnboarding(userId: string): Promise<OnboardingData> {
       majors: view.majors,
       minors: view.minors,
       currentTermItems: termItems(items, current.code).length,
+      startsLater,
       completedItems: completedItems(items).length,
       interests: view.interests,
+      goals: view.goals,
     }),
     now: at.toISOString(),
   };

@@ -6,16 +6,20 @@ import { SUPPORT_CONTACT } from "@/app/(auth)/_lib/support";
 import { Wordmark } from "@/components/app/wordmark";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/lib/routes";
+import { MAX_SYLLABUS_CHARS } from "@/lib/syllabus-text";
 import { loadAiAllowsUnverified } from "@/server/ai/access";
+import { loadFlags } from "@/server/features";
+
+const SYLLABUS_LIMIT = MAX_SYLLABUS_CHARS.toLocaleString("en-US");
 
 export const metadata: Metadata = {
   title: "Privacy",
   description:
-    "What MakeItSo stores, what its optional AI features send to Anthropic, where alumni data comes from, how long anything is kept, and how to export or delete your data.",
+    "What MakeItSo stores, what its optional AI features send to Anthropic, what the optional Moodle import reads, where alumni data comes from, how long anything is kept, and how to export or delete your data.",
 };
 
 /** When this notice last changed (update it with every change to the text). */
-const LAST_UPDATED = "October 25, 2026";
+const LAST_UPDATED = "October 28, 2026";
 
 /**
  * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Rendered per request only because of the owner's
@@ -25,8 +29,10 @@ const LAST_UPDATED = "October 25, 2026";
  * 30 days, feed items 60 days, rate limits by window), the AI payload allow-list (server/ai/payloads.ts), the
  * account data registry (server/account/erasers.ts: the built-in legacy erasers cover `courseplans`,
  * `careergoals` and the personal `aicaches` rows; legacy cold-email rows are keyed by name only and are not
- * covered), the cookies NextAuth sets, and the mail adapter (server/auth/mailer.ts: Resend). Change the text in
- * the same commit as the behaviour.
+ * covered), the cookies NextAuth sets, the mail adapter (server/auth/mailer.ts: Resend), pasted syllabi
+ * (lib/syllabus-text.ts limit, server/syllabi: the text is sent once and never stored) and the Moodle import
+ * (server/moodle: the encrypted feed URL, what is read from each event, the 6-hour sync). Change the text in the
+ * same commit as the behaviour. The Moodle section follows MOODLE_IMPORT_ENABLED.
  */
 
 function Section({
@@ -63,6 +69,7 @@ export default async function PrivacyPage() {
   // Read per request, never at build time.
   await connection();
   const aiWithoutVerifying = loadAiAllowsUnverified();
+  const moodleOn = loadFlags().moodle;
   return (
     <div className="min-h-dvh bg-bg">
       <header className="border-b border-line bg-surface">
@@ -122,14 +129,24 @@ export default async function PrivacyPage() {
                 that lets you sign out on every device.
               </li>
               <li>
-                <b>Profile:</b> the majors and minors, graduation year, first term, class standing
-                and career interests you choose, whether you finished onboarding, and when you
-                turned AI features on and confirmed you are 18 or older.
+                <b>Profile:</b> the majors and minors, graduation year, first term, class standing,
+                career interests and goals at Davidson you choose, whether you finished onboarding,
+                and when you turned AI features on and confirmed you are 18 or older.
               </li>
               <li>
                 <b>Your plan:</b> the courses you add (term, course, credits and a status such as
                 planned or completed), your WebTree list, the deadlines and summer activities you
                 enter, and plan suggestions you asked for. We never store grades.
+              </li>
+              <li>
+                <b>Syllabi:</b> for each syllabus you paste, its course, term, when you added it and
+                the deadlines MakeItSo found in it. Not the text you pasted (see AI features). The
+                deadlines you choose to keep are part of your plan.
+              </li>
+              <li>
+                <b>Moodle calendar (if you connect it):</b> your Moodle calendar link, encrypted,
+                when you connected it and when it last synced, and the due dates it brought in,
+                which are part of your plan (see Moodle calendar import).
               </li>
               <li>
                 <b>Security records:</b> one-time email codes and password-reset links (stored only
@@ -164,29 +181,33 @@ export default async function PrivacyPage() {
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                Resend
+                Resend<span className="sr-only">&nbsp;(opens in a new tab)</span>
               </a>
               , an email delivery service, which receives your email address and the message
               (including its one-time code or reset link). MakeItSo sends no other email.
             </p>
             <p>
               MakeItSo is not an approved Davidson tool for Internal or Restricted college data.
-              Please do not paste Degree Works reports, Moodle content or other college records into
-              it.
+              Please do not paste Degree Works reports, grades or other college records into it: the
+              Syllabi page is for a course syllabus, the kind of schedule your instructor hands out.
             </p>
             <p>
               Course, catalog, rating and event information comes from public sources
               (Davidson&apos;s public course schedule and catalog, RateMyProfessors, and public
-              campus feeds), and every item is labelled with its source.
+              campus feeds). Each says where it came from: once for a list from one source
+              (&ldquo;Course schedule &middot; seats as of &hellip;&rdquo;), or on the item itself
+              where a list mixes sources (&ldquo;via Registrar&rdquo;, &ldquo;via Moodle&rdquo;).
+              Deadlines you type in are yours and carry no label, and anything an AI wrote or read
+              carries the AI mark.
             </p>
           </Section>
 
           <Section id="ai" title="AI features (optional)">
             <p>
-              MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans and
-              cold-email drafts) use <b>Claude, a model made by Anthropic</b>. They are{" "}
-              <b>off until you turn them on</b> in your profile, which asks you to confirm that you
-              are 18 or older, and they need{" "}
+              MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans,
+              cold-email drafts and finding the deadlines in a pasted syllabus) use{" "}
+              <b>Claude, a model made by Anthropic</b>. They are <b>off until you turn them on</b>{" "}
+              in your profile, which asks you to confirm that you are 18 or older, and they need{" "}
               {aiWithoutVerifying ? (
                 <>
                   an @davidson.edu account. For now, while email verification is being set up, the
@@ -205,9 +226,16 @@ export default async function PrivacyPage() {
               <li>course codes and public catalog information;</li>
               <li>
                 the courses in your plan and which requirements they fill, your majors and minors,
-                graduation year and career interests;
+                graduation year and career interests, and for career plans and cold-email drafts,
+                the goals at Davidson you chose;
               </li>
-              <li>the goal or question you type into that feature.</li>
+              <li>the goal or question you type into that feature;</li>
+              <li>
+                on Syllabi, the syllabus text you paste (up to {SYLLABUS_LIMIT} characters) with its
+                course code and term, to find its deadlines. MakeItSo sends it once and does not
+                keep it or log it; only the deadlines it finds are stored, and you review them
+                before any reach your plan.
+              </li>
             </ul>
             <p>
               It <b>never sends your name, your email address, your account id or any grades</b>.
@@ -220,9 +248,41 @@ export default async function PrivacyPage() {
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                privacy policy
+                privacy policy<span className="sr-only">&nbsp;(opens in a new tab)</span>
               </a>
               . AI answers are marked &quot;AI · verify with your advisor&quot;.
+            </p>
+          </Section>
+
+          <Section id="moodle" title="Moodle calendar import (optional)">
+            {moodleOn ? null : (
+              <p>
+                <b>Moodle import is turned off right now.</b> If you connected it earlier, you can
+                still disconnect on the Syllabi page, and your saved link is deleted with your
+                account.
+              </p>
+            )}
+            <p>
+              On the Syllabi page you can connect your Moodle calendar by pasting the calendar link
+              Moodle gives you (Calendar, Import or export calendars, Export calendar, Get calendar
+              URL). That link works without a password, so anyone who has it can read your Moodle
+              calendar: MakeItSo <b>stores it encrypted</b>, never shows it again, never logs it,
+              and leaves it out of your data download. MakeItSo never asks for your Moodle or
+              Davidson password.
+            </p>
+            <p>
+              MakeItSo reads the calendar when you connect, when you choose Sync now, and when you
+              open Today or Syllabi more than six hours after the last sync. From each event it
+              keeps only the <b>title</b>, the <b>due date and time</b> (or the date alone),{" "}
+              <b>Moodle&apos;s id for the event</b> (so a later sync can update or remove it) and,
+              when the course name names a Davidson course, <b>that course&apos;s code</b>.
+              Descriptions, locations, course names and everything else Moodle sends are dropped.
+              The due dates become deadlines in your plan, marked Moodle, and are updated or removed
+              when Moodle changes them. Nothing is sent to Anthropic or anyone else.
+            </p>
+            <p>
+              <b>Disconnect</b> on the Syllabi page deletes the saved link right away, and can also
+              remove the deadlines it brought in. Deleting your account deletes both.
             </p>
           </Section>
 
@@ -247,6 +307,14 @@ export default async function PrivacyPage() {
           <Section id="retention" title="How long we keep things">
             <dl className="divide-y divide-line text-sm md:text-base">
               <Retention what="Account, profile, plan" how="Until you delete your account." />
+              <Retention
+                what="Syllabi"
+                how="Until you delete the syllabus or your account. The text you pasted is never kept."
+              />
+              <Retention
+                what="Moodle calendar link"
+                how="Encrypted, until you disconnect Moodle or delete your account."
+              />
               <Retention
                 what="Your AI results"
                 how="Saved for you for 30 days, then deleted. Shared course summaries contain no personal information."
@@ -279,13 +347,14 @@ export default async function PrivacyPage() {
                   profile
                 </Link>{" "}
                 gives you a JSON file of everything MakeItSo stores about you (up to 5 times a day),
-                except the earlier version&apos;s cold-email drafts described above.
+                except the earlier version&apos;s cold-email drafts described above and your Moodle
+                calendar link (it says the link is stored, not what it is).
               </li>
               <li>
                 <b>Delete account</b> asks for your password, then immediately deletes your account
-                and everything tied to it: profile, plan, AI results, codes and counters, and the
-                earlier version&apos;s plan, career goals and AI answers (for its cold-email drafts,
-                ask us). This cannot be undone.
+                and everything tied to it: profile, plan, syllabi, Moodle connection, AI results,
+                codes and counters, and the earlier version&apos;s plan, career goals and AI answers
+                (for its cold-email drafts, ask us). This cannot be undone.
               </li>
               <li>
                 <b>Turn off AI features</b> and <b>sign out everywhere</b> are on your profile too.
@@ -303,6 +372,7 @@ export default async function PrivacyPage() {
                 target="_blank"
               >
                 {SUPPORT_CONTACT.label}
+                <span className="sr-only">&nbsp;(opens in a new tab)</span>
               </a>
               . Please do not post your password, email address or other private details in a public
               issue: ask for a private way to get in touch instead.

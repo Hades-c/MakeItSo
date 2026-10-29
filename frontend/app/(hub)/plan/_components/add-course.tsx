@@ -7,7 +7,7 @@ import { CourseCode } from "@/components/ui/course-code";
 import { Input, controlClass } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
-import { SourceTag } from "@/components/ui/source-tag";
+import { provenance, SourceLine } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { catalogEndpoints } from "@/lib/api/endpoints";
 import { courseSlug } from "@/lib/routes";
@@ -212,7 +212,7 @@ export function AddCourse({
       {fromPlan.length > 0 ? (
         <div>
           <h4 className="flex items-center gap-2 text-sm font-semibold text-fg">
-            From your {termLabel} plan <SourceTag source="my-plan" />
+            From your {termLabel} plan
           </h4>
           <ul className="mt-2 flex flex-col gap-1.5">
             {fromPlan.map((entry, index) => {
@@ -302,16 +302,21 @@ export function AddCourse({
               No {termLabel} courses match “{query.trim()}”.
             </p>
           ) : (
-            <div>
-              <p className="flex items-center gap-2 text-xs text-fg-3">
+            // The count line is the results' one source line: "12 courses · course schedule".
+            <div {...provenance(["course-schedule"])}>
+              <SourceLine className="flex items-center gap-2">
                 {results.total > results.items.length
                   ? `First ${results.items.length} of ${results.total} courses`
                   : `${results.items.length} ${results.items.length === 1 ? "course" : "courses"}`}{" "}
-                <SourceTag source="course-schedule" />
-              </p>
+                · course schedule
+              </SourceLine>
               <ul className="mt-2 flex flex-col gap-1.5" aria-label="Search results">
                 {results.items.map((item) => (
-                  <li key={item.code} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <li
+                    key={item.code}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1"
+                    data-source="course-schedule"
+                  >
                     <CourseCode code={item.code} />
                     <span className="min-w-0 flex-1 text-sm text-fg-2">
                       {item.title}{" "}

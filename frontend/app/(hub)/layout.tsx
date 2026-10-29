@@ -1,42 +1,40 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { VerifyBanner } from "@/app/(auth)/_components/verify-banner";
+import { EVENT_SOURCE_IDS } from "@/app/(hub)/events/_lib/params";
 import { AppShell } from "@/components/app/app-shell";
 import type { NavCounts } from "@/components/app/sidebar-nav";
-import type { SourceLink, SourceSync } from "@/components/app/sources-panel";
+import { SourceStatusNotice, type SourceProblem } from "@/components/app/source-status-notice";
+import type { Flags } from "@/lib/flags";
 import { RETURN_PATH_HEADER, routes } from "@/lib/routes";
-import { sourcesOfKind } from "@/lib/sources";
+import type { SyncedSourceId } from "@/lib/sources";
 import { loadAiAllowsUnverified } from "@/server/ai/access";
 import { verifyBannerFor, type VerifyBannerState } from "@/server/auth/banner";
 import { safeAppPath } from "@/server/auth/paths";
 import { isOnboarded, requireUser, type SessionUser } from "@/server/auth/session";
-import { browseTerm, countCourses } from "@/server/catalog";
 import { now } from "@/server/clock";
-import { curatedSourceVerifiedAt, type CuratedSourceId } from "@/server/content";
-import { linkForSource } from "@/server/content/links";
 import { readEnv } from "@/server/env";
-import { hubNavKeys, loadFlags } from "@/server/features";
-import { isNewsOnlyFeedSource } from "@/server/feeds/config";
+import { featureEnabled, hubNavKeys, loadFlags } from "@/server/features";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { getPlanCredits } from "@/server/plan";
-import { getSourceStatuses, type SourceStatus } from "@/server/sync";
+import { getSourceStatuses } from "@/server/sync";
 
 /**
  * Signed-in shell for every hub page. Server component: resolves the user once per request and passes real data
- * to the Lakeside AppShell. Nothing optional may take the shell down: the Sources panel, the sidebar course count
- * and the verify banner each degrade (empty panel, no count, no banner) and log instead. Sections whose feature
- * flags are off (Careers, Events, Alumni) leave the sidebar, the bottom tabs and the command palette; their pages
- * answer 404 through requireFeature() (server/features.ts). A malformed flag is logged and takes its default, so it
- * cannot take the shell down either.
+ * to the Lakeside AppShell. Nothing optional may take the shell down: the sidebar course count and the verify
+ * banner each degrade (no count, no banner) and log instead, and so does the source notice (none). Sections whose
+ * feature flags are off (Careers,
+ * Events, Alumni) leave the sidebar, the bottom tabs and the command palette; their pages answer 404 through
+ * requireFeature() (server/features.ts). A malformed flag is logged and takes its default, so it cannot take the
+ * shell down either.
  *
- * - Sources panel: the synced sources with their real last sync (server/sync.ts; not the news-only feeds, which no
- *   page shows yet), then the curated sources with
- *   the date their content was last verified (server/content curatedSourceVerifiedAt), and under "Links" the
- *   platforms MakeItSo only links to (Handshake, Davidson One, Athletics: the curated links that carry the tag).
- * - Sidebar counts: courses in the term browsing defaults to (server/catalog browseTerm: the registration term once
- *   published, else the current one; on an empty database this is the one synchronous cold load of that term),
- *   and "My plan x/32": the credits done out of the 32 required (server/plan getPlanCredits). Each is left out
- *   when it cannot be computed.
+ * - Sidebar count: "My plan x/32", the credits done out of the 32 required (server/plan getPlanCredits), left out
+ *   when it cannot be computed. Courses has no count: "366" beside Courses under "My plan 8/32" read as 366
+ *   courses in the plan.
+ * - Source notice: ONE warning above the page naming each source the pages show that is out of date or failing
+ *   (server/sync getSourceStatuses: "stale", or "error", including a source that has never synced successfully),
+ *   or nothing while all are current. A source with no sync row at all has never been asked for (a fresh
+ *   database: feeds sync on their first read), which is not a failure; Events says "not synced yet" itself.
  * - Verify banner: unverified @davidson.edu accounts while mail can be sent (server/auth verifyBannerFor).
  * - First run (PLAN §3): an account that has neither finished nor skipped onboarding (SessionUser.onboardedAt null)
  *   is sent to /onboarding?next=<the page it asked for>, and Skip setup or Finish continues to that page, so a deep
@@ -56,29 +54,22 @@ export default async function HubLayout({ children }: { children: React.ReactNod
     }
   }
   const at = now();
-  const [synced, courses, plan, banner] = await Promise.all([
-    loadSourceStatuses(at),
-    loadCourseCount(at),
+  const flags = loadFlags();
+  const [plan, banner, problems] = await Promise.all([
     loadPlanCount(user),
     loadVerifyBanner(user, at),
+    loadSourceProblems(at, flags),
   ]);
   const counts: NavCounts = {};
-  if (courses !== undefined) counts.courses = courses;
   if (plan !== undefined) counts.plan = plan;
-  const timeZone = readEnv("APP_TIMEZONE");
-  const nav = hubNavKeys(loadFlags());
+  const nav = hubNavKeys(flags);
 
   return (
-    <AppShell
-      user={{ name: user.name, email: user.email }}
-      nav={nav}
-      counts={counts}
-      sources={[...synced, ...curatedSources()]}
-      links={portalLinks()}
-      now={at}
-      timeZone={timeZone}
-    >
+    <AppShell user={{ name: user.name, email: user.email }} nav={nav} counts={counts}>
       {banner ? <VerifyBanner {...banner} aiWithoutVerifying={loadAiAllowsUnverified()} /> : null}
+      {problems.length > 0 ? (
+        <SourceStatusNotice problems={problems} now={at} timeZone={readEnv("APP_TIMEZONE")} />
+      ) : null}
       {children}
     </AppShell>
   );
@@ -103,21 +94,29 @@ function degrade(what: string, error: unknown): undefined {
   return undefined;
 }
 
-async function loadSourceStatuses(at: Date): Promise<SourceStatus[]> {
-  try {
-    // News-only feeds are synced, but nothing on screen comes from them yet: not listed as sources.
-    return (await getSourceStatuses(at)).filter((source) => !isNewsOnlyFeedSource(source.id));
-  } catch (error) {
-    degrade("source statuses", error);
-    return [];
-  }
+/** The synced sources some page shows items from (news-only feeds are synced, but no page shows them yet). */
+function shownSources(flags: Flags): SyncedSourceId[] {
+  return [
+    "course-schedule",
+    "catalog",
+    ...(flags.rmp ? (["ratemyprofessors"] as const) : []),
+    ...(featureEnabled(flags, "events") ? EVENT_SOURCE_IDS : []),
+  ];
 }
 
-async function loadCourseCount(at: Date): Promise<number | undefined> {
+async function loadSourceProblems(at: Date, flags: Flags): Promise<SourceProblem[]> {
   try {
-    return await countCourses(await browseTerm({ now: at }));
+    const shown = new Set(shownSources(flags));
+    return (await getSourceStatuses(at))
+      .filter((row) => shown.has(row.id) && row.status !== "ok")
+      .map((row) => ({
+        label: row.label,
+        status: row.status === "stale" ? "stale" : "error",
+        lastSync: row.lastSync,
+      }));
   } catch (error) {
-    return degrade("the course count", error);
+    degrade("the source statuses", error);
+    return [];
   }
 }
 
@@ -137,24 +136,4 @@ async function loadVerifyBanner(user: SessionUser, at: Date): Promise<VerifyBann
     degrade("the verify banner", error);
     return null;
   }
-}
-
-/** Curated sources with the date their content was last verified; a source no content carries is left out. */
-function curatedSources(): SourceSync[] {
-  const rows: SourceSync[] = [];
-  for (const source of sourcesOfKind("curated")) {
-    const verifiedAt = curatedSourceVerifiedAt(source.id as CuratedSourceId);
-    if (verifiedAt) rows.push({ id: source.id, verifiedAt });
-  }
-  return rows;
-}
-
-/** The link-only platforms, each at its curated link (PLAN §5: those tags appear only on curated deep links). */
-function portalLinks(): SourceLink[] {
-  const links: SourceLink[] = [];
-  for (const source of sourcesOfKind("link")) {
-    const link = linkForSource(source.id as Parameters<typeof linkForSource>[0]);
-    if (link) links.push({ id: source.id, href: link.url });
-  }
-  return links;
 }

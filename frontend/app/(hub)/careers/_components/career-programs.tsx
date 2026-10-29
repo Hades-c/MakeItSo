@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
+import { provenance, SourceLine } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import type { Career } from "@/lib/types/content";
 import { ACALOG_CATALOG } from "@/server/programs/catalog-info";
@@ -9,7 +9,7 @@ import { ExternalLink } from "./external-link";
 
 /**
  * Related departments (links into the catalog, filtered by department) and official programs: the Acalog names
- * with their catalog pages (tag COURSE CATALOG). Presentational part first (tested), loader below.
+ * linked to their catalog pages. Presentational part first (tested), loader below.
  */
 
 /**
@@ -25,7 +25,7 @@ export function programsNote(programs: readonly RelatedProgramView[], catalogYea
   if (official === 0) {
     return `Program names from the career guide; see the ${year} Davidson catalog for the official names and requirements.`;
   }
-  return `Tagged names are official, from the ${year} Davidson catalog; the others are from the career guide.`;
+  return `Linked names are official, from the ${year} Davidson catalog; the others are from the career guide.`;
 }
 
 export function ProgramsList({
@@ -61,14 +61,14 @@ export function ProgramsList({
         </div>
       ) : null}
       {programs.length > 0 ? (
-        <div>
+        // The note under the list is its one source line (it names the catalog once for the official names).
+        <div {...provenance(["catalog"])}>
           <h3 className="text-sm font-semibold text-fg">Majors and minors</h3>
           <ul className="mt-1.5 flex flex-col gap-2">
             {programs.map((program) => (
               <li
                 key={program.name}
                 className="flex flex-wrap items-center gap-x-2 gap-y-1"
-                data-aggregated={program.official ? "catalog" : undefined}
                 data-source={program.official ? "catalog" : undefined}
               >
                 {program.url ? (
@@ -78,13 +78,12 @@ export function ProgramsList({
                 ) : (
                   <span className="text-sm font-semibold text-fg">{program.name}</span>
                 )}
-                {program.official ? <SourceTag source="catalog" /> : null}
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-fg-3" data-testid="programs-note">
+          <SourceLine className="mt-2" testId="programs-note">
             {programsNote(programs, catalogYear)}
-          </p>
+          </SourceLine>
         </div>
       ) : null}
     </div>

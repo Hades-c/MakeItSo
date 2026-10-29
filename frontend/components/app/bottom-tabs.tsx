@@ -14,7 +14,8 @@ export interface BottomTabsProps {
 /**
  * Phone navigation (<720px): the only thing fixed to the bottom of the screen. Reserves the home-indicator area
  * (safe-area inset); the shell adds matching bottom padding to <main>. Today, Courses and Plan, then Careers and
- * Events when they are shown, in equal columns (five, four or three tabs).
+ * Events when they are shown, in equal columns (five, four or three tabs): the sidebar's five top-level sections.
+ * A nested page highlights its parent's tab (/syllabi → Plan, /alumni → Careers).
  */
 export function BottomTabs({ nav = ALL_NAV_KEYS, className }: BottomTabsProps) {
   const pathname = usePathname();

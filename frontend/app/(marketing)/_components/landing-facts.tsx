@@ -1,5 +1,4 @@
 import { connection } from "next/server";
-import { SourceTag } from "@/components/ui/source-tag";
 import { loadLandingFacts, type LandingFact } from "../_lib/facts";
 
 /**
@@ -29,7 +28,6 @@ export function LandingFactsView({ facts }: { facts: readonly LandingFact[] }) {
               {fact.value.toLocaleString("en-US")}
             </span>
             <span className="text-sm text-fg-2">{fact.label}</span>
-            {fact.source ? <SourceTag source={fact.source} className="self-center" /> : null}
           </li>
         ))}
       </ul>

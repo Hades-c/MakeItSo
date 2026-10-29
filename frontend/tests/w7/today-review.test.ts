@@ -9,21 +9,17 @@ import {
   buildDueSoon,
   calendarCategoryOf,
   dueForYouCount,
-  milestonesOn,
   mondayOf,
   nextUpLabel,
   pickCampusEvents,
   safely,
-  summaryInput,
-  todaySummary,
   upcomingOpportunities,
 } from "@/server/today";
 
 /**
- * Regression tests for the W7 review: audiences read conservatively, milestones per class year, registration rows
- * never counted or drawn as deadlines, the "next up" label said from the real today, the header's deadline count,
- * one event rule for the h1 and the timeline, This week on campus without long-running items, opportunities'
- * audiences and the pure-computation guard.
+ * Regression tests for the W7 review: audiences read conservatively, registration rows never counted or drawn as
+ * deadlines, the "next up" label said from the real today, the header's deadline count, This week on campus
+ * without long-running items, opportunities' audiences and the pure-computation guard.
  */
 
 const edt = (hhmm: string, day = "2026-09-30") => new Date(`${day}T${hhmm}:00-04:00`);
@@ -93,43 +89,6 @@ describe("audienceIncludes on the real curated audiences", () => {
     }
     // Without a known standing only an every-student audience is certain.
     expect(audienceIncludes(audience, null)).toBe(included === ALL);
-  });
-});
-
-describe("milestones per class year", () => {
-  it("names Banner add/drop for sophomores–seniors only, and keeps 'reopens'", () => {
-    expect(milestonesOn("2026-08-03", "first-year")).toEqual([]);
-    expect(milestonesOn("2026-08-03", "junior").map((m) => `${m.name} ${m.verb}`)).toEqual([
-      "Banner Self-Service Add/Drop for Sophomores, Juniors, and Seniors opens",
-    ]);
-    expect(milestonesOn("2026-08-22", "incoming")).toEqual([]);
-    expect(milestonesOn("2026-08-22", "sophomore").map((m) => `${m.name} ${m.verb}`)).toEqual([
-      "Banner Self-Service Add/Drop reopens",
-    ]);
-  });
-
-  it("names WebTree for every class year, and the Fall 2027 window only for continuing students", () => {
-    for (const standing of ["first-year", "senior"] as const) {
-      expect(milestonesOn("2026-10-12", standing).map((m) => m.name)).toEqual(["WebTree"]);
-    }
-    const fall27 = milestonesOn("2027-03-15", "first-year").map((m) => m.name);
-    expect(fall27.some((name) => /webtree/i.test(name))).toBe(true);
-    expect(milestonesOn("2027-03-15", "incoming").some((m) => /webtree/i.test(m.name))).toBe(false);
-  });
-
-  it("says 'reopened' once the time has passed", () => {
-    const summary = todaySummary({
-      now: edt("09:00", "2026-08-22"),
-      onboarded: true,
-      standing: "junior",
-      schedule: { entries: [], empty: "weekend", termCode: "202601" },
-      termLabel: "Fall 2026",
-      studentDeadlines: [],
-      feedItems: [],
-    });
-    expect(summary.sentence).toBe(
-      "No classes this weekend, and Banner Self-Service Add/Drop reopened today at 7:00 AM.",
-    );
   });
 });
 
@@ -216,65 +175,6 @@ describe("the timeline's next-up label, from the real today", () => {
     expect(mondayOf("2026-10-04")).toBe("2026-09-28");
     expect(mondayOf("2026-10-05")).toBe("2026-10-05");
     expect(mondayOf("2026-11-01")).toBe("2026-10-26");
-  });
-});
-
-describe("one event rule for the h1 and the timeline", () => {
-  it("counts open-ended and long events today, never feed deadlines or other days", () => {
-    const input = summaryInput({
-      now: NOON,
-      onboarded: true,
-      standing: "first-year",
-      schedule: { entries: [], empty: "no-classes-today", termCode: "202601" },
-      termLabel: "Fall 2026",
-      studentDeadlines: [],
-      feedItems: [
-        feed({ id: "open", startsAt: edt("19:00").toISOString(), endsAt: null }),
-        feed({
-          id: "long",
-          startsAt: edt("13:00").toISOString(),
-          endsAt: edt("20:00").toISOString(),
-        }),
-        feed({
-          id: "deadline",
-          kind: "deadline",
-          startsAt: edt("17:00").toISOString(),
-          endsAt: null,
-        }),
-        feed({ id: "allday", allDay: true }),
-        feed({ id: "tomorrow", startsAt: edt("19:00", "2026-10-01").toISOString() }),
-      ],
-    });
-    expect(input.events?.map((e) => e.title)).toEqual(["Event open", "Event long"]);
-  });
-});
-
-describe("the h1's three-day window", () => {
-  it("counts a timed deadline by calendar day, like an all-day one", () => {
-    const summary = todaySummary({
-      now: NOON,
-      onboarded: true,
-      standing: "first-year",
-      schedule: { entries: [], empty: "no-classes-today", termCode: "202601" },
-      termLabel: "Fall 2026",
-      studentDeadlines: [
-        {
-          id: "64b7f0a1c2d3e4f5a6b7c8d1",
-          title: "Essay",
-          dueAt: edt("09:00", "2026-10-03").toISOString(),
-        },
-        {
-          id: "64b7f0a1c2d3e4f5a6b7c8d2",
-          title: "Lab",
-          dueAt: edt("13:00", "2026-10-03").toISOString(),
-        },
-      ],
-      feedItems: [],
-    });
-    expect(summary.deadlinesSoon).toBe(2);
-    expect(summary.sentence).toBe(
-      "No classes today, and two deadlines in the next three days, the first Saturday.",
-    );
   });
 });
 

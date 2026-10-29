@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { apiRoute } from "@/lib/api/spec";
+import { MAX_GOALS } from "@/lib/goals";
 import { CLASS_STANDINGS } from "@/lib/term";
 import { IsoDateTimeSchema, ObjectIdSchema, SlugSchema, TermCodeSchema } from "@/lib/types/common";
 
@@ -12,7 +13,8 @@ export const ClassStandingSchema = z.enum(CLASS_STANDINGS);
 
 /**
  * The profile as the app reads it (W3). `majors`/`minors` are official Acalog offering names (legacy `major`
- * strings are mapped on read). `interests` are career-path slugs (one taxonomy). No grades, no bio in AI payloads.
+ * strings are mapped on read). `interests` are career-path slugs (one taxonomy); `goals` are goal-statement slugs
+ * (lib/goals.ts, a second, unrelated taxonomy). No grades, no bio in AI payloads.
  */
 export const ProfileSchema = z.object({
   id: ObjectIdSchema,
@@ -29,6 +31,7 @@ export const ProfileSchema = z.object({
   firstTerm: TermCodeSchema.nullable(),
   standingOverride: ClassStandingSchema.nullable(),
   interests: z.array(SlugSchema).max(24),
+  goals: z.array(SlugSchema).max(MAX_GOALS),
   aiConsentAt: IsoDateTimeSchema.nullable(),
   adultAttestedAt: IsoDateTimeSchema.nullable(),
   onboardedAt: IsoDateTimeSchema.nullable(),
@@ -50,6 +53,7 @@ export const ProfilePatchBodySchema = z
     firstTerm: TermCodeSchema.nullable(),
     standingOverride: ClassStandingSchema.nullable(),
     interests: z.array(SlugSchema).max(24),
+    goals: z.array(SlugSchema).max(MAX_GOALS),
     aiConsent: z.boolean(),
     adultAttested: z.boolean(),
     onboarded: z.literal(true),

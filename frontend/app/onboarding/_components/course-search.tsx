@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { CourseCode } from "@/components/ui/course-code";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { catalogEndpoints } from "@/lib/api/endpoints";
 import { termLabel, type TermCode } from "@/lib/term";
@@ -110,7 +109,6 @@ export function CourseSearch({ term, label, renderResult, testId }: CourseSearch
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <CourseCode code={course.code} />
                 <span className="font-semibold text-fg">{course.title}</span>
-                <SourceTag source="course-schedule" />
               </div>
               <p className="text-sm text-fg-2">
                 {course.sectionCount === 1 ? "1 section" : `${course.sectionCount} sections`}

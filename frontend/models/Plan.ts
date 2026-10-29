@@ -61,6 +61,18 @@ const StudentDeadlineSubSchema = new Schema({
   title: { type: String, required: true, maxlength: 120 },
   dueAt: { type: Date, required: true },
   courseCode: { type: String },
+  origin: {
+    type: String,
+    enum: ["manual", "syllabus", "moodle"],
+    required: true,
+    default: "manual",
+  },
+  /** The syllabus (models/Syllabus.ts) this deadline came from; set only when origin is "syllabus". */
+  syllabusId: { type: Schema.Types.ObjectId },
+  /** Moodle's UID for the event (origin "moodle" only): what the next sync matches, updates or removes by. */
+  externalUid: { type: String, maxlength: 255 },
+  /** A Moodle event exported as a date, no time (syllabus deadlines are all-day by origin: server/plan/store.ts). */
+  allDay: { type: Boolean },
 });
 
 const WebTreeChoiceSubSchema = new Schema(
@@ -125,6 +137,11 @@ const PlanSchema = new Schema(
         teamSport: { type: Boolean, default: false },
       },
     },
+    /**
+     * The Moodle calendar import taking deadlines into this plan now (server/plan/moodle.ts startMoodleImport): a
+     * random id, set on connect and cleared on disconnect, that a sync must match to write. Absent: none.
+     */
+    moodleImportId: { type: String, default: undefined },
     /**
      * Set when this v2 document was first written from the student's legacy v1 plan (server/plan: on the first
      * mutation, or scripts/migrate-plans.ts --apply). The v1 document itself is never touched.

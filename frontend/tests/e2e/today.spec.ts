@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import {
   collectErrors,
-  expectAllTagged,
+  expectAllAttributed,
   horizontalOverflow,
   isMobile,
   registerViaApi,
@@ -15,10 +15,9 @@ import {
 /**
  * /today (W7) against the production build in fixtures mode: server "now" is Wed 2026-09-30 12:00 ET (current
  * Fall 2026, registration Spring 2027, WebTree opens Oct 12). A first-year with three Fall 2026 sections (CSC 221 A
- * MWF 10:30, ECO 232 A MWF 11:30, ENV 237 A MW 14:30) and one deadline sees the deterministic day summary, the
- * timeline with the now-line, the five-day strip, Due for you, degree progress (no Plan Spring 2027 yet: WebTree is
- * not open), this week on campus, opportunities and quick links, every aggregated item tagged with its source. Runs at
- * desktop 1440 and phone 390, light and dark, with axe.
+ * MWF 10:30, ECO 232 A MWF 11:30, ENV 237 A MW 14:30) and one deadline sees the fixed headline, the timeline with
+ * the now-line, the five-day strip, Due for you (All/Classes), this week on campus, opportunities and quick links.
+ * Runs at desktop 1440 and phone 390, light and dark, with axe.
  */
 
 const PASSWORD = "today e2e password 42";
@@ -84,7 +83,7 @@ async function feedsStored(api: APIRequestContext) {
     .toBe(EVENT_SOURCES.length);
 }
 
-test("today: the day summary, timeline, strip and panels for a student with sections", async ({
+test("today: the headline, timeline, strip and panels for a student with sections", async ({
   page,
   request,
 }) => {
@@ -100,18 +99,15 @@ test("today: the day summary, timeline, strip and panels for a student with sect
     expect(response?.status()).toBe(200);
 
     const h1 = page.getByRole("heading", { level: 1 });
-    await expect(h1).toHaveText(
-      "You're in ECO 232 until 12:20 PM, then one more class, and Problem set (CSC 221) is due tomorrow at 11:59 PM.",
-    );
+    await expect(h1).toHaveText("Your day at Davidson");
     const main = page.getByRole("main");
     await expect(main.getByText("Wednesday, September 30", { exact: true })).toBeVisible();
-    // One count for what's due: the student's problem set and the WebTree window (all students), never the
-    // other class years' or conditional rows. The header, the card's count and its first list all agree.
-    await expect(page.getByTestId("day-counts")).toContainText(
-      "3 classes today · 2 due for you in the next two weeks",
-    );
     const dueCard = page.getByRole("region", { name: "Due for you 2" });
-    await expect(dueCard.getByTestId("due-for-you").getByTestId("due-soon-item")).toHaveCount(2);
+    // All/Classes pre-renders both views; only the active tab's subtree is in the accessibility tree.
+    const allPanel = dueCard.getByRole("tabpanel");
+    // One count for what's due: the student's problem set and the WebTree window (all students), never the
+    // other class years' or conditional rows. The card's count and its first list agree.
+    await expect(allPanel.getByTestId("due-for-you").getByTestId("due-soon-item")).toHaveCount(2);
 
     // The strip: Monday to Friday, today shown.
     const week = strip(page);
@@ -125,14 +121,12 @@ test("today: the day summary, timeline, strip and panels for a student with sect
     await expect(timeline.locator('[data-kind="free"]').first()).toBeVisible();
     await expect(main.getByText(/^Fri 10:30 AM$/)).toBeVisible();
 
-    // No "Plan Spring 2027" before WebTree opens (PLAN §3: during the window); Due for you lists the window.
-    await expect(page.getByTestId("plan-next-cta")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Browse courses" })).toBeVisible();
-    const due = page.getByTestId("due-soon-item");
+    // Due for you lists the WebTree window itself; the action row has nothing to say about it.
+    const due = allPanel.getByTestId("due-soon-item");
     expect(await due.count()).toBeGreaterThan(2);
     // Red only for the student's own rows: the seniors' Watson nomination due today is not.
     await expect(
-      page.locator('[data-testid="due-soon-item"][data-for-you="false"] .text-urgent'),
+      allPanel.locator('[data-testid="due-soon-item"][data-for-you="false"] .text-urgent'),
     ).toHaveCount(0);
     // Every row is one press away: "Show N more" reveals the rest in place.
     const showMore = dueCard.getByTestId("show-more");
@@ -148,7 +142,29 @@ test("today: the day summary, timeline, strip and panels for a student with sect
     const webtree = due.filter({ hasText: "WebTree Open" });
     await expect(webtree).toContainText("Oct 12 – Nov 3");
     await expect(webtree).toHaveAttribute("data-kind", "registration");
-    await expect(page.getByTestId("degree-progress")).toContainText("of 32 credits done");
+    // Quiet provenance in the meta line: the Registrar's row says it, the student's own deadline does not.
+    await expect(webtree).toHaveAttribute("data-source", "registrar");
+    await expect(webtree).toContainText("via Registrar");
+    const own = allPanel.locator('[data-testid="due-soon-item"][data-kind="student"]');
+    await expect(own).toHaveAttribute("data-source", "my-plan");
+    await expect(own.getByText("Source: your plan")).toHaveClass(/sr-only/);
+    // The header's one line counts the same rows as the card ("All").
+    await expect(page.getByTestId("due-for-you-line")).toHaveText(
+      "2 due for you in the next two weeks",
+    );
+    await expect(page.getByTestId("due-for-you-line")).toHaveAttribute("href", "#due-soon");
+    // Coursework: the student's course deadline only, with a line saying where the college's are.
+    await dueCard.getByRole("tab", { name: /^Coursework/ }).click();
+    await expect(dueCard.getByTestId("due-coursework-note")).toBeVisible();
+    await expect(
+      dueCard.getByRole("tabpanel").getByTestId("due-for-you").getByTestId("due-soon-item"),
+    ).toHaveCount(1);
+    await dueCard.getByRole("tab", { name: /^Coursework/ }).press("ArrowLeft");
+    await expect(dueCard.getByRole("tab", { name: /^All/ })).toBeFocused();
+    await expect(dueCard.getByRole("tab", { name: /^All/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     expect(await page.getByTestId("campus-item").count()).toBeGreaterThan(0);
     expect(await page.getByTestId("opportunity-item").count()).toBeGreaterThan(1);
     await expect(page.getByTestId("panel-error")).toHaveCount(0);
@@ -174,23 +190,25 @@ test("today: the day summary, timeline, strip and panels for a student with sect
     expect(narrow, "squeezed titles").toEqual([]);
     await expect(
       page.locator("section[aria-labelledby='quick-links-title'] a > span.flex-col"),
-    ).toHaveCount(8);
+    ).toHaveCount(9);
     if (isMobile(page)) {
-      // Phone order (Lakeside home-390): Today, Due for you, This week on campus, then Degree progress.
+      // Phone order (Lakeside home-390): Today, Due for you, then This week on campus.
       const top = async (name: RegExp) =>
         (await page.getByRole("region", { name }).first().boundingBox())?.y ?? 0;
-      const [timelineTop, dueTop, campusTop, degreeTop] = [
+      const [timelineTop, dueTop, campusTop] = [
         await top(/^Today/),
         await top(/^Due for you/),
         await top(/^This week on campus/),
-        await top(/^Degree progress/),
       ];
       expect(timelineTop).toBeLessThan(dueTop);
       expect(dueTop).toBeLessThan(campusTop);
-      expect(campusTop).toBeLessThan(degreeTop);
     }
 
-    expect(await expectAllTagged(page)).toBeGreaterThan(8);
+    // Every aggregated item says where it came from: in its meta line, once per run, or by its list's line.
+    const attribution = await expectAllAttributed(page);
+    expect(attribution.items).toBeGreaterThan(8);
+    await expect(page.getByTestId("timeline-sources")).toContainText("the course schedule");
+
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
     expect(await seriousViolations(page)).toEqual([]);
     if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
@@ -208,8 +226,8 @@ test("today: the day summary, timeline, strip and panels for a student with sect
   // Next up is said from the real today (Wednesday): Friday is not "Tomorrow".
   await expect(thursday.getByText(/^Fri 10:30 AM$/)).toBeVisible();
   await expect(thursday.getByText(/^Tomorrow/)).toHaveCount(0);
-  // The headline still sums up today.
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("You're in ECO 232");
+  // The headline is fixed: viewing another strip day never changes it.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your day at Davidson");
   await thursday.getByRole("link", { name: "Back to today" }).click();
   await expect(page).toHaveURL(/\/today$/);
 
@@ -224,10 +242,8 @@ test("today: a new student is asked to finish setting up", async ({ page, reques
 
   const response = await page.goto("/today");
   expect(response?.status()).toBe(200);
-  // Campus events stored by earlier specs may lead the sentence; the setup request always ends it.
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    /(?:^Finish setting up MakeItSo to see your classes, deadlines and campus events here|; finish setting up MakeItSo to see your classes here)\.$/,
-  );
+  // The headline is fixed regardless of setup state; the nudge is what asks to finish setting up.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your day at Davidson");
   const nudge = page.getByTestId("onboarding-nudge");
   await expect(nudge.getByRole("link", { name: "Set up my plan" })).toHaveAttribute(
     "href",
@@ -236,8 +252,6 @@ test("today: a new student is asked to finish setting up", async ({ page, reques
   await expect(page.getByTestId("timeline-empty")).toContainText(
     "No Fall 2026 class sections in your plan yet.",
   );
-  await expect(page.getByTestId("degree-progress")).toContainText("0");
-  expect(await expectAllTagged(page)).toBeGreaterThan(0);
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   expect(await seriousViolations(page)).toEqual([]);
   if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);

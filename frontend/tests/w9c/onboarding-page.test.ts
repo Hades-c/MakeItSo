@@ -85,6 +85,7 @@ describe("loadOnboarding", () => {
       graduationYear: 2029,
       firstTerm: null,
       interests: [],
+      goals: [],
       onboardedAt: null,
     });
     // The official names, then the programs without an Acalog offering (a CIS major, the MES minor).
@@ -120,10 +121,18 @@ describe("loadOnboarding", () => {
     expect(data.now).toBe("2026-09-30T16:00:00.000Z");
   });
 
-  it("has nothing current or completed for an incoming student", async () => {
+  it("has nothing current or completed for an incoming student, so Classes counts as done", async () => {
     const user = await signIn({ graduationYear: 2031 });
-    const { terms } = await loadOnboarding(user.id);
+    const { terms, progress } = await loadOnboarding(user.id);
     expect(terms).toMatchObject({ firstTerm: "202701", startsLater: true, completedTerms: [] });
+    expect(progress.classes).toBe(true);
+  });
+
+  it("counts goals as saved for the interests step", async () => {
+    const user = await signIn({ graduationYear: 2029, goals: ["study-abroad", "not-a-goal"] });
+    const data = await loadOnboarding(user.id);
+    expect(data.profile.goals).toEqual(["study-abroad"]);
+    expect(data.progress.interests).toBe(true);
   });
 
   it("uses the stored first term and counts saved steps", async () => {
@@ -296,7 +305,9 @@ describe("OnboardingPage", () => {
     expect(await meta("classes")).toEqual({
       title: "Step 2 of 4: Your Fall 2026 classes · Get started",
     });
-    expect(await meta("interests")).toEqual({ title: "Step 4 of 4: Interests · Get started" });
+    expect(await meta("interests")).toEqual({
+      title: "Step 4 of 4: Interests and goals · Get started",
+    });
     await expect(render("classes")).rejects.toMatchObject({
       digest: expect.stringMatching(
         /^NEXT_REDIRECT;replace;\/login\?callbackUrl=%2Fonboarding%3Fstep%3Dclasses;/,
@@ -317,6 +328,19 @@ describe("OnboardingPage", () => {
     });
   });
 
+  it("keeps the later steps closed until About is saved (their URLs go back to About)", async () => {
+    await signIn({ graduationYear: 2029 });
+    for (const step of ["classes", "completed", "interests"]) {
+      await expect(render(step)).rejects.toMatchObject({
+        digest: expect.stringMatching(/^NEXT_REDIRECT;replace;\/onboarding\?step=about;/),
+      });
+    }
+    const html = await render("about");
+    // The later steps are plain text, not links, and say why.
+    expect(html).not.toContain('href="/onboarding?step=classes"');
+    expect(html.match(/\(opens after About you\)/g)).toHaveLength(3);
+  });
+
   it("resumes after the furthest saved step", async () => {
     await signIn({ graduationYear: 2029, firstTerm: "202501" });
     await expect(render()).rejects.toMatchObject({
@@ -324,7 +348,7 @@ describe("OnboardingPage", () => {
     });
   });
 
-  it("renders step 1 with the step list, Skip setup and the official names", async () => {
+  it("renders step 1 with the step list and the official names; no Skip setup until About is saved", async () => {
     await signIn({ graduationYear: 2029 });
     const html = await render("about");
     expect(html).toMatch(/<h1[^>]*>About you<\/h1>/);
@@ -334,12 +358,36 @@ describe("OnboardingPage", () => {
     expect(html).toMatch(/<nav aria-label="Setup steps"/);
     expect(html).toMatch(/aria-current="step"[^>]*href="\/onboarding\?step=about"/);
     expect(html.match(/aria-current="step"/g)).toHaveLength(1);
-    expect(html).toContain('href="/onboarding?step=classes"');
     expect(html).toContain("Your Fall 2026 classes");
-    expect(html).toContain("Skip setup");
+    // About is required: no "Skip this step" on it, and no global Skip setup until it is saved.
+    expect(html).not.toContain("Skip this step");
+    expect(html).not.toContain("Skip setup");
     expect(html).toContain('<option value="Undecided" selected="">Undecided</option>');
     expect(html).toContain("Major in Computer Science (B.S. Degree)");
     expect(html).toContain('<option value="202501" selected="">Fall 2025</option>');
+  });
+
+  it("shows Skip setup once About is saved, classes or not; Classes offers Add classes later", async () => {
+    const user = await signIn({ graduationYear: 2029, firstTerm: "202501" });
+    const about = await render("about");
+    expect(about).toContain("Skip setup");
+    expect(about).toContain('href="/onboarding?step=classes"');
+    expect(about).not.toContain("opens after About you");
+    // No class yet: the way on is "Add classes later" (Classes never blocks), not a Continue button.
+    const empty = await render("classes");
+    expect(empty).toContain("Skip setup");
+    expect(empty).toContain("Add classes later");
+    expect(empty).not.toContain(">Continue<");
+    await addItem(user.id, {
+      termCode: "202601",
+      courseCode: "CSC 121",
+      status: "in-progress",
+      source: "catalog",
+      passFail: false,
+    });
+    const classes = await render("classes");
+    expect(classes).toContain(">Continue<");
+    expect(classes).not.toContain("Add classes later");
   });
 
   it("renders each later step, and no Skip setup once onboarded", async () => {
@@ -353,12 +401,18 @@ describe("OnboardingPage", () => {
     expect(completed).toContain("Add AP, IB or transfer credit");
     expect(completed).toContain('<option value="202502" selected="">Spring 2026</option>');
     const interests = await render("interests");
-    expect(interests).toMatch(/<h1[^>]*>Interests<\/h1>/);
+    expect(interests).toMatch(/<h1[^>]*>Interests and goals<\/h1>/);
     expect(interests).toContain("Software Engineering");
+    expect(interests).toContain("Goals at Davidson");
+    expect(interests).toContain("Go to graduate or professional school");
+    // The steps that were removed are unknown now: back to resuming.
+    await expect(render("syllabi")).rejects.toMatchObject({
+      digest: expect.stringMatching(/^NEXT_REDIRECT;replace;\/onboarding\?step=about;/),
+    });
   });
 
   it("tells an incoming student there are no current classes yet", async () => {
-    await signIn({ graduationYear: 2031 });
+    await signIn({ graduationYear: 2031, firstTerm: "202701" });
     const html = await render("classes");
     expect(html).toContain("You start at Davidson in Fall 2027");
     expect(html).not.toContain("Search Fall 2026 courses");
@@ -367,7 +421,7 @@ describe("OnboardingPage", () => {
   });
 
   it("explains a legacy plan on the plan steps", async () => {
-    const user = await signIn({ graduationYear: 2029 });
+    const user = await signIn({ graduationYear: 2029, firstTerm: "202501" });
     await insertLegacyPlan(user.id, {
       plannedCourses: [
         v1Entry({ courseCode: "CSC 121", semester: "Fall", year: 2026, status: "planned" }),

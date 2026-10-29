@@ -61,7 +61,7 @@ const renderPanel = (
   );
 
 describe("CourseAboutPanel", () => {
-  it("requests the summary by ids only and renders it as text with the AI chip and tag", async () => {
+  it("requests the summary by ids only and renders it as text with the AI chip", async () => {
     stubFetch([200, OK]);
     renderPanel();
     expect(screen.getByRole("status")).toHaveTextContent("Loading the AI summary…");
@@ -73,10 +73,6 @@ describe("CourseAboutPanel", () => {
     expect(screen.getByText("like to build things")).toBeVisible();
     expect(screen.getByText("Hash tables")).toBeVisible();
     expect(screen.getByText("AI-generated content: verify with your advisor")).toBeInTheDocument();
-    expect(screen.getByText("Source:", { exact: false }).closest("[data-source]")).toHaveAttribute(
-      "data-source",
-      "ai",
-    );
     expect(
       screen.getByText(/Summarized from the official course description on Sep 29, 2026/),
     ).toBeVisible();

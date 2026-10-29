@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   collectErrors,
-  expectAllTagged,
+  expectAllAttributed,
   horizontalOverflow,
   isMobile,
   newSignedInAccount,
@@ -18,10 +18,7 @@ import {
 
 const PLAN_UNAVAILABLE = "Adding courses to your plan isn’t available yet. Try again later.";
 
-test("the careers index: 24 paths, URL filters, tagged counts, accessible", async ({
-  page,
-  request,
-}) => {
+test("the careers index: 24 paths, URL filters, accessible", async ({ page, request }) => {
   test.setTimeout(60_000);
   const errors = collectErrors(page);
   await newSignedInAccount(page, request, "e2e-careers");
@@ -32,14 +29,10 @@ test("the careers index: 24 paths, URL filters, tagged counts, accessible", asyn
   const cards = page.getByRole("main").getByRole("article");
   await expect(cards).toHaveCount(24);
 
-  // The registration-schedule counts stream in, each with its COURSE SCHEDULE tag.
   const se = page.getByRole("article", { name: "Software Engineering" });
-  await expect(se.getByTestId("career-card-offered")).toContainText(
-    /\d of 8 courses offered in Spring 2027/,
-  );
-  await expect(page.getByTestId("career-card-offered")).toHaveCount(24);
-  expect(await expectAllTagged(page)).toBeGreaterThanOrEqual(24);
   await expect(se.getByTestId("career-card-pay")).toContainText(/\$[\d,]+ median pay \(May 2025\)/);
+  // The full summary, never clamped.
+  await expect(page.locator(".line-clamp-4")).toHaveCount(0);
   // A proxy figure names the occupation it is the median for, in words and in the link's name.
   const ib = page.getByRole("article", { name: "Investment Banking" });
   await expect(ib.getByTestId("career-card-occupation")).toContainText(
@@ -102,10 +95,7 @@ test("the careers index: 24 paths, URL filters, tagged counts, accessible", asyn
   expect(errors).toEqual([]);
 });
 
-test("a career page: live availability per term, Add to plan, sourced sections", async ({
-  page,
-  request,
-}) => {
+test("a career page: live availability per term, Add to plan", async ({ page, request }) => {
   test.setTimeout(60_000);
   const errors = collectErrors(page);
   await newSignedInAccount(page, request, "e2e-career");
@@ -115,7 +105,7 @@ test("a career page: live availability per term, Add to plan, sourced sections",
   await expect(page.getByRole("heading", { level: 1, name: "Software Engineering" })).toBeVisible();
   await expect(page).toHaveTitle(/Software Engineering/);
 
-  // Every course with its live availability, tagged COURSE SCHEDULE.
+  // Every course with its live availability.
   const courses = page.getByTestId("career-courses").locator(":scope > li");
   await expect(courses).toHaveCount(8);
   const csc221 = page.locator('[data-course="CSC 221"]');
@@ -147,6 +137,12 @@ test("a career page: live availability per term, Add to plan, sourced sections",
 
   // Pay with its source, departments into the catalog, official programs, Handshake by its base URL.
   await expect(page.getByTestId("career-pay")).toContainText("May 2025");
+  // Median pay is the page's headline figure, at the type scale's largest StatNumber size (a real token).
+  const median = page.getByTestId("career-pay").locator(".text-3xl");
+  await expect(median).toBeVisible();
+  expect(parseFloat(await median.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThan(
+    24,
+  );
   await expect(
     page.getByRole("link", { name: /Source: BLS Occupational Outlook Handbook/ }),
   ).toHaveAttribute("href", /^https:\/\/www\.bls\.gov\/ooh\//);
@@ -165,7 +161,6 @@ test("a career page: live availability per term, Add to plan, sourced sections",
     "https://davidson.joinhandshake.com/",
   );
   await expect(page.getByTestId("handshake-query")).toHaveText("software engineer");
-  expect(await expectAllTagged(page)).toBeGreaterThan(8);
 
   // An unverified account sees why there are no alumni, not the alumni.
   await expect(page.getByTestId("alumni-gate")).toContainText("Verify your Davidson email");
@@ -173,11 +168,10 @@ test("a career page: live availability per term, Add to plan, sourced sections",
   // An unverified account gets no AI output: the AI panels show their verify gate, never a generated result.
   await expect(page.getByText(/AI · verify with your advisor/)).toHaveCount(0);
 
-  // The Davidson resources: every item tagged or exempt; a program's facts where the resource names it.
-  const resources = page.getByRole("region", { name: "At Davidson" });
-  expect(await resources.locator("li[data-aggregated]").count()).toBe(
-    await resources.locator(":scope li").count(),
-  );
+  // Provenance: the courses and the official programs once per list (their source lines), the offices per row.
+  const attribution = await expectAllAttributed(page);
+  expect(attribution.items).toBeGreaterThan(8);
+  expect(attribution.L0).toBeGreaterThanOrEqual(8);
 
   expect(await horizontalOverflow(page), "scrolls sideways").toBeLessThanOrEqual(0);
   expect(await seriousViolations(page)).toEqual([]);
@@ -263,7 +257,6 @@ test("a career page says which courses the student has taken instead of offering
       .locator('[data-course="MAT 230"]')
       .getByRole("button", { name: /^(Add to|Choose a term)/ }),
   ).toBeVisible();
-  expect(await expectAllTagged(page)).toBeGreaterThanOrEqual(8);
   expect(await seriousViolations(page)).toEqual([]);
 });
 
@@ -335,7 +328,6 @@ test("a v1 plan's Fall 2026 'Completed' rows never read Completed Fall 2026 on I
       .locator('[data-course="ECO 211"]')
       .getByRole("button", { name: /^(Add to|Choose a term)/ }),
   ).toBeVisible();
-  expect(await expectAllTagged(page)).toBeGreaterThanOrEqual(8);
   expect(await seriousViolations(page)).toEqual([]);
   if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
 
@@ -344,7 +336,7 @@ test("a v1 plan's Fall 2026 'Completed' rows never read Completed Fall 2026 on I
   await expect(page).toHaveURL(/\/plan\?tab=four-year$/);
 });
 
-test("office programs on a career page: published deadlines and amounts, tagged", async ({
+test("office programs on a career page: published deadlines and amounts", async ({
   page,
   request,
 }) => {
@@ -357,8 +349,12 @@ test("office programs on a career page: published deadlines and amounts, tagged"
   await expect(rusk.getByTestId("resource-facts")).toContainText(
     "Winter Break: Applications must be submitted by October 1.",
   );
-  await expect(rusk).toHaveAttribute("data-aggregated", "davidson-offices");
-  expect(await expectAllTagged(page)).toBeGreaterThan(0);
+  // Each office's resources name it once, quietly; screen readers hear it on every row.
+  await expect(rusk).toHaveAttribute("data-source", "davidson-offices");
+  await expect(rusk.locator('[data-source="davidson-offices"]')).toHaveText(
+    /^Source: via Dean Rusk International Studies Program$/,
+  );
+  expect((await expectAllAttributed(page)).items).toBeGreaterThan(0);
 
   await page.goto("/careers/nonprofit");
   await expect(
@@ -367,7 +363,6 @@ test("office programs on a career page: published deadlines and amounts, tagged"
       .locator("li")
       .filter({ has: page.getByRole("link", { name: /^Nonprofit Leadership Fellows/ }) }),
   ).toContainText("$3,500 stipend + housing");
-  expect(await expectAllTagged(page)).toBeGreaterThan(0);
   if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
 });
 

@@ -1,8 +1,7 @@
 import "server-only";
 import { cache } from "react";
-import type { FeedItem, LibraryHours } from "@/lib/types/feeds";
-import { getLibraryHours, listEventsPage } from "@/server/feeds";
-import { ApiError } from "@/server/http/errors";
+import type { FeedItem } from "@/lib/types/feeds";
+import { listEventsPage } from "@/server/feeds";
 import { getSourceStatuses, type SourceSyncState } from "@/server/sync";
 import { EVENT_SOURCE_IDS, type EventSourceId, type EventsView } from "./params";
 import type { EventsWindow } from "./range";
@@ -40,9 +39,8 @@ export interface EventSourceStatus {
 }
 
 /**
- * The last successful sync of each event source (for the "as of" times and the not-synced-yet state), in
- * registry order. Memoised per request (React cache, keyed by the instant in ms), so the results and the Sources
- * card share one read.
+ * The last successful sync of each event source (for the not-synced-yet empty state), in registry order.
+ * Memoised per request (React cache, keyed by the instant in ms).
  */
 export const loadEventSourceStatuses = cache(async (atMs: number): Promise<EventSourceStatus[]> => {
   const rows = new Map((await getSourceStatuses(new Date(atMs))).map((row) => [row.id, row]));
@@ -64,22 +62,4 @@ export function statusesFor(
   return view.sources.length === 0
     ? [...statuses]
     : statuses.filter((row) => view.sources.includes(row.id));
-}
-
-export type LibraryHoursResult =
-  { ok: true; hours: LibraryHours } | { ok: false; reason: "unavailable" };
-
-/**
- * Today's LibCal hours (getLibraryHours: a stored snapshot, or one inline sync of at most 5 s when nothing is
- * stored for today). 404/503 and any other failure → unavailable (logged unless it is the expected 503/404).
- */
-export async function loadLibraryHours(today: string): Promise<LibraryHoursResult> {
-  try {
-    return { ok: true, hours: await getLibraryHours(today) };
-  } catch (error) {
-    if (!(error instanceof ApiError && (error.status === 503 || error.status === 404))) {
-      console.error("[events] library hours failed:", error);
-    }
-    return { ok: false, reason: "unavailable" };
-  }
 }

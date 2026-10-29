@@ -2,19 +2,13 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EventList } from "@/app/(hub)/events/_components/event-list";
-import { EventSourcesView } from "@/app/(hub)/events/_components/event-sources";
 import { EventsFilters } from "@/app/(hub)/events/_components/events-filters";
 import { EventsResultsView } from "@/app/(hub)/events/_components/events-results";
 import { resetShowMoreFocus } from "@/app/(hub)/events/_components/show-more";
-import {
-  LibraryHoursView,
-  listedLocations,
-  openState,
-} from "@/app/(hub)/events/_components/library-hours";
 import type { EventSourceStatus } from "@/app/(hub)/events/_lib/load";
 import { DEFAULT_EVENTS_VIEW, type EventsView } from "@/app/(hub)/events/_lib/params";
 import { rangeWindow } from "@/app/(hub)/events/_lib/range";
-import type { FeedItem, LibraryHours } from "@/lib/types/feeds";
+import type { FeedItem } from "@/lib/types/feeds";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -121,8 +115,32 @@ describe("EventList", () => {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
       expect(link).toHaveAccessibleName(`${item.title} (opens in a new tab)`);
     });
-    // The tag's accessible text names the source in words.
-    expect(rows[0]!.querySelector("span[data-source]")).toHaveTextContent("Source: WildcatSync");
+    // The note names the source in quiet words (no boxed tag), "Source: " for screen readers.
+    const note = rows[0]!.querySelector("span[data-source]")!;
+    expect(note).toHaveTextContent("Source: via WildcatSync");
+    expect(note.className).not.toMatch(/border|uppercase/);
+  });
+
+  it("says a feed once per run of rows from it within a day, and keeps it for screen readers", () => {
+    const sameDay: FeedItem[] = ["a", "b", "c"].map((id, i) => ({
+      ...ITEMS[2]!,
+      id,
+      title: `Library event ${id}`,
+      url: `https://davidson.libcal.com/event/${i + 10}`,
+      startsAt: `2026-10-01T1${5 + i}:00:00.000Z`,
+      endsAt: null,
+      source: id === "c" ? "wildcatsync" : "library",
+    }));
+    render(<EventList items={sameDay} hasMore={false} view={view()} now={NOW} timeZone={TZ} />);
+    const notes = screen
+      .getAllByTestId("event-item")
+      .map((row) => row.querySelector("span[data-source]:not(li)")!);
+    expect(notes.map((note) => note.textContent)).toEqual([
+      "Source: via Library",
+      "Source: via Library",
+      "Source: via WildcatSync",
+    ]);
+    expect(notes.map((note) => note.classList.contains("sr-only"))).toEqual([false, true, false]);
   });
 
   it("renders deadlines, all-day and ongoing times", () => {
@@ -132,10 +150,22 @@ describe("EventList", () => {
     expect(watson).toHaveTextContent("Due 3:00 PM");
     expect(watson).toHaveAttribute("data-kind", "deadline");
     expect(within(watson!).getByText("Deadline")).toBeInTheDocument();
-    expect(watson).toHaveTextContent("Nominations close at 3 PM.");
     expect(fair).toHaveTextContent("11:00 AM – 2:00 PM");
     expect(fair).toHaveTextContent("Lilly Family Gallery");
     expect(fallBreak).toHaveTextContent("All day, through Oct 13");
+  });
+
+  it("holds a summary behind a Description toggle, closed until pressed", async () => {
+    const user = userEvent.setup();
+    render(<EventList items={ITEMS} hasMore={false} view={view()} now={NOW} timeZone={TZ} />);
+    const [, watson] = screen.getAllByTestId("event-item");
+    const toggle = within(watson!).getByText("Description").closest("details")!;
+    expect(toggle).not.toHaveAttribute("open");
+    await user.click(within(watson!).getByText("Description"));
+    expect(toggle).toHaveAttribute("open");
+    expect(within(watson!).getByTestId("event-summary")).toHaveTextContent(
+      "Nominations close at 3 PM.",
+    );
   });
 
   it("offers Show more (50 more) while hasMore, and says when the page is full", () => {
@@ -214,7 +244,6 @@ describe("EventsResultsView", () => {
       screen.getByRole("heading", { name: "The campus calendars have not synced yet" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Reload" })).toHaveAttribute("href", "/events");
-    expect(screen.getByRole("list", { name: "Calendars MakeItSo reads" })).toBeInTheDocument();
   });
 
   it("only counts the requested sources for not-synced-yet", () => {
@@ -340,139 +369,5 @@ describe("EventsFilters", () => {
     expect(screen.getByRole("group", { name: "Sources" })).toHaveAccessibleDescription(
       "Showing every source.",
     );
-  });
-});
-
-const HOURS: LibraryHours = {
-  date: "2026-09-30",
-  fetchedAt: "2026-09-30T16:00:00.000Z",
-  locations: [
-    {
-      id: "1",
-      name: "E.H. Little Library",
-      status: "text",
-      text: "Closed for Renovation",
-      opensAt: null,
-      closesAt: null,
-    },
-    {
-      id: "2",
-      name: "Chambers Building",
-      status: "not-set",
-      text: "",
-      opensAt: null,
-      closesAt: null,
-    },
-    {
-      id: "3",
-      name: "Lilly Family Gallery",
-      status: "24hours",
-      text: "24 Hours",
-      opensAt: "2026-09-30T04:00:00.000Z",
-      closesAt: "2026-10-01T04:00:00.000Z",
-    },
-    {
-      id: "4",
-      name: "Music Library (Sloan 101)",
-      status: "open",
-      text: "7am - 11:59pm",
-      opensAt: "2026-09-30T11:00:00.000Z",
-      closesAt: "2026-10-01T03:59:00.000Z",
-    },
-    { id: "5", name: "Archives", status: "closed", text: "Closed", opensAt: null, closesAt: null },
-  ],
-};
-
-describe("library hours", () => {
-  it("works out open now from LibCal's times", () => {
-    const [text, , allDay, music, closed] = HOURS.locations;
-    expect(openState(text!, NOW)).toBe("info");
-    expect(openState(allDay!, NOW)).toBe("open-now");
-    expect(openState(music!, NOW)).toBe("open-now");
-    expect(openState(music!, new Date("2026-09-30T06:30:00-04:00"))).toBe("closed-now");
-    expect(openState(closed!, NOW)).toBe("closed");
-    expect(openState({ ...music!, opensAt: null }, NOW)).toBe("info");
-    expect(listedLocations(HOURS).map((l) => l.id)).toEqual(["1", "3", "4", "5"]);
-  });
-
-  it("lists the locations with hours, the source and when it was read", () => {
-    render(
-      <LibraryHoursView
-        today="2026-09-30"
-        now={NOW}
-        timeZone={TZ}
-        result={{ ok: true, hours: HOURS }}
-      />,
-    );
-    const card = screen.getByRole("region", { name: /Library hours/ });
-    const rows = within(within(card).getByTestId("library-hours")).getAllByRole("listitem");
-    expect(rows.map((r) => r.textContent)).toEqual([
-      "E.H. Little LibraryClosed for Renovation",
-      "Lilly Family Gallery24 HoursOpen now",
-      "Music Library (Sloan 101)7am - 11:59pmOpen now",
-      "ArchivesClosed",
-    ]);
-    expect(within(card).getByText("Library", { selector: "[data-source]" })).toHaveAttribute(
-      "data-source",
-      "library",
-    );
-    expect(card).toHaveTextContent("as of Sep 30, 12:00 PM");
-    const site = within(card).getByRole("link", { name: /Library website/ });
-    expect(site).toHaveAttribute("rel", "noopener noreferrer");
-    expect(site.getAttribute("href")).toMatch(/^https:\/\//);
-  });
-
-  it("says when the hours are unavailable or empty", () => {
-    const { unmount } = render(
-      <LibraryHoursView
-        today="2026-09-30"
-        now={NOW}
-        timeZone={TZ}
-        result={{ ok: false, reason: "unavailable" }}
-      />,
-    );
-    expect(screen.getByTestId("library-hours-unavailable")).toHaveTextContent(
-      "Library hours are unavailable right now.",
-    );
-    unmount();
-    render(
-      <LibraryHoursView
-        today="2026-09-30"
-        now={NOW}
-        timeZone={TZ}
-        result={{ ok: true, hours: { ...HOURS, locations: [HOURS.locations[1]!] } }}
-      />,
-    );
-    expect(screen.getByText("LibCal lists no hours for today.")).toBeInTheDocument();
-  });
-});
-
-describe("EventSourcesView", () => {
-  it("shows each calendar's last sync, or why there is none", () => {
-    render(
-      <EventSourcesView
-        timeZone={TZ}
-        statuses={[
-          { id: "wildcatsync", lastSync: "2026-09-30T16:00:00.000Z", status: "ok" },
-          { id: "hurt-hub", lastSync: "2026-09-30T09:00:00.000Z", status: "stale" },
-          { id: "library", lastSync: "2026-09-30T15:00:00.000Z", status: "error" },
-          { id: "events-digest", lastSync: null, status: "never" },
-        ]}
-      />,
-    );
-    // No "sources" in the name: that belongs to the shell's Sources panel (landmark names stay distinct).
-    expect(screen.getByRole("region", { name: "Calendars" })).toBeInTheDocument();
-    const rows = within(screen.getByTestId("event-sources")).getAllByRole("listitem");
-    expect(rows.map((r) => r.textContent)).toEqual([
-      "Source: WildcatSyncas of Sep 30, 12:00 PM",
-      "Source: Hurt Hubas of Sep 30, 5:00 AM · out of date",
-      "Source: Libraryas of Sep 30, 11:00 AM · the latest check failed",
-      "Source: Events DigestNot synced yet",
-    ]);
-  });
-
-  it("degrades when the sync times cannot be read", () => {
-    render(<EventSourcesView timeZone={TZ} statuses={null} />);
-    expect(screen.getByText("Sync times are unavailable right now.")).toBeInTheDocument();
   });
 });

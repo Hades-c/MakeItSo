@@ -1,6 +1,4 @@
-import type * as React from "react";
 import Link from "next/link";
-import { SourceTag } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import type { Career } from "@/lib/types/content";
 import { formatUsd, occupationName } from "../_lib/format";
@@ -36,19 +34,17 @@ export function CardPay({ pay }: { pay: NonNullable<Career["pay"]> }) {
   );
 }
 
+/** A summary's first sentence (the career page shows it in full); the whole text when it has only one. */
+export function firstSentence(text: string): string {
+  const match = /^[\s\S]+?[.!?](?=\s+[A-Z“"(]|$)/.exec(text.trim());
+  return match ? match[0] : text.trim();
+}
+
 /**
- * One career on /careers: name (the card's link), summary, BLS median pay with its period and occupation (linked
- * to the OOH page), and a slot for the number of its courses on the registration term's schedule (streamed in;
- * empty when the catalog cannot answer). The whole card is the link's target area; the BLS link stays its own link.
+ * One career on /careers: name (the card's link), the summary's first sentence, and BLS median pay with its period and
+ * occupation (linked to the OOH page). The whole card is the link's target area; the BLS link stays its own link.
  */
-export function CareerCard({
-  career,
-  offered,
-}: {
-  career: Career;
-  /** The "5 of 8 courses on the Spring 2027 schedule" line (or nothing). */
-  offered?: React.ReactNode;
-}) {
+export function CareerCard({ career }: { career: Career }) {
   const titleId = `career-${career.slug}-title`;
   return (
     <article
@@ -64,39 +60,10 @@ export function CareerCard({
           {career.name}
         </Link>
       </h3>
-      <p className="mt-1.5 line-clamp-4 text-sm text-fg-2">{career.summary}</p>
+      <p className="mt-1.5 text-sm text-fg-2">{firstSentence(career.summary)}</p>
       <div className="mt-auto flex flex-col gap-2 pt-4">
         {career.pay ? <CardPay pay={career.pay} /> : null}
-        {offered}
       </div>
     </article>
-  );
-}
-
-/** The registration-schedule line of a card. */
-export function OfferedLine({
-  offered,
-  total,
-  termLabel,
-}: {
-  offered: number;
-  total: number;
-  termLabel: string;
-}) {
-  return (
-    <p
-      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-2"
-      data-aggregated="course-schedule"
-      data-source="course-schedule"
-      data-testid="career-card-offered"
-    >
-      <span>
-        <span className="font-semibold text-fg tabular-nums">
-          {offered} of {total}
-        </span>{" "}
-        {total === 1 ? "course" : "courses"} offered in {termLabel}
-      </span>
-      <SourceTag source="course-schedule" />
-    </p>
   );
 }

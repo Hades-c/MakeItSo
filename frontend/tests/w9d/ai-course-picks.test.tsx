@@ -78,7 +78,7 @@ describe("AiCoursePicks", () => {
     { courseCode: "MAT 150", termCode: "202602", reason: "Math foundations." },
   ];
 
-  it("shows each pick's official catalog title, term status and source tag; never a model title", async () => {
+  it("shows each pick's official catalog title and term status; never a model title", async () => {
     const calls = stubFetch((url) => {
       if (url.pathname === "/api/catalog/availability") {
         const code = url.searchParams.get("code");
@@ -127,7 +127,6 @@ describe("AiCoursePicks", () => {
     expect(within(csc221).getByTestId("ai-course-term")).toHaveTextContent(
       "Offered in Spring 2027 (3 sections)",
     );
-    expect(within(csc221).getByText("Source:", { exact: false })).toBeInTheDocument();
     expect(within(csc221).getByRole("list", { name: "Availability by term" })).toHaveTextContent(
       "Fall 2026: Offered (1 section)",
     );

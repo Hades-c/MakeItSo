@@ -11,18 +11,18 @@ import {
 
 /**
  * /events (W9b): the synced campus feeds from the fixtures, grouped by America/New_York day with the server's
- * pinned "today" (FIXTURES_NOW = Wed 2026-09-30 12:00 ET), filters in the URL, Show more, library hours and the
- * sources' as-of times. Every aggregated item must carry its source tag (expectAllTagged).
+ * pinned "today" (FIXTURES_NOW = Wed 2026-09-30 12:00 ET), filters in the URL, Show more. No general hours card.
+ * Every aggregated item must say its source (expectEventSources), quietly in its own meta line.
  */
 
 const PASSWORD = "events e2e password";
 
 /**
  * Every aggregated item on the page (data-testid="event-item") names its stored source in data-source and renders
- * that source's tag (SourceTag: data-source + the registry label). Stricter than helpers.ts expectAllTagged for
- * this page: it requires items and checks the exact label of each feed item's tag.
+ * that source's note (SourceNote: data-source + "via <registry label>"). Stricter than helpers.ts
+ * expectAllAttributed for this page: it requires items and checks the exact words of each feed item's note.
  */
-async function expectAllTagged(page: Page, selector = "[data-testid=event-item]") {
+async function expectEventSources(page: Page, selector = "[data-testid=event-item]") {
   const items = page.locator(selector);
   expect(await items.count(), "aggregated items on the page").toBeGreaterThan(0);
   const found = await items.evaluateAll((elements) =>
@@ -35,7 +35,9 @@ async function expectAllTagged(page: Page, selector = "[data-testid=event-item]"
   const problems = found.flatMap(({ source, tag }, index) => {
     if (!source || !(source in SOURCES)) return [`item ${index}: no known data-source (${source})`];
     const label = SOURCES[source as SourceId].label;
-    return tag === `Source: ${label}` ? [] : [`item ${index}: tag "${tag}" is not "${label}"`];
+    return tag === `Source: via ${label}`
+      ? []
+      : [`item ${index}: note "${tag}" is not "via ${label}"`];
   });
   expect(problems).toEqual([]);
 }
@@ -117,7 +119,7 @@ test("events: grouped by campus day, every item tagged and linked out, accessibl
       main.getByRole("heading", { level: 2, name: /^Tomorrow Thursday, October 1/ }),
     ).toBeVisible();
 
-    await expectAllTagged(page);
+    await expectEventSources(page);
     const links = await items(page)
       .getByRole("link")
       .evaluateAll((els) =>
@@ -130,18 +132,11 @@ test("events: grouped by campus day, every item tagged and linked out, accessibl
       expect(rel).toBe("noopener noreferrer");
     }
 
-    // Library hours and sources, from the same fixtures.
-    const hours = page.getByRole("region", { name: /Library hours/ });
-    await expect(hours.getByText("Music Library (Sloan 101)")).toBeVisible();
-    await expect(hours.getByText("Open now").first()).toBeVisible();
-    await expect(hours.getByText(/as of Sep 30/)).toBeVisible();
-    await expect(page.getByRole("region", { name: "Calendars", exact: true })).toBeVisible();
-    // The shell's Sources panel keeps its name to itself (desktop; phones have no panel). Role names match
-    // as substrings, so no other region may mention "sources".
-    expect(await page.getByRole("region", { name: "Sources" }).count()).toBeLessThanOrEqual(1);
-    const sources = page.getByTestId("event-sources").getByRole("listitem");
-    await expect(sources).toHaveCount(4);
-    await expect(sources.filter({ hasText: "as of Sep 30, 12:00 PM" })).toHaveCount(4);
+    // No general hours card anywhere, and a summary sits behind its own Description toggle, closed at first.
+    await expect(page.getByRole("region", { name: /Library hours/ })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Calendars", exact: true })).toHaveCount(0);
+    const withSummary = items(page).filter({ has: page.getByText("Description", { exact: true }) });
+    await expect(withSummary.first().getByTestId("event-summary")).toBeHidden();
 
     expect(await horizontalOverflow(page), "scrolls sideways").toBeLessThanOrEqual(0);
     expect(await seriousViolations(page), `axe ${colorScheme}`).toEqual([]);

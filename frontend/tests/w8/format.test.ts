@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   availabilityText,
   compactDays,
-  creditsLabel,
   eligibleYearsText,
   instructorName,
   joinTermLabels,
@@ -87,13 +86,6 @@ describe("instructors, credits, seats", () => {
     expect(instructorName({ first: "Dan", last: "Aldridge", isStaff: false })).toBe("Dan Aldridge");
     const rus = section("202602", "RUS 496", "A");
     expect(rus.instructors.map(instructorName)).toContain("Staff (TBA)");
-  });
-
-  it("counts Davidson course credits (1 per course; 0 and ranges exist)", () => {
-    expect(creditsLabel([1])).toBe("1 course credit");
-    expect(creditsLabel([0])).toBe("0 course credits");
-    expect(creditsLabel([1, 0])).toBe("0–1 course credits");
-    expect(creditsLabel([])).toBe("Credits not listed");
   });
 
   it("never shows negative open seats", () => {

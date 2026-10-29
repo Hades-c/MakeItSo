@@ -176,12 +176,29 @@ export const SummerActivitySchema = z.object({
 });
 export type SummerActivity = z.infer<typeof SummerActivitySchema>;
 
+/**
+ * Where a deadline came from: typed in by the student, carried over from a pasted syllabus they reviewed
+ * (/syllabi), or imported from their Moodle calendar feed (server/moodle; source tag "course-site", "Moodle").
+ */
+export const DeadlineOriginSchema = z.enum(["manual", "syllabus", "moodle"]);
+export type DeadlineOrigin = z.infer<typeof DeadlineOriginSchema>;
+
 /** A student-entered deadline (Due soon on Today). */
 export const StudentDeadlineSchema = z.object({
   id: ObjectIdSchema,
   title: z.string().min(1).max(120),
   dueAt: IsoDateTimeSchema,
   courseCode: CourseCodeSchema.optional(),
+  /** Absent (or "manual") for a deadline the student typed in themselves. */
+  origin: DeadlineOriginSchema.optional(),
+  /** The syllabus this deadline came from; set only when origin is "syllabus". */
+  syllabusId: ObjectIdSchema.optional(),
+  /**
+   * Due on a day, at no time its source gave: every syllabus deadline (a syllabus gives a day) and a Moodle event
+   * exported as a date. `dueAt` is then 23:59 Davidson time that day, for ordering and "still due" only: it is
+   * shown as the day alone ("Thu Oct 8"), like the calendar's all-day rows, and never placed on the timeline.
+   */
+  allDay: z.literal(true).optional(),
 });
 export type StudentDeadline = z.infer<typeof StudentDeadlineSchema>;
 

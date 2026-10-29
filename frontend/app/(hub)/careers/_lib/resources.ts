@@ -7,42 +7,38 @@ import {
   type ResourceLink,
 } from "@/lib/types/content";
 import { foldText } from "@/server/content/define";
+import { officeShortName } from "@/server/content/offices";
 
 /**
  * A career's Davidson resources (Career.davidsonResources) joined to the curated offices and their programs
- * (server/content/offices.ts), so the card can show what the office publishes and the truthful tag (PLAN §5
- * "Sources"): MATTHEWS CENTER, HURT HUB PROGRAMS, REGISTRAR or DAVIDSON OFFICES (with the office's own name).
+ * (server/content/offices.ts), so the card can show what the office publishes: MATTHEWS CENTER, HURT HUB
+ * PROGRAMS, REGISTRAR or DAVIDSON OFFICES (with the office's own name).
  *
  *   1. A resource whose page is exactly one program's page IS that program: its amount and deadline text are
- *      shown exactly as published, with the program's tag.
+ *      shown exactly as published.
  *   2. Otherwise a resource that names a program is that program when exactly one program with that name has its
  *      page on the resource's page, below it or above it ("Dean Rusk Travel Grants" → the Dean Rusk Travel Grants
  *      application page; "Nonprofit Leadership Fellows (Mulliss Center …)" → the one of the five programs on the
  *      Mulliss fellowships page with that name). Names are compared without their "( … )" asides.
  *   3. A page several programs share that names none of them (the Summer Internship Grants list names 22 grants)
- *      is not any single one of them: it keeps its own description and gets the tag of the office whose site it
- *      is on (the office URL or below it).
+ *      is not any single one of them: it keeps its own description and gets the source of the office whose site
+ *      it is on (the office URL or below it).
  *   4. Any other page in davidson.edu/offices-and-services (an office with no curated record, such as the art
- *      galleries) gets the DAVIDSON OFFICES tag: that is the part of davidson.edu the source stands for.
- *   5. What is left has no curated source id (lib/sources.ts; contractRequest for a davidson.edu source). An
- *      academic department's or institute's page on www.davidson.edu is shown untagged with an explicit exemption
- *      ("davidson-web"), so a page kind nobody has vetted fails the tests instead of slipping through untagged.
+ *      galleries) gets the DAVIDSON OFFICES source: that is the part of davidson.edu the source stands for.
+ *   5. What is left has no curated source id (lib/sources.ts; contractRequest for a davidson.edu source) — `null`.
  * Pure: the offices and programs come in as arguments.
  */
-
-/** Why a resource may carry no SourceTag. Only these are allowed (tests; tests/e2e/helpers.ts expectAllTagged). */
-export const UNTAGGED_EXEMPTIONS = ["davidson-web"] as const;
-export type UntaggedExemption = (typeof UNTAGGED_EXEMPTIONS)[number];
 
 export interface ResolvedResource {
   name: string;
   url: string;
   description: string;
-  /** The curated source tag, or null (no office matches). */
+  /** The curated source, or null (no office matches). */
   source: ProgramSource | null;
-  /** When `source` is null: why the item may be shown without a tag (null: it may not; the tests fail). */
-  untagged: UntaggedExemption | null;
-  /** The office's own name next to a DAVIDSON OFFICES tag (null for the offices with a tag of their own). */
+  /**
+   * The office's own name next to a DAVIDSON OFFICES source, as its source note says it (officeShortName; null
+   * for the offices with a source of their own, which the note names by that source's label).
+   */
   officeName: string | null;
   /** Set when the resource is one program: its published facts, and the page they are published on. */
   program: {
@@ -124,15 +120,6 @@ function programByName(resource: ResourceLink, programs: readonly Program[]): Pr
 
 const OFFICES_SITE = normalizeUrl(SOURCES["davidson-offices"].url ?? "");
 
-/** Rule 5: a page on www.davidson.edu (no curated source id covers it yet). */
-function isDavidsonWebPage(url: string): boolean {
-  try {
-    return new URL(url).hostname.toLowerCase() === "www.davidson.edu";
-  } catch {
-    return false;
-  }
-}
-
 export function resolveResources(
   resources: readonly ResourceLink[],
   offices: readonly Office[],
@@ -143,7 +130,10 @@ export function resolveResources(
     const key = normalizeUrl(program.url);
     byUrl.set(key, [...(byUrl.get(key) ?? []), program]);
   }
-  const officeName = (slug: string) => offices.find((office) => office.slug === slug)?.name ?? null;
+  const officeName = (slug: string) => {
+    const office = offices.find((candidate) => candidate.slug === slug);
+    return office ? officeShortName(office) : null;
+  };
 
   return resources.map((resource): ResolvedResource => {
     const base = { name: resource.name, url: resource.url, description: resource.description };
@@ -154,7 +144,6 @@ export function resolveResources(
       return {
         ...base,
         source: program.source,
-        untagged: null,
         officeName: program.source === "davidson-offices" ? officeName(program.officeSlug) : null,
         program: {
           slug: program.slug,
@@ -173,8 +162,7 @@ export function resolveResources(
       return {
         ...base,
         source,
-        untagged: null,
-        officeName: source === "davidson-offices" ? office.name : null,
+        officeName: source === "davidson-offices" ? officeShortName(office) : null,
         program: null,
       };
     }
@@ -182,7 +170,6 @@ export function resolveResources(
       return {
         ...base,
         source: "davidson-offices",
-        untagged: null,
         officeName: null,
         program: null,
       };
@@ -190,7 +177,6 @@ export function resolveResources(
     return {
       ...base,
       source: null,
-      untagged: isDavidsonWebPage(resource.url) ? "davidson-web" : null,
       officeName: null,
       program: null,
     };

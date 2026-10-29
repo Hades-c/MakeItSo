@@ -1,7 +1,5 @@
 import "server-only";
-import { EVENT_SOURCE_IDS } from "@/app/(hub)/events/_lib/params";
 import type { Flags } from "@/lib/flags";
-import type { SourceId } from "@/lib/sources";
 import { loadAiAllowsUnverified } from "@/server/ai/access";
 import { isMailAvailable } from "@/server/auth";
 import { EnvError, readEnv } from "@/server/env";
@@ -87,14 +85,4 @@ export function loadLandingClaims(): LandingClaims {
 export function joinWords(words: readonly string[]): string {
   if (words.length <= 1) return words.join("");
   return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
-}
-
-/** The sources named in "Sources MakeItSo draws on": only those some page shows items from. */
-export function landingSources(claims: LandingClaims): SourceId[] {
-  return [
-    "course-schedule",
-    "registrar",
-    ...(claims.ratings ? (["ratemyprofessors"] as const) : []),
-    ...(claims.events ? EVENT_SOURCE_IDS : []),
-  ];
 }

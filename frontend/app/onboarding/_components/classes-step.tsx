@@ -68,7 +68,7 @@ interface Picker {
 
 export function ClassesStep(props: ClassesStepProps) {
   const { term, status } = props;
-  const plan = usePlanItems(props.items);
+  const plan = usePlanItems(props.items, (list) => termItems(list, term).length > 0);
   const [picker, setPicker] = useState<Picker | null>(null);
   const [message, setMessage] = useState("");
   const [warnings, setWarnings] = useState<PlanWarning[]>([]);
@@ -265,7 +265,13 @@ export function ClassesStep(props: ClassesStepProps) {
         testId="classes-search"
       />
 
-      <StepActions step="classes" primary={<ContinueLink step="classes" />} />
+      {/* Never blocks: with no class chosen (not registered yet, a transfer student, a spring starter) the way on
+          is "Add classes later"; once there is one, Continue. */}
+      {current.length === 0 ? (
+        <StepActions step="classes" skipLabel="Add classes later" primary={null} />
+      ) : (
+        <StepActions step="classes" hideSkip primary={<ContinueLink step="classes" />} />
+      )}
     </div>
   );
 }

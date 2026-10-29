@@ -1,12 +1,14 @@
 import { CalendarClock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { SourceTag } from "@/components/ui/source-tag";
+import { provenance, SourceLine } from "@/components/ui/source-tag";
+import { SOURCES } from "@/lib/sources";
 import { cn } from "@/lib/utils";
 import { describeDeadlines, type DeadlineInput } from "../_lib/deadlines";
 
 /**
- * Registration windows and deadlines for the WebTree term, from the academic calendar (server/content, tag
- * REGISTRAR, each row linked to the Registrar's page). Worded on the server for `now` in Davidson time.
+ * Registration windows and deadlines for the WebTree term, from the academic calendar (server/content, each row
+ * linked to the Registrar's page), with ONE quiet source line under them ("From the Registrar’s academic
+ * calendar"). Worded on the server for `now` in Davidson time.
  */
 export function RegistrationDeadlines({
   deadlines,
@@ -22,8 +24,10 @@ export function RegistrationDeadlines({
   className?: string;
 }) {
   const rows = describeDeadlines(deadlines, now, timeZone);
+  const others = [...new Set(rows.map((row) => row.source))].filter((id) => id !== "registrar");
   return (
     <section
+      {...provenance(rows.map((row) => row.source))}
       aria-labelledby="registration-deadlines-title"
       className={cn("rounded-xl border border-line bg-surface p-4 shadow-card md:px-5", className)}
       data-testid="registration-deadlines"
@@ -45,8 +49,8 @@ export function RegistrationDeadlines({
             <li
               key={row.id}
               className="flex flex-col gap-1 py-2.5 first:pt-0 last:pb-0"
-              data-source={row.source}
               data-state={row.state}
+              data-source={row.source}
             >
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <a
@@ -55,9 +59,8 @@ export function RegistrationDeadlines({
                   rel="noopener noreferrer"
                   className="inline-flex min-h-11 items-center text-sm font-semibold text-fg underline-offset-2 hover:underline md:min-h-0"
                 >
-                  {row.title}
+                  {row.title} <span className="sr-only">(opens in a new tab)</span>
                 </a>
-                <SourceTag source={row.source} />
               </div>
               <p className="flex flex-wrap items-center gap-2 text-sm text-fg-2">
                 <time dateTime={row.dateTime}>{row.when}</time>
@@ -73,6 +76,12 @@ export function RegistrationDeadlines({
           ))}
         </ul>
       )}
+      {rows.length > 0 ? (
+        <SourceLine className="mt-3">
+          From the Registrar’s academic calendar
+          {others.length > 0 ? ` and ${others.map((id) => SOURCES[id].label).join(", ")}` : null}
+        </SourceLine>
+      ) : null}
     </section>
   );
 }

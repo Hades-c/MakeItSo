@@ -14,6 +14,8 @@ import { readEnv } from "@/server/env";
  *   events        FEATURE_EVENTS         default on
  *   alumni        FEATURE_ALUMNI         default on
  *   ai            AI_ENABLED             default on
+ *   moodle        MOODLE_IMPORT_ENABLED  default on  (Moodle calendar import on /syllabi; turning it off stops
+ *                                                     syncing, already imported deadlines stay in the plan)
  *   rmp           RMP_ENABLED            default on  (ratings: rating, count, "as of", link)
  *   rmpSummaries  RMP_SUMMARIES_ENABLED  default off (AI summaries of reviews; owner opt-in only)
  */
@@ -22,6 +24,7 @@ export interface Flags {
   events: boolean;
   alumni: boolean;
   ai: boolean;
+  moodle: boolean;
   rmp: boolean;
   rmpSummaries: boolean;
 }
@@ -31,6 +34,7 @@ export const FLAG_ENV_VARS = {
   events: "FEATURE_EVENTS",
   alumni: "FEATURE_ALUMNI",
   ai: "AI_ENABLED",
+  moodle: "MOODLE_IMPORT_ENABLED",
   rmp: "RMP_ENABLED",
   rmpSummaries: "RMP_SUMMARIES_ENABLED",
 } as const satisfies Record<keyof Flags, string>;
@@ -47,6 +51,7 @@ export function getFlags(source: Record<string, string | undefined> = process.en
     events: readEnv(FLAG_ENV_VARS.events, source),
     alumni: readEnv(FLAG_ENV_VARS.alumni, source),
     ai: readEnv(FLAG_ENV_VARS.ai, source),
+    moodle: readEnv(FLAG_ENV_VARS.moodle, source),
     rmp,
     rmpSummaries: rmp && readEnv(FLAG_ENV_VARS.rmpSummaries, source),
   };

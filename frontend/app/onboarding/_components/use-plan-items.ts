@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ApiClientError, callApi } from "@/lib/api/client";
 import { planEndpoints } from "@/lib/api/endpoints";
 import type { AddPlanItemBody, UpdatePlanItemBody } from "@/lib/api/plan";
@@ -12,15 +13,33 @@ import { describeFailure, type Failure } from "../_lib/errors";
  * atomic adds with the (termCode, canonicalCode) key, $pull removes, positional patches). A 409 means the course
  * is already there (a re-run, another tab): the hook reloads the plan and reports it as "already in your plan"
  * instead of an error. One change at a time: a second click while a change is in flight is ignored.
+ *
+ * `saved` says whether the items count as this step's saved data (the step list's check, ./_lib/steps
+ * stepProgress). When a change flips it, the server part of the page is refreshed (router.refresh()) so the
+ * check follows; only on a flip, not after every change, so a refresh rarely races the student moving to the next
+ * step (a refresh still in flight during a step change made the browser drop the page icon for a moment). This
+ * hook keeps its own items, so nothing shown here jumps.
  */
 
 export type ChangeResult =
   { ok: true; item?: PlanItem; warnings: PlanWarning[] } | { ok: false; failure: Failure };
 
-export function usePlanItems(initial: readonly PlanItem[]) {
+export function usePlanItems(
+  initial: readonly PlanItem[],
+  saved: (items: readonly PlanItem[]) => boolean,
+) {
+  const router = useRouter();
   const [items, setItems] = useState<PlanItem[]>(() => [...initial]);
   const [busy, setBusy] = useState<string | null>(null);
   const inFlight = useRef(false);
+  const isSaved = saved(items);
+  const wasSaved = useRef(isSaved);
+
+  useEffect(() => {
+    if (wasSaved.current === isSaved) return;
+    wasSaved.current = isSaved;
+    router.refresh();
+  }, [isSaved, router]);
 
   const reload = useCallback(async () => {
     try {

@@ -1,10 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
 import { GET as cronGet } from "@/app/api/cron/feeds/route";
-import { GET as hoursGet } from "@/app/api/events/library-hours/route";
 import { GET as eventsGet } from "@/app/api/events/route";
 import { CronResponseSchema, EventsResponseSchema } from "@/lib/api/events";
-import { FEED_SOURCE_IDS, LibraryHoursSchema } from "@/lib/types/feeds";
+import { FEED_SOURCE_IDS } from "@/lib/types/feeds";
 import type { SessionUser } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 import { syncFeeds } from "@/server/feeds";
@@ -161,38 +160,6 @@ describe("GET /api/events", () => {
     const res = await get(eventsGet, "/api/events");
     expect(res.status).toBe(404);
     expect(((await json(res)).error as { code: string }).code).toBe("not_found");
-    expect((await get(hoursGet, "/api/events/library-hours")).status).toBe(404);
-  });
-});
-
-describe("GET /api/events/library-hours", () => {
-  it("needs a signed-in user", async () => {
-    expect((await get(hoursGet, "/api/events/library-hours")).status).toBe(401);
-  });
-
-  it("defaults to today (America/New_York) and accepts ?date=", async () => {
-    session.user = SAM;
-    const res = await get(hoursGet, "/api/events/library-hours");
-    expect(res.status).toBe(200);
-    expect(res.headers.get("cache-control")).toBe("private, no-store");
-    const { hours } = (await res.json()) as { hours: unknown };
-    const parsed = LibraryHoursSchema.parse(hours);
-    expect(parsed.date).toBe("2026-09-30");
-    expect(parsed.locations).toHaveLength(11);
-    const same = await json(await get(hoursGet, "/api/events/library-hours?date=2026-09-30"));
-    expect(same).toEqual({ hours });
-  });
-
-  it("404 for a date without hours, 400 for a malformed date, 503 when LibCal is down", async () => {
-    session.user = SAM;
-    expect((await get(hoursGet, "/api/events/library-hours?date=2026-10-15")).status).toBe(404);
-    expect((await get(hoursGet, "/api/events/library-hours?date=tomorrow")).status).toBe(400);
-    fetchMock.mockImplementation((async (source: SyncedSourceId, url: string) => {
-      throw new ExternalFetchError(source, url, "network", "Request failed");
-    }) as unknown as typeof fetchExternal);
-    const down = await get(hoursGet, "/api/events/library-hours");
-    expect(down.status).toBe(503);
-    expect(((await json(down)).error as { code: string }).code).toBe("unavailable");
   });
 });
 

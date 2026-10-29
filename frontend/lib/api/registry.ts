@@ -3,12 +3,14 @@ import { accountApi } from "@/lib/api/account";
 import { aiApi } from "@/lib/api/ai";
 import { catalogApi } from "@/lib/api/catalog";
 import { eventsApi } from "@/lib/api/events";
+import { moodleApi } from "@/lib/api/moodle";
 import { planApi } from "@/lib/api/plan";
 import { profileApi } from "@/lib/api/profile";
 import { programsApi } from "@/lib/api/programs";
 import { ratingsApi } from "@/lib/api/ratings";
 import { searchApi } from "@/lib/api/search";
 import type { ApiRouteSpec, HttpMethod } from "@/lib/api/spec";
+import { syllabiApi } from "@/lib/api/syllabi";
 
 /**
  * Every route spec, by method and path: what `callApi` checks an endpoint's response against outside production
@@ -22,11 +24,13 @@ export const API_SPECS: readonly ApiRouteSpec[] = [
       authExtraApi,
       catalogApi,
       eventsApi,
+      moodleApi,
       planApi,
       profileApi,
       programsApi,
       ratingsApi,
       searchApi,
+      syllabiApi,
     ].flatMap((family) => Object.values(family) as ApiRouteSpec[]),
   ),
 ];

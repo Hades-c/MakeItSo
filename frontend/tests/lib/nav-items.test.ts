@@ -5,8 +5,10 @@ import {
   BOTTOM_TAB_KEYS,
   bottomTabItems,
   NAV_ITEMS,
+  navParentOf,
   navSectionOf,
   sidebarItems,
+  sidebarSections,
   type NavKey,
 } from "@/components/app/nav-items";
 
@@ -30,16 +32,28 @@ describe("hub navigation", () => {
     expect(activeNavKey("/alumni", "tabs")).toBe("careers");
   });
 
-  it("has five phone tabs and six sidebar entries with one label each", () => {
+  it("puts Syllabi under My plan on the phone tab bar (it has no tab)", () => {
+    expect(activeNavKey("/syllabi", "sidebar")).toBe("syllabi");
+    expect(activeNavKey("/syllabi", "tabs")).toBe("plan");
+  });
+
+  it("has five phone tabs and seven sidebar entries with one label each", () => {
     expect(BOTTOM_TAB_KEYS).toEqual(["today", "courses", "plan", "careers", "events"]);
     expect(NAV_ITEMS.map((i) => i.label)).toEqual([
       "Today",
       "Courses",
       "My plan",
+      "Syllabi",
       "Careers",
-      "Events",
       "Alumni",
+      "Events",
     ]);
+  });
+
+  it("nests Syllabi under My plan and Alumni under Careers, nothing else", () => {
+    expect(navParentOf("syllabi")).toBe("plan");
+    expect(navParentOf("alumni")).toBe("careers");
+    for (const key of BOTTOM_TAB_KEYS) expect(navParentOf(key)).toBeNull();
   });
 
   it("finds the section of a path whether or not it is shown", () => {
@@ -61,7 +75,7 @@ describe("hub navigation with sections hidden", () => {
 
   it("keeps the canonical order whatever order the keys come in", () => {
     const nav: NavKey[] = ["alumni", "events", "plan", "today", "courses"];
-    expect(keys(sidebarItems(nav))).toEqual(["today", "courses", "plan", "events", "alumni"]);
+    expect(keys(sidebarItems(nav))).toEqual(["today", "courses", "plan", "alumni", "events"]);
     expect(keys(bottomTabItems(nav))).toEqual(["today", "courses", "plan", "events"]);
   });
 
@@ -88,5 +102,42 @@ describe("hub navigation with sections hidden", () => {
     // Careers hidden: no Careers tab to highlight.
     expect(activeNavKey("/alumni", "tabs", [...CORE, "events", "alumni"])).toBeNull();
     expect(activeNavKey("/alumni", "sidebar", [...CORE, "events", "alumni"])).toBe("alumni");
+  });
+});
+
+describe("sidebarSections (the five tabs, with Syllabi under My plan and Alumni under Careers)", () => {
+  const CORE: NavKey[] = ["today", "courses", "plan", "syllabi"];
+  const shape = (nav?: NavKey[]) =>
+    sidebarSections(nav).map((s) => [s.item.key, s.children.map((c) => c.key)]);
+
+  it("has the phone tabs' five parents, in their order, and only two nested children", () => {
+    expect(sidebarSections().map((s) => s.item.key)).toEqual(BOTTOM_TAB_KEYS);
+    expect(shape()).toEqual([
+      ["today", []],
+      ["courses", []],
+      ["plan", ["syllabi"]],
+      ["careers", ["alumni"]],
+      ["events", []],
+    ]);
+  });
+
+  it("drops a hidden child, keeping its parent", () => {
+    expect(shape([...CORE, "careers", "events"])).toEqual([
+      ["today", []],
+      ["courses", []],
+      ["plan", ["syllabi"]],
+      ["careers", []],
+      ["events", []],
+    ]);
+  });
+
+  it("drops a hidden parent with its children, never an empty entry", () => {
+    expect(shape(CORE)).toEqual([
+      ["today", []],
+      ["courses", []],
+      ["plan", ["syllabi"]],
+    ]);
+    // Alumni without Careers never comes from the flags (featureEnabled); it has no parent to sit under.
+    expect(shape([...CORE, "alumni"]).map(([key]) => key)).toEqual(["today", "courses", "plan"]);
   });
 });

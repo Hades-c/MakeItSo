@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import { expect, test } from "@playwright/test";
 import {
   attributionReport,
-  expectAllTagged,
   horizontalOverflow,
   isMobile,
   newSignedInAccount,
@@ -162,7 +161,6 @@ test("the course page shows a matched rating's difficulty, would-take-again and 
   await expect(sections.getByText("Difficulty 2.4 of 5")).toHaveCount(1);
   await expect(page.locator("[data-rating]")).toHaveCount(2);
 
-  expect(await expectAllTagged(page)).toBeGreaterThan(0);
   expect(
     (await attributionReport(page)).problems.filter((p) =>
       /ratemyprofessors|RateMyProfessors/.test(p),

@@ -2,7 +2,6 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   aiStudent,
   collectErrors,
-  expectAllTagged,
   horizontalOverflow,
   isMobile,
   seriousViolations,
@@ -99,14 +98,13 @@ test("the AI career plan: official titles and availability, then Send to my plan
   const picks = result.getByTestId("ai-course-pick");
   const pickCount = await picks.count();
   expect(pickCount).toBeGreaterThan(0);
-  // Each pick gets its official title from the catalog and a term status with its COURSE SCHEDULE tag.
+  // Each pick gets its official title from the catalog and a term status.
   const first = picks.first();
   await expect(first.getByTestId("ai-course-title")).toBeVisible();
   await expect(first.getByTestId("ai-course-term")).toHaveText(
     /^(Offered in|Not offered in|\w+ \d{4}(:| isn’t))/,
   );
   await expect(page.getByText("Checking the schedule…")).toHaveCount(0);
-  expect(await expectAllTagged(page)).toBeGreaterThan(0);
   // Official program names are shown as they are (never "Major · Major in …").
   await expect(result.getByText(/Major · Major|Minor · Minor/)).toHaveCount(0);
 

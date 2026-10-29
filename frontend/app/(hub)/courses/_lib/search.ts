@@ -47,8 +47,9 @@ import {
 /**
  * The /courses data (PLAN §3 /courses): the term list for the selector (default: server/catalog browseTerm), the
  * department and requirement lists for the filters, one page of searchCourses() results, and per row what the
- * row shows besides the summary: each section's times, the requirement names, availability across the plan
- * window and what adding it would be warned about. Server-only; every optional part degrades on its own.
+ * row shows besides the summary: a description (behind its own toggle), each section's times, the requirement
+ * names, availability across the plan window and what adding it would be warned about. Server-only; every
+ * optional part degrades on its own.
  */
 
 export interface TermOption {
@@ -72,6 +73,8 @@ export interface CourseRow {
   summary: CourseSummary;
   href: string;
   reqs: { code: ReqCode; name: string }[];
+  /** The first section's own description, when the schedule has one; shown behind a Description toggle. */
+  description: string | null;
   /** Up to MAX_ROW_SECTIONS primary sections (labs listed only when there is nothing else). */
   sections: RowSection[];
   /** Sections not listed in `sections`. */
@@ -154,10 +157,13 @@ export function courseRow(input: {
   });
   const codes = course ? courseCodes(course) : new Set([summary.code, ...summary.crossListings]);
   const terms = history ? addToPlanTerms(history, window) : [];
+  const description =
+    course?.sections.find((s) => s.descriptionText.trim())?.descriptionText ?? null;
   return {
     summary,
     href: routes.course(term, summary.code),
     reqs: summary.reqCodes.map((code) => ({ code, name: requirementName(code) })),
+    description,
     sections,
     moreSections: Math.max(0, (course?.sections.length ?? summary.sectionCount) - sections.length),
     add:

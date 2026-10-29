@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTag } from "@/components/ui/source-tag";
+import { runHeads, SourceNote, viaLabel } from "@/components/ui/source-tag";
+import { formatEventLocation } from "@/lib/event-location";
 import { formatLongDate, formatTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import type { FeedItem } from "@/lib/types/feeds";
@@ -21,7 +22,8 @@ const DAY_NUMBER = (timeZone: string) =>
 
 /**
  * This week on campus (PLAN §3; R2, rendered only while FEATURE_EVENTS is on): the next campus events from the
- * synced feeds (server/feeds listEvents), each linking to its source page with the tag of its stored source.
+ * synced feeds (server/feeds listEvents), each linking to its source page, with its stored source at the end of its
+ * meta line ("via WildcatSync"), said once per run of consecutive rows from one feed.
  * Long-running items already under way (an application season, an eight-week course) are left out.
  */
 export async function CampusPanel({ now, timeZone }: { now: Date; timeZone: string }) {
@@ -32,6 +34,7 @@ export async function CampusPanel({ now, timeZone }: { now: Date; timeZone: stri
   if (!events) {
     return <PanelError id="campus" title="This week on campus" what="Campus events" />;
   }
+  const heads = runHeads(events.map((item) => item.source));
   return (
     <SectionCard
       id="campus"
@@ -42,8 +45,14 @@ export async function CampusPanel({ now, timeZone }: { now: Date; timeZone: stri
         <p className="text-sm text-fg-2">Nothing on the campus calendars in the next seven days.</p>
       ) : (
         <ol className="-mt-1 divide-y divide-line">
-          {events.map((item) => (
-            <CampusRow key={item.id} item={item} now={now} timeZone={timeZone} />
+          {events.map((item, i) => (
+            <CampusRow
+              key={item.id}
+              item={item}
+              now={now}
+              timeZone={timeZone}
+              showSource={heads[i] ?? true}
+            />
           ))}
         </ol>
       )}
@@ -51,7 +60,18 @@ export async function CampusPanel({ now, timeZone }: { now: Date; timeZone: stri
   );
 }
 
-function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZone: string }) {
+function CampusRow({
+  item,
+  now,
+  timeZone,
+  showSource,
+}: {
+  item: FeedItem;
+  now: Date;
+  timeZone: string;
+  showSource: boolean;
+}) {
+  const location = formatEventLocation(item.location);
   const start = item.startsAt ? new Date(item.startsAt) : null;
   // An event already under way (it started before now) shows today's date box.
   const shownDay = start && start.getTime() > now.getTime() ? start : now;
@@ -64,7 +84,7 @@ function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZon
   return (
     <li
       data-testid="campus-item"
-      data-aggregated={item.source}
+      data-source={item.source}
       className="relative flex min-h-11 items-start gap-3 py-3"
     >
       <span
@@ -98,9 +118,9 @@ function CampusRow({ item, now, timeZone }: { item: FeedItem; now: Date; timeZon
               <span className="sr-only">{formatLongDate(shownDay, timeZone)}, </span>
             )}
             {time}
-            {item.location ? ` · ${item.location}` : ""}
+            {location ? ` · ${location}` : ""}
           </span>
-          <SourceTag source={item.source} />
+          <SourceNote source={item.source} label={viaLabel(item.source)} hidden={!showSource} />
         </p>
       </div>
     </li>

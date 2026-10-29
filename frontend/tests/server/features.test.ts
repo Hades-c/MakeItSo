@@ -39,18 +39,19 @@ afterEach(() => {
 });
 
 describe("hubNavKeys (the shell's sections from the flags)", () => {
-  const CORE: NavKey[] = ["today", "courses", "plan"];
+  const CORE: NavKey[] = ["today", "courses", "plan", "syllabi"];
 
-  // Every combination of the three section flags.
+  // Every combination of the three section flags. Syllabi, like Today/Courses/My plan, has no flag of its own,
+  // so it is in every combination, right after My plan (sidebar reading order).
   it.each([
-    [true, true, true, [...CORE, "careers", "events", "alumni"]],
+    [true, true, true, [...CORE, "careers", "alumni", "events"]],
     [true, true, false, [...CORE, "careers", "events"]],
     [true, false, true, [...CORE, "careers", "alumni"]],
     [true, false, false, [...CORE, "careers"]],
     [false, true, true, [...CORE, "events"]],
     [false, true, false, [...CORE, "events"]],
-    [false, false, true, [...CORE]],
-    [false, false, false, [...CORE]],
+    [false, false, true, CORE],
+    [false, false, false, CORE],
   ] as const)("careers %s, events %s, alumni %s → %j", (careers, events, alumni, expected) => {
     const flags = { careers, events, alumni };
     expect(hubNavKeys(flags)).toEqual(expected);
@@ -65,9 +66,10 @@ describe("hubNavKeys (the shell's sections from the flags)", () => {
       "today",
       "courses",
       "plan",
+      "syllabi",
       "careers",
-      "events",
       "alumni",
+      "events",
     ]);
   });
 });
@@ -105,6 +107,7 @@ describe("loadFlags", () => {
       events: true,
       alumni: true,
       ai: true,
+      moodle: true,
       rmp: true,
       rmpSummaries: true,
     });

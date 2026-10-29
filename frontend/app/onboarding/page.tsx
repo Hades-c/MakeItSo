@@ -14,21 +14,26 @@ import {
   ONBOARDING_STEPS,
   onboardingNext,
   parseStep,
+  requiredStepsSaved,
   resumeStep,
   stepHref,
   stepIndex,
   stepLabel,
+  stepLocked,
   stepTitle,
   type OnboardingStep,
 } from "./_lib/steps";
 
 /**
- * /onboarding (PLAN §3; R1): the first run, in four skippable steps with the step in the URL. Without a step it
- * resumes where the student stopped (./_lib/steps resumeStep). `?next=` (a first-run deep link the hub sent
- * here) is kept on every step link and is where Skip setup and Finish go instead of Today. A server component that reads the profile, the
- * official program names, the terms and the plan (a legacy v1 plan in memory included) once per request
- * (./_lib/load.ts) and renders one client island per step; every change goes through the lib/api specs (W3
- * profile, W5s plan, W1 catalog).
+ * /onboarding (PLAN §3; R1; PLAN-UX §8): the first run, in four steps with the step in the URL. "About you" is
+ * required: it has no "Skip this step" link, the later steps stay closed until it is saved (a later step's URL
+ * redirects to it), and the global "Skip setup" button only appears once it is saved. Every later step can be
+ * skipped; "Your classes" never blocks (its skip link reads "Add classes later", and it counts as done for a
+ * student who starts in a later term). Without a step it resumes where the student stopped (./_lib/steps
+ * resumeStep). `?next=` (a first-run deep link the hub sent here) is kept on every step link and is where Skip
+ * setup and Finish go instead of Today. A server component that reads the profile, the official program names, the
+ * terms and the plan (a legacy v1 plan in memory included) once per request (./_lib/load.ts) and renders one
+ * client island per step; every change goes through the lib/api specs (W3 profile, W5s plan, W1 catalog).
  */
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -55,7 +60,7 @@ const INTROS: Readonly<Record<OnboardingStep, (data: OnboardingData) => string>>
   completed: () =>
     "Add courses you have already finished, plus AP, IB or transfer credit, so the requirement tracker starts from where you are.",
   interests: () =>
-    "Choose career paths you want to explore. Careers and suggestions start from these.",
+    "Choose career paths you want to explore and, if you like, what you hope to do at Davidson. With AI features on, plan suggestions, career plans and cold-email drafts start from these.",
 };
 
 export default async function OnboardingPage({ searchParams }: { searchParams: SearchParams }) {
@@ -69,8 +74,9 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
       : routes.onboarding(undefined, { next: next ?? undefined }),
   });
   const data = await loadOnboarding(user.id);
-  if (!requested) {
-    redirect(stepHref(resumeStep(data.progress, data.profile.onboardedAt !== null), next));
+  const onboarded = data.profile.onboardedAt !== null;
+  if (!requested || stepLocked(requested, data.progress, onboarded)) {
+    redirect(stepHref(resumeStep(data.progress, onboarded), next));
   }
   const step = requested;
   const firstName = data.profile.name.trim().split(/\s+/)[0];
@@ -86,12 +92,13 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
           <StepHeading step={step}>{stepLabel(step, data.terms.currentLabel)}</StepHeading>
           <p className="mt-1.5 text-sm text-fg-2 md:text-base">{INTROS[step](data)}</p>
         </div>
-        {data.profile.onboardedAt === null ? <SkipSetup /> : null}
+        {!onboarded && requiredStepsSaved(data.progress) ? <SkipSetup /> : null}
       </header>
 
       <StepList
         step={step}
         progress={data.progress}
+        onboarded={onboarded}
         currentTermLabel={data.terms.currentLabel}
         next={next}
       />
@@ -128,7 +135,11 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
         ) : step === "completed" ? (
           <CompletedStep terms={data.terms.completedTerms} items={data.items} />
         ) : (
-          <InterestsStep initial={data.profile.interests} careers={data.careers} />
+          <InterestsStep
+            initial={data.profile.interests}
+            initialGoals={data.profile.goals}
+            careers={data.careers}
+          />
         )}
       </div>
     </div>

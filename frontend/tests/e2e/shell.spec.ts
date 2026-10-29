@@ -20,6 +20,7 @@ const HUB_ROUTES = [
   "/careers/software-engineering",
   "/events",
   "/alumni",
+  "/syllabi",
   "/profile",
 ] as const;
 
@@ -54,7 +55,6 @@ for (const colorScheme of ["light", "dark"] as const) {
         await expect(page.getByTestId("bottom-tabs")).toBeVisible({ visible: isMobile(page) });
         if (!isMobile(page)) {
           await expect(page.getByRole("search")).toBeVisible();
-          await expect(page.getByRole("region", { name: "Sources" })).toBeVisible();
         }
         const theme = await page.evaluate(
           () => getComputedStyle(document.documentElement).colorScheme,
@@ -84,7 +84,7 @@ test("public pages have no serious accessibility problems in either theme", asyn
   expect(errors).toEqual([]);
 });
 
-test("the 720-1179px rail shows every label, and the Sources panel says its times in words", async ({
+test("the 720-1179px rail shows the five parents with their labels; a nested page highlights its parent", async ({
   page,
   request,
 }) => {
@@ -96,29 +96,45 @@ test("the 720-1179px rail shows every label, and the Sources panel says its time
 
   for (const width of [768, 1024]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const route of ["/today", "/courses/202602/CSC-221"]) {
+    for (const route of ["/today", "/courses/202602/CSC-221", "/syllabi", "/alumni"]) {
       await page.goto(route);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       // Each label is on screen, at 13px or more, under its icon, and no link relies on a tooltip.
+      // Only links on screen: the nested Syllabi and Alumni are hidden below 1180px.
       const labels = await main.getByRole("link").evaluateAll((links) =>
-        links.map((link) => {
-          const label = [...link.querySelectorAll("span")].find((s) => s.textContent?.trim());
-          const r = label?.getBoundingClientRect();
-          const icon = link.querySelector("svg")?.getBoundingClientRect();
-          return {
-            text: label?.textContent?.trim() ?? "",
-            visible: !!r && r.width > 8 && r.height > 8 && label!.checkVisibility(),
-            px: label ? parseFloat(getComputedStyle(label).fontSize) : 0,
-            below: !!r && !!icon && r.top >= icon.bottom - 1,
-            title: link.hasAttribute("title"),
-            height: link.getBoundingClientRect().height,
-          };
-        }),
+        links
+          .filter((link) => link.checkVisibility())
+          .map((link) => {
+            const label = [...link.querySelectorAll("span")].find((s) => s.textContent?.trim());
+            const r = label?.getBoundingClientRect();
+            const icon = link.querySelector("svg")?.getBoundingClientRect();
+            return {
+              text: label?.textContent?.trim() ?? "",
+              visible: !!r && r.width > 8 && r.height > 8 && label!.checkVisibility(),
+              px: label ? parseFloat(getComputedStyle(label).fontSize) : 0,
+              below: !!r && !!icon && r.top >= icon.bottom - 1,
+              title: link.hasAttribute("title"),
+              height: link.getBoundingClientRect().height,
+              current: link.getAttribute("aria-current"),
+              marked: getComputedStyle(link, "::before").backgroundColor !== "rgba(0, 0, 0, 0)",
+            };
+          }),
       );
       expect(
         labels.map((l) => l.text),
         `${route} @${width}`,
-      ).toEqual(["Today", "Courses", "My plan", "Careers", "Events", "Alumni"]);
+      ).toEqual(["Today", "Courses", "My plan", "Careers", "Events"]);
+      // The page's own entry, or on a nested page its parent, carries the --nav-mark bar; nothing else does.
+      const highlighted = {
+        "/today": "Today",
+        "/courses/202602/CSC-221": "Courses",
+        "/syllabi": "My plan",
+        "/alumni": "Careers",
+      }[route];
+      expect(
+        labels.filter((l) => l.marked).map((l) => l.text),
+        `${route} @${width}`,
+      ).toEqual([highlighted]);
       for (const label of labels) {
         expect(label, `${route} @${width}`).toMatchObject({
           visible: true,
@@ -132,30 +148,81 @@ test("the 720-1179px rail shows every label, and the Sources panel says its time
     }
   }
 
-  // The full sidebar (1180px and up): every time in the Sources panel follows a visible word.
+  // The full sidebar (1180px and up): no link relies on a tooltip either.
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/today");
-  const panel = page.getByRole("region", { name: "Sources" });
-  await expect(panel).toBeVisible();
   await expect(main.locator("[title]")).toHaveCount(0);
-  const times = await panel.locator("time").evaluateAll((nodes) =>
-    nodes.map((time) => {
-      const status = time.parentElement?.textContent ?? "";
-      return {
-        before: status
-          .slice(0, status.indexOf(time.textContent ?? ""))
-          .replace(/^,\s*/, "")
-          .trim(),
-        title: time.hasAttribute("title"),
-      };
-    }),
-  );
-  expect(times.length).toBeGreaterThan(0);
-  for (const time of times) {
-    expect(time.before).toMatch(
-      /^(Synced|Checked|Out of date · last synced|Sync failed · last synced)$/,
-    );
-    expect(time.title).toBe(false);
+});
+
+test("the full sidebar nests Syllabi under My plan and Alumni under Careers", async ({
+  page,
+  request,
+}) => {
+  test.skip(isMobile(page), "the sidebar is a desktop surface");
+  const email = uniqueEmail("e2e-nested-nav");
+  await registerViaApi(request, { name: "Nest Tester", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const main = page.getByRole("navigation", { name: "Main" });
+
+  await page.goto("/today");
+  await expect(main.getByRole("link")).toHaveText([
+    /^Today$/,
+    /^Courses$/,
+    /^My plan/,
+    /^Syllabi$/,
+    /^Careers$/,
+    /^Alumni$/,
+    /^Events$/,
+  ]);
+  // The children are on screen without hovering, indented past their parent's label.
+  const left = async (name: string | RegExp) =>
+    (await main.getByRole("link", { name }).locator("span").first().boundingBox())!.x;
+  expect(await left("Syllabi")).toBeGreaterThan(await left(/^My plan/));
+  expect(await left("Alumni")).toBeGreaterThan(await left("Careers"));
+
+  for (const [path, child, parent] of [
+    ["/syllabi", "Syllabi", /^My plan/],
+    ["/alumni", "Alumni", "Careers"],
+  ] as const) {
+    // Reached from the sidebar, with the child current and the parent marked too (aria-current on the child only).
+    await page.goto("/today");
+    await main.getByRole("link", { name: child }).click();
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await expect(main.getByRole("link", { name: child })).toHaveAttribute("aria-current", "page");
+    await expect(main.getByRole("link", { name: parent })).not.toHaveAttribute("aria-current");
+    await expect(main.locator("[aria-current]")).toHaveCount(1);
+    const barOf = (name: string | RegExp) =>
+      main
+        .getByRole("link", { name })
+        .evaluate((link) => getComputedStyle(link, "::before").backgroundColor);
+    expect(await barOf(parent)).not.toBe("rgba(0, 0, 0, 0)");
+    expect(await barOf(parent)).toBe(await barOf(child));
+  }
+});
+
+test("the rail's parents lead to their nested pages from the page header", async ({
+  page,
+  request,
+}) => {
+  test.skip(isMobile(page), "the rail is a tablet surface");
+  const email = uniqueEmail("e2e-rail-children");
+  await registerViaApi(request, { name: "Rail Child", email, password: PASSWORD });
+  await signIn(page, email, PASSWORD);
+  await page.setViewportSize({ width: 1024, height: 900 });
+  const main = page.getByRole("navigation", { name: "Main" });
+
+  for (const [parent, start, child, path] of [
+    [/^My plan/, /\/plan/, "Syllabi", "/syllabi"],
+    ["Careers", /\/careers$/, "Alumni", "/alumni"],
+  ] as const) {
+    await page.goto("/today");
+    await main.getByRole("link", { name: parent }).click();
+    await expect(page).toHaveURL(start);
+    // A quiet secondary link in the page header (the rail has no room for the nested entries).
+    await page.locator("main header").getByRole("link", { name: child, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await expect(page.getByRole("heading", { level: 1, name: child })).toBeVisible();
   }
 });
 

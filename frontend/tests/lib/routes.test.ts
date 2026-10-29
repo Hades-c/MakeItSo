@@ -30,12 +30,13 @@ describe("href builders (lib/routes.ts)", () => {
     ).toBe("/courses?term=202602&q=data&dept=CSC&dept=MAT&openOnly=true");
     expect(routes.events({ sources: ["wildcatsync"], q: "" })).toBe("/events?sources=wildcatsync");
     expect(routes.login("/plan?tab=next")).toBe("/login?callbackUrl=%2Fplan%3Ftab%3Dnext");
-    expect([routes.today(), routes.alumni(), routes.profile(), routes.onboarding()]).toEqual([
-      "/today",
-      "/alumni",
-      "/profile",
-      "/onboarding",
-    ]);
+    expect([
+      routes.today(),
+      routes.alumni(),
+      routes.profile(),
+      routes.onboarding(),
+      routes.syllabi(),
+    ]).toEqual(["/today", "/alumni", "/profile", "/onboarding", "/syllabi"]);
     expect(routes.forgotPassword()).toBe("/forgot-password");
     expect(routes.alumnus("stephen-curry")).toBe("/alumni#stephen-curry");
     expect(routes.alumni({ career: "law" })).toBe("/alumni?career=law");

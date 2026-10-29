@@ -26,7 +26,7 @@ import {
   stillOffered,
   type GroundingResult,
 } from "@/server/ai/grounding";
-import { careerPayload, studentPlanPayload, studentProfilePayload } from "@/server/ai/payloads";
+import { careerPayload, careerProfilePayload, studentPlanPayload } from "@/server/ai/payloads";
 import {
   careerPlanRequest,
   MAX_COURSES,
@@ -220,7 +220,7 @@ export async function generateCareerPlan(
         ...(c.curatedWhy ? { curatedWhy: c.curatedWhy } : {}),
       })),
     },
-    profile: studentProfilePayload(profile, names),
+    profile: careerProfilePayload(profile, names),
     plan: { items: studentPlanPayload(plan.items) },
     goals: { career: career.slug, careerName: career.name },
   };

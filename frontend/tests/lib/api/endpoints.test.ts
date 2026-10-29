@@ -9,13 +9,17 @@ import {
   aiEndpoints,
   authExtraEndpoints,
   catalogEndpoints,
+  moodleEndpoints,
   planEndpoints,
   profileEndpoints,
+  syllabiEndpoints,
 } from "@/lib/api/endpoints";
+import { moodleApi } from "@/lib/api/moodle";
 import { planApi } from "@/lib/api/plan";
 import { profileApi } from "@/lib/api/profile";
 import { API_SPECS, specFor } from "@/lib/api/registry";
 import type { ApiRouteSpec } from "@/lib/api/spec";
+import { syllabiApi } from "@/lib/api/syllabi";
 import { AI_FAILURE_KINDS, AI_RESULT_STATUS } from "@/lib/types/ai";
 
 /**
@@ -44,6 +48,8 @@ const FAMILIES: [string, Record<string, ApiRouteSpec>, Record<string, object>][]
   ["plan", planApi, planEndpoints],
   ["profile", profileApi, profileEndpoints],
   ["authExtra", authExtraApi, authExtraEndpoints],
+  ["syllabi", syllabiApi, syllabiEndpoints],
+  ["moodle", moodleApi, moodleEndpoints],
 ];
 
 describe("endpoints", () => {

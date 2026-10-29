@@ -4,12 +4,21 @@ import * as plan from "@/server/plan";
 /**
  * The plan service surface (PLAN §4.1.4): the frozen functions of server/plan/index.ts, plus getPlanCredits (the
  * shell's "My plan x/32") and getWebTreeReport (the Next semester tab). A rename is a visible contract change.
+ * addSyllabusDeadlines / removeDeadlinesBySyllabus (PLAN-UX §3 /syllabi) are the one deliberate addition since:
+ * the review-before-save step and a syllabus's replace/delete need a bulk add and a by-syllabus remove that a
+ * single addDeadline/removeDeadline cannot do atomically. startMoodleImport / currentMoodleImport /
+ * replaceMoodleDeadlines / endMoodleImport (the Moodle calendar import, server/moodle) are the second: one sync swaps
+ * the student's Moodle deadlines in one atomic update, only while its connection is still the plan's import, and
+ * disconnect ends the import (and can remove them all).
  */
 const FROZEN = [
   "addDeadline",
   "addItem",
   "addSummerActivity",
+  "addSyllabusDeadlines",
+  "currentMoodleImport",
   "detectConflicts",
+  "endMoodleImport",
   "getDaySchedule",
   "getPlan",
   "getProgress",
@@ -19,9 +28,12 @@ const FROZEN = [
   "listSummerActivities",
   "readLegacyPlan",
   "removeDeadline",
+  "removeDeadlinesBySyllabus",
   "removeItem",
   "removeSummerActivity",
+  "replaceMoodleDeadlines",
   "saveDraft",
+  "startMoodleImport",
   "saveWebTreeList",
   "updateDraftStatus",
   "updateItem",

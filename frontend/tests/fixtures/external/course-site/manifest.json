@@ -1,0 +1,50 @@
+{
+  "source": "course-site",
+  "description": "Synthetic Moodle calendar exports (calendar/export_execute.php), written to the format Davidson's Moodle serves (PRODID, UID <id>@moodle.davidson.edu, UTC times, CATEGORIES with the course short name, CRLF). Invented events and tokens; no personal data. The preset_what value is a wildcard (all or courses).",
+  "capturedAt": "2026-10-28",
+  "routes": [
+    {
+      "url": "https://moodle.davidson.edu/calendar/export_execute.php?userid=4242&authtoken=0123456789abcdef0123456789abcdef01234567&preset_what=*&preset_time=recentupcoming",
+      "file": "export.ics",
+      "contentType": "text/calendar; charset=utf-8",
+      "note": "The connected student's feed: due dates, a recent and an older past one, an 'opens' event (left out), a cancelled one (left out), a date-only one, one without a course code, one past the two-week window."
+    },
+    {
+      "url": "https://moodle.davidson.edu/calendar/export_execute.php?userid=4242&authtoken=1111111111111111111111111111111111111111&preset_what=*&preset_time=recentupcoming",
+      "file": "export-updated.ics",
+      "contentType": "text/calendar; charset=utf-8",
+      "note": "The same calendar a day later: Problem set 3 moved, Response paper 2 renamed, Quiz 2 closes and the older Reading quiz gone, Problem set 4 new."
+    },
+    {
+      "url": "https://moodle.davidson.edu/calendar/export_execute.php?userid=4242&authtoken=ffffffffffffffffffffffffffffffffffffffff&preset_what=*&preset_time=recentupcoming",
+      "file": "invalid-auth.txt",
+      "contentType": "text/plain; charset=utf-8",
+      "note": "What Moodle answers (HTTP 200) for a wrong or revoked token."
+    },
+    {
+      "url": "https://moodle.davidson.edu/calendar/export_execute.php?userid=4242&authtoken=2222222222222222222222222222222222222222&preset_what=*&preset_time=recentupcoming",
+      "file": "not-moodle.ics",
+      "contentType": "text/calendar; charset=utf-8",
+      "note": "A calendar that is not a Moodle export (PRODID)."
+    },
+    {
+      "url": "https://moodle.davidson.edu/calendar/export_execute.php?userid=4242&authtoken=3333333333333333333333333333333333333333&preset_what=*&preset_time=recentupcoming",
+      "file": "login.html",
+      "contentType": "text/html; charset=utf-8",
+      "note": "A sign-in page instead of a calendar."
+    },
+    {
+      "url": "https://moodle.davidson.edu/calendar/export_execute.php?userid=4242&authtoken=4444444444444444444444444444444444444444&preset_what=*&preset_time=recentupcoming",
+      "file": "malformed.ics",
+      "contentType": "text/calendar; charset=utf-8",
+      "note": "A VEVENT that never ends."
+    },
+    {
+      "url": "https://moodle.davidson.edu/calendar/export_execute.php?userid=4242&authtoken=5555555555555555555555555555555555555555&preset_what=*&preset_time=recentupcoming",
+      "file": "unavailable.html",
+      "status": 503,
+      "contentType": "text/html; charset=utf-8",
+      "note": "Moodle down."
+    }
+  ]
+}

@@ -10,7 +10,8 @@ import "./account-data";
  *               → unverified → consent_required); aiConfigured(); aiFeatureEnabled(flags, feature); who counts
  *               as verified: access.ts isAiVerified (and the temporary AI_ALLOW_UNVERIFIED switch)
  *   features    generateCourseAbout, generatePlanSuggestions, generateCareerPlan, generateColdEmail,
- *               readProfessorSummary (each returns an AiResult; bad ids or terms throw ApiError 400/404)
+ *               readProfessorSummary, extractSyllabusDeadlines (each returns an AiResult; bad ids or terms throw
+ *               ApiError 400/404)
  *   jobs        pregenerateCourseAbout (GET /api/cron/ai), runProfessorSummaryJob (GET /api/cron/ai/professor-
  *               summaries; nothing runs unless RMP_SUMMARIES_ENABLED)
  *   shared      reportEntry ("Report this", 3 distinct reporters hide an entry), purgeEntries (admin)
@@ -48,6 +49,11 @@ export {
   type ProfessorSummaryJobResult,
   type ProfessorSummaryResult,
 } from "./features/professor-summary";
+export {
+  extractSyllabusDeadlines,
+  MAX_SYLLABUS_TEXT_CHARS,
+  type SyllabusDeadlinesResult,
+} from "./features/syllabus-deadlines";
 export {
   pregenerateCourseAbout,
   PregenerateResultSchema,

@@ -6,7 +6,6 @@ import { ListOrdered, TriangleAlert } from "lucide-react";
 import { WeekGrid } from "@/components/domain/week-grid";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Notice } from "@/components/ui/notice";
-import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { planEndpoints } from "@/lib/api/endpoints";
 import type { PlanWarning, RequirementSlot, ScheduleConflict, WebTreeList } from "@/lib/types/plan";
@@ -318,7 +317,7 @@ export function WebTreeEditor(props: WebTreeEditorProps) {
             id="webtree-conflicts-title"
             className="flex items-center gap-2 font-display text-lg font-strong tracking-title text-fg"
           >
-            Conflict check <SourceTag source="course-schedule" />
+            Conflict check
           </h3>
           <div className="mt-2" data-testid="webtree-conflicts">
             {dirty ? (

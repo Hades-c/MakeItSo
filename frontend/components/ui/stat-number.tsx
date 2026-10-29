@@ -9,15 +9,14 @@ export interface StatNumberProps {
   className?: string;
 }
 
+// Only the type scale's tokens (app/globals.css clears Tailwind's own: text-5xl would render at the body size).
+const SIZE = { md: "text-xl", lg: "text-3xl" } as const;
+
 /** Big number + label ("12 of 32 courses"). Numbers use tabular figures. Compute values; never hardcode them. */
 export function StatNumber({ value, label, size = "lg", className }: StatNumberProps) {
   return (
     <p className={cn("flex items-baseline gap-2", className)}>
-      <span
-        className={cn("font-strong text-fg tabular-nums", size === "lg" ? "text-3xl" : "text-xl")}
-      >
-        {value}
-      </span>{" "}
+      <span className={cn("font-strong text-fg tabular-nums", SIZE[size])}>{value}</span>{" "}
       <span className="text-sm text-fg-2">{label}</span>
     </p>
   );

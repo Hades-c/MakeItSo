@@ -12,7 +12,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { controlClass } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
-import { SourceTag } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { aiEndpoints, planEndpoints } from "@/lib/api/endpoints";
 import { formatMediumDate } from "@/lib/format";
@@ -131,7 +130,6 @@ function DraftCard({
       aria-labelledby={`draft-${draft.id}`}
       className="rounded-xl border border-line bg-surface p-4 shadow-card md:px-5"
       data-testid="suggestion-draft"
-      data-source="ai"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3
@@ -141,7 +139,6 @@ function DraftCard({
           Suggestions from {formatMediumDate(draft.createdAt, timeZone)}
         </h3>
         <span className="flex items-center gap-2">
-          <SourceTag source="ai" />
           <AiChip />
         </span>
       </div>

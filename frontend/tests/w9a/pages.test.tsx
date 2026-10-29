@@ -24,11 +24,6 @@ vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   connection: next.connection,
 }));
-vi.mock("@/app/(hub)/careers/_components/offered-count", () => ({
-  OfferedCount: ({ codes }: { codes: string[] }) => (
-    <span data-testid="offered-slot">{codes.length}</span>
-  ),
-}));
 vi.mock("@/app/(hub)/careers/_components/career-courses", () => ({
   CareerCourses: ({ career }: { career: { slug: string } }) => (
     <div data-testid="courses-slot">{career.slug}</div>
@@ -61,17 +56,14 @@ afterEach(() => {
 });
 
 describe("/careers", () => {
-  it("lists all 24 career paths by cluster, each with its registration-schedule slot", async () => {
+  it("lists all 24 career paths by cluster", async () => {
     render(await careersPage.default(search({})));
     expect(screen.getByRole("heading", { level: 1, name: "Careers" })).toBeVisible();
     expect(screen.getAllByRole("article")).toHaveLength(CAREERS.length);
     expect(CAREERS).toHaveLength(24);
     const clusters = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(clusters[0]).toMatch(/^Technology/);
-    const se = screen.getByRole("article", { name: "Software Engineering" });
-    expect(within(se).getByTestId("offered-slot")).toHaveTextContent(
-      String(getCareer("software-engineering")!.courses.length),
-    );
+    expect(screen.getByRole("article", { name: "Software Engineering" })).toBeVisible();
     expect(screen.queryByTestId("careers-count")).toBeNull();
     // Per request, never at build time.
     expect(next.connection).toHaveBeenCalled();
@@ -161,9 +153,6 @@ describe("/careers/[slug]", () => {
       "href",
       "https://davidson.joinhandshake.com/",
     );
-    // Office programs carry their own tags (Hurt Hub for entrepreneurship).
-    const resources = screen.getByRole("region", { name: "At Davidson" });
-    expect(resources.querySelector('[data-aggregated="hurt-hub-programs"]')).not.toBeNull();
     for (const resource of career.externalResources) {
       expect(screen.getByRole("link", { name: resource.name })).toHaveAttribute(
         "href",
@@ -199,25 +188,10 @@ describe("/careers/[slug]", () => {
     expect(fellows).toHaveTextContent("Amount$3,500 stipend + housing");
   });
 
-  it("marks every Davidson resource: a tag, or an allowed exemption said in words", async () => {
+  it("renders every Davidson resource for a career", async () => {
     render(await careerPage.default(slug("arts-museum-curation")));
     const items = screen.getByRole("region", { name: "At Davidson" }).querySelectorAll("li");
     expect(items.length).toBe(getCareer("arts-museum-curation")!.davidsonResources.length);
-    for (const item of items) {
-      const source = item.getAttribute("data-aggregated");
-      expect(source).toBeTruthy();
-      if (source === "untagged") {
-        expect(item).toHaveAttribute("data-untagged", "davidson-web");
-        expect(item).toHaveTextContent("davidson.edu page");
-      } else {
-        expect(item.querySelector(`[data-source="${source}"]`)).toHaveTextContent(/^Source:/);
-      }
-    }
-    // The galleries' page is an offices-and-services page: DAVIDSON OFFICES, not untagged.
-    const galleries = screen
-      .getByRole("link", { name: /^Van Every\/Smith Galleries/ })
-      .closest("li");
-    expect(galleries).toHaveAttribute("data-aggregated", "davidson-offices");
   });
 
   it("answers 404 for a slug that is not one of the 24", async () => {

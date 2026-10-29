@@ -27,7 +27,12 @@ import { convertLegacyForUser } from "@/server/plan/legacy";
 
 export const MAX_PLAN_ITEMS = 200;
 export const MAX_SUMMER_ACTIVITIES = 50;
-export const MAX_DEADLINES = 200;
+/**
+ * Raised from 200 for syllabus uploads (/syllabi): a student review-saves several deadlines from one syllabus at
+ * once, across every course they take, so the old ceiling left too little room. Still enforced atomically in the
+ * update filter, for a manual add and a syllabus bulk-add alike.
+ */
+export const MAX_DEADLINES = 300;
 export const MAX_DRAFTS = 20;
 /** WebTree lists kept (one per term; the oldest terms are dropped past this). */
 export const MAX_WEBTREE_LISTS = 12;
@@ -134,6 +139,11 @@ export function deadlineFromDoc(raw: Raw): StudentDeadline | null {
     title: raw.title,
     dueAt: iso(raw.dueAt),
     ...(typeof raw.courseCode === "string" && raw.courseCode ? { courseCode: raw.courseCode } : {}),
+    // Absent on a deadline stored before origin existed: the schema's own default ("manual") applies.
+    ...(typeof raw.origin === "string" ? { origin: raw.origin } : {}),
+    ...(raw.syllabusId ? { syllabusId: hex(raw.syllabusId) } : {}),
+    // A syllabus gives a day, never a time (app/api/syllabi/[id]/deadlines stores 23:59 that day).
+    ...(raw.allDay === true || raw.origin === "syllabus" ? { allDay: true } : {}),
   });
   if (!parsed.success) {
     logInvalid("deadline", id, parsed.error);

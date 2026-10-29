@@ -1,13 +1,11 @@
 import "server-only";
-import type { SummaryMilestone } from "@/lib/day-summary";
+import { formatTime } from "@/lib/format";
 import type { SourceId } from "@/lib/sources";
 import { termLabel, type ClassStanding, type TermCode } from "@/lib/term";
 import type { CalendarEvent } from "@/lib/types/content";
 import {
   ACADEMIC_CALENDAR,
-  calendarBetween,
   eventEndDay,
-  isStudentFacing,
   type ContentDeadline,
 } from "@/server/content/academic-calendar";
 import { addDays } from "@/server/content/define";
@@ -15,8 +13,8 @@ import { zonedInstant } from "@/server/today/time";
 
 /**
  * Today's reading of the Registrar's academic calendar (server/content/academic-calendar.ts): which break a day
- * falls in, the milestones a day's summary names ("WebTree opens today at 7:00 AM"), the WebTree window behind
- * the "Plan Spring 2027" call to action, and whether a row's audience is the student. Pure over curated content.
+ * falls in, the WebTree window behind Today's "WebTree is open … · Plan Spring 2027" line, and whether a row's
+ * audience is the student. Pure over curated content.
  */
 
 /** The break (category "break") covering `day`, e.g. "Fall Break"; null on a regular day. */
@@ -25,41 +23,6 @@ export function breakOn(day: string, calendar: readonly CalendarEvent[] = ACADEM
     (event) => event.category === "break" && event.start <= day && day <= eventEndDay(event),
   );
   return row ? { name: row.title, row } : null;
-}
-
-const OPENS = /^(.*?)\s+(re-?)?opens?\b/i;
-
-/**
- * The calendar milestones of one day for the day summary, for the student's class year (rows whose audience does
- * not certainly include them are left out, see audienceIncludes):
- * - a registration window that starts that day: "WebTree opens" ("WebTree Open: Submit Spring 2027 Course
- *   Preferences" → WebTree), "Banner Self-Service Add/Drop reopens" ("... Re-Opens for Sophomores, ..."), or the
- *   window's title when it names no opening;
- * - a break that starts that day at a published time (Thanksgiving Break begins at 4:20 PM; a break without a time
- *   is a day off, which the summary's lead already says).
- * Staff-only rows are left out. Single-day registration rows without "Open" (schedules available) are Due soon
- * items, not milestones.
- */
-export function milestonesOn(
-  day: string,
-  standing: ClassStanding | null,
-  calendar: readonly CalendarEvent[] = ACADEMIC_CALENDAR,
-): SummaryMilestone[] {
-  const out: SummaryMilestone[] = [];
-  for (const row of calendar) {
-    if (row.start !== day || !isStudentFacing(row)) continue;
-    if (!audienceIncludes(row.audience, standing)) continue;
-    const at = row.time ? zonedInstant(day, row.time) : null;
-    if (row.category === "registration") {
-      const match = OPENS.exec(row.title);
-      const opens = match?.[1]?.trim();
-      if (opens) out.push({ name: opens, verb: match?.[2] ? "reopens" : "opens", at, day });
-      else if (row.end) out.push({ name: row.title, verb: "opens", at, day });
-    } else if (row.category === "break" && row.time) {
-      out.push({ name: row.title, verb: "begins", at, day });
-    }
-  }
-  return out;
 }
 
 /**
@@ -149,17 +112,6 @@ export function calendarCategoryOf(
   return deadline.kind === "calendar" ? deadline.category : null;
 }
 
-/** Student-facing deadline rows (category "deadline") on the Davidson days from..to, for the day summary. */
-export function calendarDeadlineRows(
-  from: string,
-  to: string,
-  standing: ClassStanding | null,
-): CalendarEvent[] {
-  return calendarBetween(from, to, { categories: ["deadline"] }).filter(
-    (row) => row.start >= from && audienceIncludes(row.audience, standing),
-  );
-}
-
 export interface WebTreeWindow {
   termCode: TermCode;
   /** "Spring 2027". */
@@ -175,7 +127,7 @@ export interface WebTreeWindow {
  * The WebTree preference window for the registration term, from the calendar's "WebTree Open: Submit <term> Course
  * Preferences" row (opening day and time) and its "WebTree Closes (<term> Preferences Due)" row (closing time; the
  * window's last day at midnight when there is none). Null outside [opens, closes) (PLAN §3: the "Plan <term>"
- * call to action is shown during the WebTree window only) or when the calendar has no window for that term.
+ * link is shown during the WebTree window only) or when the calendar has no window for that term.
  */
 export function webTreeWindow(
   registrationTerm: TermCode,
@@ -211,4 +163,15 @@ export function webTreeWindow(
     url: open.sources[0] ?? "",
     verifiedAt: open.verifiedAt,
   };
+}
+
+/** "WebTree is open for Spring 2027 course preferences until Tue, Nov 3 at 5:00 PM." in `timeZone`. */
+export function webTreeWindowText(window: WebTreeWindow, timeZone: string): string {
+  const day = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone,
+  }).format(window.closesAt);
+  return `WebTree is open for ${window.termLabel} course preferences until ${day} at ${formatTime(window.closesAt, timeZone)}.`;
 }

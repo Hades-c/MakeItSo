@@ -7,6 +7,7 @@ import {
   startDay,
   windowEndLabel,
 } from "@/app/(hub)/events/_lib/present";
+import { formatEventLocation } from "@/lib/event-location";
 import type { FeedItem } from "@/lib/types/feeds";
 
 const TZ = "America/New_York";
@@ -203,5 +204,30 @@ describe("windowEndLabel", () => {
   it("names the day", () => {
     expect(windowEndLabel("2026-10-04")).toBe("Sunday, Oct 4");
     expect(windowEndLabel("2026-10-13")).toBe("Tuesday, Oct 13");
+  });
+});
+
+describe("formatEventLocation", () => {
+  it("trims a real location", () => {
+    expect(formatEventLocation("  Alvarez Student Union  ")).toBe("Alvarez Student Union");
+    expect(formatEventLocation("Chambers 101")).toBe("Chambers 101");
+  });
+
+  it("is null for nothing to show, never a blank string", () => {
+    expect(formatEventLocation(null)).toBeNull();
+    expect(formatEventLocation("")).toBeNull();
+    expect(formatEventLocation("   ")).toBeNull();
+  });
+
+  it("leaves out the address tail a feed repeats, and the country", () => {
+    expect(
+      formatEventLocation(
+        "The Hurt Hub at Davidson College, 210 Delburg Street, Davidson, NC 28036, Davidson, NC, 28036, US",
+      ),
+    ).toBe("The Hurt Hub at Davidson College, 210 Delburg Street, Davidson, NC 28036");
+    expect(formatEventLocation("Chambers Building, Davidson")).toBe("Chambers Building, Davidson");
+    expect(formatEventLocation("Union Tables by the Fireplace")).toBe(
+      "Union Tables by the Fireplace",
+    );
   });
 });

@@ -5,7 +5,6 @@ import { AppShell } from "@/components/app/app-shell";
 import { BottomTabs } from "@/components/app/bottom-tabs";
 import type { NavKey } from "@/components/app/nav-items";
 import { SidebarNav } from "@/components/app/sidebar-nav";
-import { SourcesPanel } from "@/components/app/sources-panel";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import { initials } from "@/components/app/user-menu";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,31 +31,84 @@ describe("SidebarNav", () => {
     expect(within(main).getByRole("link", { name: "Today" }).className).not.toMatch(/nav-mark/);
     expect(main).not.toHaveTextContent("676");
 
-    rerender(<SidebarNav counts={{ courses: 676, plan: { done: 12, total: 32 } }} />);
-    expect(within(main).getByRole("link", { name: /Courses/ })).toHaveTextContent(
-      "Courses, 676 courses",
-    );
-    expect(within(main).getByRole("link", { name: /My plan/ })).toHaveTextContent(
-      "My plan, 12/ of 32 credits",
+    rerender(<SidebarNav counts={{ plan: { done: 12, total: 32 } }} />);
+    // Only My plan has a count; its name says it in words, in one string.
+    expect(within(main).getByRole("link", { name: /^Courses$/ })).toBeInTheDocument();
+    expect(within(main).getByRole("link", { name: "My plan, 12 of 32 credits" })).toHaveTextContent(
+      "12/32",
     );
   });
 });
 
-describe("the 720-1179px rail", () => {
-  it("shows every label on screen (13px under the icon), never only in a tooltip", () => {
+describe("nested sections", () => {
+  it("lists Syllabi under My plan and Alumni under Careers, indented, always shown", () => {
     nav.pathname = "/today";
     render(<SidebarNav />);
-    const links = within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link");
+    const main = screen.getByRole("navigation", { name: "Main" });
+    const top = within(main)
+      .getAllByRole("listitem")
+      .filter((li) => li.parentElement!.parentElement === main);
+    expect(top.map((li) => li.querySelector("a")!.textContent)).toEqual([
+      "Today",
+      "Courses",
+      "My plan",
+      "Careers",
+      "Events",
+    ]);
+    const childrenOf = (label: string) =>
+      [
+        ...top
+          .find((li) => li.querySelector("a")!.textContent === label)!
+          .querySelectorAll(":scope ul a"),
+      ].map((a) => a.textContent);
+    expect(childrenOf("My plan")).toEqual(["Syllabi"]);
+    expect(childrenOf("Careers")).toEqual(["Alumni"]);
+    for (const label of ["Today", "Courses", "Events"]) expect(childrenOf(label)).toEqual([]);
+    for (const name of ["Syllabi", "Alumni"]) {
+      expect(within(main).getByRole("link", { name })).toHaveClass("xl:pl-7.5");
+    }
+  });
+
+  it.each([
+    ["/syllabi", "Syllabi", /^My plan/],
+    ["/alumni", "Alumni", /^Careers/],
+  ])(
+    "on %s marks the child current and its parent with the bar, aria-current on the child only",
+    (path, child, parent) => {
+      nav.pathname = path;
+      render(<SidebarNav />);
+      const main = screen.getByRole("navigation", { name: "Main" });
+      const childLink = within(main).getByRole("link", { name: child });
+      const parentLink = within(main).getByRole("link", { name: parent });
+      expect(childLink).toHaveAttribute("aria-current", "page");
+      expect(childLink).toHaveClass("before:bg-nav-mark", "text-primary");
+      expect(parentLink).not.toHaveAttribute("aria-current");
+      expect(parentLink).toHaveClass("before:bg-nav-mark");
+      // Red is the current page only: the parent is red only on the rail, where the child is hidden.
+      expect(parentLink).not.toHaveClass("text-primary");
+      expect(parentLink).toHaveClass("max-xl:text-primary");
+      expect(main.querySelectorAll("[aria-current]")).toHaveLength(1);
+    },
+  );
+});
+
+describe("the 720-1179px rail", () => {
+  it("shows exactly the five parents, every label on screen (13px under the icon), never only in a tooltip", () => {
+    nav.pathname = "/today";
+    render(<SidebarNav />);
+    const main = screen.getByRole("navigation", { name: "Main" });
+    // The nested lists are hidden below 1180px (the rail has no room to show nesting).
+    for (const list of main.querySelectorAll("ul ul")) expect(list).toHaveClass("max-xl:hidden");
+    const links = [...main.querySelectorAll<HTMLAnchorElement>(":scope > ul > li > a")];
     expect(links.map((l) => l.textContent)).toEqual([
       "Today",
       "Courses",
       "My plan",
       "Careers",
       "Events",
-      "Alumni",
     ]);
+    for (const link of within(main).getAllByRole("link")) expect(link).not.toHaveAttribute("title");
     for (const link of links) {
-      expect(link).not.toHaveAttribute("title");
       // The rail item: 56px tall, icon over label, like the bottom tabs.
       expect(link).toHaveClass("max-xl:h-14", "max-xl:flex-col");
       const label = link.querySelector("span")!;
@@ -67,6 +119,13 @@ describe("the 720-1179px rail", () => {
 });
 
 describe("BottomTabs", () => {
+  it("highlights My plan on /syllabi (it has no tab)", () => {
+    nav.pathname = "/syllabi";
+    render(<BottomTabs />);
+    expect(screen.getByRole("link", { name: "Plan" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByTestId("bottom-tabs").querySelectorAll("[aria-current]")).toHaveLength(1);
+  });
+
   it("shows five tabs and highlights Careers on /alumni", () => {
     nav.pathname = "/alumni";
     render(<BottomTabs />);
@@ -99,12 +158,19 @@ describe("flagged-off sections", () => {
       .getAllByRole("link")
       .map((l) => l.textContent);
 
-  it("leave the sidebar, which keeps its order", () => {
+  it("leave the sidebar, which keeps its order (a parent keeps whichever children are left)", () => {
     nav.pathname = "/today";
-    const { rerender } = render(<SidebarNav nav={[...CORE, "careers", "alumni"]} />);
-    expect(sidebarLabels()).toEqual(["Today", "Courses", "My plan", "Careers", "Alumni"]);
-    rerender(<SidebarNav nav={[...CORE, "events"]} />);
-    expect(sidebarLabels()).toEqual(["Today", "Courses", "My plan", "Events"]);
+    const { rerender } = render(<SidebarNav nav={[...CORE, "syllabi", "careers", "alumni"]} />);
+    expect(sidebarLabels()).toEqual([
+      "Today",
+      "Courses",
+      "My plan",
+      "Syllabi",
+      "Careers",
+      "Alumni",
+    ]);
+    rerender(<SidebarNav nav={[...CORE, "careers", "events"]} />);
+    expect(sidebarLabels()).toEqual(["Today", "Courses", "My plan", "Careers", "Events"]);
     rerender(<SidebarNav nav={CORE} />);
     expect(sidebarLabels()).toEqual(["Today", "Courses", "My plan"]);
     expect(screen.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
@@ -164,7 +230,6 @@ describe("flagged-off sections", () => {
       <TooltipProvider>
         <AppShell
           user={{ name: "Sam Student", email: "sam@davidson.edu" }}
-          now={new Date("2026-09-30T16:00:00Z")}
           nav={[...CORE, "events"]}
         >
           <h1>Today</h1>
@@ -187,113 +252,6 @@ describe("flagged-off sections", () => {
         .map((o) => o.textContent),
     ).toEqual(["Today", "Courses", "My plan", "Events", "Profile"]);
     await user.keyboard("{Escape}");
-  });
-});
-
-describe("SourcesPanel", () => {
-  const now = new Date("2026-09-30T18:00:00Z");
-
-  it("lists each source with its last sync in Davidson time", () => {
-    render(
-      <SourcesPanel
-        now={now}
-        sources={[
-          { id: "course-schedule", lastSync: "2026-09-30T10:00:00Z" },
-          { id: "handshake", lastSync: "2026-09-29T13:05:00Z", status: "stale" },
-          { id: "wildcatsync", lastSync: null },
-        ]}
-      />,
-    );
-    const items = within(screen.getByRole("region", { name: "Sources" })).getAllByRole("listitem");
-    expect(items.map((i) => i.textContent)).toEqual([
-      "Course schedule, Synced 6:00 AM",
-      "Handshake, Out of date · last synced Sep 29",
-      "WildcatSync, Not synced yet",
-    ]);
-    // Every time is said in words on screen, after a visible word: no tooltip, no sr-only meaning.
-    for (const item of items) {
-      expect(item.querySelector("[title]")).toBeNull();
-      const time = item.querySelector("time");
-      if (!time) continue;
-      const status = time.parentElement!.textContent ?? "";
-      const before = status.slice(0, status.indexOf(time.textContent ?? "")).trim();
-      expect(before).toMatch(/[A-Za-z]$/);
-    }
-    expect(items[0]!.querySelector("time")).toHaveAttribute("datetime", "2026-09-30T10:00:00.000Z");
-  });
-
-  it("says a failed sync in words, with the last good sync when there was one", () => {
-    render(
-      <SourcesPanel
-        now={now}
-        sources={[
-          { id: "course-schedule", lastSync: "2026-09-28T16:00:00Z", status: "error" },
-          { id: "wildcatsync", lastSync: null, status: "error" },
-        ]}
-      />,
-    );
-    const items = within(screen.getByRole("region", { name: "Sources" })).getAllByRole("listitem");
-    expect(items.map((i) => i.textContent)).toEqual([
-      "Course schedule, Sync failed · last synced Sep 28",
-      "WildcatSync, Sync failed",
-    ]);
-  });
-
-  it("survives invalid dates instead of crashing the shell", () => {
-    render(
-      <SourcesPanel
-        now={now}
-        sources={[
-          { id: "course-schedule", lastSync: "not a date" },
-          { id: "registrar", label: "Academic calendar", verifiedAt: "2026-13-45" },
-        ]}
-      />,
-    );
-    const items = within(screen.getByRole("region", { name: "Sources" })).getAllByRole("listitem");
-    expect(items.map((i) => i.textContent)).toEqual([
-      "Course schedule, Not synced yet",
-      "Academic calendar",
-    ]);
-  });
-
-  it("shows curated sources with their verified date and link-only platforms under Links", () => {
-    render(
-      <SourcesPanel
-        now={now}
-        sources={[
-          { id: "registrar", label: "Academic calendar", verifiedAt: "2026-09-28T16:00:00Z" },
-        ]}
-        links={[{ id: "handshake", href: "https://app.joinhandshake.com/" }]}
-      />,
-    );
-    const region = screen.getByRole("region", { name: "Sources" });
-    expect(within(region).getAllByRole("listitem")[0]).toHaveTextContent(
-      "Academic calendar, Checked Sep 28",
-    );
-    const link = within(region).getByRole("link", { name: /Handshake/ });
-    expect(link).toHaveAttribute("href", "https://app.joinhandshake.com/");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(link).toHaveTextContent("(opens in a new tab)");
-  });
-
-  it("shows a date-only verified date as that day, not the day before in the Davidson zone", () => {
-    render(
-      <SourcesPanel
-        now={now}
-        timeZone="America/New_York"
-        sources={[{ id: "registrar", label: "Registrar", verifiedAt: "2026-09-30" }]}
-      />,
-    );
-    const item = within(screen.getByRole("region", { name: "Sources" })).getAllByRole(
-      "listitem",
-    )[0]!;
-    expect(item).toHaveTextContent("Registrar, Checked Sep 30");
-    expect(item.querySelector("time")).toHaveAttribute("datetime", "2026-09-30");
-  });
-
-  it("says when nothing has synced", () => {
-    render(<SourcesPanel now={now} sources={[]} />);
-    expect(screen.getByText("No sources synced yet.")).toBeInTheDocument();
   });
 });
 

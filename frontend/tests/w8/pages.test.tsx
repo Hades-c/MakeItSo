@@ -153,6 +153,7 @@ describe("/courses", () => {
           summary,
           href: "/courses/202602/CSC-221",
           reqs: [],
+          description: null,
           sections: [],
           moreSections: 0,
           add: null,

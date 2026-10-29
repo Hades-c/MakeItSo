@@ -4,7 +4,6 @@ import { RequirementSlots } from "@/components/domain/requirement-slots";
 import { ErrorState } from "@/components/ui/error-state";
 import { Notice } from "@/components/ui/notice";
 import { SectionCard } from "@/components/ui/section-card";
-import { SourceTagList } from "@/components/ui/source-tag";
 import { isSummer, termLabel } from "@/lib/term";
 import type { PlanItem } from "@/lib/types/plan";
 import {
@@ -130,11 +129,6 @@ export function FourYearTab({ loaded }: { loaded: Loaded<FourYearData> }) {
               ? " These totals include the AP/transfer credit that counts, which is not shown on the map."
               : ""}
           </p>
-          <SourceTagList
-            label="Sources for your plan"
-            sources={["my-plan", "course-schedule"]}
-            className="mt-3"
-          />
         </SectionCard>
 
         <SectionCard id="requirements" title="Requirements" className="min-w-0">

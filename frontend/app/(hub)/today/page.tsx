@@ -5,9 +5,9 @@ import { now as serverNow } from "@/server/clock";
 import { readEnv } from "@/server/env";
 import { cn } from "@/lib/utils";
 import { featureEnabled, loadFlags } from "@/server/features";
+import { syncMoodleIfDue } from "@/server/moodle";
 import { etDay, stripDays } from "@/server/today";
 import { CampusPanel } from "./_components/campus-panel";
-import { DegreePanel } from "./_components/degree-panel";
 import { DUE_SOON_TITLE, DueSoonPanel } from "./_components/due-soon-panel";
 import { OpportunitiesPanel } from "./_components/opportunities-panel";
 import { PanelBoundary } from "./_components/panel-boundary";
@@ -22,8 +22,8 @@ export const metadata: Metadata = { title: "Today" };
 
 /**
  * Two columns from lg. Below lg the columns dissolve (display: contents) into one stack ordered like the Lakeside
- * phone mockup: Today, Due for you, This week on campus, Degree progress, Opportunities, Quick links (the most
- * time-sensitive panels first), while the desktop keeps timeline + degree on the left.
+ * phone mockup: Today, Due for you, This week on campus, Opportunities, Quick links (the most time-sensitive
+ * panels first), while the desktop keeps the timeline on the left.
  */
 const GRID =
   "flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start";
@@ -34,16 +34,16 @@ const SLOT = "min-w-0 lg:order-none";
  * /today (PLAN §3, W7): the student's day on one page, rendered on the server in America/New_York from the
  * server clock (server/clock.ts now()).
  *
- * - h1: the deterministic one-sentence day summary (server/today summary → lib/day-summary), the date and term,
- *   counts, and the five-day strip (?day= shows another strip day on the timeline).
- * - Plan <registration term> (around the WebTree window) and Browse courses; an onboarding nudge until set up.
- * - Left: the day timeline; degree progress. Right: Due for you; This week on campus (FEATURE_EVENTS only);
- *   Opportunities; Quick links.
+ * - h1: a fixed headline, the date and term, one line under it (the WebTree window while it is open, with "Plan
+ *   <term>"; else "N due for you in the next two weeks"), and the five-day strip (?day= shows another strip day on
+ *   the timeline).
+ * - An onboarding nudge until first-run setup is done; nothing else in the action row.
+ * - Left: the day timeline. Right: Due for you; This week on campus (FEATURE_EVENTS only); Opportunities;
+ *   Quick links.
  *
  * Each block is its own async server component in its own Suspense boundary and PanelBoundary (error boundary)
  * with its own error state, so a slow or failing source (catalog, plan, feeds), or a panel that throws while it
- * renders, never holds up or takes down the rest. Every aggregated item carries
- * the tag of its stored source (data-aggregated + SourceTag).
+ * renders, never holds up or takes down the rest.
  */
 export default async function TodayPage({
   searchParams,
@@ -57,7 +57,8 @@ export default async function TodayPage({
   const flags = loadFlags();
   const eventsOn = featureEnabled(flags, "events");
   const careersOn = featureEnabled(flags, "careers");
-  const firstName = user.name.trim().split(/\s+/)[0];
+  // A connected Moodle calendar 6+ hours since its last sync: synced after this page is sent (one indexed read here).
+  if (flags.moodle) await syncMoodleIfDue(user.id);
 
   return (
     <>
@@ -68,12 +69,10 @@ export default async function TodayPage({
           timeZone={timeZone}
           stripDays={days}
           selected={day}
-          eventsOn={eventsOn}
-          {...(firstName ? { firstName } : {})}
         />
       </Suspense>
       <Suspense fallback={null}>
-        <TodayActions userId={user.id} now={now} timeZone={timeZone} />
+        <TodayActions userId={user.id} />
       </Suspense>
       <div className={GRID}>
         <div className={STACK}>
@@ -88,13 +87,6 @@ export default async function TodayPage({
                   stripDays={days}
                   eventsOn={eventsOn}
                 />
-              </Suspense>
-            </PanelBoundary>
-          </div>
-          <div className={cn(SLOT, "order-4")}>
-            <PanelBoundary id="degree" title="Degree progress" what="Your degree progress">
-              <Suspense fallback={<PanelSkeleton id="degree" title="Degree progress" rows={2} />}>
-                <DegreePanel userId={user.id} />
               </Suspense>
             </PanelBoundary>
           </div>

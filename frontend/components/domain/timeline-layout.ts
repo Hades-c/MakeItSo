@@ -33,8 +33,10 @@ export interface TimelineItem {
   /** "HH:MM"; for a deadline, the same as `start` (or omit it). Before `start` = runs past midnight. */
   end?: string;
   location?: string;
-  /** Where the item came from; every non-class item shows it as a source tag. */
+  /** Where the item came from: the timeline's one source line names it, and screen readers hear it per item. */
   source: SourceId;
+  /** A student deadline read from a syllabus by AI: drawn with the AI chip. */
+  fromSyllabus?: boolean;
   /** Second line on a block of an hour or more: instructor, organiser. */
   detail?: string;
 }
@@ -113,7 +115,7 @@ export interface LayoutDayOptions {
 
 /**
  * Free time a deadline label needs on its side of the line: the label may wrap to three 12px lines on a phone
- * (title over two lines, then the course code and source tag), 64px at the timeline's 64px an hour.
+ * (title over two lines, then the course code and any AI chip), 64px at the timeline's 64px an hour.
  */
 export const DEADLINE_LABEL_MINUTES = 60;
 /** Free time the "1 h 5 m free" text needs inside its gap. */

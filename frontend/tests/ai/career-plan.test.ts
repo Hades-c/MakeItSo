@@ -93,7 +93,7 @@ describe("POST /api/ai/career-plan", () => {
   });
 
   it("drafts a grounded plan with official program names and stores its courses as a PlanDraft", async () => {
-    const user = await signIn();
+    const user = await signIn({ raw: { goals: ["research", "not-a-goal"] } });
     const res = await post({ careerSlug: "software-engineering" });
     expect(res.status).toBe(200);
     const body = CareerPlanResultSchema.parse(await bodyOf(res));
@@ -104,7 +104,7 @@ describe("POST /api/ai/career-plan", () => {
     for (const major of plan.majors) expect(names.majors).toContain(major);
     expect(plan.courses.length).toBeGreaterThan(0);
     expect(plan.courses.some((c) => c.courseCode === "CSC 121")).toBe(false);
-    expect(draft).toMatchObject({ kind: "career-plan", promptVersion: "career-plan/1" });
+    expect(draft).toMatchObject({ kind: "career-plan", promptVersion: "career-plan/2" });
     expect(draft!.items.map((i) => i.courseCode)).toEqual(plan.courses.map((c) => c.courseCode));
     expect(JSON.stringify(plan)).not.toMatch(/https?:|@/);
 
@@ -125,6 +125,8 @@ describe("POST /api/ai/career-plan", () => {
     expect(blocks.student_profile).toMatchObject({
       majors: [CS_MAJOR],
       interests: ["software-engineering"],
+      // The goal slugs, under a name of their own (<student_goals> is the chosen career).
+      aspirations: ["research"],
     });
     const catalog = blocks.catalog_data as {
       programs: { majors: string[] };

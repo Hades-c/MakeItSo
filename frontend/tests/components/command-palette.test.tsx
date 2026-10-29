@@ -141,14 +141,14 @@ describe("CommandPalette", () => {
       within(pages)
         .getAllByRole("option")
         .map((o) => o.textContent),
-    ).toEqual(["Today", "Courses", "My plan", "Careers", "Events", "Alumni", "Profile"]);
+    ).toEqual(["Today", "Courses", "My plan", "Syllabi", "Careers", "Alumni", "Events", "Profile"]);
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.keyboard("{Meta>}k{/Meta}");
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
-  it("groups results by kind with source tags, and navigates with the keyboard", async () => {
+  it("groups results by kind, and navigates with the keyboard", async () => {
     const user = userEvent.setup();
     const search = vi.fn<SearchFn>().mockResolvedValue(RESULTS);
     renderPalette(search);
@@ -164,14 +164,7 @@ describe("CommandPalette", () => {
       groups.map((g) => g.getAttribute("aria-labelledby") && g.firstChild?.textContent),
     ).toEqual(["Courses", "Careers", "Events"]);
     const options = within(listbox).getAllByRole("option");
-    expect(options[0]).toHaveTextContent(
-      "HIS 357 · The Civil Rights MovementFall 2026Source: Course schedule",
-    );
-    expect(options[0]!.querySelector("[data-source]")).toHaveAttribute(
-      "data-source",
-      "course-schedule",
-    );
-    expect(options[1]!.querySelector("[data-source]")).toBeNull();
+    expect(options[0]).toHaveTextContent("HIS 357 · The Civil Rights MovementFall 2026");
     expect(screen.getByRole("status")).toHaveTextContent("3 results");
 
     await user.keyboard("{ArrowDown}");
@@ -410,10 +403,7 @@ describe("CommandPalette", () => {
         within(listbox)
           .getAllByRole("option")
           .map((o) => o.textContent),
-      ).toEqual([
-        "HIS 357 · The Civil Rights MovementFall 2026Source: Course schedule",
-        "Law and public policy",
-      ]);
+      ).toEqual(["HIS 357 · The Civil Rights MovementFall 2026", "Law and public policy"]);
       expect(within(listbox).queryByRole("group", { name: "Events" })).not.toBeInTheDocument();
       expect(within(listbox).queryByRole("group", { name: "Pages" })).not.toBeInTheDocument();
       expect(screen.getByRole("status")).toHaveTextContent("2 results");

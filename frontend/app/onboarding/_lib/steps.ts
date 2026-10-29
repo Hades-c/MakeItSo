@@ -1,15 +1,18 @@
 import {
   ONBOARDING_STEPS,
   parseOnboardingStep,
+  REQUIRED_ONBOARDING_STEPS,
   routes,
   safeCallbackPath,
   type OnboardingStep,
 } from "@/lib/routes";
 
 /**
- * The first-run steps (PLAN §3 /onboarding). The step lives in the URL (`/onboarding?step=classes`), every step can
- * be skipped, and a student who leaves comes back where they stopped: `/onboarding` without a step resumes after
- * the furthest step that already holds saved data (resumeStep). Pure and isomorphic.
+ * The first-run steps (PLAN §3 /onboarding; PLAN-UX §8). The step lives in the URL (`/onboarding?step=classes`).
+ * "about" is required (isRequiredStep): until it is saved the later steps stay closed (stepLocked) and there is no
+ * Skip setup. Every other step can be skipped ("Classes" never blocks: its skip link reads "Add classes later"),
+ * and a student who leaves comes back where they stopped: `/onboarding` without a step resumes after the furthest
+ * step that already holds saved data (resumeStep). Pure and isomorphic.
  */
 
 export { ONBOARDING_STEPS, type OnboardingStep };
@@ -24,8 +27,34 @@ export function stepLabel(step: OnboardingStep, currentTermLabel: string): strin
     case "completed":
       return "Courses you have taken";
     case "interests":
-      return "Interests";
+      return "Interests and goals";
   }
+}
+
+/** "about" cannot be skipped: MakeItSo needs the class year and first term to mean anything on Today or Plan. */
+export function isRequiredStep(step: OnboardingStep): boolean {
+  return (REQUIRED_ONBOARDING_STEPS as readonly OnboardingStep[]).includes(step);
+}
+
+/** Every required step is saved: Skip setup shows, and every step can be opened. */
+export function requiredStepsSaved(progress: StepProgress): boolean {
+  return REQUIRED_ONBOARDING_STEPS.every((step) => progress[step]);
+}
+
+/**
+ * Whether `step` stays closed for a student still in their first run: a step after a required one that is not
+ * saved yet. An onboarded student re-running the flow can open every step.
+ */
+export function stepLocked(
+  step: OnboardingStep,
+  progress: StepProgress,
+  onboarded: boolean,
+): boolean {
+  if (onboarded) return false;
+  const index = stepIndex(step);
+  return REQUIRED_ONBOARDING_STEPS.some(
+    (required) => stepIndex(required) < index && !progress[required],
+  );
 }
 
 /** The document title of a step: "Step 2 of 4: Your Fall 2026 classes · Get started". */
@@ -99,27 +128,36 @@ export interface ProgressInput {
   minors: readonly string[];
   /** Active plan items in the current term. */
   currentTermItems: number;
+  /** The student's first term is after the current one, so there are no current classes to add. */
+  startsLater: boolean;
   /** Completed plan items, any term (AP/transfer included). */
   completedItems: number;
   interests: readonly string[];
+  /** Goal slugs (lib/goals.ts): the optional second half of the interests step. */
+  goals: readonly string[];
 }
 
 export function stepProgress(input: ProgressInput): StepProgress {
   return {
     about: input.firstTerm !== null || input.majors.length > 0 || input.minors.length > 0,
-    classes: input.currentTermItems > 0,
+    // A later-term starter has nothing to add here, so the step counts as done.
+    classes: input.currentTermItems > 0 || input.startsLater,
     completed: input.completedItems > 0,
-    interests: input.interests.length > 0,
+    interests: input.interests.length > 0 || input.goals.length > 0,
   };
 }
 
 /**
- * Where `/onboarding` without a step picks up: the step after the furthest one with saved data (so steps the
- * student skipped on the way are not forced on them again), the last step when that is the furthest, and the
- * first step for a fresh account. An onboarded student re-running the flow starts at the beginning.
+ * Where `/onboarding` without a step picks up: a required step that is not saved yet, else the step after the
+ * furthest one with saved data (so steps the student skipped on the way are not forced on them again), the last
+ * step when that is the furthest, and the first step for a fresh account. An onboarded student re-running the
+ * flow starts at the beginning.
  */
 export function resumeStep(progress: StepProgress, onboarded: boolean): OnboardingStep {
   if (onboarded) return ONBOARDING_STEPS[0];
+  // A required step not saved yet comes first: the steps after it are still closed (stepLocked).
+  const missing = REQUIRED_ONBOARDING_STEPS.find((step) => !progress[step]);
+  if (missing) return missing;
   let furthest = -1;
   ONBOARDING_STEPS.forEach((step, index) => {
     if (progress[step]) furthest = index;

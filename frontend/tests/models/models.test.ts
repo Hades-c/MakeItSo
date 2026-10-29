@@ -13,6 +13,7 @@ import RateLimit from "@/models/RateLimit";
 import RmpTagSync from "@/models/RmpTagSync";
 import RmpTeacher from "@/models/RmpTeacher";
 import SourceSync from "@/models/SourceSync";
+import Syllabus from "@/models/Syllabus";
 import VerificationCode from "@/models/VerificationCode";
 import { getDb } from "@/server/db";
 
@@ -73,6 +74,7 @@ const NEW_MODELS: [string, AnyModel, string, string[], string | null][] = [
     ["!userId,purpose"],
     "expiresAt",
   ],
+  ["Syllabus", Syllabus as unknown as AnyModel, "syllabi", ["!userId,courseCode,termCode"], null],
 ];
 
 describe("new collections (PLAN §4)", () => {
@@ -99,6 +101,7 @@ describe("new collections (PLAN §4)", () => {
       FeedItem,
       SourceSync,
       AiCache,
+      Syllabus,
     ] as unknown as AnyModel[]) {
       expect(model.schema.path("createdAt")).toBeDefined();
       expect(model.schema.path("updatedAt")).toBeDefined();

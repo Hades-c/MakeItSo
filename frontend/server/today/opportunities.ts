@@ -2,7 +2,7 @@ import "server-only";
 import type { SourceId } from "@/lib/sources";
 import type { Office, PortalLink, Program } from "@/lib/types/content";
 import { HANDSHAKE, getLink } from "@/server/content/links";
-import { getOffice, PROGRAMS } from "@/server/content/offices";
+import { getOffice, officeShortName, PROGRAMS } from "@/server/content/offices";
 import type { ClassStanding } from "@/lib/term";
 import { audienceIncludes } from "@/server/today/calendar";
 import { addDaysToKey } from "@/server/today/time";
@@ -11,7 +11,7 @@ import { addDaysToKey } from "@/server/today/time";
  * Today's "Opportunities" (PLAN §3) and quick links. Opportunities are the curated office programs (fellowships,
  * grants, internships programs; server/content/offices.ts) with a published deadline after the Due soon window
  * (those inside it are already in Due soon) and within OPPORTUNITY_HORIZON_DAYS, soonest first, plus the Davidson
- * Handshake entry point (HANDSHAKE tag; no job postings, employers or "apply by" dates of our own, PLAN §5).
+ * Handshake entry point (via Handshake; no job postings, employers or "apply by" dates of our own, PLAN §5).
  * Pure over curated content.
  */
 
@@ -21,7 +21,7 @@ export const OPPORTUNITY_HORIZON_DAYS = 120;
 export interface Opportunity {
   slug: string;
   name: string;
-  /** The office that runs it ("Matthews Center for Career Development"). */
+  /** The office that runs it, as its source note names it ("Office of Fellowships", officeShortName). */
   office: string | null;
   /** The next published deadline. */
   deadline: { label: string; date: string };
@@ -40,7 +40,7 @@ export function upcomingOpportunities(
   today: string,
   standing: ClassStanding | null,
   programs: readonly Program[] = PROGRAMS,
-  officeOf: (slug: string) => Pick<Office, "name"> | undefined = getOffice,
+  officeOf: (slug: string) => Pick<Office, "slug" | "name"> | undefined = getOffice,
 ): Opportunity[] {
   const horizon = addDaysToKey(today, OPPORTUNITY_HORIZON_DAYS);
   return programs
@@ -49,11 +49,12 @@ export function upcomingOpportunities(
         .filter((deadline) => deadline.date > after && deadline.date <= horizon)
         .sort((a, b) => a.date.localeCompare(b.date))[0];
       if (!next) return [];
+      const office = officeOf(program.officeSlug);
       return [
         {
           slug: program.slug,
           name: program.name,
-          office: officeOf(program.officeSlug)?.name ?? null,
+          office: office ? officeShortName(office) : null,
           deadline: { label: next.label, date: next.date },
           amount: program.amount,
           audience: program.audience,
@@ -83,6 +84,7 @@ export const QUICK_LINK_SLUGS = [
   "email",
   "library-hours",
   "dining-hours",
+  "athletics-schedule",
 ] as const;
 
 export function quickLinks(

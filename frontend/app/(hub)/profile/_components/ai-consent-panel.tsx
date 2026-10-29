@@ -151,7 +151,7 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
           {!props.davidson ? null : props.mailAvailable ? (
             <Link
               href={`${routes.verify()}${queryString({ next: routes.profile() })}`}
-              className="font-semibold link"
+              className="inline-flex min-h-11 items-center font-semibold link md:min-h-0"
             >
               Verify your email
             </Link>
@@ -175,7 +175,8 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
           <li>course codes and public catalog information;</li>
           <li>
             the courses in your plan and the requirements they fill, your majors and minors,
-            graduation year and career interests;
+            graduation year and career interests, and for career plans and cold-email drafts, the
+            goals at Davidson you chose;
           </li>
           <li>the goal or question you type into that feature.</li>
         </ul>

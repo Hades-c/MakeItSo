@@ -3,16 +3,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
 import EventsPage, { generateMetadata } from "@/app/(hub)/events/page";
-import { EventSourcesCard } from "@/app/(hub)/events/_components/event-sources";
 import { EventsFilters } from "@/app/(hub)/events/_components/events-filters";
 import { EventsResults } from "@/app/(hub)/events/_components/events-results";
-import { LibraryHoursCard } from "@/app/(hub)/events/_components/library-hours";
-import {
-  loadEventSourceStatuses,
-  loadEvents,
-  loadLibraryHours,
-  statusesFor,
-} from "@/app/(hub)/events/_lib/load";
+import { loadEventSourceStatuses, loadEvents, statusesFor } from "@/app/(hub)/events/_lib/load";
 import { DEFAULT_EVENTS_VIEW, type EventsView } from "@/app/(hub)/events/_lib/params";
 import { rangeWindow } from "@/app/(hub)/events/_lib/range";
 import { getDb } from "@/server/db";
@@ -85,16 +78,6 @@ describe("before the first sync", () => {
     );
     expect(page).toContain("The campus calendars have not synced yet");
     expect(page).toContain("No items through Tuesday, Oct 13.");
-    expect(await html(EventSourcesCard({ now: NOW, timeZone: TZ }))).toContain("Not synced yet");
-  });
-
-  it("says the library hours are unavailable when LibCal has nothing for the day", async () => {
-    // LibCal only publishes today: another day with nothing stored is a 404 from the service.
-    const result = await loadLibraryHours("2026-10-02");
-    expect(result).toEqual({ ok: false, reason: "unavailable" });
-    const card = await html(LibraryHoursCard({ today: "2026-10-02", now: NOW, timeZone: TZ }));
-    expect(card).toContain("Library hours are unavailable right now.");
-    expect(card).toContain('data-source="library"');
   });
 });
 
@@ -161,21 +144,6 @@ describe("after a sync of the fixtures", () => {
     expect(statusesFor(statuses, { sources: [] })).toHaveLength(4);
   });
 
-  it("reads today's library hours", async () => {
-    const result = await loadLibraryHours("2026-09-30");
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.hours.date).toBe("2026-09-30");
-    expect(result.hours.locations.length).toBeGreaterThan(0);
-    const card = await html(LibraryHoursCard({ today: "2026-09-30", now: NOW, timeZone: TZ }));
-    expect(card).toContain("Music Library (Sloan 101)");
-    expect(card).toContain("7am - 11:59pm");
-    expect(card).toContain("Open now");
-    expect(card).toContain("as of Sep 30, 12:00 PM");
-    // LibCal locations without hours are left out.
-    expect(card).not.toContain("Podcast Studio");
-  });
-
   it("renders the results: day groups, tagged items, external links", async () => {
     const page = await html(
       EventsResults({
@@ -228,13 +196,6 @@ describe("after a sync of the fixtures", () => {
     expect(page).toContain('href="/events?range=today"');
     expect(page).toContain("Show the next 14 days");
   });
-
-  it("shows the sources with their as-of times", async () => {
-    const card = await html(EventSourcesCard({ now: NOW, timeZone: TZ }));
-    expect(card.match(/as of Sep 30, 12:00 PM/g)).toHaveLength(4);
-    expect(card).toContain(">WildcatSync<");
-    expect(card).toContain(">Events Digest<");
-  });
 });
 
 describe("the page", () => {
@@ -270,22 +231,6 @@ describe("the page", () => {
     expect(results?.props.window).toEqual(rangeWindow("week", NOW, TZ));
     expect(results?.props.timeZone).toBe(TZ);
     await expect(generateMetadata()).resolves.toEqual({ title: "Events" });
-  });
-
-  it("puts today's library hours before the list (phone order)", async () => {
-    const page = await EventsPage({ searchParams: Promise.resolve({}) });
-    const order: unknown[] = [];
-    (function walk(node: ReactNode): void {
-      if (Array.isArray(node)) return node.forEach(walk);
-      if (!isValidElement(node)) return;
-      const element = node as AnyElement;
-      order.push(element.type);
-      walk(element.props.children as ReactNode);
-    })(page);
-    const at = (type: unknown) => order.indexOf(type);
-    expect(at(LibraryHoursCard)).toBeGreaterThan(-1);
-    expect(at(LibraryHoursCard)).toBeLessThan(at(EventsFilters));
-    expect(at(EventsResults)).toBeLessThan(at(EventSourcesCard));
   });
 
   it("answers 404 while FEATURE_EVENTS is off", async () => {

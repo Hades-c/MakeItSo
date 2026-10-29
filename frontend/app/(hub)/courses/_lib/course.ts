@@ -83,7 +83,7 @@ export interface ResolvedCoursePage {
   history: Availability[];
   /** The page term's own availability entry. */
   entry: Availability | null;
-  /** When the page term's schedule was fetched ("Schedule data as of"); null when unknown. */
+  /** When the page term's schedule was fetched ("seats as of"); null when unknown or not on this term's schedule. */
   asOf: string | null;
 }
 
@@ -113,16 +113,23 @@ export async function resolveCoursePage(params: CourseParams): Promise<ResolvedC
     getCourseHistory(params.code),
   ]);
   const entry = history.find((item) => item.termCode === params.term) ?? null;
-  const asOf = read?.asOf ?? null;
   if (read) {
-    return { params, resolved, course: read.course, reference: read.course, history, entry, asOf };
+    return {
+      params,
+      resolved,
+      course: read.course,
+      reference: read.course,
+      history,
+      entry,
+      asOf: read.asOf ?? null,
+    };
   }
   if (!entry) return null;
   const latest = latestOffered(history, params.term);
   if (!latest) return null;
   const reference = await getCourse(latest, params.code);
   if (!reference) return null;
-  return { params, resolved, course: null, reference, history, entry, asOf };
+  return { params, resolved, course: null, reference, history, entry, asOf: null };
 }
 
 /** The section to show: `?crn=`, else the plan's section of this course, else the first primary section. */

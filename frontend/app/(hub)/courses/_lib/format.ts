@@ -73,16 +73,20 @@ export function instructorName(instructor: Instructor): string {
   return name || "Staff (TBA)";
 }
 
-/** "1 credit", "0 credits", "0–1 credits" (credits are per section; 1 per course at Davidson). */
-export function creditsLabel(credits: readonly number[]): string {
+/**
+ * The credits worth saying, or null for the usual one course credit (nearly every Davidson course, so the rows
+ * and the course header say nothing): "0 credits — doesn't count toward the 32", "2 credits", "0–1 credits"
+ * (credits are per section). Null too when the schedule lists none.
+ */
+export function creditsLabel(credits: readonly number[]): string | null {
   const values = [...new Set(credits)].sort((a, b) => a - b);
-  if (values.length === 0) return "Credits not listed";
+  if (values.length === 0 || (values.length === 1 && values[0] === 1)) return null;
   const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, ""));
   if (values.length === 1) {
     const only = values[0]!;
-    return `${fmt(only)} ${only === 1 ? "course credit" : "course credits"}`;
+    return only === 0 ? "0 credits — doesn’t count toward the 32" : `${fmt(only)} credits`;
   }
-  return `${fmt(values[0]!)}–${fmt(values[values.length - 1]!)} course credits`;
+  return `${fmt(values[0]!)}–${fmt(values[values.length - 1]!)} credits`;
 }
 
 /** "9 seats open", "1 seat open", "Full" (summed over registrable sections; never negative). */

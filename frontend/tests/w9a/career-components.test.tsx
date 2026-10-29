@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CareerCard, OfferedLine } from "@/app/(hub)/careers/_components/career-card";
+import { CareerCard, firstSentence } from "@/app/(hub)/careers/_components/career-card";
 import { CareerFilters } from "@/app/(hub)/careers/_components/career-filters";
 import { ProgramsList } from "@/app/(hub)/careers/_components/career-programs";
 import {
@@ -22,13 +22,19 @@ afterEach(() => {
 
 describe("CareerCard", () => {
   it("links the career, shows the summary and the BLS pay with its period, occupation and source", () => {
-    render(<CareerCard career={SE} offered={<p>slot</p>} />);
+    render(<CareerCard career={SE} />);
     const card = screen.getByRole("article", { name: "Software Engineering" });
     expect(within(card).getByRole("link", { name: "Software Engineering" })).toHaveAttribute(
       "href",
       "/careers/software-engineering",
     );
-    expect(card).toHaveTextContent(SE.summary);
+    // The summary's first sentence only; the career page has it in full.
+    expect(card).toHaveTextContent(
+      "Software engineers design, build, test, and maintain the programs and systems that people and organizations rely on.",
+    );
+    expect(card).not.toHaveTextContent("At Davidson, the Computer Science major");
+    expect(firstSentence("One. Two.")).toBe("One.");
+    expect(firstSentence("Only one")).toBe("Only one");
     const pay = within(card).getByTestId("career-card-pay");
     expect(pay).toHaveTextContent(`$135,980 median pay (${SE.pay!.period})`);
     expect(within(card).getByTestId("career-card-occupation")).toHaveTextContent(
@@ -41,7 +47,6 @@ describe("CareerCard", () => {
     expect(bls).toHaveAttribute("rel", "noopener noreferrer");
     // Above the whole-card link, and a 44px target on phones.
     expect(bls).toHaveClass("relative", "z-10", "min-h-11", "md:min-h-0");
-    expect(within(card).getByText("slot")).toBeVisible();
   });
 
   it("names the occupation a proxy figure is for, not the career", () => {
@@ -68,24 +73,6 @@ describe("CareerCard", () => {
   it("shows no pay line without pay data", () => {
     render(<CareerCard career={{ ...SE, pay: null }} />);
     expect(screen.queryByTestId("career-card-pay")).toBeNull();
-  });
-});
-
-describe("OfferedLine", () => {
-  it("counts the courses on the registration schedule, with its source tag", () => {
-    render(<OfferedLine offered={5} total={8} termLabel="Spring 2027" />);
-    const line = screen.getByTestId("career-card-offered");
-    expect(line).toHaveTextContent("5 of 8 courses offered in Spring 2027");
-    expect(line).toHaveAttribute("data-aggregated", "course-schedule");
-    expect(within(line).getByText("Course schedule")).toHaveAttribute(
-      "data-source",
-      "course-schedule",
-    );
-  });
-
-  it("uses the singular for one course", () => {
-    render(<OfferedLine offered={1} total={1} termLabel="Spring 2027" />);
-    expect(screen.getByTestId("career-card-offered")).toHaveTextContent("1 of 1 course offered");
   });
 });
 
@@ -185,6 +172,9 @@ describe("career page sections", () => {
     expect(pay).toHaveTextContent("$135,980");
     expect(pay).toHaveTextContent(`median pay per year (${SE.pay!.period})`);
     expect(pay).toHaveTextContent(SE.pay!.projectedGrowth);
+    // The headline figure at the largest size the type scale has (no untokened text-5xl), with what it is not.
+    expect(screen.getByText("$135,980")).toHaveClass("text-3xl");
+    expect(pay).toHaveTextContent("All experience levels, not starting pay.");
     expect(
       screen.getByRole("link", { name: /Source: BLS Occupational Outlook Handbook/ }),
     ).toHaveAttribute("href", SE.pay!.url);
@@ -195,14 +185,13 @@ describe("career page sections", () => {
     expect(screen.getByText(/No federal pay data/)).toBeVisible();
   });
 
-  it("shows office programs with their tags and published amounts and deadlines", () => {
+  it("shows office programs with their published amounts and deadlines", () => {
     const resources: ResolvedResource[] = [
       {
         name: "Try It Fund",
         url: "https://www.davidson.edu/try-it",
         description: "Small grants.",
         source: "hurt-hub-programs",
-        untagged: null,
         officeName: null,
         program: {
           slug: "try-it-fund",
@@ -219,7 +208,6 @@ describe("career page sections", () => {
         url: "https://www.davidson.edu/fellows",
         description: "A fellowship.",
         source: "davidson-offices",
-        untagged: null,
         officeName: "Mulliss Center for Civic Engagement",
         program: {
           slug: "fellows",
@@ -236,7 +224,6 @@ describe("career page sections", () => {
         url: "https://www.davidson.edu/academic-departments/dept",
         description: "Research.",
         source: null,
-        untagged: "davidson-web",
         officeName: null,
         program: null,
       },
@@ -245,7 +232,6 @@ describe("career page sections", () => {
         url: "https://www.davidson.edu/prelaw/resources",
         description: "Resources.",
         source: "davidson-offices",
-        untagged: null,
         officeName: "Prelaw Advising",
         program: {
           slug: "fee-grant",
@@ -260,21 +246,12 @@ describe("career page sections", () => {
     ];
     render(<DavidsonResourcesCard resources={resources} verifiedAt="2026-09-30" />);
     const items = screen.getAllByRole("listitem");
-    expect(items[0]).toHaveAttribute("data-aggregated", "hurt-hub-programs");
-    expect(within(items[0]!).getByText("Hurt Hub programs")).toHaveAttribute(
-      "data-source",
-      "hurt-hub-programs",
-    );
     expect(items[0]).toHaveTextContent("AmountUp to $500");
     expect(items[0]).toHaveTextContent("DeadlinesRolling");
     // Same page (a trailing slash apart): no second link, no "Program" line.
     expect(within(items[0]!).getAllByRole("link")).toHaveLength(1);
     expect(items[0]).not.toHaveTextContent("Program");
 
-    expect(within(items[1]!).getByText("Davidson offices")).toHaveAttribute(
-      "data-source",
-      "davidson-offices",
-    );
     expect(items[1]).toHaveTextContent("Mulliss Center for Civic Engagement");
     expect(items[1]).not.toHaveTextContent("Amount");
     expect(items[1]).toHaveTextContent("DeadlinesWinter Break: by October 1");
@@ -283,11 +260,9 @@ describe("career page sections", () => {
       within(items[1]!).getByRole("link", { name: "Where this is published" }),
     ).toHaveAttribute("href", "https://www.davidson.edu/fellows/application-process");
 
-    // Untagged only with its exemption, in plain words (no tag).
-    expect(items[2]).toHaveAttribute("data-aggregated", "untagged");
-    expect(items[2]).toHaveAttribute("data-untagged", "davidson-web");
-    expect(items[2]!.querySelector("[data-source]")).toBeNull();
-    expect(items[2]).toHaveTextContent("davidson.edu page");
+    // No office match: the name and description still show, with no office name beside it.
+    expect(items[2]).toHaveTextContent("Department research");
+    expect(items[2]).toHaveTextContent("Research.");
 
     // Facts of a program the resource's name does not say: the program is named.
     expect(items[3]).toHaveTextContent("ProgramLaw school application fee grant");
@@ -297,28 +272,6 @@ describe("career page sections", () => {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
     }
     expect(screen.getByText(/checked/)).toHaveTextContent("checked Sep 30, 2026");
-  });
-
-  it("marks an untagged item without an exemption so expectAllTagged fails on it", () => {
-    render(
-      <DavidsonResourcesCard
-        verifiedAt="2026-09-30"
-        resources={[
-          {
-            name: "Somewhere",
-            url: "https://example.org/",
-            description: "?",
-            source: null,
-            untagged: null,
-            officeName: null,
-            program: null,
-          },
-        ]}
-      />,
-    );
-    const item = screen.getByRole("listitem");
-    expect(item).toHaveAttribute("data-aggregated", "untagged");
-    expect(item).toHaveAttribute("data-untagged", "");
   });
 
   it("links Handshake by its base URL with words to copy (no invented search URL)", async () => {
@@ -333,7 +286,6 @@ describe("career page sections", () => {
       "https://davidson.joinhandshake.com/",
     );
     expect(screen.getByTestId("handshake-query")).toHaveTextContent("software engineer");
-    expect(screen.getByText("Handshake")).toHaveAttribute("data-source", "handshake");
     await user.click(screen.getByRole("button", { name: "Copy search words" }));
     expect(writeText).toHaveBeenCalledWith("software engineer");
     expect(await screen.findByRole("button", { name: "Copied search words" })).toBeVisible();
@@ -356,7 +308,7 @@ describe("career page sections", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows departments (into the catalog) and official programs with the catalog tag", () => {
+  it("shows departments (into the catalog) and official programs linked to the catalog", () => {
     render(
       <ProgramsList
         departments={SE.departments}
@@ -378,13 +330,11 @@ describe("career page sections", () => {
     ).toHaveAttribute("href", "/courses?dept=CSC");
     const major = screen.getByRole("link", { name: "Major in Computer Science (B.S. Degree)" });
     expect(major).toHaveAttribute("href", expect.stringContaining("preview_program.php"));
-    expect(major.closest("li")).toHaveAttribute("data-aggregated", "catalog");
     const fallback = screen.getByText("Mathematics minor").closest("li")!;
-    expect(fallback).not.toHaveAttribute("data-aggregated");
     expect(within(fallback).queryByRole("link")).toBeNull();
-    // Mixed: only the tagged names are claimed as official.
+    // Mixed: only the linked names are claimed as official.
     expect(screen.getByTestId("programs-note")).toHaveTextContent(
-      "Tagged names are official, from the 2026–2027 Davidson catalog; the others are from the career guide.",
+      "Linked names are official, from the 2026–2027 Davidson catalog; the others are from the career guide.",
     );
   });
 

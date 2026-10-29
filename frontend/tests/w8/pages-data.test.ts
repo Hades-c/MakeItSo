@@ -128,11 +128,10 @@ describe("/courses/[term]/[code] data", () => {
     await expect(resolveCoursePage({ term: "199001", code: "CSC 221" })).resolves.toBeNull();
   });
 
-  it("resolves an offered course with its term's as-of time", async () => {
+  it("resolves an offered course", async () => {
     const page = await resolveCoursePage({ term: "202602", code: "CSC 221" });
     expect(page?.course?.sections.map((s) => s.section)).toEqual(["A", "B"]);
     expect(page?.entry).toMatchObject({ status: "offered", sectionCount: 2 });
-    expect(page?.asOf).toEqual(expect.any(String));
   });
 
   it("shows a course that is not on this term's schedule from its latest offering", async () => {

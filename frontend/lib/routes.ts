@@ -62,9 +62,15 @@ export function parsePlanTab(value: string | string[] | null | undefined): PlanT
     : DEFAULT_PLAN_TAB;
 }
 
-/** /onboarding steps (PLAN §3: the first run, in four skippable steps; the step lives in `?step=`). */
+/**
+ * /onboarding steps (PLAN §3; PLAN-UX §8: the first run, in four steps; the step lives in `?step=`). "about" is
+ * required (no "Skip this step" link, and the later steps open once it is saved); the rest can be skipped.
+ */
 export const ONBOARDING_STEPS = ["about", "classes", "completed", "interests"] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+
+/** Steps that must be saved before setup can be skipped globally (lib/routes.ts ONBOARDING_STEPS order). */
+export const REQUIRED_ONBOARDING_STEPS = ["about"] as const satisfies readonly OnboardingStep[];
 
 /** The step a `?step=` search param names, or null (missing, repeated or unknown). */
 export function parseOnboardingStep(
@@ -203,6 +209,7 @@ export const routes = {
   /** One alumnus's card in the directory: /alumni#<id> (the card's element id is the Alumnus id). */
   alumnus: (id: string) => `/alumni#${encodeURIComponent(id)}`,
   profile: () => "/profile",
+  syllabi: () => "/syllabi",
 } as const;
 
 export type AppRoutes = typeof routes;

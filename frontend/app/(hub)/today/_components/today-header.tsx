@@ -1,13 +1,14 @@
+import Link from "next/link";
 import { FiveDayStrip } from "@/components/domain/five-day-strip";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatLongDate } from "@/lib/format";
+import { routes } from "@/lib/routes";
 import {
   buildDueSoon,
   contentDeadlines,
   dueForYouCount,
   dueSoonRange,
   etDay,
-  loadFeedItems,
   loadPlan,
   loadProfile,
   loadSchedule,
@@ -18,11 +19,11 @@ import {
   STRIP_NOUN,
   stripCount,
   stripDay,
-  todaySummary,
-  type Loaded,
+  webTreeWindow,
+  webTreeWindowText,
 } from "@/server/today";
-import type { FeedItem } from "@/lib/types/feeds";
-import { feedRange, todayHref } from "../_lib/params";
+import { todayHref } from "../_lib/params";
+import { TEXT_LINK } from "../_lib/styles";
 
 export interface TodayHeaderProps {
   userId: string;
@@ -31,22 +32,14 @@ export interface TodayHeaderProps {
   stripDays: readonly string[];
   /** The day the timeline shows. */
   selected: string;
-  /** FEATURE_EVENTS: campus events count in the summary only while the events section is on. */
-  eventsOn: boolean;
-  /** The student's first name for the greeting. */
-  firstName?: string;
-}
-
-const NO_FEEDS: Loaded<FeedItem[]> = { ok: true, value: [] };
-
-function plural(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`;
 }
 
 /**
- * The Today header (Lakeside + Broadsheet): the date and term as a kicker, the deterministic one-sentence day
- * summary as the h1 (server/today summary → lib/day-summary), a line of counts, and the five-day strip. Whatever
- * fails to load is left out of the sentence, so the headline itself never fails.
+ * The Today header: the date and term as a kicker, a fixed headline, ONE line under it, and the five-day strip.
+ * The line is the WebTree window while it is open ("WebTree is open for Spring 2027 course preferences until Tue,
+ * Nov 3 at 5:00 PM · Plan Spring 2027", PLAN §3: during the window only, from the Registrar's calendar), else
+ * "N due for you in the next two weeks", linking the Due for you card (the same rows and count as its "All" tab).
+ * Whatever fails to load is left out of the line; the headline itself never fails.
  */
 export async function TodayHeader({
   userId,
@@ -54,35 +47,26 @@ export async function TodayHeader({
   timeZone,
   stripDays,
   selected,
-  eventsOn,
-  firstName,
 }: TodayHeaderProps) {
   const today = etDay(now);
-  const range = feedRange(today, stripDays);
-  const [profile, terms, schedule, plan, feeds, week] = await Promise.all([
+  const [profile, terms, schedule, plan, week] = await Promise.all([
     loadProfile(userId),
     loadTerms(),
     loadSchedule(userId, today),
     loadPlan(userId),
-    eventsOn ? loadFeedItems(range.from, range.to) : Promise.resolve(NO_FEEDS),
     Promise.all(stripDays.map((day) => loadSchedule(userId, day))),
   ]);
   const standing = standingOf(profile);
   const termLabel = scheduleTermLabel(schedule, terms);
   const studentDeadlines = plan.ok ? plan.value.deadlines : [];
-  const summary = safely("the day summary", () =>
-    todaySummary({
-      now,
-      onboarded: profile.ok ? profile.value.onboardedAt !== null : true,
-      standing,
-      schedule: schedule.ok ? schedule.value : null,
-      termLabel,
-      studentDeadlines,
-      feedItems: feeds.ok ? feeds.value : [],
-    }),
-  );
+
+  const window = terms.ok
+    ? safely("the WebTree window", () => webTreeWindow(terms.value.registration, now))
+    : null;
+  const windowText = window
+    ? safely("the WebTree window", () => webTreeWindowText(window, timeZone))
+    : null;
   const { from, to } = dueSoonRange(now);
-  // The same rows and the same count as the Due for you card: one number for "what's due" on the page.
   const dueForYou = safely("the deadline count", () =>
     dueForYouCount(
       buildDueSoon({
@@ -116,29 +100,22 @@ export async function TodayHeader({
           {termLabel ? ` · ${termLabel}` : null}
         </>
       }
-      title={
-        <span data-testid="day-summary">
-          {/* Only if the summary itself throws: a plain title, never a made-up sentence. */}
-          {summary?.sentence ?? "Your day at Davidson"}
-        </span>
-      }
+      title={<span data-testid="today-headline">Your day at Davidson</span>}
       subtitle={
-        <span data-testid="day-counts">
-          {firstName ? <span className="mr-1">Welcome, {firstName}.</span> : null}
-          {summary ? (
-            <>
-              <b>{plural(summary.classesToday, "class", "classes")}</b> today
-            </>
-          ) : null}
-          {summary && dueForYou !== null ? " · " : null}
-          {dueForYou === null ? null : dueForYou === 0 ? (
-            <>nothing due for you in the next two weeks</>
-          ) : (
-            <>
-              <b>{dueForYou} due for you</b> in the next two weeks
-            </>
-          )}
-        </span>
+        window && windowText ? (
+          <span data-testid="webtree-window">
+            {windowText} <span aria-hidden>·</span>{" "}
+            <Link href={routes.plan("next")} className={TEXT_LINK} data-testid="plan-next-link">
+              Plan {window.termLabel}
+            </Link>
+          </span>
+        ) : dueForYou !== null ? (
+          <a href="#due-soon" className={TEXT_LINK} data-testid="due-for-you-line">
+            {dueForYou === 0
+              ? "Nothing due for you in the next two weeks"
+              : `${dueForYou} due for you in the next two weeks`}
+          </a>
+        ) : undefined
       }
       actions={
         days ? (

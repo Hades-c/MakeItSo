@@ -11,28 +11,21 @@ import {
   buildAgenda,
   buildDueSoon,
   contentDeadlines,
-  degreeMapTerms,
   dueSoonRange,
   loadCampusEvents,
-  loadFeedItems,
   loadPlan,
   loadProfile,
-  loadProgress,
   loadSchedule,
-  loadTerms,
   nextClassDay,
-  scheduleTermLabel,
   standingOf,
   stripCount,
   stripDays,
-  todaySummary,
-  type SummaryParts,
 } from "@/server/today";
 
 /**
  * Today's loaders against the fixture catalog and an in-memory database (the fixtures day: Wed 2026-09-30 12:00
  * ET): a first-year with three Fall 2026 sections (CSC 221 A MWF 10:30, ECO 232 A MWF 11:30, ENV 237 A MW 14:30),
- * the day summary built from what the server loaded, the strip, Due soon, the degree map and the campus feeds.
+ * the strip, Due soon and the campus feeds.
  */
 
 withPlanDb();
@@ -59,99 +52,6 @@ async function mockupStudent(): Promise<string> {
   await add(user, { termCode: "202602", courseCode: "HIS 357", status: "planned" });
   return user;
 }
-
-async function parts(user: string, at: Date, feeds = false): Promise<SummaryParts> {
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(at);
-  const [profile, terms, schedule, plan] = await Promise.all([
-    loadProfile(user),
-    loadTerms(),
-    loadSchedule(user, day),
-    loadPlan(user),
-  ]);
-  const feedItems = feeds ? await loadFeedItems(day, day) : null;
-  return {
-    now: at,
-    onboarded: profile.ok ? profile.value.onboardedAt !== null : true,
-    standing: standingOf(profile),
-    schedule: schedule.ok ? schedule.value : null,
-    termLabel: scheduleTermLabel(schedule, terms),
-    studentDeadlines: plan.ok ? plan.value.deadlines : [],
-    feedItems: feedItems?.ok ? feedItems.value : [],
-  };
-}
-
-describe("the day summary from the server's data", () => {
-  it("is the mockup student's Wednesday at noon", async () => {
-    const user = await mockupStudent();
-    const summary = todaySummary(await parts(user, NOON));
-    expect(summary.sentence).toBe(
-      "You're in ECO 232 until 12:20 PM, then one more class, and nothing is due in the next three days.",
-    );
-    expect(summary).toMatchObject({ classesToday: 3, classesLeft: 2 });
-  });
-
-  it("names the student's own deadline", async () => {
-    const user = await mockupStudent();
-    await addDeadline(user, {
-      title: "Problem set",
-      courseCode: "CSC 221",
-      dueAt: "2026-10-01T23:59:00-04:00",
-    });
-    expect(todaySummary(await parts(user, NOON)).sentence).toBe(
-      "You're in ECO 232 until 12:20 PM, then one more class, and Problem set (CSC 221) is due tomorrow at 11:59 PM.",
-    );
-  });
-
-  it("counts the seniors' minor declaration deadline only for a senior", async () => {
-    const senior = await insertStudent({ graduationYear: 2027, firstTerm: "202301" });
-    await onboard(senior);
-    await add(senior, { termCode: "202601", courseCode: "CSC 121", crn: "10141" }); // MWF 09:30
-    expect(todaySummary(await parts(senior, NOON)).sentence).toBe(
-      "Classes are done for today, and Minor Declaration Deadline for Seniors is due tomorrow.",
-    );
-  });
-
-  it("adds the campus events later today once the feeds are stored", async () => {
-    const user = await mockupStudent();
-    await syncFeeds();
-    const p = await parts(user, new Date("2026-09-30T16:00:00-04:00"), true);
-    expect(p.feedItems.length).toBeGreaterThan(0);
-    expect(todaySummary(p).sentence).toMatch(
-      /^Classes are done for today, and (?:.+ is at|\w+ campus events later today, starting at) \d{1,2}:\d{2} PM\.$/,
-    );
-  });
-
-  it("says Fall Break on Fall Break and the weekend on a Saturday", async () => {
-    const user = await mockupStudent();
-    expect(todaySummary(await parts(user, new Date("2026-09-21T11:00:00-04:00"))).sentence).toBe(
-      "No classes today for Fall Break and nothing due in the next three days.",
-    );
-    expect(todaySummary(await parts(user, new Date("2026-10-03T11:00:00-04:00"))).sentence).toBe(
-      "No classes this weekend and nothing due in the next three days.",
-    );
-  });
-
-  it("names WebTree opening on Oct 12", async () => {
-    const user = await mockupStudent();
-    expect(todaySummary(await parts(user, new Date("2026-10-12T06:30:00-04:00"))).sentence).toBe(
-      "Three classes today, starting with CSC 221 at 10:30 AM, and WebTree opens today at 7:00 AM.",
-    );
-  });
-
-  it("asks to add sections when none are chosen, and to finish setup before onboarding", async () => {
-    const noSections = await insertStudent({ graduationYear: 2030, firstTerm: "202601" });
-    await onboard(noSections);
-    await add(noSections, { termCode: "202601", courseCode: "CSC 221" });
-    expect(todaySummary(await parts(noSections, NOON)).sentence).toBe(
-      "No Fall 2026 class sections in your plan yet and nothing due in the next three days.",
-    );
-
-    const fresh = await insertStudent({ graduationYear: 2030 });
-    expect(todaySummary(await parts(fresh, NOON)).sentence).toBe(
-      "Finish setting up MakeItSo to see your classes, deadlines and campus events here.",
-    );
-  });
-});
 
 describe("the panels' data", () => {
   it("builds the timeline, the next class day and the strip", async () => {
@@ -219,34 +119,6 @@ describe("the panels' data", () => {
       day: "2026-10-05",
       source: "my-plan",
     });
-  });
-
-  it("maps degree progress: four Fall 2026 credits under way, one planned", async () => {
-    const user = await mockupStudent();
-    const [progress, plan, profile, terms] = await Promise.all([
-      loadProgress(user),
-      loadPlan(user),
-      loadProfile(user),
-      loadTerms(),
-    ]);
-    expect(progress.ok && plan.ok && profile.ok && terms.ok).toBe(true);
-    if (!progress.ok || !plan.ok || !profile.ok || !terms.ok) return;
-    expect(progress.value).toMatchObject({ creditsDone: 0, creditsPlanned: 4, required: 32 });
-    expect(terms.value).toMatchObject({ current: "202601", registration: "202602" });
-    const map = degreeMapTerms({
-      items: plan.value.items,
-      firstTerm: "202601",
-      graduationYear: profile.value.graduationYear,
-      currentTerm: terms.value.current,
-    });
-    expect(map[0]).toMatchObject({ termCode: "202601", isCurrent: true });
-    expect(map[0]?.slots.map((s) => `${s.status} ${s.code}`)).toEqual([
-      "in-progress CSC 221",
-      "in-progress ECO 232",
-      "in-progress ENV 237",
-    ]);
-    expect(map[1]?.slots).toEqual([{ status: "planned", code: "HIS 357", credits: 1 }]);
-    expect(map[map.length - 1]?.termCode).toBe("202902");
   });
 
   it("reads this week's campus events from the stored feeds", async () => {

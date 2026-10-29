@@ -6,7 +6,6 @@ import {
   type Page,
 } from "@playwright/test";
 import { SOURCES, type SourceId } from "../../lib/sources";
-import { E2E_UNTAGGED_EXEMPTIONS } from "./untagged";
 
 /**
  * Shared helpers for the Playwright specs: accounts, sign-in and mailbox codes, plus the checks PLAN §6.2/§7 asks
@@ -287,38 +286,6 @@ export function isMobile(page: Page): boolean {
   return (page.viewportSize()?.width ?? 1440) < 720;
 }
 
-/**
- * Every aggregated item on the page carries its source tag (PLAN §7): each visible element marked
- * `data-aggregated="<source id>"` contains a visible <SourceTag> of that same source ("Source: …" for screen
- * readers). An item marked `data-aggregated="untagged"` passes only with a `data-untagged` reason from
- * E2E_UNTAGGED_EXEMPTIONS, so a new kind of untagged item fails here instead of passing unmarked. Returns how
- * many items were checked, so a spec can also require that there were some.
- */
-export async function expectAllTagged(page: Page): Promise<number> {
-  const report = await page.evaluate((exempt) => {
-    const items = [...document.querySelectorAll<HTMLElement>("[data-aggregated]")].filter((el) =>
-      el.checkVisibility(),
-    );
-    const untagged = items
-      .filter((item) => {
-        const source = item.dataset.aggregated ?? "";
-        if (source === "untagged") return !exempt.includes(item.dataset.untagged ?? "");
-        const tags = [...item.querySelectorAll<HTMLElement>("[data-source]")].filter(
-          (tag) =>
-            tag.dataset.source === source &&
-            !tag.hasAttribute("data-aggregated") &&
-            tag.checkVisibility() &&
-            (tag.textContent ?? "").trim().startsWith("Source:"),
-        );
-        return tags.length === 0;
-      })
-      .map((item) => `${item.dataset.aggregated}: ${(item.textContent ?? "").trim().slice(0, 60)}`);
-    return { count: items.length, untagged };
-  }, E2E_UNTAGGED_EXEMPTIONS);
-  expect(report.untagged, "aggregated items without their source tag").toEqual([]);
-  return report.count;
-}
-
 /** What an L0 line may call each source (the registry label, plus the short forms the spec's L0 lines use). */
 const L0_WORDS: Record<string, string[]> = Object.fromEntries(
   Object.values(SOURCES).map((s): [SourceId, string[]] => [s.id, [s.label.toLowerCase()]]),
@@ -330,8 +297,9 @@ L0_WORDS["davidson-offices"]?.push("office programs");
 export interface AttributionReport {
   /** Visible [data-source] elements in <main> that were checked. */
   items: number;
-  /** How each passed: its own source note or tag (NOTE), "your" wording (YOURS), AI, or its card's L0 line. */
+  /** How each passed: its own note (NOTE), its run's first note (RUN), "your" wording (YOURS), AI, or its L0 line. */
   NOTE: number;
+  RUN: number;
   YOURS: number;
   AI: number;
   L0: number;
@@ -340,21 +308,25 @@ export interface AttributionReport {
 }
 
 /**
- * The strict provenance check (spec §5.5 "Test", the e2e twin of the mockups' attributed.cjs). For every visible
- * `[data-source]` element E in <main>, with source id S, one of these must hold:
- *   NOTE   E is, or contains, a visible `[data-source=S]` whose text starts with the (sr-only) "Source:" and whose
- *          visible words name the source: today's SourceTag ("Source: " + "WildcatSync"), or the planned
- *          SourceNote ("Source: " + "via Dean Rusk International Studies Program", "Source: your plan. Your
- *          deadline").
+ * The strict provenance check (the adopted rule, docs/CONTRACTS.md "Look": quiet labels, minimal repetition). For
+ * every visible `[data-source]` element E in <main> with source id S (an item, not the note inside an item of the
+ * same source), one of these must hold:
+ *   NOTE   E is, or contains, a visible `[data-source=S]` (not only screen-reader text) whose text starts with the
+ *          sr-only "Source:" and whose visible words name the source: a SourceNote ("Source: " + "via
+ *          Registrar", "From your syllabus") or a SourceLink ("Source: " + "RateMyProfessors").
+ *   RUN    E carries a screen-reader-only note of S (`SourceNote hidden`, `[data-source-run]`) and an earlier
+ *          sibling of E in the same list, through siblings of source S only, passes NOTE: the first row of a run
+ *          of rows from one source says it once.
  *   YOURS  S = my-plan: E's visible text, or the visible heading of a card or list around E, says "you"/"your" or
  *          a status string ("Completed Fall 2025", "Taking now", "In plan"), and E, that heading or that list
  *          carries "Source: your plan" for screen readers.
  *   AI     S = ai: E shows the word "AI" and carries "Source: AI".
- *   L0     the nearest `[data-provenance]` ancestor lists S, and its own visible L0 line (`.l0`) names S in words.
+ *   L0     the nearest `[data-provenance]` ancestor lists S, and its own visible SourceLine (`.l0`) names S in
+ *          words: the one quiet line of a single-source list ("Course schedule · seats as of …").
  * And: every `[data-provenance]` container's L0 line names each id it lists (except my-plan and ai); every link
  * that opens a new tab ends its name with "(opens in a new tab)"; and the "Sources" links have distinct names.
- * `attributionReport` measures; `expectAllAttributed` fails on any problem. (M1 replaces expectAllTagged with
- * it; until then the UI budgets spec reports its problems as warnings.)
+ * `attributionReport` measures; `expectAllAttributed` fails on any problem (and returns the report, so a spec can
+ * also require that items were checked).
  */
 export async function expectAllAttributed(page: Page): Promise<AttributionReport> {
   const report = await attributionReport(page);
@@ -365,7 +337,8 @@ export async function expectAllAttributed(page: Page): Promise<AttributionReport
 export async function attributionReport(page: Page): Promise<AttributionReport> {
   return page.evaluate((words) => {
     const main = document.querySelector("main");
-    if (!main) return { problems: ["no <main>"], items: 0, NOTE: 0, YOURS: 0, AI: 0, L0: 0 };
+    if (!main)
+      return { problems: ["no <main>"], items: 0, NOTE: 0, RUN: 0, YOURS: 0, AI: 0, L0: 0 };
     const SR = ".sr-only, .sr";
     const vis = (e: Element | null | undefined): e is HTMLElement =>
       !!e &&
@@ -391,21 +364,35 @@ export async function attributionReport(page: Page): Promise<AttributionReport> 
     const names = (id: string, text: string) =>
       (words[id] ?? []).some((w) => text.toLowerCase().includes(w));
     const STATUS = /^(⚠\s*)?(completed (fall|spring|summer) \d{4}|taking now|in (your )?plan)/i;
-    const out = { problems: [] as string[], items: 0, NOTE: 0, YOURS: 0, AI: 0, L0: 0 };
-
-    for (const e of main.querySelectorAll<HTMLElement>("[data-source]")) {
-      if (!vis(e)) continue;
-      out.items++;
-      const s = e.dataset.source ?? "";
-      const notes = [e, ...e.querySelectorAll(`[data-source="${s}"]`)].filter(
+    const out = { problems: [] as string[], items: 0, NOTE: 0, RUN: 0, YOURS: 0, AI: 0, L0: 0 };
+    const visibleNote = (e: Element, s: string) =>
+      [e, ...e.querySelectorAll(`[data-source="${s}"]`)].some(
         (n) =>
           vis(n) &&
+          !n.matches(SR) &&
           /^source:/i.test((n.textContent ?? "").trim()) &&
           visText(n).replace(/^via\s*/i, "").length > 1,
       );
-      if (notes.length > 0) {
+
+    for (const e of main.querySelectorAll<HTMLElement>("[data-source]")) {
+      if (!vis(e)) continue;
+      const s = e.dataset.source ?? "";
+      // An item's own note (inside the item, same source) is checked as part of that item, not on its own.
+      if (e.parentElement?.closest(`[data-source="${s}"]`)) continue;
+      out.items++;
+      if (visibleNote(e, s)) {
         out.NOTE++;
         continue;
+      }
+      if (e.querySelector(`[data-source="${s}"][data-source-run]`)) {
+        let head: Element | null = e.previousElementSibling;
+        while (head && (head as HTMLElement).dataset.source === s && !visibleNote(head, s)) {
+          head = head.previousElementSibling;
+        }
+        if (head && (head as HTMLElement).dataset.source === s) {
+          out.RUN++;
+          continue;
+        }
       }
       if (s === "my-plan") {
         const candidates: Element[] = [e];

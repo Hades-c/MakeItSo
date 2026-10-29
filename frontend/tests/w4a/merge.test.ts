@@ -6,12 +6,12 @@ import { listEvents, listEventsPage } from "@/server/feeds";
 import { foldTitle, groupListings, mergeListings } from "@/server/feeds/merge";
 import { storeChannelItems } from "@/server/feeds/store";
 import type { NormalizedFeedItem } from "@/server/feeds/types";
-import { buildAgenda, summaryInput, todaySummary } from "@/server/today";
+import { buildAgenda } from "@/server/today";
 import { FIXTURE_NOW, TZ } from "./helpers";
 
 /**
  * One campus event listed by several feeds (LibCal and WildcatSync both list "Scary Stories to Tell in the Dark",
- * same time, same room) is one event on /events, on Today's timeline and in the day summary.
+ * same time, same room) is one event on /events and on Today's timeline.
  */
 
 const edt = (hhmm: string, day = "2026-09-30") => new Date(`${day}T${hhmm}:00-04:00`);
@@ -254,25 +254,6 @@ describe("Today counts distinct events", () => {
       endsAt: edt("20:00").toISOString(),
     }),
   ];
-  const parts = {
-    now: NOON,
-    onboarded: true,
-    standing: "first-year" as const,
-    schedule: { entries: [], empty: "no-classes-today" as const, termCode: "202601" as const },
-    termLabel: "Fall 2026",
-    studentDeadlines: [],
-    feedItems: twins,
-  };
-
-  it("the day summary counts the event once", () => {
-    expect(summaryInput(parts).events?.map((event) => event.title)).toEqual([
-      "Scary Stories to Tell in the Dark",
-      "Wednesday Night Zen",
-    ]);
-    const summary = todaySummary(parts);
-    expect(summary.eventsLeftToday).toBe(2);
-    expect(summary.sentence).toContain("two campus events later today");
-  });
 
   it("the timeline draws it once, with the library's tag", () => {
     const agenda = buildAgenda({

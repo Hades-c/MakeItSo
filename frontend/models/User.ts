@@ -53,6 +53,8 @@ export interface IUser {
   standingOverride?: ClassStanding;
   /** Career-path slugs. */
   interests?: string[];
+  /** Goal-statement slugs (lib/goals.ts). */
+  goals?: string[];
   aiConsentAt?: Date;
   adultAttestedAt?: Date;
   onboardedAt?: Date;
@@ -87,6 +89,7 @@ const UserSchema = new Schema<IUser>(
     firstTerm: { type: String, match: /^\d{4}0[1-3]$/ },
     standingOverride: { type: String, enum: CLASS_STANDINGS },
     interests: { type: [String], default: undefined },
+    goals: { type: [String], default: undefined },
     aiConsentAt: { type: Date },
     adultAttestedAt: { type: Date },
     onboardedAt: { type: Date },
