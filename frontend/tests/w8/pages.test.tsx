@@ -320,6 +320,75 @@ describe("/courses/[term]/[code]", () => {
     );
   });
 
+  /** The level-2 headings of the rendered page, in document order. */
+  const h2s = () => screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent?.trim());
+
+  it("when the AI summary can load, it leads and the official description goes last", async () => {
+    // The panel asks for its summary on mount; this answer never settles, so it stays in "loading".
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    try {
+      state.resolved = resolved();
+      state.page = { ...pageData(), aboutGate: "ready" };
+      render(
+        await coursePage.default({
+          ...params("202602", "CSC-221"),
+          searchParams: Promise.resolve({}),
+        }),
+      );
+      const order = h2s();
+      const at = (title: string) => order.findIndex((text) => text?.startsWith(title));
+      expect(at("About this course")).toBe(0);
+      expect(at("Requirements and prerequisites")).toBe(1);
+      expect(at("About this course")).toBeLessThan(at("Add to plan"));
+      expect(at("Official description")).toBe(order.length - 1);
+      expect(at("Other terms")).toBeLessThan(at("Official description"));
+      // Exactly one description card, and no "About" card left over at the top.
+      expect(order).not.toContain("About");
+      expect(screen.getByRole("region", { name: "Official description" })).toHaveAttribute(
+        "id",
+        "official-description",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("when a verify step comes first, the official About card leads and the panel follows Sections", async () => {
+    state.resolved = resolved();
+    state.page = { ...pageData(), aboutGate: "unverified" };
+    render(
+      await coursePage.default({
+        ...params("202602", "CSC-221"),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    const order = h2s();
+    const at = (title: string) => order.findIndex((text) => text?.startsWith(title));
+    expect(order[0]).toBe("About");
+    expect(at("Sections")).toBeLessThan(at("About this course"));
+    expect(at("About this course")).toBeLessThan(at("Other terms"));
+    expect(at("Official description")).toBe(-1);
+    expect(at("Requirements and prerequisites")).toBe(-1);
+  });
+
+  it("with AI off, the official About card leads and no AI panel renders", async () => {
+    state.resolved = resolved();
+    state.page = pageData();
+    render(
+      await coursePage.default({
+        ...params("202602", "CSC-221"),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    const order = h2s();
+    expect(order[0]).toBe("About");
+    expect(order.some((text) => text?.startsWith("About this course"))).toBe(false);
+    expect(order.some((text) => text?.startsWith("Official description"))).toBe(false);
+  });
+
   it("a legacy non-Davidson account gets the explanation without a /verify link", async () => {
     state.email = "student@gmail.com";
     state.resolved = resolved();
