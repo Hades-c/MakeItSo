@@ -74,10 +74,10 @@ describe("hub layout: flagged sections", () => {
       "today",
       "courses",
       "plan",
-      "careers",
-      "events",
-      "alumni",
       "syllabi",
+      "careers",
+      "alumni",
+      "events",
     ]);
   });
 
@@ -87,15 +87,15 @@ describe("hub layout: flagged sections", () => {
       "today",
       "courses",
       "plan",
+      "syllabi",
       "careers",
       "alumni",
-      "syllabi",
     ]);
     vi.stubEnv("FEATURE_CAREERS", "false");
     expect((await shellProps()).nav).toEqual(["today", "courses", "plan", "syllabi"]);
     vi.stubEnv("FEATURE_CAREERS", "true");
     vi.stubEnv("FEATURE_ALUMNI", "off");
-    expect((await shellProps()).nav).toEqual(["today", "courses", "plan", "careers", "syllabi"]);
+    expect((await shellProps()).nav).toEqual(["today", "courses", "plan", "syllabi", "careers"]);
   });
 
   it("survives a malformed flag: logs it and uses its default", async () => {
@@ -106,9 +106,9 @@ describe("hub layout: flagged sections", () => {
       "today",
       "courses",
       "plan",
+      "syllabi",
       "careers",
       "events",
-      "syllabi",
     ]);
     expect(log).toHaveBeenCalledWith(expect.stringMatching(/FEATURE_EVENTS/));
   });

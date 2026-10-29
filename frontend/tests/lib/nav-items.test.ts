@@ -4,8 +4,8 @@ import {
   ALL_NAV_KEYS,
   BOTTOM_TAB_KEYS,
   bottomTabItems,
-  isSidebarGroup,
   NAV_ITEMS,
+  navParentOf,
   navSectionOf,
   sidebarItems,
   sidebarSections,
@@ -43,11 +43,17 @@ describe("hub navigation", () => {
       "Today",
       "Courses",
       "My plan",
-      "Careers",
-      "Events",
-      "Alumni",
       "Syllabi",
+      "Careers",
+      "Alumni",
+      "Events",
     ]);
+  });
+
+  it("nests Syllabi under My plan and Alumni under Careers, nothing else", () => {
+    expect(navParentOf("syllabi")).toBe("plan");
+    expect(navParentOf("alumni")).toBe("careers");
+    for (const key of BOTTOM_TAB_KEYS) expect(navParentOf(key)).toBeNull();
   });
 
   it("finds the section of a path whether or not it is shown", () => {
@@ -69,7 +75,7 @@ describe("hub navigation with sections hidden", () => {
 
   it("keeps the canonical order whatever order the keys come in", () => {
     const nav: NavKey[] = ["alumni", "events", "plan", "today", "courses"];
-    expect(keys(sidebarItems(nav))).toEqual(["today", "courses", "plan", "events", "alumni"]);
+    expect(keys(sidebarItems(nav))).toEqual(["today", "courses", "plan", "alumni", "events"]);
     expect(keys(bottomTabItems(nav))).toEqual(["today", "courses", "plan", "events"]);
   });
 
@@ -99,35 +105,39 @@ describe("hub navigation with sections hidden", () => {
   });
 });
 
-describe("sidebarSections (My plan nests Courses, Careers, Alumni and Syllabi)", () => {
+describe("sidebarSections (the five tabs, with Syllabi under My plan and Alumni under Careers)", () => {
   const CORE: NavKey[] = ["today", "courses", "plan", "syllabi"];
+  const shape = (nav?: NavKey[]) =>
+    sidebarSections(nav).map((s) => [s.item.key, s.children.map((c) => c.key)]);
 
-  it("nests Courses, Careers, Alumni and Syllabi under My plan; Today and Events stay top-level", () => {
-    const [today, plan, events] = sidebarSections();
-    expect(today).toMatchObject({ key: "today" });
-    expect(events).toMatchObject({ key: "events" });
-    expect(isSidebarGroup(plan!)).toBe(true);
-    if (!isSidebarGroup(plan!)) throw new Error("expected a group");
-    expect(plan.item.key).toBe("plan");
-    expect(plan.children.map((c) => c.key)).toEqual(["courses", "careers", "alumni", "syllabi"]);
+  it("has the phone tabs' five parents, in their order, and only two nested children", () => {
+    expect(sidebarSections().map((s) => s.item.key)).toEqual(BOTTOM_TAB_KEYS);
+    expect(shape()).toEqual([
+      ["today", []],
+      ["courses", []],
+      ["plan", ["syllabi"]],
+      ["careers", ["alumni"]],
+      ["events", []],
+    ]);
   });
 
-  it("drops a hidden child from the group, keeping the group itself", () => {
-    const sections = sidebarSections([...CORE, "events"]);
-    expect(sections.map((e) => (isSidebarGroup(e) ? e.item.key : e.key))).toEqual([
-      "today",
-      "plan",
-      "events",
+  it("drops a hidden child, keeping its parent", () => {
+    expect(shape([...CORE, "careers", "events"])).toEqual([
+      ["today", []],
+      ["courses", []],
+      ["plan", ["syllabi"]],
+      ["careers", []],
+      ["events", []],
     ]);
-    const [, plan] = sections;
-    if (!isSidebarGroup(plan!)) throw new Error("expected a group");
-    expect(plan.children.map((c) => c.key)).toEqual(["courses", "syllabi"]);
   });
 
-  it("drops Today or Events entirely when hidden, never an empty top-level entry", () => {
-    expect(sidebarSections(CORE).map((e) => (isSidebarGroup(e) ? e.item.key : e.key))).toEqual([
-      "today",
-      "plan",
+  it("drops a hidden parent with its children, never an empty entry", () => {
+    expect(shape(CORE)).toEqual([
+      ["today", []],
+      ["courses", []],
+      ["plan", ["syllabi"]],
     ]);
+    // Alumni without Careers never comes from the flags (featureEnabled); it has no parent to sit under.
+    expect(shape([...CORE, "alumni"]).map(([key]) => key)).toEqual(["today", "courses", "plan"]);
   });
 });

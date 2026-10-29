@@ -40,22 +40,75 @@ describe("SidebarNav", () => {
   });
 });
 
-describe("the 720-1179px rail", () => {
-  it("shows every label on screen (13px under the icon), never only in a tooltip", () => {
+describe("nested sections", () => {
+  it("lists Syllabi under My plan and Alumni under Careers, indented, always shown", () => {
     nav.pathname = "/today";
     render(<SidebarNav />);
-    const links = within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual([
+    const main = screen.getByRole("navigation", { name: "Main" });
+    const top = within(main)
+      .getAllByRole("listitem")
+      .filter((li) => li.parentElement!.parentElement === main);
+    expect(top.map((li) => li.querySelector("a")!.textContent)).toEqual([
       "Today",
-      "My plan",
       "Courses",
+      "My plan",
       "Careers",
-      "Alumni",
-      "Syllabi",
       "Events",
     ]);
+    const childrenOf = (label: string) =>
+      [
+        ...top
+          .find((li) => li.querySelector("a")!.textContent === label)!
+          .querySelectorAll(":scope ul a"),
+      ].map((a) => a.textContent);
+    expect(childrenOf("My plan")).toEqual(["Syllabi"]);
+    expect(childrenOf("Careers")).toEqual(["Alumni"]);
+    for (const label of ["Today", "Courses", "Events"]) expect(childrenOf(label)).toEqual([]);
+    for (const name of ["Syllabi", "Alumni"]) {
+      expect(within(main).getByRole("link", { name })).toHaveClass("xl:pl-7.5");
+    }
+  });
+
+  it.each([
+    ["/syllabi", "Syllabi", /^My plan/],
+    ["/alumni", "Alumni", /^Careers/],
+  ])(
+    "on %s marks the child current and its parent with the bar, aria-current on the child only",
+    (path, child, parent) => {
+      nav.pathname = path;
+      render(<SidebarNav />);
+      const main = screen.getByRole("navigation", { name: "Main" });
+      const childLink = within(main).getByRole("link", { name: child });
+      const parentLink = within(main).getByRole("link", { name: parent });
+      expect(childLink).toHaveAttribute("aria-current", "page");
+      expect(childLink).toHaveClass("before:bg-nav-mark", "text-primary");
+      expect(parentLink).not.toHaveAttribute("aria-current");
+      expect(parentLink).toHaveClass("before:bg-nav-mark");
+      // Red is the current page only: the parent is red only on the rail, where the child is hidden.
+      expect(parentLink).not.toHaveClass("text-primary");
+      expect(parentLink).toHaveClass("max-xl:text-primary");
+      expect(main.querySelectorAll("[aria-current]")).toHaveLength(1);
+    },
+  );
+});
+
+describe("the 720-1179px rail", () => {
+  it("shows exactly the five parents, every label on screen (13px under the icon), never only in a tooltip", () => {
+    nav.pathname = "/today";
+    render(<SidebarNav />);
+    const main = screen.getByRole("navigation", { name: "Main" });
+    // The nested lists are hidden below 1180px (the rail has no room to show nesting).
+    for (const list of main.querySelectorAll("ul ul")) expect(list).toHaveClass("max-xl:hidden");
+    const links = [...main.querySelectorAll<HTMLAnchorElement>(":scope > ul > li > a")];
+    expect(links.map((l) => l.textContent)).toEqual([
+      "Today",
+      "Courses",
+      "My plan",
+      "Careers",
+      "Events",
+    ]);
+    for (const link of within(main).getAllByRole("link")) expect(link).not.toHaveAttribute("title");
     for (const link of links) {
-      expect(link).not.toHaveAttribute("title");
       // The rail item: 56px tall, icon over label, like the bottom tabs.
       expect(link).toHaveClass("max-xl:h-14", "max-xl:flex-col");
       const label = link.querySelector("span")!;
@@ -66,6 +119,13 @@ describe("the 720-1179px rail", () => {
 });
 
 describe("BottomTabs", () => {
+  it("highlights My plan on /syllabi (it has no tab)", () => {
+    nav.pathname = "/syllabi";
+    render(<BottomTabs />);
+    expect(screen.getByRole("link", { name: "Plan" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByTestId("bottom-tabs").querySelectorAll("[aria-current]")).toHaveLength(1);
+  });
+
   it("shows five tabs and highlights Careers on /alumni", () => {
     nav.pathname = "/alumni";
     render(<BottomTabs />);
@@ -98,14 +158,21 @@ describe("flagged-off sections", () => {
       .getAllByRole("link")
       .map((l) => l.textContent);
 
-  it("leave the sidebar, which keeps its order (My plan nests whatever is left)", () => {
+  it("leave the sidebar, which keeps its order (a parent keeps whichever children are left)", () => {
     nav.pathname = "/today";
-    const { rerender } = render(<SidebarNav nav={[...CORE, "careers", "alumni"]} />);
-    expect(sidebarLabels()).toEqual(["Today", "My plan", "Courses", "Careers", "Alumni"]);
-    rerender(<SidebarNav nav={[...CORE, "events"]} />);
-    expect(sidebarLabels()).toEqual(["Today", "My plan", "Courses", "Events"]);
+    const { rerender } = render(<SidebarNav nav={[...CORE, "syllabi", "careers", "alumni"]} />);
+    expect(sidebarLabels()).toEqual([
+      "Today",
+      "Courses",
+      "My plan",
+      "Syllabi",
+      "Careers",
+      "Alumni",
+    ]);
+    rerender(<SidebarNav nav={[...CORE, "careers", "events"]} />);
+    expect(sidebarLabels()).toEqual(["Today", "Courses", "My plan", "Careers", "Events"]);
     rerender(<SidebarNav nav={CORE} />);
-    expect(sidebarLabels()).toEqual(["Today", "My plan", "Courses"]);
+    expect(sidebarLabels()).toEqual(["Today", "Courses", "My plan"]);
     expect(screen.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
   });
 
@@ -174,7 +241,7 @@ describe("flagged-off sections", () => {
       within(sidebar!)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["Today", "My plan", "Courses", "Events"]);
+    ).toEqual(["Today", "Courses", "My plan", "Events"]);
     expect(tabLabels()).toEqual(["Today", "Courses", "Plan", "Events"]);
 
     await user.keyboard("{Control>}k{/Control}");

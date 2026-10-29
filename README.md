@@ -117,7 +117,12 @@ a requirement it fills) are red, as "now". Focus rings are Lake Blue, never red.
   network and the browser never calls Google. Sizes `text-xs` (12px, the floor) to `text-2xl`
   (32px), plus `text-3xl` (44px) for big numbers.
 - **Breakpoints**: `md` = 720px (bottom tabs below, sidebar above), `lg` = 900px (two content columns), `xl` =
-  1180px (full 240px sidebar; a 72px icon rail between 720 and 1180px).
+  1180px (full 240px sidebar; a 96px rail of icons with their labels between 720 and 1180px).
+- **Navigation**: five top-level sections everywhere, in this order: Today, Courses, My plan, Careers, Events
+  (the phone tabs, the rail, the sidebar). The full sidebar nests Syllabi under My plan and Alumni under Careers,
+  indented and always shown; on a nested page the child is current and its parent carries the red bar too. The
+  rail and the tabs show the five parents only (a nested page highlights its parent), and My plan and Careers
+  link to Syllabi and Alumni from their page headers. ⌘K's Pages lists all seven.
 - **Course colours** come from the department (`lib/course-color.ts`); the code is always printed next to the colour.
 - **Provenance** (quiet labels, minimal repetition; ids in `lib/sources.ts`, components in
   `components/ui/source-tag.tsx`): no boxed tags. A single-source list says its source once, in one quiet line

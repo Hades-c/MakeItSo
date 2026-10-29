@@ -43,10 +43,27 @@ export const NAV_ITEMS: readonly NavItem[] = ALL_NAV_KEYS.map((key) => ({
   ...NAV_ITEM_DETAILS[key],
 }));
 
-/** Phones show five tabs; Alumni lives under Careers and Profile under the avatar menu. */
+/**
+ * The five top-level sections, in order: the phone tabs and the sidebar's (and the rail's) parents are the same
+ * five. Syllabi is nested under My plan, Alumni under Careers; Profile lives under the avatar menu.
+ */
 export const BOTTOM_TAB_KEYS: readonly NavKey[] = ["today", "courses", "plan", "careers", "events"];
 
-/** Sidebar entries for the shown sections, in sidebar order. */
+/** The sections nested under a top-level one, in the order they are listed under it. */
+const NAV_CHILDREN: Partial<Record<NavKey, readonly NavKey[]>> = {
+  plan: ["syllabi"],
+  careers: ["alumni"],
+};
+
+/** The top-level section a nested one sits under: syllabi → plan, alumni → careers; null for a top-level one. */
+export function navParentOf(key: NavKey): NavKey | null {
+  for (const parent of BOTTOM_TAB_KEYS) {
+    if (NAV_CHILDREN[parent]?.includes(key)) return parent;
+  }
+  return null;
+}
+
+/** Entries for the shown sections, in sidebar reading order (the command palette's Pages list). */
 export function sidebarItems(nav: readonly NavKey[] = ALL_NAV_KEYS): NavItem[] {
   return NAV_ITEMS.filter((item) => nav.includes(item.key));
 }
@@ -56,43 +73,28 @@ export function bottomTabItems(nav: readonly NavKey[] = ALL_NAV_KEYS): NavItem[]
   return NAV_ITEMS.filter((item) => BOTTOM_TAB_KEYS.includes(item.key) && nav.includes(item.key));
 }
 
-/** My plan's nested children, in the order they are nested under it. */
-const PLAN_GROUP_CHILDREN: readonly NavKey[] = ["courses", "careers", "alumni", "syllabi"];
-
-/** A sidebar group: My plan's own link, plus the sections nested under it (never empty: Courses is always shown). */
-export interface SidebarGroup {
+/** A top-level sidebar entry and the shown sections nested under it (often none). */
+export interface SidebarSection {
   item: NavItem;
   children: readonly NavItem[];
 }
 
-export type SidebarEntry = NavItem | SidebarGroup;
-
-/** True for a sidebar group, as opposed to a plain top-level item (neither NavItem shape has `children`). */
-export function isSidebarGroup(entry: SidebarEntry): entry is SidebarGroup {
-  return "children" in entry;
-}
-
 /**
- * The sidebar's shape (PLAN-UX §2): Today and Events stay top-level links; My plan becomes a group, its own link
- * still /plan, nesting Courses, Careers, Alumni and Syllabi under it. Filtered to the shown sections like
- * `sidebarItems`, in sidebar order; a hidden section is left out of the group's children the same way it would be
- * dropped from a flat list.
+ * The sidebar's shape: the five top-level sections the phone tabs show, each with its nested children (Syllabi
+ * under My plan, Alumni under Careers). Filtered to the shown sections like `sidebarItems`. A hidden parent takes
+ * its children with it; the flags never show a child without its parent (Alumni needs Careers, see
+ * featureEnabled; My plan is always there).
  */
-export function sidebarSections(nav: readonly NavKey[] = ALL_NAV_KEYS): SidebarEntry[] {
+export function sidebarSections(nav: readonly NavKey[] = ALL_NAV_KEYS): SidebarSection[] {
   const shown = new Map(sidebarItems(nav).map((item) => [item.key, item]));
-  const entries: SidebarEntry[] = [];
-  const today = shown.get("today");
-  if (today) entries.push(today);
-  const plan = shown.get("plan");
-  if (plan) {
-    const children = PLAN_GROUP_CHILDREN.map((key) => shown.get(key)).filter(
-      (item): item is NavItem => item !== undefined,
-    );
-    entries.push({ item: plan, children });
-  }
-  const events = shown.get("events");
-  if (events) entries.push(events);
-  return entries;
+  return BOTTOM_TAB_KEYS.flatMap((key) => {
+    const item = shown.get(key);
+    if (!item) return [];
+    const children = (NAV_CHILDREN[key] ?? [])
+      .map((child) => shown.get(child))
+      .filter((child): child is NavItem => child !== undefined);
+    return [{ item, children }];
+  });
 }
 
 function matches(pathname: string, href: string): boolean {
@@ -105,10 +107,11 @@ export function navSectionOf(pathname: string): NavKey | null {
 }
 
 /**
- * Which nav entry is current for a path, among the shown sections (`nav`, default all). On the tab bar, /alumni
- * highlights Careers and /syllabi My plan (neither has a tab). A hidden section is never current (its pages answer
- * 404, see requireFeature): with Alumni hidden nothing is highlighted on /alumni, and with Careers hidden /alumni
- * highlights no tab.
+ * Which nav entry is current for a path, among the shown sections (`nav`, default all). The sidebar marks the
+ * section itself (/syllabi → syllabi; SidebarNav marks its parent via navParentOf too); the tab bar has only the
+ * five top-level sections, so a nested page highlights its parent's tab (/syllabi → plan, /alumni → careers). A
+ * hidden section is never current (its pages answer 404, see requireFeature): with Alumni hidden nothing is
+ * highlighted on /alumni, and with Careers hidden /alumni highlights no tab.
  */
 export function activeNavKey(
   pathname: string,
@@ -117,8 +120,8 @@ export function activeNavKey(
 ): NavKey | null {
   const section = navSectionOf(pathname);
   if (!section || !nav.includes(section)) return null;
-  if (surface === "tabs" && section === "alumni") return nav.includes("careers") ? "careers" : null;
-  // Syllabi has no phone tab: it belongs to My plan (it is nested under it in the sidebar).
-  if (surface === "tabs" && section === "syllabi") return nav.includes("plan") ? "plan" : null;
-  return section;
+  if (surface === "sidebar") return section;
+  const parent = navParentOf(section);
+  if (!parent) return section;
+  return nav.includes(parent) ? parent : null;
 }
