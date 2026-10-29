@@ -78,6 +78,25 @@ describe("CourseAboutPanel", () => {
     ).toBeVisible();
   });
 
+  it("says where the official text is from where the panel sits", async () => {
+    stubFetch([200, OK], [200, OK]);
+    const { unmount } = render(
+      <CourseAboutPanel termCode="202602" courseCode="CSC 221" gate="ready" placement="lead" />,
+    );
+    expect(await screen.findByTestId("about-official-pointer")).toHaveTextContent(
+      "The requirements and prerequisites below, and the official description at the end of the page, are the official ones.",
+    );
+    unmount();
+    render(
+      <CourseAboutPanel termCode="202602" courseCode="CSC 221" gate="ready" placement="after" />,
+    );
+    const pointer = await screen.findByTestId("about-official-pointer");
+    expect(pointer).toHaveTextContent(
+      "The description, requirements and prerequisites above are the official ones.",
+    );
+    expect(pointer).not.toHaveTextContent(/below|end of the page/);
+  });
+
   it("reports the shown entry by its input hash", async () => {
     stubFetch([200, OK], [204, null]);
     renderPanel();

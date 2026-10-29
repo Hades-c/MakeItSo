@@ -21,14 +21,24 @@ import { parseDayParam, type TodaySearchParams } from "./_lib/params";
 export const metadata: Metadata = { title: "Today" };
 
 /**
- * Two columns from lg. Below lg the columns dissolve (display: contents) into one stack ordered like the Lakeside
- * phone mockup: Today, Due for you, This week on campus, Opportunities, Quick links (the most time-sensitive
- * panels first), while the desktop keeps the timeline on the left.
+ * One stack below lg, in the DOM's order, which is the phone's priority order (the Lakeside phone mockup): Today,
+ * Due for you, This week on campus, Opportunities, Quick links. From lg the same blocks sit on a 12-column grid in
+ * rows, read left to right and top to bottom in that same order (no CSS order: WCAG 1.3.2), so both halves of the
+ * page carry content at every scroll position:
+ *
+ * - row 1: the day timeline (7 of 12) beside Due for you (5), which lists its first DUE_SOON_SHOWN rows and holds
+ *   the rest behind "Show N more", so the two end close together;
+ * - row 2: This week on campus (5) beside Opportunities (7), the wider half for the longer list;
+ * - row 3: Quick links across the page.
+ *
+ * Without the events section, Opportunities (7) and Quick links (5) share row 2. From row 2 the cards in a row
+ * stretch to the row's height, so their bottoms line up. Row 1 does not (ROW_1): the day timeline is often much
+ * shorter than Due for you (a new student with no sections), and a stretched Today card ended in a third of
+ * empty card; each card there ends with its own content.
  */
-const GRID =
-  "flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start";
-const STACK = "contents lg:flex lg:min-w-0 lg:flex-col lg:gap-5";
-const SLOT = "min-w-0 lg:order-none";
+const GRID = "flex flex-col gap-5 lg:grid lg:grid-cols-12 lg:items-stretch";
+const SLOT = "min-w-0 lg:*:h-full";
+const ROW_1 = "min-w-0 lg:self-start";
 
 /**
  * /today (PLAN §3, W7): the student's day on one page, rendered on the server in America/New_York from the
@@ -38,8 +48,8 @@ const SLOT = "min-w-0 lg:order-none";
  *   <term>"; else "N due for you in the next two weeks"), and the five-day strip (?day= shows another strip day on
  *   the timeline).
  * - An onboarding nudge until first-run setup is done; nothing else in the action row.
- * - Left: the day timeline. Right: Due for you; This week on campus (FEATURE_EVENTS only); Opportunities;
- *   Quick links.
+ * - Then, in rows from lg (GRID): the day timeline and Due for you; This week on campus (FEATURE_EVENTS only)
+ *   and Opportunities; Quick links.
  *
  * Each block is its own async server component in its own Suspense boundary and PanelBoundary (error boundary)
  * with its own error state, so a slow or failing source (catalog, plan, feeds), or a panel that throws while it
@@ -75,51 +85,47 @@ export default async function TodayPage({
         <TodayActions userId={user.id} />
       </Suspense>
       <div className={GRID}>
-        <div className={STACK}>
-          <div className={cn(SLOT, "order-1")}>
-            <PanelBoundary id="timeline" title="Today" what="Your schedule">
-              <Suspense fallback={<PanelSkeleton id="timeline" title="Today" rows={4} />}>
-                <TimelinePanel
-                  userId={user.id}
-                  now={now}
-                  timeZone={timeZone}
-                  day={day}
-                  stripDays={days}
-                  eventsOn={eventsOn}
-                />
-              </Suspense>
-            </PanelBoundary>
-          </div>
+        <div className={cn(ROW_1, "lg:col-span-7")}>
+          <PanelBoundary id="timeline" title="Today" what="Your schedule">
+            <Suspense fallback={<PanelSkeleton id="timeline" title="Today" rows={4} />}>
+              <TimelinePanel
+                userId={user.id}
+                now={now}
+                timeZone={timeZone}
+                day={day}
+                stripDays={days}
+                eventsOn={eventsOn}
+              />
+            </Suspense>
+          </PanelBoundary>
         </div>
-        <div className={STACK}>
-          <div className={cn(SLOT, "order-2")}>
-            <PanelBoundary id="due-soon" title={DUE_SOON_TITLE} what={DUE_SOON_TITLE}>
-              <Suspense fallback={<PanelSkeleton id="due-soon" title={DUE_SOON_TITLE} />}>
-                <DueSoonPanel userId={user.id} now={now} />
+        <div className={cn(ROW_1, "lg:col-span-5")}>
+          <PanelBoundary id="due-soon" title={DUE_SOON_TITLE} what={DUE_SOON_TITLE}>
+            <Suspense fallback={<PanelSkeleton id="due-soon" title={DUE_SOON_TITLE} />}>
+              <DueSoonPanel userId={user.id} now={now} />
+            </Suspense>
+          </PanelBoundary>
+        </div>
+        {eventsOn ? (
+          <div className={cn(SLOT, "lg:col-span-5")}>
+            <PanelBoundary id="campus" title="This week on campus" what="Campus events">
+              <Suspense fallback={<PanelSkeleton id="campus" title="This week on campus" />}>
+                <CampusPanel now={now} timeZone={timeZone} />
               </Suspense>
             </PanelBoundary>
           </div>
-          {eventsOn ? (
-            <div className={cn(SLOT, "order-3")}>
-              <PanelBoundary id="campus" title="This week on campus" what="Campus events">
-                <Suspense fallback={<PanelSkeleton id="campus" title="This week on campus" />}>
-                  <CampusPanel now={now} timeZone={timeZone} />
-                </Suspense>
-              </PanelBoundary>
-            </div>
-          ) : null}
-          <div className={cn(SLOT, "order-5")}>
-            <PanelBoundary id="opportunities" title="Opportunities" what="Opportunities">
-              <Suspense fallback={<PanelSkeleton id="opportunities" title="Opportunities" />}>
-                <OpportunitiesPanel userId={user.id} now={now} careersOn={careersOn} />
-              </Suspense>
-            </PanelBoundary>
-          </div>
-          <div className={cn(SLOT, "order-6")}>
-            <PanelBoundary id="quick-links" title="Quick links" what="Quick links">
-              <QuickLinks />
-            </PanelBoundary>
-          </div>
+        ) : null}
+        <div className={cn(SLOT, "lg:col-span-7")}>
+          <PanelBoundary id="opportunities" title="Opportunities" what="Opportunities">
+            <Suspense fallback={<PanelSkeleton id="opportunities" title="Opportunities" />}>
+              <OpportunitiesPanel userId={user.id} now={now} careersOn={careersOn} />
+            </Suspense>
+          </PanelBoundary>
+        </div>
+        <div className={cn(SLOT, eventsOn ? "lg:col-span-12" : "lg:col-span-5")}>
+          <PanelBoundary id="quick-links" title="Quick links" what="Quick links">
+            <QuickLinks />
+          </PanelBoundary>
         </div>
       </div>
     </>

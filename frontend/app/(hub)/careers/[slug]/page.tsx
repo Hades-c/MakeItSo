@@ -13,6 +13,8 @@ import { featureMetadata, requireFeature } from "@/server/features";
 import { careersHref } from "../_lib/filters";
 import { formatContentDate } from "../_lib/format";
 import { resolveResources } from "../_lib/resources";
+import { resolveSummers } from "../_lib/activities";
+import { OnCampusCard, SummersCard } from "../_components/career-activities";
 import { CareerAlumni } from "../_components/career-alumni";
 import { CareerCourses } from "../_components/career-courses";
 import { CareerAiPanels } from "./_components/ai-panels";
@@ -33,7 +35,8 @@ type Params = Promise<{ slug: string }>;
  *   overview + what you do · pay (BLS: median, period, projected growth, source) · the real Davidson courses with
  *   live availability per term and Add to plan · related departments and official Acalog programs · Davidson
  *   resources and office programs (amounts and deadlines as published, tagged) · Handshake (base URL + search words)
- *   · verified alumni (verified @davidson.edu + FEATURE_ALUMNI only) · outside resources.
+ *   · summers (office programs by slug, outside programs) and student organizations on campus (WildcatSync), each
+ *   card left out when the path has none · verified alumni (verified @davidson.edu + FEATURE_ALUMNI only) · outside resources.
  *
  * The page itself only resolves the career (so an unknown slug answers 404 before anything streams); the parts that
  * read the catalog, the programs, the plan or the session render in their own Suspense boundaries. Behind
@@ -74,6 +77,8 @@ export default async function CareerPage({ params }: { params: Params }) {
   if (!career) notFound();
 
   const resources = resolveResources(career.davidsonResources, OFFICES, PROGRAMS);
+  const summers = resolveSummers(career.summer, PROGRAMS, OFFICES);
+  const onCampus = career.onCampus ?? [];
 
   return (
     <>
@@ -116,6 +121,18 @@ export default async function CareerPage({ params }: { params: Params }) {
             <HandshakeCard baseUrl={HANDSHAKE.baseUrl} query={career.handshakeQuery} />
           </div>
         </div>
+
+        {summers.length > 0 && onCampus.length > 0 ? (
+          <div className={GRID}>
+            <SummersCard views={summers} />
+            <OnCampusCard entries={onCampus} />
+          </div>
+        ) : (
+          <>
+            <SummersCard views={summers} />
+            <OnCampusCard entries={onCampus} />
+          </>
+        )}
 
         <Suspense fallback={<CardSkeleton className="h-48" />}>
           <CareerAlumni career={career} />

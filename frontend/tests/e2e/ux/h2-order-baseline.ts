@@ -13,10 +13,6 @@ export interface H2OrderWarning {
 }
 
 export const H2_ORDER_WARN_ONLY: Readonly<Record<string, H2OrderWarning>> = {
-  "today@1440": { until: "QW8 (Today's JSX in phone order, placed with grid areas)" },
-  "today@1024": { until: "QW8 (Today's JSX in phone order, placed with grid areas)" },
-  "today@768": { until: "QW8 (Today's JSX in phone order, placed with grid areas)" },
-  "today@390": { until: "QW8 (Today's JSX in phone order, placed with grid areas)" },
   "course-csc221@1440": { until: "QW8 (the course page puts About before Sections)" },
   "course-csc221@1024": { until: "QW8 (the course page puts About before Sections)" },
   "plan-next@1440": { until: "M8 (the registration rows become one status line)" },
