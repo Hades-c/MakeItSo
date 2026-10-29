@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SearchX } from "lucide-react";
+import { SearchX, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { routes } from "@/lib/routes";
 import { CAREERS, careersByCluster } from "@/server/content/careers";
 import { requireUser } from "@/server/auth/session";
-import { featureMetadata, requireFeature } from "@/server/features";
+import { featureEnabled, featureMetadata, loadFlags, requireFeature } from "@/server/features";
 import {
   careersHref,
   clusterSlug,
@@ -22,7 +23,8 @@ import { CareerFilters } from "./_components/career-filters";
  * filtered by cluster and text in the URL (`?cluster=technology&q=data`).
  *
  * Behind FEATURE_CAREERS (404 while it is off; the shell hides Careers then): featureMetadata() is the
- * generateMetadata and requireFeature() the page's first line.
+ * generateMetadata and requireFeature() the page's first line. Alumni is nested under Careers in the sidebar, which
+ * the 720-1179px rail has no room to show, so the header links to it (while the Alumni section is on).
  */
 export async function generateMetadata(): Promise<Metadata> {
   return featureMetadata("careers", { title: "Careers" });
@@ -53,6 +55,16 @@ export default async function CareersPage({
             Davidson courses, pay data from the U.S. Bureau of Labor Statistics (the median across
             all experience levels, not starting pay) and the people who can help you get there.
           </>
+        }
+        actions={
+          featureEnabled(loadFlags(), "alumni") ? (
+            <Button asChild variant="secondary">
+              <Link href={routes.alumni()}>
+                <Users aria-hidden className="size-4" />
+                Alumni
+              </Link>
+            </Button>
+          ) : null
         }
       />
       <CareerFilters
