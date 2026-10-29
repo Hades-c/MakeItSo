@@ -13,8 +13,11 @@ import { requirementGroups } from "../_lib/format";
 
 /**
  * The course page's body (app/(hub)/courses/[term]/[code]/page.tsx resolves the data and the 404s first):
- * breadcrumb, the index-card header, About + Add to plan, then Sections, the AI About panel and Other terms beside
- * the week grid. Mobile stacks them in that order. One source, said once: the header's quiet line under the seats
+ * breadcrumb, the index-card header, then the summary beside Add to plan, Sections and Other terms beside the week
+ * grid. When the AI summary can load ("ready"), it leads, what the course counts for follows it, and the official
+ * description moves to the bottom; otherwise (AI off, or a verify/consent step first) the official About card
+ * leads and the AI panel sits after Sections, so no one meets a lock notice where the description should be.
+ * Mobile stacks them in that order. One source, said once: the header's quiet line under the seats
  * ("Course schedule · seats as of …") stands for the page's schedule data (its sections, About, Other terms).
  */
 
@@ -38,6 +41,30 @@ export function CourseView({
     sections: group.sections,
     reqs: group.reqCodes?.map((req) => ({ code: req, name: requirementName(req) })) ?? null,
   }));
+
+  // The AI summary leads only when it can load; a gated or hidden panel never displaces the official description.
+  const aiFirst = data.aboutGate === "ready" && course !== null;
+  const aboutPanel =
+    data.aboutGate && course ? (
+      <CourseAboutPanel
+        termCode={params.term}
+        courseCode={params.code}
+        gate={data.aboutGate}
+        unverifiedMessage={data.aboutUnverifiedMessage}
+        verifyHref={verifyHref}
+        timeZone={timeZone}
+      />
+    ) : null;
+  const aboutCard = (part: "all" | "facts" | "description") => (
+    <CourseAboutCard
+      course={reference}
+      requirements={requirements}
+      requirementsBySection={requirementsBySection}
+      programs={data.programs}
+      disclaimer={REQUIREMENTS_DISCLAIMER}
+      part={part}
+    />
+  );
 
   return (
     <div {...provenance(["course-schedule"])}>
@@ -81,13 +108,14 @@ export function CourseView({
 
       <div className="flex flex-col gap-5">
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-          <CourseAboutCard
-            course={reference}
-            requirements={requirements}
-            requirementsBySection={requirementsBySection}
-            programs={data.programs}
-            disclaimer={REQUIREMENTS_DISCLAIMER}
-          />
+          {aiFirst ? (
+            <div className="flex min-w-0 flex-col gap-5">
+              {aboutPanel}
+              {aboutCard("facts")}
+            </div>
+          ) : (
+            aboutCard("all")
+          )}
           <section
             id="add-to-plan"
             aria-labelledby="add-title"
@@ -135,17 +163,9 @@ export function CourseView({
                 regForTitles={data.regForTitles}
               />
             ) : null}
-            {data.aboutGate && course ? (
-              <CourseAboutPanel
-                termCode={params.term}
-                courseCode={params.code}
-                gate={data.aboutGate}
-                unverifiedMessage={data.aboutUnverifiedMessage}
-                verifyHref={verifyHref}
-                timeZone={timeZone}
-              />
-            ) : null}
+            {aiFirst ? null : aboutPanel}
             <OtherTermsCard code={params.code} term={params.term} history={data.history} />
+            {aiFirst ? aboutCard("description") : null}
           </div>
           <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-20">
             {course && data.week ? (
