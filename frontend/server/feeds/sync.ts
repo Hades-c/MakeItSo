@@ -13,7 +13,6 @@ import { readEnv } from "@/server/env";
 import { FEED_SOURCES, HURT_HUB_TRIBE_URL, type FeedChannel } from "@/server/feeds/config";
 import { normalizeDigest } from "@/server/feeds/digest";
 import { parseIcs } from "@/server/feeds/ics";
-import { LibCalHoursTodaySchema, libCalDate, normalizeLibraryHours } from "@/server/feeds/libcal";
 import { normalizeNews, parseRss } from "@/server/feeds/rss";
 import { storeChannelItems, type PruneScope } from "@/server/feeds/store";
 import { dateKeyInZone } from "@/server/feeds/time";
@@ -214,20 +213,6 @@ async function runChannel(
       return outcomeOf(channel, digest.items, upcoming, assessParse(digest), {
         problem: digest.warning,
       });
-    }
-    case "libcal-hours": {
-      const { data } = await fetchExternal(source, channel.url, {
-        parse: "json",
-        schema: LibCalHoursTodaySchema,
-        maxBytes: FEED_MAX_BYTES,
-      });
-      const date = libCalDate(data, dateKeyInZone(at, timeZone));
-      return outcomeOf(
-        channel,
-        normalizeLibraryHours(data, { ...context, date }),
-        { kind: "hours", date },
-        {},
-      );
     }
     default: {
       const unknown: never = channel.format;

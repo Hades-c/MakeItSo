@@ -1,7 +1,7 @@
 import "server-only";
 import { after } from "next/server";
 import * as z from "zod";
-import { IsoDateSchema, queryInt, queryList, queryText } from "@/lib/types/common";
+import { queryInt, queryList, queryText } from "@/lib/types/common";
 import {
   EventsQuerySchema,
   FEED_SOURCE_IDS,
@@ -10,31 +10,26 @@ import {
   type FeedItem as FeedItemWire,
   type FeedKind,
   type FeedSourceId,
-  type LibraryHours,
-  type LibraryLocationHours,
 } from "@/lib/types/feeds";
 import type { QueryFilter } from "mongoose";
 import FeedItem, { type FeedItemDoc } from "@/models/FeedItem";
 import { now } from "@/server/clock";
 import { getDb, trusted } from "@/server/db";
 import { readEnv } from "@/server/env";
-import { FEED_SOURCES } from "@/server/feeds/config";
 import { groupListings, MERGE_WINDOW_MS } from "@/server/feeds/merge";
 import { toFeedItem, WIRE_PROJECTION } from "@/server/feeds/store";
 import { staleSources, syncFeeds } from "@/server/feeds/sync";
 import { escapeRegExp, foldForSearch } from "@/server/feeds/text";
-import { dateKeyInZone, DAY_MS, HOUR_MS } from "@/server/feeds/time";
+import { DAY_MS, HOUR_MS } from "@/server/feeds/time";
 import { ApiError, zodIssues } from "@/server/http/errors";
 
 /**
  * Read side of the feeds service. Reads never wait for an upstream: they serve what `feeditems` holds and, when a
  * requested source is older than its freshness window (30–60 min), schedule a background refresh with next/server
- * `after()` (stale-while-revalidate; a no-op outside a request, e.g. in tests and scripts). The one exception is
- * getLibraryHours(today) with nothing stored for today and a library sync due (not attempted in the last 30 min):
- * it runs that sync (single-flight, recorded with recordSync) and waits for it up to 5 s.
+ * `after()` (stale-while-revalidate; a no-op outside a request, e.g. in tests and scripts).
  */
 
-/** Kinds listEvents returns when `kinds` is empty: events and deadlines (news and hours only when asked). */
+/** Kinds listEvents returns when `kinds` is empty: events and deadlines (news only when asked). */
 export const DEFAULT_EVENT_KINDS: readonly FeedKind[] = ["event", "deadline"];
 export const DEFAULT_EVENTS_WINDOW_DAYS = 14;
 /**
@@ -42,24 +37,11 @@ export const DEFAULT_EVENTS_WINDOW_DAYS = 14;
  * it does not drop out of listEvents the moment it starts. Its endsAt stays null (nothing invented for display).
  */
 export const OPEN_ENDED_EVENT_MS = 2 * HOUR_MS;
-/** How long getLibraryHours(today) waits for a due library sync when nothing is stored for today. */
-export const INLINE_HOURS_WAIT_MS = 5_000;
 
 export interface ReadOptions {
   /** Schedule a background refresh of stale sources (default true). */
   refresh?: boolean;
 }
-
-/** Keep `work` alive after the response is sent (serverless). Outside a Next.js request scope this does nothing. */
-function keepAlive(work: Promise<unknown>): void {
-  try {
-    after(() => work.then(noop, noop));
-  } catch {
-    // Not inside a request: the promise simply runs to completion.
-  }
-}
-
-function noop(): void {}
 
 /** Refresh stale sources after the response is sent. Outside a Next.js request scope this does nothing. */
 export function scheduleStaleRefresh(sources: readonly FeedSourceId[]): void {
@@ -222,106 +204,4 @@ export async function listNews(
     .limit(limit)
     .lean();
   return docs.map(toFeedItem).filter((item): item is FeedItemWire => item !== null);
-}
-
-function hoursFromDocs(
-  date: string,
-  docs: ReadonlyArray<{
-    title: string;
-    startsAt?: Date | null;
-    endsAt?: Date | null;
-    fetchedAt: Date;
-    hours?: {
-      locationId: string;
-      status: string;
-      text?: string | null;
-      order?: number | null;
-    } | null;
-  }>,
-): LibraryHours | null {
-  const rows = docs.filter((doc) => doc.hours);
-  if (rows.length === 0) return null;
-  rows.sort((a, b) => (a.hours!.order ?? 0) - (b.hours!.order ?? 0));
-  const locations: LibraryLocationHours[] = rows.map((doc) => {
-    const hours = doc.hours!;
-    const status = hours.status as LibraryLocationHours["status"];
-    const timed = status === "open" || status === "24hours";
-    return {
-      id: hours.locationId,
-      name: doc.title,
-      status,
-      text: hours.text ?? "",
-      opensAt: timed && doc.startsAt ? doc.startsAt.toISOString() : null,
-      closesAt: timed && doc.endsAt ? doc.endsAt.toISOString() : null,
-    };
-  });
-  const fetchedAt = new Date(Math.max(...rows.map((doc) => doc.fetchedAt.getTime())));
-  return { date, locations, fetchedAt: fetchedAt.toISOString() };
-}
-
-async function storedHours(date: string): Promise<LibraryHours | null> {
-  const docs = await FeedItem.find(
-    { source: "library", kind: "hours", "hours.date": date },
-    { title: 1, startsAt: 1, endsAt: 1, fetchedAt: 1, hours: 1 },
-  ).lean();
-  return hoursFromDocs(date, docs);
-}
-
-/** Resolves when `work` settles or after `ms`, whichever comes first (rejections of `work` propagate). */
-async function waitAtMost(work: Promise<unknown>, ms: number): Promise<void> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<void>((resolve) => {
-    timer = setTimeout(resolve, ms);
-  });
-  try {
-    await Promise.race([work.then(noop), timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * LibCal opening hours for an America/New_York date ("YYYY-MM-DD"). LibCal only publishes "today", so:
- *   - any date with a stored snapshot → that snapshot (a stale "today" also schedules a background refresh);
- *   - today with nothing stored and the library due for a sync (last attempt ≥ 30 min ago) → that sync runs
- *     (single-flight, recordSync, the feed byte cap) and is awaited up to 5 s; still nothing → 503 unavailable;
- *   - today with nothing stored and a recent attempt (LibCal down, or its "today" was another date around
- *     midnight) → 503 at once, without calling LibCal again until the next window;
- *   - another date with nothing stored → 404 not_found.
- * `refresh: false` never calls an upstream (503 when nothing is stored for today).
- */
-export async function getLibraryHours(
-  date: string,
-  options: ReadOptions = {},
-): Promise<LibraryHours> {
-  const parsedDate = IsoDateSchema.safeParse(date);
-  if (!parsedDate.success) invalid(parsedDate.error);
-  const at = now();
-  const timeZone = readEnv("APP_TIMEZONE");
-  const today = dateKeyInZone(at, timeZone);
-  await getDb();
-
-  const stored = await storedHours(parsedDate.data);
-  if (stored) {
-    const age = at.getTime() - new Date(stored.fetchedAt).getTime();
-    if (
-      options.refresh !== false &&
-      parsedDate.data === today &&
-      age >= FEED_SOURCES.library.freshnessMs
-    ) {
-      scheduleStaleRefresh(await staleSources(["library"], at));
-    }
-    return stored;
-  }
-  if (parsedDate.data !== today) {
-    throw new ApiError(404, "not_found", `Library hours for ${parsedDate.data} are not available.`);
-  }
-  if (options.refresh !== false && (await staleSources(["library"], at)).length > 0) {
-    const sync = syncFeeds({ sources: ["library"], onlyStale: true });
-    keepAlive(sync);
-    await waitAtMost(sync, INLINE_HOURS_WAIT_MS);
-    const fresh = await storedHours(today);
-    if (fresh) return fresh;
-  }
-  throw new ApiError(503, "unavailable", "Library hours are unavailable right now.");
 }

@@ -1,7 +1,6 @@
 import * as z from "zod";
 import {
   HttpsUrlSchema,
-  IsoDateSchema,
   IsoDateTimeSchema,
   queryInt,
   queryList,
@@ -27,7 +26,7 @@ export const FEED_SOURCE_IDS = [
 export const FeedSourceIdSchema = z.enum(FEED_SOURCE_IDS);
 export type FeedSourceId = z.infer<typeof FeedSourceIdSchema>;
 
-export const FeedKindSchema = z.enum(["event", "news", "deadline", "hours"]);
+export const FeedKindSchema = z.enum(["event", "news", "deadline"]);
 export type FeedKind = z.infer<typeof FeedKindSchema>;
 
 /**
@@ -63,26 +62,6 @@ export const EventsQuerySchema = z.object({
 });
 export type EventsQuery = z.output<typeof EventsQuerySchema>;
 export type EventsQueryInput = z.input<typeof EventsQuerySchema>;
-
-/** LibCal "hours today" for one location. `status` mirrors LibCal: open (times), 24hours, text, not-set, closed. */
-export const LibraryLocationHoursSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  status: z.enum(["open", "closed", "24hours", "text", "not-set"]),
-  /** LibCal's rendered text ("8am – 2am", "Closed for Renovation"); "" when not set. */
-  text: z.string(),
-  opensAt: IsoDateTimeSchema.nullable(),
-  closesAt: IsoDateTimeSchema.nullable(),
-});
-export type LibraryLocationHours = z.infer<typeof LibraryLocationHoursSchema>;
-
-export const LibraryHoursSchema = z.object({
-  /** Calendar date in America/New_York. */
-  date: IsoDateSchema,
-  locations: z.array(LibraryLocationHoursSchema),
-  fetchedAt: IsoDateTimeSchema,
-});
-export type LibraryHours = z.infer<typeof LibraryHoursSchema>;
 
 /** Per-source outcome of `syncFeeds()` (also recorded with `recordSync`). */
 export const FeedSyncResultSchema = z.object({

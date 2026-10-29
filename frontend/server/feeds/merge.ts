@@ -12,7 +12,7 @@ import { CAMPUS_TIME_ZONE, dateKeyInZone, MINUTE_MS } from "@/server/feeds/time"
  * deadline), have the same folded title (case, accents, punctuation and "&"/"and" ignored), start at most
  * MERGE_WINDOW_MS apart, and are in the same place: the same folded location (or one names the other: "Hance
  * Auditorium" ↔ "Hance Auditorium, Chambers Building"), or, when either has no location, the same campus day. A
- * source never merges with itself (two sessions it lists separately stay two). News and hours are never merged.
+ * source never merges with itself (two sessions it lists separately stay two). News is never merged.
  *
  * The listing shown is the host office's own calendar (LIBRARY, HURT HUB) over WildcatSync over the Events Digest
  * (SOURCE_PREFERENCE), so the tag names where the event is published first-hand; every field is that listing's,

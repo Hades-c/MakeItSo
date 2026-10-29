@@ -1,45 +1,24 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startTestDb, type TestDb } from "../helpers/db";
-import type { SyncedSourceId } from "@/lib/sources";
-import { FeedItemSchema, LibraryHoursSchema } from "@/lib/types/feeds";
+import { FeedItemSchema } from "@/lib/types/feeds";
 import FeedItem from "@/models/FeedItem";
-import SourceSync from "@/models/SourceSync";
 import { getDb } from "@/server/db";
-import { getLibraryHours, listEvents, listNews, syncFeeds } from "@/server/feeds";
-import { LIBCAL_HOURS_URL } from "@/server/feeds/config";
-import type { LibCalHoursToday } from "@/server/feeds/libcal";
+import { listEvents, listNews, syncFeeds } from "@/server/feeds";
 import { listEventsPage } from "@/server/feeds/query";
 import { feedItemId, storeChannelItems } from "@/server/feeds/store";
-import { FEED_MAX_BYTES } from "@/server/feeds/sync";
 import type { NormalizedFeedItem } from "@/server/feeds/types";
 import { ApiError } from "@/server/http/errors";
-import type * as External from "@/server/http/external";
-import { ExternalFetchError, fetchExternal } from "@/server/http/external";
 import { FIXTURE_NOW } from "./helpers";
-
-vi.mock("@/server/http/external", async (importOriginal) => {
-  const actual = await importOriginal<typeof External>();
-  return { ...actual, fetchExternal: vi.fn(actual.fetchExternal) };
-});
-const fetchMock = vi.mocked(fetchExternal);
-type Fetch = (source: SyncedSourceId, url: string, options?: unknown) => Promise<unknown>;
-let realFetch: Fetch;
 
 let testDb: TestDb;
 
 beforeAll(async () => {
-  realFetch = (await vi.importActual<typeof External>("@/server/http/external"))
-    .fetchExternal as unknown as Fetch;
   testDb = await startTestDb();
   await getDb();
 });
 
 afterAll(async () => {
   await testDb.stop();
-});
-
-beforeEach(() => {
-  fetchMock.mockReset();
 });
 
 async function expectApiError(promise: Promise<unknown>, status: number, code: string) {
@@ -102,10 +81,6 @@ describe("listEvents / listNews over the synced fixtures", () => {
       "Watson Fellowship Nomination Application Deadline: 9/30/2026",
     ]);
 
-    const hours = await listEvents({ kinds: ["hours"], to: "2026-10-01T04:00:00Z" });
-    expect(hours).toHaveLength(11);
-    expect(hours.every((i) => i.kind === "hours" && i.source === "library")).toBe(true);
-
     const tomorrow = await listEvents({ from: "2026-10-01T04:00:00Z", to: "2026-10-02T04:00:00Z" });
     expect(
       tomorrow.every((i) => Date.parse(i.startsAt!) < Date.parse("2026-10-02T04:00:00Z")),
@@ -165,36 +140,29 @@ describe("listEvents / listNews over the synced fixtures", () => {
     await expectApiError(listNews({ limit: 0 }), 400, "validation_failed");
   });
 
-  it("getLibraryHours(today) serves the stored LibCal snapshot in upstream order", async () => {
-    const hours = await getLibraryHours("2026-09-30");
-    expect(LibraryHoursSchema.parse(hours)).toEqual(hours);
-    expect(hours.locations).toHaveLength(11);
-    expect(hours.locations[0]).toEqual({
-      id: "15880",
-      name: "E.H. Little Library",
-      status: "text",
-      text: "Closed for Renovation",
-      opensAt: null,
-      closesAt: null,
+  it("never serves a leftover kind 'hours' row (LibCal hours are no longer synced)", async () => {
+    await FeedItem.collection.insertOne({
+      source: "library",
+      externalId: "hours:15880@2026-09-30",
+      channel: "hours",
+      kind: "hours",
+      title: "E.H. Little Library",
+      url: "https://davidson.libcal.com/hours",
+      startsAt: new Date("2026-09-30T04:00:00Z"),
+      endsAt: new Date("2026-10-01T04:00:00Z"),
+      allDay: true,
+      location: null,
+      summaryText: "Closed for Renovation",
+      searchText: "e.h. little library closed for renovation",
+      fetchedAt: FIXTURE_NOW,
+      expiresAt: new Date("2026-11-30T04:00:00Z"),
     });
-    expect(hours.locations.find((l) => l.id === "25365")).toMatchObject({
-      status: "open",
-      text: "7am - 11:59pm",
-      opensAt: "2026-09-30T11:00:00.000Z",
-      closesAt: "2026-10-01T03:59:00.000Z",
-    });
-    expect(hours.locations.find((l) => l.id === "24983")).toMatchObject({
-      status: "24hours",
-      opensAt: "2026-09-30T04:00:00.000Z",
-      closesAt: "2026-10-01T04:00:00.000Z",
-    });
-    expect(hours.fetchedAt).toBe(FIXTURE_NOW.toISOString());
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("getLibraryHours: other dates without a snapshot are 404, malformed dates 400", async () => {
-    await expectApiError(getLibraryHours("2026-10-15"), 404, "not_found");
-    await expectApiError(getLibraryHours("2026-9-30"), 400, "validation_failed");
+    const library = await listEvents({ sources: ["library"], q: "renovation" });
+    expect(library).toEqual([]);
+    expect((await listEvents({ sources: ["library"] })).every((i) => i.kind === "event")).toBe(
+      true,
+    );
+    await expectApiError(listEvents({ kinds: ["hours"] }), 400, "validation_failed");
   });
 });
 
@@ -239,79 +207,6 @@ describe("listEvents across the 2026-11-01 DST change", () => {
     expect(
       await listEvents({ from: "2026-11-02T05:00:00Z", to: "2026-11-03T05:00:00Z" }),
     ).toHaveLength(0);
-  });
-});
-
-describe("getLibraryHours with nothing stored for today", () => {
-  const HOURS_URL = LIBCAL_HOURS_URL;
-  const hoursCalls = () => fetchMock.mock.calls.filter(([, url]) => url === HOURS_URL).length;
-
-  beforeEach(async () => {
-    await testDb.clear();
-  });
-
-  function libCal(reply: "down" | ((data: LibCalHoursToday) => LibCalHoursToday)) {
-    fetchMock.mockImplementation((async (
-      source: SyncedSourceId,
-      url: string,
-      options?: unknown,
-    ) => {
-      if (url !== HOURS_URL) return realFetch(source, url, options);
-      if (reply === "down") {
-        throw new ExternalFetchError(source, url, "http", "Upstream answered 503", 503);
-      }
-      const real = (await realFetch(source, url, options)) as { data: LibCalHoursToday };
-      return { ...real, data: reply(real.data) };
-    }) as unknown as typeof fetchExternal);
-  }
-
-  it("runs the due library sync once, stores the snapshot and records it", async () => {
-    const hours = await getLibraryHours("2026-09-30");
-    expect(hours.locations).toHaveLength(11);
-    expect(hoursCalls()).toBe(1);
-    // Through the sync path: the feed byte cap, and a recordSync for the library.
-    expect(fetchMock.mock.calls.find(([, url]) => url === HOURS_URL)![2]).toMatchObject({
-      maxBytes: FEED_MAX_BYTES,
-    });
-    expect(await SourceSync.findOne({ sourceId: "library" }).lean()).toMatchObject({ ok: true });
-    expect(await FeedItem.countDocuments({ kind: "hours", "hours.date": "2026-09-30" })).toBe(11);
-    await getLibraryHours("2026-09-30");
-    expect(hoursCalls()).toBe(1);
-  });
-
-  it("LibCal down: one attempt per freshness window, then 503 at once (recorded as failing)", async () => {
-    libCal("down");
-    for (let i = 0; i < 3; i++) {
-      await expectApiError(getLibraryHours("2026-09-30"), 503, "unavailable");
-    }
-    expect(hoursCalls()).toBe(1);
-    expect(await FeedItem.countDocuments({ kind: "hours" })).toBe(0);
-    expect(await SourceSync.findOne({ sourceId: "library" }).lean()).toMatchObject({
-      ok: false,
-      lastError: "hours: HTTP 503 (http)",
-    });
-    vi.stubEnv("FIXTURES_NOW", "2026-09-30T12:31:00-04:00");
-    await expectApiError(getLibraryHours("2026-09-30"), 503, "unavailable");
-    expect(hoursCalls()).toBe(2);
-  });
-
-  it("LibCal's 'today' is still yesterday around midnight: 503 without refetching on every read", async () => {
-    libCal((data) => ({
-      ...data,
-      locations: data.locations.map((l) => ({ ...l, day: "Tuesday" })),
-    }));
-    for (let i = 0; i < 3; i++) {
-      await expectApiError(getLibraryHours("2026-09-30"), 503, "unavailable");
-    }
-    expect(hoursCalls()).toBe(1);
-    const dates = await FeedItem.distinct("hours.date", { kind: "hours" });
-    expect(dates).toEqual(["2026-09-29"]);
-    expect((await getLibraryHours("2026-09-29")).date).toBe("2026-09-29");
-  });
-
-  it("refresh: false never calls LibCal", async () => {
-    await expectApiError(getLibraryHours("2026-09-30", { refresh: false }), 503, "unavailable");
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

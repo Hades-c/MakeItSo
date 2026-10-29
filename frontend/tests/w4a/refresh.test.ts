@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { startTestDb, type TestDb } from "../helpers/db";
 import FeedItem from "@/models/FeedItem";
 import { getDb } from "@/server/db";
-import { getLibraryHours, listEvents, listNews, syncFeeds } from "@/server/feeds";
+import { listEvents, listNews, syncFeeds } from "@/server/feeds";
 
 /**
  * Stale-while-revalidate: reads never wait for an upstream, they schedule a refresh of stale sources with
@@ -47,7 +47,7 @@ describe("background refresh of stale feeds", () => {
     expect(await listEvents()).toEqual([]);
     expect(scheduled).toHaveLength(1);
     expect(await runScheduled()).toBe(1);
-    expect(await FeedItem.countDocuments()).toBeGreaterThan(90);
+    expect(await FeedItem.countDocuments()).toBeGreaterThan(80);
     expect((await listEvents()).length).toBeGreaterThan(20);
     // Everything is fresh now: nothing more to schedule.
     expect(scheduled).toHaveLength(0);
@@ -69,15 +69,18 @@ describe("background refresh of stale feeds", () => {
     expect(untouched!.fetchedAt.toISOString()).toBe("2026-09-30T16:00:00.000Z");
   });
 
-  it("stale library hours are served immediately and refreshed in the background", async () => {
+  it("stale library events are served immediately and refreshed in the background", async () => {
     await syncFeeds({ sources: ["library"] });
-    await getLibraryHours("2026-09-30");
+    await listEvents({ sources: ["library"] });
     expect(scheduled).toHaveLength(0);
     vi.stubEnv("FIXTURES_NOW", "2026-09-30T12:31:00-04:00");
-    const stale = await getLibraryHours("2026-09-30");
-    expect(stale.fetchedAt).toBe("2026-09-30T16:00:00.000Z");
+    const stale = await listEvents({ sources: ["library"] });
+    expect(stale.length).toBeGreaterThan(0);
+    expect(stale.every((i) => i.fetchedAt === "2026-09-30T16:00:00.000Z")).toBe(true);
     expect(scheduled).toHaveLength(1);
     await runScheduled();
-    expect((await getLibraryHours("2026-09-30")).fetchedAt).toBe("2026-09-30T16:31:00.000Z");
+    const fresh = await listEvents({ sources: ["library"] });
+    expect(fresh.length).toBeGreaterThan(0);
+    expect(fresh.every((i) => i.fetchedAt === "2026-09-30T16:31:00.000Z")).toBe(true);
   });
 });

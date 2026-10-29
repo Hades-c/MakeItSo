@@ -1,5 +1,5 @@
 import "server-only";
-import type { FeedKind, FeedSourceId, LibraryLocationHours } from "@/lib/types/feeds";
+import type { FeedKind, FeedSourceId } from "@/lib/types/feeds";
 
 /**
  * A feed entry after parsing and normalisation, before storage (server/feeds/store.ts turns it into a
@@ -8,7 +8,7 @@ import type { FeedKind, FeedSourceId, LibraryLocationHours } from "@/lib/types/f
  */
 export interface NormalizedFeedItem {
   source: FeedSourceId;
-  /** Logical feed inside the source ("events", "news", "hours", "issues"). */
+  /** Logical feed inside the source ("events", "news", "issues"). */
   channel: string;
   externalId: string;
   kind: FeedKind;
@@ -19,15 +19,6 @@ export interface NormalizedFeedItem {
   allDay: boolean;
   location: string | null;
   summaryText: string | null;
-  hours?: NormalizedHours;
-}
-
-export interface NormalizedHours {
-  date: string;
-  locationId: string;
-  status: LibraryLocationHours["status"];
-  text: string;
-  order: number;
 }
 
 /** Thrown when a payload is not the format we expected (HTML error page, truncated XML, ...). */

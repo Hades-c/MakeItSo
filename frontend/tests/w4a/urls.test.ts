@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FEED_SOURCE_IDS } from "@/lib/types/feeds";
 import { EXTERNAL_HOSTS } from "@/server/http/external";
-import { FEED_SOURCES, HURT_HUB_TRIBE_URL, LIBCAL_HOURS_URL } from "@/server/feeds/config";
-import { LIBRARY_HOURS_PAGE } from "@/server/feeds/libcal";
+import { FEED_SOURCES, HURT_HUB_TRIBE_URL } from "@/server/feeds/config";
 import { ITEM_URL_HOSTS, pickItemUrl, safeItemUrl, urlDedupeKey } from "@/server/feeds/urls";
 
 describe("safeItemUrl (https only, per-source host allow-list)", () => {
@@ -72,10 +71,20 @@ describe("feed configuration", () => {
       }
     }
     expect(EXTERNAL_HOSTS["hurt-hub"]).toContain(new URL(HURT_HUB_TRIBE_URL).hostname);
-    expect(EXTERNAL_HOSTS.library).toContain(new URL(LIBCAL_HOURS_URL).hostname);
   });
 
-  it("every fallback link and the hours page pass their source's item allow-list", () => {
+  it("the library syncs its events iCal only (no LibCal hours endpoint)", () => {
+    expect(FEED_SOURCES.library.channels.map((c) => [c.channel, c.format])).toEqual([
+      ["events", "ics"],
+    ]);
+    for (const source of FEED_SOURCE_IDS) {
+      for (const channel of FEED_SOURCES[source].channels) {
+        expect(channel.url).not.toContain("api_hours_today");
+      }
+    }
+  });
+
+  it("every fallback link passes its source's item allow-list", () => {
     for (const source of FEED_SOURCE_IDS) {
       for (const channel of FEED_SOURCES[source].channels) {
         if (channel.fallbackUrl)
@@ -83,7 +92,6 @@ describe("feed configuration", () => {
       }
       expect(ITEM_URL_HOSTS[source].length).toBeGreaterThan(0);
     }
-    expect(safeItemUrl("library", LIBRARY_HOURS_PAGE)).toBe(LIBRARY_HOURS_PAGE);
   });
 
   it("freshness is 30 to 60 minutes per source; The Davidsonian is thedavidsonian.news only", () => {

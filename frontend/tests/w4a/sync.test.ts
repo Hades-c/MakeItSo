@@ -87,7 +87,7 @@ async function countBy(source: FeedSourceId, extra: Record<string, unknown> = {}
 const EXPECTED_COUNTS: Record<FeedSourceId, number> = {
   wildcatsync: 29, // 15 events (incl. 1 deadline) + 14 news (1 stale 2024 post skipped)
   "hurt-hub": 9,
-  library: 21, // 11 locations' hours + 10 upcoming events
+  library: 10, // upcoming events
   davidsonian: 10,
   "events-digest": 18,
   "davidson-news": 8, // 2 stale sticky stories skipped
@@ -122,7 +122,6 @@ describe("syncFeeds (fixtures)", () => {
       expect(doc.searchText).toBe(doc.searchText.toLowerCase());
     }
     expect(await countBy("wildcatsync", { kind: "deadline" })).toBe(1);
-    expect(await countBy("library", { kind: "hours" })).toBe(11);
   });
 
   it("is idempotent: a second run updates in place (no duplicates) and bumps fetchedAt", async () => {

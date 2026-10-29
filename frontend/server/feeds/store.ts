@@ -22,7 +22,7 @@ import type { NormalizedFeedItem } from "@/server/feeds/types";
  *   that point (a story published more than 60 days ago that its feed still carries) is not stored or counted:
  *   the TTL monitor would delete it within a minute and the next sync would write it again.
  * - Pruning happens only for a channel that just synced successfully with a non-empty result, and only for items
- *   that are still ahead (upcoming events/deadlines, or the same day's hours) and vanished upstream (cancelled
+ *   that are still ahead (upcoming events/deadlines) and vanished upstream (cancelled
  *   or removed). If the new result has fewer than half of the upcoming items we hold, nothing is pruned (a
  *   truncated or half-empty upstream answer never wipes good data). Past items and news are never pruned: they
  *   age out through the TTL. A failing channel is not written at all, so its last good items stay.
@@ -55,7 +55,6 @@ function contentHashOf(item: NormalizedFeedItem): string {
         item.allDay,
         item.location,
         item.summaryText,
-        item.hours ?? null,
       ]),
       "utf8",
     )
@@ -68,8 +67,7 @@ export function searchTextOf(item: Pick<NormalizedFeedItem, "title" | "location"
   ).slice(0, 1200);
 }
 
-export type PruneScope =
-  { kind: "upcoming"; now: Date } | { kind: "hours"; date: string } | { kind: "none" };
+export type PruneScope = { kind: "upcoming"; now: Date } | { kind: "none" };
 
 export interface StoreResult {
   /** Items now held for this batch (written + unchanged; expired ones are left out). */
@@ -132,7 +130,6 @@ export async function storeChannelItems(
             location: item.location,
             summaryText: item.summaryText,
             searchText: searchTextOf(item),
-            hours: item.hours ?? null,
             contentHash: hash,
             fetchedAt,
             expiresAt: expiryOf(item, fetchedAt),
@@ -155,23 +152,18 @@ export async function storeChannelItems(
   let pruned = 0;
   if (live.length > 0 && scope.kind !== "none") {
     const timedKinds: FeedKind[] = ["event", "deadline"];
-    const base: QueryFilter<FeedItemDoc> =
-      scope.kind === "upcoming"
-        ? {
-            source,
-            channel,
-            kind: trusted({ $in: timedKinds }),
-            startsAt: trusted({ $gte: scope.now }),
-          }
-        : { source, channel, kind: "hours", "hours.date": scope.date };
+    const base: QueryFilter<FeedItemDoc> = {
+      source,
+      channel,
+      kind: trusted({ $in: timedKinds }),
+      startsAt: trusted({ $gte: scope.now }),
+    };
     const upcomingNew = live.filter(
       (item) =>
         item.channel === channel &&
-        (scope.kind === "upcoming"
-          ? (item.kind === "event" || item.kind === "deadline") &&
-            !!item.startsAt &&
-            item.startsAt.getTime() >= scope.now.getTime()
-          : item.kind === "hours" && item.hours?.date === scope.date),
+        (item.kind === "event" || item.kind === "deadline") &&
+        !!item.startsAt &&
+        item.startsAt.getTime() >= scope.now.getTime(),
     ).length;
     const upcomingStored = await FeedItem.countDocuments(base);
     if (upcomingNew >= upcomingStored * PRUNE_MIN_RATIO) {

@@ -12,7 +12,7 @@ import { MINUTE_MS } from "@/server/feeds/time";
  * thedavidsonian.news.
  */
 
-export type ChannelFormat = "ics" | "rss-news" | "digest" | "libcal-hours";
+export type ChannelFormat = "ics" | "rss-news" | "digest";
 
 export interface FeedChannel {
   /** Logical feed inside the source; stored on every item (models/FeedItem.ts `channel`). */
@@ -33,8 +33,8 @@ export interface FeedChannel {
 
 export interface FeedSourceConfig {
   /**
-   * How long a successful sync counts as fresh (30–60 min): the on-demand refresh (listEvents,
-   * getLibraryHours) skips a source synced more recently than this.
+   * How long a successful sync counts as fresh (30–60 min): the on-demand refresh (listEvents, listNews) skips a
+   * source synced more recently than this.
    */
   freshnessMs: number;
   channels: readonly FeedChannel[];
@@ -80,8 +80,6 @@ export function summarizeWordPress(item: RssItem): string | null {
   return text ? text.replace(/\s*The post .+ appeared first on .+$/i, "").trim() || null : null;
 }
 
-export const LIBCAL_HOURS_URL =
-  "https://davidson.libcal.com/api_hours_today.php?iid=3662&lid=0&format=json&systemTime=0";
 export const HURT_HUB_TRIBE_URL = "https://hurthub.davidson.edu/wp-json/tribe/events/v1/events";
 
 export const FEED_SOURCES: Readonly<Record<FeedSourceId, FeedSourceConfig>> = {
@@ -114,7 +112,6 @@ export const FEED_SOURCES: Readonly<Record<FeedSourceId, FeedSourceConfig>> = {
   library: {
     freshnessMs: 30 * MINUTE_MS,
     channels: [
-      { channel: "hours", format: "libcal-hours", url: LIBCAL_HOURS_URL },
       {
         channel: "events",
         format: "ics",
