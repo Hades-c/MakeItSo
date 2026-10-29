@@ -210,3 +210,47 @@ describe("SummersCard", () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe("career activity lines say what their pages say", () => {
+  const onCampus = (career: string, name: string) =>
+    getCareer(career)!.onCampus!.find((entry) => entry.name === name)!.description;
+  const summer = (career: string, name: string) => {
+    const entry = getCareer(career)!.summer!.find(
+      (item) => item.kind === "outside" && item.name === name,
+    );
+    if (!entry || entry.kind !== "outside") throw new Error(`no ${name} on ${career}`);
+    return entry;
+  };
+
+  it("keeps the clubs' aims as aims, in the tense their WildcatSync pages use", () => {
+    expect(onCampus("sports-management", "Sport Management Club")).toMatch(
+      /aims to partner with Charlotte-based sports organizations/,
+    );
+    expect(onCampus("sports-management", "Sport Management Club")).not.toMatch(/partnerships/);
+    expect(onCampus("law", "Davidson College Debate Club")).toMatch(
+      /plans to compete at invitationals/,
+    );
+    expect(onCampus("entrepreneurship", "Davidson Blockchain")).toMatch(
+      /aims to connect members with companies in the industry/,
+    );
+  });
+
+  it("says WiCS's purpose and who it is open to as its page does", () => {
+    const wics = onCampus("software-engineering", "Women in Computer Science");
+    expect(wics).toMatch(/genders underrepresented in computing/);
+    expect(wics).toMatch(/open to any student who shares that aim/);
+  });
+
+  it("gives SEO's summer-internship review window, not the Edge phase's year-round one", () => {
+    const seo = summer("software-engineering", "SEO Career");
+    expect(seo.timing).toMatch(/October through April/);
+    expect(seo.timing).toMatch(/mid-April/);
+    expect(seo.timing).not.toMatch(/year-round/);
+  });
+
+  it("says who LSAC's summer pathway programs are for, and that most (not all) state a cost", () => {
+    const lsac = summer("law", "Summer pathway programs for prospective law students");
+    expect(lsac.eligibility).toMatch(/^Programs for students from underrepresented groups/);
+    expect(lsac.eligibility).toMatch(/most say what it costs/);
+  });
+});

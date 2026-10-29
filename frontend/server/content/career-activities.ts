@@ -56,7 +56,7 @@ const HACK = org(
 const WICS = org(
   "wics",
   "Women in Computer Science",
-  "Academic, career and social events for students interested in computing, building a supportive community; open to any student.",
+  "Academic, career and social events that build a supportive community for genders underrepresented in computing; open to any student who shares that aim.",
 );
 const DISC = org(
   "dcode",
@@ -116,7 +116,7 @@ const ENTREPRENEURSHIP_CLUB = org(
 const BLOCKCHAIN = org(
   "davidson-blockchain",
   "Davidson Blockchain",
-  "A team-oriented group learning about blockchain and its uses, with workshops, guest lectures and projects with companies in the industry.",
+  "A team-oriented group learning about blockchain and its uses through workshops and guest lectures; it aims to connect members with companies in the industry for research and projects.",
 );
 const PREMED = org(
   "premedicine-society",
@@ -151,7 +151,7 @@ const MOOT_COURT = org(
 const DEBATE = org(
   "davidson-college-debate-club",
   "Davidson College Debate Club",
-  "Debate in several formats on campus, then at invitationals and regional and national competitions; all experience levels welcome.",
+  "Debate in several formats on campus, with plans to compete at invitationals and regional and national competitions; all experience levels welcome.",
 );
 const POLITICAL_ENGAGEMENT = org(
   "center-for-political-engagement",
@@ -291,7 +291,7 @@ const REAL_ESTATE = org(
 const SPORT_MANAGEMENT = org(
   "sportsmanagementclub",
   "Sport Management Club",
-  "Explores the business side of sports with hands-on learning, partnerships with Charlotte-based sports organizations and networking events.",
+  "Explores the business side of sports with hands-on learning and events for members; it aims to partner with Charlotte-based sports organizations.",
 );
 const CLASSICS = org(
   "classicsclub",
@@ -365,7 +365,8 @@ const SEO_CAREER: Summer = {
     "Recruits and prepares high-achieving undergraduates for summer internships in corporate America: financial services, technology, real estate and corporate roles.",
   eligibility:
     "First-years, sophomores and juniors of all majors at four-year U.S. colleges, authorized to work in the U.S.; 3.2 GPA required (3.0 may be considered).",
-  timing: "Applications are reviewed on a rolling basis year-round.",
+  timing:
+    "Rolling; for summer internships, candidates are reviewed October through April (the class typically closes in mid-April).",
   verifiedAt: READ_ON,
 };
 
@@ -401,7 +402,8 @@ const LSAC_SUMMER_PATHWAYS: Summer = {
   url: "https://www.lsac.org/discover-law/access-and-community-law-school/summer-pathway-programs",
   description:
     "LSAC’s list of summer programs that help prospective law students prepare, from admission seminars to pre-law institutes.",
-  eligibility: "Varies by program; each listing says who it is for and what it costs.",
+  eligibility:
+    "Programs for students from underrepresented groups; each listing says who it is for, and most say what it costs.",
   timing: null,
   verifiedAt: READ_ON,
 };
