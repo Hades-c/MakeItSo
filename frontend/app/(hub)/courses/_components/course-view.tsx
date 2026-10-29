@@ -4,6 +4,7 @@ import { routes } from "@/lib/routes";
 import { termLabel } from "@/lib/term";
 import { REQUIREMENTS_DISCLAIMER, requirementName } from "@/server/content/requirements";
 import type { CoursePageData } from "../_lib/course";
+import { AboutOutcomeProvider, DescriptionSlot } from "./about-outcome";
 import { AddCourse } from "./add-course";
 import { CourseAboutPanel } from "./course-about-panel";
 import { CourseAboutCard, CourseHeader, CourseWeekCard, OtherTermsCard } from "./course-cards";
@@ -15,7 +16,8 @@ import { requirementGroups } from "../_lib/format";
  * The course page's body (app/(hub)/courses/[term]/[code]/page.tsx resolves the data and the 404s first):
  * breadcrumb, the index-card header, then the summary beside Add to plan, Sections and Other terms beside the week
  * grid. When the AI summary can load ("ready"), it leads, what the course counts for follows it, and the official
- * description moves to the bottom; otherwise (AI off, or a verify/consent step first) the official About card
+ * description moves to the bottom; if the panel then ends in anything but the summary (quota, a budget pause, an
+ * outage, a consent change), the description comes back to the top, above the panel (about-outcome.tsx); otherwise (AI off, or a verify/consent step first) the official About card
  * leads and the AI panel sits after Sections, so no one meets a lock notice where the description should be.
  * Mobile stacks them in that order. One source, said once: the header's quiet line under the seats
  * ("Course schedule · seats as of …") stands for the page's schedule data (its sections, About, Other terms).
@@ -53,6 +55,7 @@ export function CourseView({
         unverifiedMessage={data.aboutUnverifiedMessage}
         verifyHref={verifyHref}
         timeZone={timeZone}
+        placement={aiFirst ? "lead" : "after"}
       />
     ) : null;
   const aboutCard = (part: "all" | "facts" | "description") => (
@@ -64,6 +67,83 @@ export function CourseView({
       disclaimer={REQUIREMENTS_DISCLAIMER}
       part={part}
     />
+  );
+
+  // The summary's outcome moves the description between its two slots only in the AI-first order.
+  const body = (
+    <div className="flex flex-col gap-5">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        {aiFirst ? (
+          <div className="flex min-w-0 flex-col gap-5">
+            <DescriptionSlot at="top">{aboutCard("description")}</DescriptionSlot>
+            {aboutPanel}
+            {aboutCard("facts")}
+          </div>
+        ) : (
+          aboutCard("all")
+        )}
+        <section
+          id="add-to-plan"
+          aria-labelledby="add-title"
+          className="min-w-0 scroll-mt-24 rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5"
+        >
+          <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+            <h2 id="add-title" className="font-display text-lg font-strong tracking-title text-fg">
+              Add to plan
+            </h2>
+          </div>
+          {add.terms.length > 0 ? (
+            <AddCourse
+              courseCode={params.code}
+              terms={add.terms}
+              initialTerm={add.initialTerm}
+              inPlanTerms={add.inPlanTerms}
+              currentTerm={data.window.current}
+              warnings={add.warnings}
+              crns={add.crns}
+              sectionLabels={add.sectionLabels}
+              unpublishedNote={add.unpublishedNote}
+              planHref={routes.plan("next")}
+              loginHref={routes.login(pageHref)}
+            />
+          ) : (
+            <p className="text-sm text-fg-2">
+              {params.code} isn’t on the schedule for any term you can plan right now.
+            </p>
+          )}
+        </section>
+      </div>
+
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <div className="flex min-w-0 flex-col gap-5">
+          {course ? (
+            <CourseSections
+              course={course}
+              chosenCrn={chosen?.crn ?? null}
+              ratings={data.ratings}
+              sectionHref={(crn) => `${pageHref}?crn=${crn}#week`}
+              registerAs={data.registerAs}
+              regForTitles={data.regForTitles}
+            />
+          ) : null}
+          {aiFirst ? null : aboutPanel}
+          <OtherTermsCard code={params.code} term={params.term} history={data.history} />
+          {aiFirst ? (
+            <DescriptionSlot at="bottom">{aboutCard("description")}</DescriptionSlot>
+          ) : null}
+        </div>
+        <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-20">
+          {course && data.week ? (
+            <CourseWeekCard
+              code={params.code}
+              term={params.term}
+              week={data.week}
+              chosen={chosen}
+            />
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 
   return (
@@ -106,79 +186,7 @@ export function CourseView({
         {...(timeZone ? { timeZone } : {})}
       />
 
-      <div className="flex flex-col gap-5">
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-          {aiFirst ? (
-            <div className="flex min-w-0 flex-col gap-5">
-              {aboutPanel}
-              {aboutCard("facts")}
-            </div>
-          ) : (
-            aboutCard("all")
-          )}
-          <section
-            id="add-to-plan"
-            aria-labelledby="add-title"
-            className="min-w-0 scroll-mt-24 rounded-xl border border-line bg-surface p-4 shadow-card md:px-5 md:pt-4.5 md:pb-5"
-          >
-            <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
-              <h2
-                id="add-title"
-                className="font-display text-lg font-strong tracking-title text-fg"
-              >
-                Add to plan
-              </h2>
-            </div>
-            {add.terms.length > 0 ? (
-              <AddCourse
-                courseCode={params.code}
-                terms={add.terms}
-                initialTerm={add.initialTerm}
-                inPlanTerms={add.inPlanTerms}
-                currentTerm={data.window.current}
-                warnings={add.warnings}
-                crns={add.crns}
-                sectionLabels={add.sectionLabels}
-                unpublishedNote={add.unpublishedNote}
-                planHref={routes.plan("next")}
-                loginHref={routes.login(pageHref)}
-              />
-            ) : (
-              <p className="text-sm text-fg-2">
-                {params.code} isn’t on the schedule for any term you can plan right now.
-              </p>
-            )}
-          </section>
-        </div>
-
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-          <div className="flex min-w-0 flex-col gap-5">
-            {course ? (
-              <CourseSections
-                course={course}
-                chosenCrn={chosen?.crn ?? null}
-                ratings={data.ratings}
-                sectionHref={(crn) => `${pageHref}?crn=${crn}#week`}
-                registerAs={data.registerAs}
-                regForTitles={data.regForTitles}
-              />
-            ) : null}
-            {aiFirst ? null : aboutPanel}
-            <OtherTermsCard code={params.code} term={params.term} history={data.history} />
-            {aiFirst ? aboutCard("description") : null}
-          </div>
-          <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-20">
-            {course && data.week ? (
-              <CourseWeekCard
-                code={params.code}
-                term={params.term}
-                week={data.week}
-                chosen={chosen}
-              />
-            ) : null}
-          </div>
-        </div>
-      </div>
+      {aiFirst ? <AboutOutcomeProvider>{body}</AboutOutcomeProvider> : body}
     </div>
   );
 }
