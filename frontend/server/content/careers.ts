@@ -1,7 +1,9 @@
 import "server-only";
 import type * as z from "zod";
 import { CAREER_CLUSTERS, CareerSchema, type Career } from "@/lib/types/content";
+import { CAREER_ACTIVITIES } from "@/server/content/career-activities";
 import { defineContent } from "@/server/content/define";
+import { getProgram } from "@/server/content/offices";
 
 /**
  * The 24 career paths (PLAN §3 /careers; unknown slug → notFound()), converted from the verified research in
@@ -15,6 +17,8 @@ import { defineContent } from "@/server/content/define";
  * - Every Davidson and external resource URL answered HTTP 200 and says what the entry claims.
  * - SOC 226 (Fall 2025), ECO 329 and ART 348 (Spring 2026) were held back until the course-schedule fixture
  *   subsets carried their sections, which they now do, so the offline CI gate (tests/content.test.ts) confirms them.
+ * - `onCampus` (WildcatSync student organizations) and `summer` (office programs by slug, outside programs) come
+ *   from server/content/career-activities.ts, each entry with its own page and verifiedAt (read 2026-10-29).
  */
 
 const RECORDS = [
@@ -140,12 +144,6 @@ const RECORDS = [
         description:
           "A professional society for computing professionals that publishes research, runs conferences, and offers professional certifications.",
       },
-      {
-        name: "NSF Research Experiences for Undergraduates (REU)",
-        url: "https://www.nsf.gov/funding/initiatives/reu",
-        description:
-          "U.S. National Science Foundation program where undergraduates apply directly to funded summer research sites, including computing sites; participants receive stipends.",
-      },
     ],
     handshakeQuery: "software engineer",
     sources: [
@@ -164,7 +162,6 @@ const RECORDS = [
       "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/davidson-research-initiative",
       "https://www.davidson.edu/offices-and-services/jay-hurt-hub-innovation-and-entrepreneurship",
       "https://www.computer.org/",
-      "https://www.nsf.gov/funding/initiatives/reu",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -298,12 +295,6 @@ const RECORDS = [
         description:
           "The ASA's career page, covering its Data Science Professional certification, professional development courses, fellowships and grants, salary information, and the ASA Career Connect job board.",
       },
-      {
-        name: "NSF Research Experiences for Undergraduates (REU)",
-        url: "https://www.nsf.gov/funding/initiatives/reu",
-        description:
-          "U.S. National Science Foundation program where undergraduates apply directly to funded summer research sites; participants receive stipends.",
-      },
     ],
     handshakeQuery: "data science",
     sources: [
@@ -324,7 +315,6 @@ const RECORDS = [
       "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/davidson-research-initiative",
       "https://www.davidson.edu/academic-departments/mathematics-and-computer-science/research",
       "https://www.amstat.org/your-career",
-      "https://www.nsf.gov/funding/initiatives/reu",
     ],
     verifiedAt: "2026-09-30",
   },
@@ -1542,12 +1532,6 @@ const RECORDS = [
     ],
     externalResources: [
       {
-        name: "NSF Research Experiences for Undergraduates (REU)",
-        url: "https://www.nsf.gov/funding/initiatives/reu",
-        description:
-          "U.S. National Science Foundation program where undergraduates apply directly to funded research sites; participants receive stipends.",
-      },
-      {
         name: "Council on Undergraduate Research (CUR)",
         url: "https://www.cur.org/",
         description:
@@ -1577,7 +1561,6 @@ const RECORDS = [
       "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/kemp-scholars-program",
       "https://www.davidson.edu/academics/research-opportunities/undergraduate-research/research-science-experience",
       "https://www.davidson.edu/offices-and-services/fellowships",
-      "https://www.nsf.gov/funding/initiatives/reu",
       "https://www.cur.org/",
     ],
     verifiedAt: "2026-09-30",
@@ -2604,12 +2587,6 @@ const RECORDS = [
         description:
           "A nonprofit membership organization for digital journalists that offers conferences, training, and professional development.",
       },
-      {
-        name: "Dow Jones News Fund",
-        url: "https://dowjonesnewsfund.org/",
-        description:
-          "A 501(c)(3) nonprofit that runs summer newsroom internship programs, with pre-internship training, for college students.",
-      },
     ],
     handshakeQuery: "journalism",
     sources: [
@@ -2633,8 +2610,6 @@ const RECORDS = [
       "https://www.ire.org/about-ire/",
       "https://journalists.org/",
       "https://www.journalists.org/about/",
-      "https://dowjonesnewsfund.org/",
-      "https://dowjonesnewsfund.org/about/faqs/",
       "https://catalog.davidson.edu/widget-api/catalog/4/program/178",
       "https://www.bls.gov/ooh/media-and-communication/print/reporters-correspondents-and-broadcast-news-analysts.htm",
     ],
@@ -4192,10 +4167,33 @@ const RECORDS = [
   },
 ] satisfies z.input<typeof CareerSchema>[];
 
+/**
+ * The records with their on-campus and summer entries. An activities key that names no career, or a summer entry
+ * that names no curated program, fails at load like any other bad record.
+ */
+function withActivities(records: typeof RECORDS): z.input<typeof CareerSchema>[] {
+  const slugs = new Set(records.map((record) => record.slug));
+  for (const slug of Object.keys(CAREER_ACTIVITIES)) {
+    if (!slugs.has(slug))
+      throw new Error(`server/content/career-activities: unknown career "${slug}"`);
+  }
+  return records.map((record) => {
+    const activities = CAREER_ACTIVITIES[record.slug] ?? {};
+    for (const entry of activities.summer ?? []) {
+      if (entry.kind === "program" && !getProgram(entry.program)) {
+        throw new Error(
+          `server/content/career-activities: ${record.slug} names unknown program "${entry.program}"`,
+        );
+      }
+    }
+    return { ...record, ...activities };
+  });
+}
+
 export const CAREERS: readonly Career[] = defineContent(
   "careers",
   CareerSchema,
-  RECORDS,
+  withActivities(RECORDS),
   (career) => career.slug,
 );
 
