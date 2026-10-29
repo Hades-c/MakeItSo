@@ -8,10 +8,10 @@ import {
 } from "@/lib/types/common";
 
 /**
- * Syllabus uploads (/syllabi, PLAN-UX §3). The file itself is never stored: a syllabus is read once to extract
- * text, then discarded; what is kept is this record (course code, term, the original filename, when it was
- * uploaded, and the deadlines the AI found) plus whatever of those deadlines the student reviewed and chose to
- * keep in their plan (lib/types/plan.ts StudentDeadline, origin "syllabus", syllabusId pointing back here).
+ * Pasted syllabi (/syllabi, PLAN-UX §3). The pasted text itself is never stored: it is sent once to the AI
+ * extraction, then discarded; what is kept is this record (course code, term, when it was added, and the
+ * deadlines the AI found) plus whatever of those deadlines the student reviewed and chose to keep in their plan
+ * (lib/types/plan.ts StudentDeadline, origin "syllabus", syllabusId pointing back here).
  */
 
 /** One deadline as the AI extracted it (or as the student edited it before saving to their plan). */
@@ -22,13 +22,14 @@ export const ExtractedDeadlineSchema = z.object({
 });
 export type ExtractedDeadline = z.infer<typeof ExtractedDeadlineSchema>;
 
-/** A stored syllabus upload, as the API returns it. */
+/** A stored syllabus, as the API returns it. */
 export const SyllabusSchema = z.object({
   id: ObjectIdSchema,
   courseCode: CourseCodeSchema,
   termCode: TermCodeSchema,
-  filename: z.string().min(1).max(200),
-  uploadedAt: IsoDateTimeSchema,
+  addedAt: IsoDateTimeSchema,
   extractedDeadlines: z.array(ExtractedDeadlineSchema),
+  /** Plan deadlines that came from this syllabus: what replacing or deleting it removes. */
+  planDeadlineCount: z.number().int().min(0),
 });
 export type Syllabus = z.infer<typeof SyllabusSchema>;

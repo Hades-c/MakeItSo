@@ -166,6 +166,9 @@ test("profile: edit academics, name and interests, reload, then clear them", asy
   await interests.getByRole("button", { name: "Software Engineering" }).click();
   await interests.getByRole("button", { name: "Law", exact: true }).click();
   await expect(interests.getByTestId("interests-status")).toHaveText(/^2 of \d+ chosen, saved\.$/);
+  // Goals (asked for in onboarding's last step) are edited here too.
+  await interests.getByRole("button", { name: "Study abroad" }).click();
+  await expect(interests.getByTestId("goals-status")).toHaveText("1 of 8 chosen, saved.");
 
   expect(await storedProfile(page)).toMatchObject({
     name: "Casey Q. Wildcat",
@@ -175,6 +178,7 @@ test("profile: edit academics, name and interests, reload, then clear them", asy
     firstTerm: "202401",
     standingOverride: "senior",
     interests: ["software-engineering", "law"],
+    goals: ["study-abroad"],
   });
 
   await page.reload();

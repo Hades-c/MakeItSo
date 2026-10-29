@@ -10,7 +10,10 @@ import { resolveTerms } from "@/server/catalog";
 import { deadlinesBetween, type ContentDeadline } from "@/server/content/deadlines";
 import { listEvents } from "@/server/feeds";
 import { MissingFixtureError } from "@/server/http/fixtures";
+import { isMoodleConnected } from "@/server/moodle";
 import { getDaySchedule, getPlan } from "@/server/plan";
+import { isActiveItem } from "@/server/plan/requirements";
+import { countSyllabi } from "@/server/syllabi";
 import { addDaysToKey, dayBounds } from "@/server/today/time";
 
 /**
@@ -114,6 +117,28 @@ export async function nextClassDay(
     if (loaded.value.empty === "no-term" || loaded.value.empty === "no-sections") return null;
   }
   return null;
+}
+
+/**
+ * Whether Due for you points to /syllabi ("Add your syllabi or connect Moodle"): the student has classes this
+ * term, and no syllabus and no Moodle connection yet. Quiet on any failure (false).
+ */
+export async function wantsSyllabiPointer(
+  userId: string,
+  plan: PlanView,
+  currentTerm: TermCode | null,
+): Promise<boolean> {
+  if (!currentTerm) return false;
+  const hasClasses = plan.items.some(
+    (item) => item.termCode === currentTerm && isActiveItem(item) && item.status !== "completed",
+  );
+  if (!hasClasses) return false;
+  if (plan.deadlines.some((d) => d.origin === "syllabus" || d.origin === "moodle")) return false;
+  const loaded = await attempt("the syllabi and Moodle connection", async () => {
+    const [syllabi, moodle] = await Promise.all([countSyllabi(userId), isMoodleConnected(userId)]);
+    return syllabi === 0 && !moodle;
+  });
+  return loaded.ok && loaded.value;
 }
 
 /** "Fall 2026" for the schedule's term, else the current term. */

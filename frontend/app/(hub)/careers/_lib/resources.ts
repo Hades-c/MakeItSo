@@ -7,6 +7,7 @@ import {
   type ResourceLink,
 } from "@/lib/types/content";
 import { foldText } from "@/server/content/define";
+import { officeShortName } from "@/server/content/offices";
 
 /**
  * A career's Davidson resources (Career.davidsonResources) joined to the curated offices and their programs
@@ -34,7 +35,10 @@ export interface ResolvedResource {
   description: string;
   /** The curated source, or null (no office matches). */
   source: ProgramSource | null;
-  /** The office's own name next to a DAVIDSON OFFICES source (null for the offices with a source of their own). */
+  /**
+   * The office's own name next to a DAVIDSON OFFICES source, as its source note says it (officeShortName; null
+   * for the offices with a source of their own, which the note names by that source's label).
+   */
   officeName: string | null;
   /** Set when the resource is one program: its published facts, and the page they are published on. */
   program: {
@@ -126,7 +130,10 @@ export function resolveResources(
     const key = normalizeUrl(program.url);
     byUrl.set(key, [...(byUrl.get(key) ?? []), program]);
   }
-  const officeName = (slug: string) => offices.find((office) => office.slug === slug)?.name ?? null;
+  const officeName = (slug: string) => {
+    const office = offices.find((candidate) => candidate.slug === slug);
+    return office ? officeShortName(office) : null;
+  };
 
   return resources.map((resource): ResolvedResource => {
     const base = { name: resource.name, url: resource.url, description: resource.description };
@@ -155,7 +162,7 @@ export function resolveResources(
       return {
         ...base,
         source,
-        officeName: source === "davidson-offices" ? office.name : null,
+        officeName: source === "davidson-offices" ? officeShortName(office) : null,
         program: null,
       };
     }

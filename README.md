@@ -54,15 +54,15 @@ MakeItSo/
     │   │                      sign-up with mailbox verification, passwords, profile, mail (console / Resend),
     │   │                      password reset, rate limits
     │   ├── clock.ts           now(): the server's "now" (pinned by FIXTURES_NOW in fixtures mode)
-    │   ├── sync.ts            recordSync / getSourceStatuses: the Sources panel's synced rows
+    │   ├── sync.ts            recordSync / getSourceStatuses: the shell's out-of-date notice
     │   ├── account/           per-user data registry for export and account deletion (incl. the student's
     │   │                      own rows in the hackathon-era collections)
     │   ├── catalog/ programs/ rmp/ feeds/ content/   the live course catalog, Acalog majors and minors,
     │   │                      ratings, campus feeds and curated content; plan/ is a typed stub until it lands
     │   └── search/            global search over pluggable providers
-    ├── components/ui/         UI primitives (Button, Card, SourceTag, CourseCode, Dialog, ...)
-    ├── components/app/        AppShell: TopBar, Sidebar + Sources panel, BottomTabs, theme, user menu
-    ├── lib/                   shared (client + server): term, sources, routes, flags, format, day-summary
+    ├── components/ui/         UI primitives (Button, Card, SourceNote, CourseCode, Dialog, ...)
+    ├── components/app/        AppShell: TopBar, Sidebar, source notice, BottomTabs, theme, user menu
+    ├── lib/                   shared (client + server): term, sources, routes, flags, format, event-location
     │   ├── types/             zod schemas + types for catalog, plan, feeds, content, ratings, AI
     │   └── api/               one contract per route (method, path, auth, schemas) + a typed client
     ├── models/                Mongoose models (new collections; models/legacy/ is read-only)
@@ -75,7 +75,7 @@ MakeItSo/
 ### Contracts
 
 Shared interfaces are frozen and documented in [`frontend/docs/CONTRACTS.md`](frontend/docs/CONTRACTS.md):
-term rules (`lib/term.ts`), source tags (`lib/sources.ts`), domain types (`lib/types/*`), route contracts
+term rules (`lib/term.ts`), sources (`lib/sources.ts`), domain types (`lib/types/*`), route contracts
 (`lib/api/*`, served with `defineRoute` and called with `callApi`), `fetchExternal`, `recordSync`, the account
 data registry, feature flags and the service signatures. Outside services are reached only through
 `fetchExternal` (ESLint forbids raw `fetch` in `server/`, `lib/` and `app/api/`); with `EXTERNAL_MODE=fixtures`
@@ -117,11 +117,20 @@ a requirement it fills) are red, as "now". Focus rings are Lake Blue, never red.
   network and the browser never calls Google. Sizes `text-xs` (12px, the floor) to `text-2xl`
   (32px), plus `text-3xl` (44px) for big numbers.
 - **Breakpoints**: `md` = 720px (bottom tabs below, sidebar above), `lg` = 900px (two content columns), `xl` =
-  1180px (full 240px sidebar; a 72px icon rail between 720 and 1180px).
+  1180px (full 240px sidebar; a 96px rail of icons with their labels between 720 and 1180px).
+- **Navigation**: five top-level sections everywhere, in this order: Today, Courses, My plan, Careers, Events
+  (the phone tabs, the rail, the sidebar). The full sidebar nests Syllabi under My plan and Alumni under Careers,
+  indented and always shown; on a nested page the child is current and its parent carries the red bar too. The
+  rail and the tabs show the five parents only (a nested page highlights its parent), and My plan and Careers
+  link to Syllabi and Alumni from their page headers. ⌘K's Pages lists all seven.
 - **Course colours** come from the department (`lib/course-color.ts`); the code is always printed next to the colour.
-- **Provenance**: every aggregated item shows a `<SourceTag>` (COURSE SCHEDULE, REGISTRAR, WILDCATSYNC...; ids in
-  `lib/sources.ts`), and every AI output shows `<AiChip>` ("AI · verify with your advisor"). The Today headline is
-  a one-sentence day summary built deterministically by `lib/day-summary.ts`, never free model text.
+- **Provenance** (quiet labels, minimal repetition; ids in `lib/sources.ts`, components in
+  `components/ui/source-tag.tsx`): no boxed tags. A single-source list says its source once, in one quiet line
+  (`<SourceLine>`: "Course schedule · seats as of Oct 28, 12:00 PM"); a mixed list says it in each row's meta line
+  (`<SourceNote>`: "via Registrar", "via Moodle"), once per run of rows from one source, and only where it is not
+  obvious (the student's own deadlines say nothing; a syllabus deadline says "From your syllabus"). Every item still
+  carries `data-source` and "Source: …" for screen readers, and every AI output shows `<AiChip>` ("AI · verify with
+  your advisor"). docs/CONTRACTS.md ("Look") has the rule; `expectAllAttributed` checks it.
 
 ---
 
@@ -170,6 +179,18 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `APP_TIMEZONE`          | no           | IANA time zone for "today" logic. Default `America/New_York`                                              |
 | `RMP_ENABLED`           | no           | RateMyProfessors ratings on/off. Default `true`                                                           |
 | `RMP_SUMMARIES_ENABLED` | no           | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)                           |
+| `MOODLE_IMPORT_ENABLED` | no           | Moodle calendar import on /syllabi on/off. Default `true` (off: no connecting or syncing)                 |
+| `MOODLE_FEED_KEY`       | no           | Key (≥ 32 characters) for the encrypted Moodle calendar URLs. Default: derived from `NEXTAUTH_SECRET`     |
+
+**Moodle calendar import.** On /syllabi a student can paste the calendar URL Moodle gives them (Calendar → Import or
+export calendars → Export calendar → All courses, Recent and next 60 days → Get calendar URL); its due dates come in
+as plan deadlines marked Moodle (`frontend/server/moodle`). That URL carries the student's Moodle token, so it is
+stored encrypted (AES-256-GCM with a key derived by HKDF from `MOODLE_FEED_KEY`, or from `NEXTAUTH_SECRET` when it is
+unset), never logged and never sent back to the browser. Set `MOODLE_FEED_KEY` (`openssl rand -base64 32`) to be able
+to rotate `NEXTAUTH_SECRET` without touching the Moodle links. Changing whichever key is in use makes every saved link
+unreadable: those students are asked to paste their calendar URL again, and their imported deadlines stay until then.
+Syncs happen on connect, on "Sync now" and when the student opens Today or /syllabi six hours after the last one (no
+cron). `MOODLE_IMPORT_ENABLED=false` turns it off without deleting anything.
 
 `AI_ALLOW_UNVERIFIED` exists only while email verification cannot work in production (no mail provider). With it
 on, an @davidson.edu account that has not verified its address may use AI after consenting (18+ attestation

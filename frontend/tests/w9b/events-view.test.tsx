@@ -115,8 +115,32 @@ describe("EventList", () => {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
       expect(link).toHaveAccessibleName(`${item.title} (opens in a new tab)`);
     });
-    // The tag's accessible text names the source in words.
-    expect(rows[0]!.querySelector("span[data-source]")).toHaveTextContent("Source: WildcatSync");
+    // The note names the source in quiet words (no boxed tag), "Source: " for screen readers.
+    const note = rows[0]!.querySelector("span[data-source]")!;
+    expect(note).toHaveTextContent("Source: via WildcatSync");
+    expect(note.className).not.toMatch(/border|uppercase/);
+  });
+
+  it("says a feed once per run of rows from it within a day, and keeps it for screen readers", () => {
+    const sameDay: FeedItem[] = ["a", "b", "c"].map((id, i) => ({
+      ...ITEMS[2]!,
+      id,
+      title: `Library event ${id}`,
+      url: `https://davidson.libcal.com/event/${i + 10}`,
+      startsAt: `2026-10-01T1${5 + i}:00:00.000Z`,
+      endsAt: null,
+      source: id === "c" ? "wildcatsync" : "library",
+    }));
+    render(<EventList items={sameDay} hasMore={false} view={view()} now={NOW} timeZone={TZ} />);
+    const notes = screen
+      .getAllByTestId("event-item")
+      .map((row) => row.querySelector("span[data-source]:not(li)")!);
+    expect(notes.map((note) => note.textContent)).toEqual([
+      "Source: via Library",
+      "Source: via Library",
+      "Source: via WildcatSync",
+    ]);
+    expect(notes.map((note) => note.classList.contains("sr-only"))).toEqual([false, true, false]);
   });
 
   it("renders deadlines, all-day and ongoing times", () => {
@@ -129,8 +153,6 @@ describe("EventList", () => {
     expect(fair).toHaveTextContent("11:00 AM – 2:00 PM");
     expect(fair).toHaveTextContent("Lilly Family Gallery");
     expect(fallBreak).toHaveTextContent("All day, through Oct 13");
-    // No general hours card anywhere: a slot ready for an hours-change notice, empty until a source feeds it.
-    expect(screen.queryByTestId("event-hours-notice")).toBeNull();
   });
 
   it("holds a summary behind a Description toggle, closed until pressed", async () => {

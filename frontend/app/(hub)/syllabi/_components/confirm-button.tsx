@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 
 /**
  * A destructive button that asks first, in the page (no modal). Mirrors
- * app/(hub)/plan/_components/confirm-button.tsx.
+ * app/(hub)/plan/_components/confirm-button.tsx, plus `details`: what else the confirmation shows under the
+ * question (what will be removed, an option such as "Also remove its deadlines").
  */
 export function ConfirmButton({
   question,
@@ -15,6 +16,7 @@ export function ConfirmButton({
   disabled,
   variant = "ghost",
   size = "sm",
+  details,
   children,
 }: {
   question: string;
@@ -23,6 +25,7 @@ export function ConfirmButton({
   disabled?: boolean;
   variant?: "ghost" | "secondary";
   size?: "sm" | "md";
+  details?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [asking, setAsking] = React.useState(false);
@@ -75,6 +78,7 @@ export function ConfirmButton({
       <span aria-live="polite" className="text-sm font-semibold text-fg">
         {question}
       </span>
+      {details ? <div className="basis-full text-sm text-fg-2">{details}</div> : null}
       <Button
         type="button"
         variant="danger"

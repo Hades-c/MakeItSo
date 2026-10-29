@@ -9,10 +9,12 @@ import {
   aiEndpoints,
   authExtraEndpoints,
   catalogEndpoints,
+  moodleEndpoints,
   planEndpoints,
   profileEndpoints,
   syllabiEndpoints,
 } from "@/lib/api/endpoints";
+import { moodleApi } from "@/lib/api/moodle";
 import { planApi } from "@/lib/api/plan";
 import { profileApi } from "@/lib/api/profile";
 import { API_SPECS, specFor } from "@/lib/api/registry";
@@ -47,6 +49,7 @@ const FAMILIES: [string, Record<string, ApiRouteSpec>, Record<string, object>][]
   ["profile", profileApi, profileEndpoints],
   ["authExtra", authExtraApi, authExtraEndpoints],
   ["syllabi", syllabiApi, syllabiEndpoints],
+  ["moodle", moodleApi, moodleEndpoints],
 ];
 
 describe("endpoints", () => {

@@ -193,6 +193,7 @@ function resolved(): ResolvedCoursePage {
     reference: csc,
     history: [{ termCode: "202602", status: "offered", sectionCount: 2 }],
     entry: { termCode: "202602", status: "offered", sectionCount: 2 },
+    asOf: null,
   };
 }
 

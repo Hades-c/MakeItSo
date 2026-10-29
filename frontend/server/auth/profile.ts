@@ -52,11 +52,7 @@ import { snapshotOfferingNames } from "@/server/programs/snapshot";
  *   - firstTerm is a Fall or Spring term between 8 academic years before graduation and the graduation spring;
  *   - aiConsent: true needs the 18+ attestation (stored, or adultAttested: true in the same request) and sets
  *     aiConsentAt once; false clears it. adultAttested: false clears the attestation AND the consent;
- *   - onboarded: true sets onboardedAt once, and the first time only, also sets newStepsPromptDismissedAt (the
- *     current flow already offered the Syllabi and Goals steps, so there is nothing new to notify about); an
- *     account onboarded before those steps existed reaches this with onboardedAt already set, so this clause
- *     does not fire for it, and PLAN-UX §8's one-time notice is who dismissNewStepsPrompt: true is for.
- *     Nothing else can be written (no email, password, flags, $-keys).
+ *   - onboarded: true sets onboardedAt once. Nothing else can be written (no email, password, flags, $-keys).
  */
 
 export type ProfileView = Profile & {
@@ -182,7 +178,6 @@ type ProfileSource = Pick<
   | "aiConsentAt"
   | "adultAttestedAt"
   | "onboardedAt"
-  | "newStepsPromptDismissedAt"
   | "createdAt"
 >;
 
@@ -259,14 +254,13 @@ export function toProfile(
     aiConsentAt: iso(doc.aiConsentAt),
     adultAttestedAt: iso(doc.adultAttestedAt),
     onboardedAt: iso(doc.onboardedAt),
-    newStepsPromptDismissedAt: iso(doc.newStepsPromptDismissedAt),
     createdAt: iso(doc.createdAt) ?? id.getTimestamp().toISOString(),
     standing: classStanding(graduationYear, at, standingOverride),
   };
 }
 
 const PROFILE_FIELDS =
-  "name email emailVerifiedAt majors minors major minor graduationYear firstTerm standingOverride interests goals aiConsentAt adultAttestedAt onboardedAt newStepsPromptDismissedAt createdAt";
+  "name email emailVerifiedAt majors minors major minor graduationYear firstTerm standingOverride interests goals aiConsentAt adultAttestedAt onboardedAt createdAt";
 
 async function loadNames() {
   const [majors, minors] = await Promise.all([
@@ -402,17 +396,7 @@ export async function updateProfile(userId: string, patch: ProfilePatchBody): Pr
   }
   if (input.aiConsent === false) unset.aiConsentAt = "";
 
-  if (input.onboarded === true) {
-    set.onboardedAt = doc.onboardedAt ?? at;
-    // Completing (or skipping) setup through the current flow means the Syllabi and Goals steps were already
-    // offered, so the first-time completion also counts as having seen the one-time notice about them; only an
-    // account onboarded before those steps existed reaches updateProfile with onboardedAt already set and
-    // newStepsPromptDismissedAt still unset, which is exactly who NewStepsPrompt (app/(hub)/today) is for.
-    if (!doc.onboardedAt) set.newStepsPromptDismissedAt = doc.newStepsPromptDismissedAt ?? at;
-  }
-  if (input.dismissNewStepsPrompt === true) {
-    set.newStepsPromptDismissedAt = doc.newStepsPromptDismissedAt ?? at;
-  }
+  if (input.onboarded === true) set.onboardedAt = doc.onboardedAt ?? at;
 
   if (issues.length > 0) {
     throw new ApiError(400, "validation_failed", "Some fields are invalid.", issues);

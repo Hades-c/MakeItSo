@@ -3,14 +3,14 @@ import { ColdEmailSchema, STUDENT_NAME_PLACEHOLDER } from "@/lib/types/ai";
 import { dataBlock, DATA_RULES } from "@/server/ai/blocks";
 import type { GenerateRequest } from "@/server/ai/client";
 import { FEATURE_SETTINGS } from "@/server/ai/config";
-import type { AlumnusPayload, StudentProfilePayload } from "@/server/ai/payloads";
+import type { AlumnusPayload, CareerProfilePayload } from "@/server/ai/payloads";
 
 /**
  * Cold e-mail to a contactable, verified alumnus (personal; effort low). The model sees only the alumnus's
  * displayed directory fields and the student's allow-listed profile; the student's name is the literal
  * {{studentName}}, which the browser fills in. Output: lib/types/ai.ts ColdEmailSchema.
  */
-export const PROMPT_VERSION = "cold-email/1";
+export const PROMPT_VERSION = "cold-email/2";
 
 export const OutputSchema = ColdEmailSchema;
 
@@ -19,7 +19,7 @@ export const SYSTEM = [
   [
     "Rules:",
     "- Use only the alumnus facts in <catalog_data> (name, class year, majors, role, organization). Do not guess anything else about them.",
-    `- Use only the student facts in <student_profile> (majors, minors, graduation year, class standing, career interests, and the student's own stated goals) and <student_goals>. The student's name is unknown: write the exact placeholder ${STUDENT_NAME_PLACEHOLDER} wherever the name belongs, including the sign-off.`,
+    `- Use only the student facts in <student_profile> (majors, minors, graduation year, class standing, career interests and aspirations: what the student hopes to do at Davidson) and <student_goals>. The student's name is unknown: write the exact placeholder ${STUDENT_NAME_PLACEHOLDER} wherever the name belongs, including the sign-off.`,
     "- subject: at most 10 words.",
     "- body: 90 to 160 words in three short paragraphs and a sign-off: who the student is (class year and majors), why this alumnus (their field), one modest, specific ask (a 15 to 20 minute conversation), and thanks.",
     "- Do not flatter, do not claim a connection that is not in the data, do not ask for a job or a referral, and do not include links, phone numbers or e-mail addresses.",
@@ -32,7 +32,7 @@ export const TASK =
 
 export interface ColdEmailData {
   catalog: { alumnus: AlumnusPayload; career: { name: string; summary: string } | null };
-  profile: StudentProfilePayload;
+  profile: CareerProfilePayload;
   goals: { career: string | null };
 }
 

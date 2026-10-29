@@ -521,22 +521,28 @@ describe("SeatBar", () => {
 describe("RatingSummary", () => {
   const RMP = "https://www.ratemyprofessors.com/professor/123456";
 
-  it("shows the rating, count, and the source once, as a safe link", () => {
+  it("shows the rating, count, the sync date as text, and the source once, as a safe link", () => {
     render(
       <RatingSummary
         status="matched"
         avgRating={3.66}
         numRatings={21}
+        asOf="2026-09-30T13:00:00Z"
         url={RMP}
         instructorName="Daniel Aldridge"
+        timeZone="America/New_York"
       />,
       { wrapper: TooltipProvider },
     );
     expect(screen.getByText("3.7")).toBeInTheDocument();
     expect(screen.getByText("21 ratings for Daniel Aldridge")).toBeInTheDocument();
-    // One provenance line: the source named once as the profile link (no tag beside a link).
+    // The date is printed, not hidden in a hover/focus tooltip (phones can see it).
+    const asOf = screen.getByText("as of Sep 30, 2026");
+    expect(asOf).toBeVisible();
+    expect(asOf.closest(".sr-only")).toBeNull();
+    // One provenance line: the date, then the source named once as the profile link (no tag beside a link).
     const line = screen.getByTestId("rating-source");
-    expect(seenText(line)).toBe("RateMyProfessors");
+    expect(seenText(line)).toBe("as of Sep 30, 2026 · RateMyProfessors");
     const link = screen.getByRole("link", {
       name: "Source: RateMyProfessors, Daniel Aldridge’s page (opens in a new tab)",
     });
@@ -578,21 +584,24 @@ describe("RatingSummary", () => {
           { tag: "Respected", count: 7 },
         ]}
         tagRatingsCounted={21}
+        tagsAsOf="2026-10-25T10:00:00Z"
+        asOf="2026-09-30T13:00:00Z"
         url={RMP}
         instructorName="Daniel Aldridge"
+        timeZone="America/New_York"
       />,
     );
     const block = container.firstElementChild!;
     expect(seenText(block)).toBe(
       "3.7 / 5 21 ratings for Daniel Aldridge · Difficulty 2.6 of 5 · 67% would take again " +
-        "Most common tags (from 21 ratings): Participation matters (12), " +
-        "Get ready to read (9), Caring (8) RateMyProfessors",
+        "Most common tags (from 21 ratings, as of Oct 25, 2026): Participation matters (12), " +
+        "Get ready to read (9), Caring (8) as of Sep 30, 2026 · RateMyProfessors",
     );
     // The two numbers out of 5 are told apart: "Rating" is read out, "Difficulty" is printed.
     expect(spokenText(block)).toContain(
       "Rating 3.7 out of 5 21 ratings for Daniel Aldridge, Difficulty 2.6 of 5, 67% would take again " +
-        "Most common tags (from 21 ratings): Participation matters (12 ratings), " +
-        "Get ready to read (9 ratings), Caring (8 ratings) " +
+        "Most common tags (from 21 ratings, as of Oct 25, 2026): Participation matters (12 ratings), " +
+        "Get ready to read (9 ratings), Caring (8 ratings) as of Sep 30, 2026, " +
         "Source: RateMyProfessors",
     );
     expect(
@@ -606,6 +615,45 @@ describe("RatingSummary", () => {
     const tags = screen.getByTestId("rating-tags");
     expect(tags.tagName).toBe("P");
     expect(tags.querySelector("[class*=border], [class*=uppercase]")).toBeNull();
+  });
+
+  it("prints each date once: the tags line leaves out a date the provenance line already shows", () => {
+    const props = {
+      status: "matched" as const,
+      avgRating: 4.5,
+      numRatings: 8,
+      topTags: [{ tag: "Amazing lectures", count: 4 }],
+      tagRatingsCounted: 8,
+      url: RMP,
+      instructorName: "Matt Samson",
+      nameShown: true,
+      timeZone: "America/New_York",
+    };
+    // Counted the evening of the roster sync's day in Davidson (already the next day in UTC): one date.
+    const { container, rerender } = render(
+      <RatingSummary {...props} tagsAsOf="2026-10-23T02:30:00Z" asOf="2026-10-22T13:00:00Z" />,
+    );
+    expect(seenText(container)).toBe(
+      "4.5 / 5 8 ratings Most common tags (from 8 ratings): Amazing lectures (4) " +
+        "as of Oct 22, 2026 · RateMyProfessors",
+    );
+    expect(seenText(container).match(/Oct 22, 2026/g)).toHaveLength(1);
+    expect(spokenText(screen.getByTestId("rating-tags"))).toBe(
+      "Most common tags (from 8 ratings): Amazing lectures (4 ratings)",
+    );
+    // Another day: the tags keep their own date.
+    rerender(
+      <RatingSummary {...props} tagsAsOf="2026-10-25T10:00:00Z" asOf="2026-10-22T13:00:00Z" />,
+    );
+    expect(seenText(screen.getByTestId("rating-tags"))).toBe(
+      "Most common tags (from 8 ratings, as of Oct 25, 2026): Amazing lectures (4)",
+    );
+    // No roster date to print below: the tags line keeps its date.
+    rerender(<RatingSummary {...props} tagsAsOf="2026-10-22T13:00:00Z" asOf={null} />);
+    expect(seenText(container)).toBe(
+      "4.5 / 5 8 ratings Most common tags (from 8 ratings, as of Oct 22, 2026): Amazing lectures (4) " +
+        "RateMyProfessors",
+    );
   });
 
   it("leaves out what RMP does not have", () => {

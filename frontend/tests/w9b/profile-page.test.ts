@@ -6,6 +6,7 @@ import { startTestDb, type TestDb } from "../helpers/db";
 import { insertUser, sessionFor, stubAuthEnv } from "../w3/helpers";
 import ProfilePage, { metadata } from "@/app/(hub)/profile/page";
 import { loadProfilePage } from "@/app/(hub)/profile/_lib/load";
+import { GOALS } from "@/lib/goals";
 import { unlistedPrograms } from "@/lib/unlisted-programs";
 import { CAREERS } from "@/server/content/careers";
 import { getDb } from "@/server/db";
@@ -151,8 +152,17 @@ describe("ProfilePage", () => {
     expect(html).toContain("Sophomore (from your graduation year)");
     expect(html).toContain("Not set: MakeItSo assumes Fall 2025.");
     expect(html).toContain("No major chosen.");
-    // Interests: every career path is a chip.
-    expect(html.match(/aria-pressed="(true|false)"/g)).toHaveLength(CAREERS.length);
+    // Interests: every career path and every goal is a chip.
+    expect(html.match(/aria-pressed="(true|false)"/g)).toHaveLength(CAREERS.length + GOALS.length);
+    expect(html).toContain("Goals at Davidson");
+    // What the choices feed, truthfully: interests the AI plan suggestions, career plans and cold e-mails
+    // (server/ai/payloads.ts); goals only the last two.
+    expect(html).toContain(
+      "with AI features on, plan suggestions, career plans and cold-email drafts start from these",
+    );
+    expect(html.replace(/\s+/g, " ")).toContain(
+      "With AI features on, career plans and cold-email drafts use these too.",
+    );
     // AI: off, with the notice and the attestation.
     expect(html).toContain("AI features stay off until you turn them on.");
     expect(html).toContain("Anthropic");

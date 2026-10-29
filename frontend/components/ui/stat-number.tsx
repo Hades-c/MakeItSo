@@ -5,11 +5,12 @@ export interface StatNumberProps {
   value: React.ReactNode;
   /** Words after the number, e.g. "of 32 courses". */
   label: React.ReactNode;
-  size?: "md" | "lg" | "xl";
+  size?: "md" | "lg";
   className?: string;
 }
 
-const SIZE = { md: "text-xl", lg: "text-3xl", xl: "text-5xl" } as const;
+// Only the type scale's tokens (app/globals.css clears Tailwind's own: text-5xl would render at the body size).
+const SIZE = { md: "text-xl", lg: "text-3xl" } as const;
 
 /** Big number + label ("12 of 32 courses"). Numbers use tabular figures. Compute values; never hardcode them. */
 export function StatNumber({ value, label, size = "lg", className }: StatNumberProps) {

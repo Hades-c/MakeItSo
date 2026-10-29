@@ -5,6 +5,7 @@ import { now as serverNow } from "@/server/clock";
 import { readEnv } from "@/server/env";
 import { cn } from "@/lib/utils";
 import { featureEnabled, loadFlags } from "@/server/features";
+import { syncMoodleIfDue } from "@/server/moodle";
 import { etDay, stripDays } from "@/server/today";
 import { CampusPanel } from "./_components/campus-panel";
 import { DUE_SOON_TITLE, DueSoonPanel } from "./_components/due-soon-panel";
@@ -33,8 +34,9 @@ const SLOT = "min-w-0 lg:order-none";
  * /today (PLAN §3, W7): the student's day on one page, rendered on the server in America/New_York from the
  * server clock (server/clock.ts now()).
  *
- * - h1: a fixed headline, the date and term, and the five-day strip (?day= shows another strip day on the
- *   timeline).
+ * - h1: a fixed headline, the date and term, one line under it (the WebTree window while it is open, with "Plan
+ *   <term>"; else "N due for you in the next two weeks"), and the five-day strip (?day= shows another strip day on
+ *   the timeline).
  * - An onboarding nudge until first-run setup is done; nothing else in the action row.
  * - Left: the day timeline. Right: Due for you; This week on campus (FEATURE_EVENTS only); Opportunities;
  *   Quick links.
@@ -55,6 +57,8 @@ export default async function TodayPage({
   const flags = loadFlags();
   const eventsOn = featureEnabled(flags, "events");
   const careersOn = featureEnabled(flags, "careers");
+  // A connected Moodle calendar 6+ hours since its last sync: synced after this page is sent (one indexed read here).
+  if (flags.moodle) await syncMoodleIfDue(user.id);
 
   return (
     <>

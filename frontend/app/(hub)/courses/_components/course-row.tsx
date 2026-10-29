@@ -4,16 +4,16 @@ import { CourseCode } from "@/components/ui/course-code";
 import { Chip } from "@/components/ui/chip";
 import type { TermCode } from "@/lib/term";
 import { cn } from "@/lib/utils";
-import { openSeatsLabel, sectionsLabel } from "../_lib/format";
+import { creditsLabel, openSeatsLabel, sectionsLabel } from "../_lib/format";
 import type { CourseRow as Row } from "../_lib/search";
 import { AddCourse } from "./add-course";
 import { BREAK_TEXT, WRAP_CHIP } from "./wrap";
 
 /**
  * One /courses result (PLAN §3): code, title (a topics course says "topics vary by section" and lists each
- * section's own title), a Description toggle, requirement tags under their official names, open seats, meeting
- * times, instructors, availability across the plan window (the Add to plan tiles) and "Add to <term>" with its
- * warnings.
+ * section's own title), its credits when not the usual 1, a Description toggle, requirement tags under their
+ * official names, open seats, meeting times, instructors, availability across the plan window (the Add to plan
+ * tiles) and "Add to <term>" with its warnings. A course-schedule row: the results' one source line names it.
  */
 export function CourseRow({
   row,
@@ -29,10 +29,12 @@ export function CourseRow({
   const { summary } = row;
   const titleId = `course-${summary.code.replace(/\s+/g, "-")}-title`;
   const instructors = [...new Set(row.sections.flatMap((section) => section.instructors))];
+  const credits = creditsLabel(summary.credits);
   return (
     <article
       aria-labelledby={titleId}
       data-course={summary.code}
+      data-source="course-schedule"
       className="grid min-w-0 gap-4 rounded-xl border border-line bg-surface p-4 shadow-card md:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]"
     >
       <div className="flex min-w-0 flex-col gap-2">
@@ -62,6 +64,7 @@ export function CourseRow({
           </Link>
         </h3>
         <p className="text-sm text-fg-2">
+          {credits ? <>{credits} · </> : null}
           {sectionsLabel(summary.sectionCount)}
           {summary.crossListings.length > 0 ? (
             <> · Also listed as {summary.crossListings.join(", ")}</>
@@ -69,8 +72,8 @@ export function CourseRow({
         </p>
         {row.description ? (
           <details className="group">
-            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-sm text-sm font-semibold text-fg-2 hover:text-fg md:min-h-0 [&::-webkit-details-marker]:hidden">
-              Description
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-sm text-sm font-semibold text-fg-2 hover:text-fg md:min-h-9 [&::-webkit-details-marker]:hidden">
+              Description<span className="sr-only"> of {summary.code}</span>
               <ChevronDown
                 aria-hidden
                 className="size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"

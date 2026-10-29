@@ -34,15 +34,18 @@ import {
   termItems,
 } from "@/app/onboarding/_lib/plan-items";
 import {
+  isRequiredStep,
   nextStep,
   ONBOARDING_STEPS,
   onboardingNext,
   afterSetupHref,
   parseStep,
   prevStep,
+  requiredStepsSaved,
   resumeStep,
   stepHref,
   stepLabel,
+  stepLocked,
   stepProgress,
   stepTitle,
 } from "@/app/onboarding/_lib/steps";
@@ -86,28 +89,37 @@ function meeting(patch: Partial<Meeting> = {}): Meeting {
 describe("steps", () => {
   it("titles each step with its place in the flow (read by the route announcer)", () => {
     expect(stepTitle("classes", "Fall 2026")).toBe(
-      "Step 2 of 6: Your Fall 2026 classes · Get started",
+      "Step 2 of 4: Your Fall 2026 classes · Get started",
     );
-    expect(stepTitle("about", "Fall 2026")).toBe("Step 1 of 6: About you · Get started");
+    expect(stepTitle("about", "Fall 2026")).toBe("Step 1 of 4: About you · Get started");
   });
 
-  it("has the six steps of PLAN-UX §8 in order", () => {
-    expect(ONBOARDING_STEPS).toEqual([
-      "about",
-      "classes",
-      "completed",
-      "syllabi",
-      "goals",
-      "interests",
-    ]);
+  it("has the four steps of PLAN §3 in order, goals folded into the last one", () => {
+    expect(ONBOARDING_STEPS).toEqual(["about", "classes", "completed", "interests"]);
     expect(ONBOARDING_STEPS.map((step) => stepLabel(step, "Fall 2026"))).toEqual([
       "About you",
       "Your Fall 2026 classes",
       "Courses you have taken",
-      "Syllabi",
-      "Goals",
-      "Interests",
+      "Interests and goals",
     ]);
+  });
+
+  it("requires only About: the later steps stay closed until it is saved, in a first run only", () => {
+    expect(ONBOARDING_STEPS.filter(isRequiredStep)).toEqual(["about"]);
+    const none = { about: false, classes: false, completed: false, interests: false };
+    expect(requiredStepsSaved(none)).toBe(false);
+    expect(requiredStepsSaved({ ...none, about: true })).toBe(true);
+    expect(ONBOARDING_STEPS.filter((step) => stepLocked(step, none, false))).toEqual([
+      "classes",
+      "completed",
+      "interests",
+    ]);
+    // Classes never blocks: with About saved, nothing is closed, classes or not.
+    expect(ONBOARDING_STEPS.some((step) => stepLocked(step, { ...none, about: true }, false))).toBe(
+      false,
+    );
+    // An onboarded student re-running the flow can open every step.
+    expect(ONBOARDING_STEPS.some((step) => stepLocked(step, none, true))).toBe(false);
   });
 
   it("keeps the step in the URL", () => {
@@ -158,71 +170,48 @@ describe("steps", () => {
       majors: [],
       minors: [],
       currentTermItems: 0,
+      startsLater: false,
       completedItems: 0,
-      syllabi: 0,
-      goals: [],
       interests: [],
+      goals: [],
     };
     expect(stepProgress(empty)).toEqual({
       about: false,
       classes: false,
       completed: false,
-      syllabi: false,
-      goals: false,
       interests: false,
     });
     expect(stepProgress({ ...empty, firstTerm: "202501" }).about).toBe(true);
     expect(stepProgress({ ...empty, majors: ["Major in History (A.B. Degree)"] }).about).toBe(true);
     expect(stepProgress({ ...empty, currentTermItems: 2 }).classes).toBe(true);
+    // A student who starts in a later term has no current classes to add: the step counts as done.
+    expect(stepProgress({ ...empty, startsLater: true }).classes).toBe(true);
     expect(stepProgress({ ...empty, completedItems: 1 }).completed).toBe(true);
-    expect(stepProgress({ ...empty, syllabi: 1 }).syllabi).toBe(true);
-    expect(stepProgress({ ...empty, goals: ["grad-school"] }).goals).toBe(true);
     expect(stepProgress({ ...empty, interests: ["law"] }).interests).toBe(true);
+    expect(stepProgress({ ...empty, goals: ["grad-school"] }).interests).toBe(true);
   });
 
   it("resumes after the furthest saved step, never forcing skipped steps again", () => {
-    const none = {
-      about: false,
-      classes: false,
-      completed: false,
-      syllabi: false,
-      goals: false,
-      interests: false,
-    };
+    const none = { about: false, classes: false, completed: false, interests: false };
     expect(resumeStep(none, false)).toBe("about");
     expect(resumeStep({ ...none, about: true }, false)).toBe("classes");
     // Skipped step 2, saved step 3 → step 4.
-    expect(resumeStep({ ...none, about: true, completed: true }, false)).toBe("syllabi");
+    expect(resumeStep({ ...none, about: true, completed: true }, false)).toBe("interests");
     // A legacy plan with current classes but nothing else → step 3.
-    expect(resumeStep({ ...none, classes: true }, false)).toBe("completed");
+    expect(resumeStep({ ...none, about: true, classes: true }, false)).toBe("completed");
+    // About is required: without it, the flow resumes there whatever else is saved.
+    expect(resumeStep({ ...none, classes: true, completed: true }, false)).toBe("about");
     expect(
-      resumeStep(
-        {
-          about: true,
-          classes: true,
-          completed: true,
-          syllabi: true,
-          goals: true,
-          interests: true,
-        },
-        false,
-      ),
+      resumeStep({ about: true, classes: true, completed: true, interests: true }, false),
     ).toBe("interests");
   });
 
   it("starts a re-run from the beginning once onboarded", () => {
+    expect(resumeStep({ about: true, classes: true, completed: true, interests: true }, true)).toBe(
+      "about",
+    );
     expect(
-      resumeStep(
-        {
-          about: true,
-          classes: true,
-          completed: true,
-          syllabi: true,
-          goals: true,
-          interests: true,
-        },
-        true,
-      ),
+      resumeStep({ about: false, classes: false, completed: false, interests: false }, true),
     ).toBe("about");
   });
 });

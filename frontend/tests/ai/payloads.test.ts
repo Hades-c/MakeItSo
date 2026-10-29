@@ -6,6 +6,7 @@ import { buildParams } from "@/server/ai/client";
 import {
   alumnusPayload,
   careerPayload,
+  careerProfilePayload,
   courseAboutPayload,
   studentPlanPayload,
   studentProfilePayload,
@@ -15,6 +16,7 @@ import * as coldEmail from "@/server/ai/prompts/cold-email";
 import * as courseAbout from "@/server/ai/prompts/course-about";
 import * as planSuggestions from "@/server/ai/prompts/plan-suggestions";
 import * as professorSummary from "@/server/ai/prompts/professor-summary";
+import * as syllabusDeadlines from "@/server/ai/prompts/syllabus-deadlines";
 import { getAlumnus } from "@/server/content/alumni";
 import { getCareer } from "@/server/content/careers";
 
@@ -44,7 +46,7 @@ const PROFILE = {
 };
 
 describe("student profile", () => {
-  it("sends only official program names, graduation year, standing, career and goal slugs", () => {
+  it("sends only official program names, graduation year, standing and career slugs", () => {
     const payload = studentProfilePayload(PROFILE, OFFICIAL);
     expect(payload).toEqual({
       majors: ["Major in Computer Science (B.S. Degree)"],
@@ -52,12 +54,20 @@ describe("student profile", () => {
       graduationYear: 2029,
       standing: "sophomore",
       interests: ["software-engineering"],
-      goals: ["grad-school"],
     });
     const text = JSON.stringify(payload);
     for (const secret of [PROFILE.id, PROFILE.name, PROFILE.email, "SECRET-BIO", "2026-09-01"]) {
       expect(text).not.toContain(secret);
     }
+    // Goals reach only the career features (careerProfilePayload), never plan suggestions.
+    expect(text).not.toContain("grad-school");
+  });
+
+  it("adds the goal slugs as aspirations for the career features (unknown slugs dropped)", () => {
+    expect(careerProfilePayload(PROFILE, OFFICIAL)).toEqual({
+      ...studentProfilePayload(PROFILE, OFFICIAL),
+      aspirations: ["grad-school"],
+    });
   });
 });
 
@@ -165,7 +175,14 @@ describe("alumni and careers", () => {
 });
 
 describe("prompts", () => {
-  const prompts = [courseAbout, planSuggestions, careerPlan, coldEmail, professorSummary];
+  const prompts = [
+    courseAbout,
+    planSuggestions,
+    careerPlan,
+    coldEmail,
+    professorSummary,
+    syllabusDeadlines,
+  ];
 
   it.each(prompts.map((p) => [p.PROMPT_VERSION, p] as const))(
     "%s: a versioned, frozen system prompt with the data rules and no dates or ids",
@@ -220,7 +237,6 @@ describe("prompts", () => {
             graduationYear: 2029,
             standing: "sophomore",
             interests: [],
-            goals: [],
           },
           plan: { items: [], openRequirements: [] },
         }),

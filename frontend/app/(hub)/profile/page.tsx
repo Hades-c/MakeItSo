@@ -11,6 +11,7 @@ import { readEnv } from "@/server/env";
 import { AcademicsForm } from "./_components/academics-form";
 import { AiConsentPanel } from "./_components/ai-consent-panel";
 import { DeleteAccount, DownloadData } from "./_components/data-controls";
+import { GoalsPicker } from "./_components/goals-picker";
 import { InterestsPicker } from "./_components/interests-picker";
 import { NameForm } from "./_components/name-form";
 import { PasswordForm } from "./_components/password-form";
@@ -97,9 +98,12 @@ export default async function ProfilePage() {
         <ProfileSection
           id="interests"
           title="Interests"
-          description="Career paths you want to explore. Careers and suggestions start from these; each choice saves right away."
+          description="Career paths you want to explore (with AI features on, plan suggestions, career plans and cold-email drafts start from these) and, optionally, what you hope to do at Davidson. Each choice saves right away."
         >
-          <InterestsPicker initial={profile.interests} careers={data.careers} />
+          <div className="flex flex-col gap-5">
+            <InterestsPicker initial={profile.interests} careers={data.careers} />
+            <GoalsPicker initial={profile.goals} />
+          </div>
         </ProfileSection>
 
         <ProfileSection

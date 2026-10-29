@@ -55,11 +55,13 @@ export interface StepActionsProps {
   step: OnboardingStep;
   /** The primary action: a submit button (step 1, 4) or a link to the next step (steps 2, 3). */
   primary: React.ReactNode;
-  /** Hide "Skip this step" (when the primary action already moves on without saving). */
+  /** Hide "Skip this step" (a required step, or when the primary action already moves on without saving). */
   hideSkip?: boolean;
+  /** The skip link's text (default "Skip this step"). */
+  skipLabel?: string;
 }
 
-export function StepActions({ step, primary, hideSkip }: StepActionsProps) {
+export function StepActions({ step, primary, hideSkip, skipLabel }: StepActionsProps) {
   const back = prevStep(step);
   const next = nextStep(step);
   const after = useSetupNext();
@@ -76,7 +78,7 @@ export function StepActions({ step, primary, hideSkip }: StepActionsProps) {
         {next && !hideSkip ? (
           <Button asChild variant="secondary">
             <Link href={stepHref(next, after)} prefetch={false} data-testid="skip-step">
-              Skip this step
+              {skipLabel ?? "Skip this step"}
             </Link>
           </Button>
         ) : null}

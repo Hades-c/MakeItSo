@@ -1,5 +1,5 @@
 import "server-only";
-import { formatEventLocation } from "@/app/(hub)/events/_lib/present";
+import { formatEventLocation } from "@/lib/event-location";
 import type { TimelineItem } from "@/components/domain/day-timeline";
 import { itemInterval } from "@/components/domain/timeline-layout";
 import { MINUTES_PER_HOUR, windowForItems } from "@/components/domain/time-geometry";
@@ -10,6 +10,7 @@ import type { DaySchedule, DayScheduleEntry, StudentDeadline } from "@/lib/types
 import type { ContentDeadline } from "@/server/content/academic-calendar";
 import { mergeListings } from "@/server/feeds/merge";
 import { audienceIncludes, calendarCategoryOf } from "@/server/today/calendar";
+import { contentOffice, studentDeadlineSource } from "@/server/today/due-soon";
 import { etClock, etDay, TODAY_TIME_ZONE } from "@/server/today/time";
 
 /**
@@ -17,11 +18,13 @@ import { etClock, etDay, TODAY_TIME_ZONE } from "@/server/today/time";
  * Lakeside DayTimeline draws it. Pure: the loaders (server/today/load.ts) pass the day's schedule, the student's
  * deadlines, the curated deadlines and the feed items.
  *
- * - Classes: every meeting of the day schedule (server/plan getDaySchedule), tagged COURSE SCHEDULE (where the
- *   meeting times come from; the timeline draws classes by course colour, without a tag).
- * - Deadlines: the student's own (YOUR PLAN) due that day, and the curated deadline rows of that day for the
- *   student (dayContentDeadlines: REGISTRAR, office tags): points on the line when they have a published time,
- *   else in `allDay` (listed with the timeline). Registration openings are never drawn as deadlines.
+ * - Classes: every meeting of the day schedule (server/plan getDaySchedule), sourced COURSE SCHEDULE (where the
+ *   meeting times come from; the timeline draws classes by course colour, and its one source line names it).
+ * - Deadlines: the student's own (YOUR PLAN, or the course site one was imported from; a syllabus one is marked
+ *   `fromSyllabus`) due that day, and the curated deadline rows of that day for the student
+ *   (dayContentDeadlines: REGISTRAR, the offices): points on the line when they have a published time,
+ *   else in `allDay` (listed with the timeline; a student deadline with no stated time, `allDay`, too: it is
+ *   stored at 23:59 for ordering, a time no one published). Registration openings are never drawn as deadlines.
  * - Campus events: see pickTimelineEvents (at most MAX_TIMELINE_EVENTS, ≤ 4 h, open-ended = 2 h, never over one
  *   of the student's classes); the rest are counted in `moreEvents`. Feed deadlines are drawn as deadlines. One
  *   event listed by several sources is one event (server/feeds/merge.ts mergeListings).
@@ -78,15 +81,20 @@ function classItems(entries: readonly DayScheduleEntry[]): TimelineItem[] {
   }));
 }
 
+function studentDeadlinesOn(day: string, deadlines: readonly StudentDeadline[]) {
+  return deadlines.filter((deadline) => etDay(deadline.dueAt) === day);
+}
+
 function studentDeadlineItems(day: string, deadlines: readonly StudentDeadline[]): TimelineItem[] {
-  return deadlines
-    .filter((deadline) => etDay(deadline.dueAt) === day)
+  return studentDeadlinesOn(day, deadlines)
+    .filter((deadline) => !deadline.allDay)
     .map((deadline) => ({
       id: `deadline-${deadline.id}`,
       kind: "deadline",
       title: deadline.title,
       start: etClock(deadline.dueAt),
-      source: "my-plan",
+      source: studentDeadlineSource(deadline),
+      ...(deadline.origin === "syllabus" ? { fromSyllabus: true } : {}),
       ...(deadline.courseCode ? { code: deadline.courseCode } : {}),
     }));
 }
@@ -130,18 +138,44 @@ export interface AllDayDeadline {
   id: string;
   title: string;
   source: SourceId;
-  url: string;
+  /** The page that publishes it (curated rows); null for the student's own. */
+  url: string | null;
+  courseCode: string | null;
+  /** A student deadline read from a syllabus (its note says so, with the AI chip). */
+  fromSyllabus: boolean;
+  /** The office a DAVIDSON OFFICES row is from (due-soon.ts contentOffice), else null. */
+  office: string | null;
 }
 
-function allDayItems(deadlines: readonly ContentDeadline[]): AllDayDeadline[] {
-  return deadlines
-    .filter((deadline) => !deadline.time)
-    .map((deadline) => ({
-      id: `content-${deadline.id}`,
-      title: contentTitle(deadline),
-      source: deadline.source,
-      url: deadline.url,
-    }));
+function allDayItems(
+  day: string,
+  deadlines: readonly ContentDeadline[],
+  studentDeadlines: readonly StudentDeadline[],
+): AllDayDeadline[] {
+  return [
+    ...deadlines
+      .filter((deadline) => !deadline.time)
+      .map((deadline) => ({
+        id: `content-${deadline.id}`,
+        title: contentTitle(deadline),
+        source: deadline.source,
+        url: deadline.url,
+        courseCode: null,
+        fromSyllabus: false,
+        office: contentOffice(deadline),
+      })),
+    ...studentDeadlinesOn(day, studentDeadlines)
+      .filter((deadline) => deadline.allDay)
+      .map((deadline) => ({
+        id: `deadline-${deadline.id}`,
+        title: deadline.title,
+        source: studentDeadlineSource(deadline),
+        url: null,
+        courseCode: deadline.courseCode ?? null,
+        fromSyllabus: deadline.origin === "syllabus",
+        office: null,
+      })),
+  ];
 }
 
 /** An open-ended event counts as 2 h (docs/CONTRACTS.md server/feeds). */
@@ -287,7 +321,7 @@ export function buildAgenda(input: AgendaInput): Agenda {
   ];
   return {
     items,
-    allDay: allDayItems(curated),
+    allDay: allDayItems(input.day, curated, input.studentDeadlines),
     ...agendaWindow(items),
     moreEvents: events.more,
   };

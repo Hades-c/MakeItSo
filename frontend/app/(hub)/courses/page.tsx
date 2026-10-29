@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { provenance, SourceLine } from "@/components/ui/source-tag";
 import { routes } from "@/lib/routes";
 import { termLabel } from "@/lib/term";
 import { requireUser } from "@/server/auth/session";
@@ -14,6 +15,7 @@ import { loadSearch } from "./_lib/search";
 import { loadStudentPlan } from "./_lib/student";
 import { RESULTS_HEADING_ID } from "./_components/clean-get-form";
 import { CourseFilters } from "./_components/course-filters";
+import { scheduleSourceText } from "./_components/course-cards";
 import { CourseRow } from "./_components/course-row";
 import { ResultsHeading } from "./_components/results-heading";
 
@@ -71,120 +73,131 @@ export default async function CoursesPage({
         </p>
       ) : null}
 
-      {/* Mounted in every state, so the live region announces each new search. */}
-      <div
-        className={
-          showsResults
-            ? "mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
-            : undefined
-        }
-      >
-        <ResultsHeading
-          navKey={navKey}
-          visible={showsResults}
-          className="text-base font-semibold text-fg"
+      {/* One source, said once next to the count: the rows carry data-source, this line names it. */}
+      <div {...provenance(["course-schedule"])}>
+        {/* Mounted in every state, so the live region announces each new search. */}
+        <div
+          className={
+            showsResults
+              ? "mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+              : undefined
+          }
         >
-          {status}
-        </ResultsHeading>
-      </div>
-
-      {view.error ? (
-        <ErrorState
-          title="The course schedule is unavailable"
-          description={view.error}
-          action={
-            <Button asChild variant="secondary">
-              <Link href={coursesHref(query, term)}>Try again</Link>
-            </Button>
-          }
-        />
-      ) : total > 0 && view.rows.length === 0 ? (
-        <EmptyState
-          icon={SearchX}
-          title={`There is no page ${page} of these results`}
-          action={
-            <Button asChild variant="secondary">
-              <Link href={coursesHref(query, term, { page: 1 })}>Go to the first page</Link>
-            </Button>
-          }
-        />
-      ) : total === 0 ? (
-        <EmptyState
-          icon={SearchX}
-          title={
-            view.unavailableBefore
-              ? `No ${termLabel(term)} schedule in MakeItSo`
-              : hasFilters(query)
-                ? `No ${termLabel(term)} courses match${query.q ? ` “${query.q}”` : ""}`
-                : `No ${termLabel(term)} courses yet`
-          }
-          description={
-            view.unavailableBefore ? (
-              <p>
-                MakeItSo keeps Davidson’s schedules from {termLabel(view.unavailableBefore)} on.
-                Choose a later term.
-              </p>
-            ) : hasFilters(query) ? (
-              <p>Try fewer filters, another term, or a different word.</p>
-            ) : (
-              <p>The {termLabel(term)} schedule has no courses in it yet.</p>
-            )
-          }
-          action={
-            view.unavailableBefore ? (
-              <Button asChild variant="secondary">
-                <Link href={routes.courses()}>Search the latest schedule</Link>
-              </Button>
-            ) : hasFilters(query) ? (
-              <Button asChild variant="secondary">
-                <Link href={routes.courses({ term })}>Clear filters</Link>
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <section aria-labelledby={RESULTS_HEADING_ID}>
-          <ol className="flex flex-col gap-3" data-testid="course-results">
-            {view.rows.map((row) => (
-              <li key={row.summary.code}>
-                <CourseRow
-                  row={row}
-                  currentTerm={view.window.current}
-                  planHref={planHref}
-                  loginHref={loginHref}
-                />
-              </li>
-            ))}
-          </ol>
-          {pages > 1 ? (
-            <nav aria-label="Result pages" className="mt-5 flex items-center justify-between gap-3">
-              {page > 1 ? (
-                <Button asChild variant="secondary">
-                  <Link href={coursesHref(query, term, { page: page - 1 })} rel="prev">
-                    <ChevronLeft aria-hidden />
-                    Previous
-                  </Link>
-                </Button>
-              ) : (
-                <span />
-              )}
-              <span className="text-sm text-fg-2">
-                Page {page} of {pages}
-              </span>
-              {page < pages ? (
-                <Button asChild variant="secondary">
-                  <Link href={coursesHref(query, term, { page: page + 1 })} rel="next">
-                    Next
-                    <ChevronRight aria-hidden />
-                  </Link>
-                </Button>
-              ) : (
-                <span />
-              )}
-            </nav>
+          <ResultsHeading
+            navKey={navKey}
+            visible={showsResults}
+            className="text-base font-semibold text-fg"
+          >
+            {status}
+          </ResultsHeading>
+          {showsResults ? (
+            <SourceLine testId="courses-source">
+              {scheduleSourceText(result?.asOf ?? null)}
+            </SourceLine>
           ) : null}
-        </section>
-      )}
+        </div>
+
+        {view.error ? (
+          <ErrorState
+            title="The course schedule is unavailable"
+            description={view.error}
+            action={
+              <Button asChild variant="secondary">
+                <Link href={coursesHref(query, term)}>Try again</Link>
+              </Button>
+            }
+          />
+        ) : total > 0 && view.rows.length === 0 ? (
+          <EmptyState
+            icon={SearchX}
+            title={`There is no page ${page} of these results`}
+            action={
+              <Button asChild variant="secondary">
+                <Link href={coursesHref(query, term, { page: 1 })}>Go to the first page</Link>
+              </Button>
+            }
+          />
+        ) : total === 0 ? (
+          <EmptyState
+            icon={SearchX}
+            title={
+              view.unavailableBefore
+                ? `No ${termLabel(term)} schedule in MakeItSo`
+                : hasFilters(query)
+                  ? `No ${termLabel(term)} courses match${query.q ? ` “${query.q}”` : ""}`
+                  : `No ${termLabel(term)} courses yet`
+            }
+            description={
+              view.unavailableBefore ? (
+                <p>
+                  MakeItSo keeps Davidson’s schedules from {termLabel(view.unavailableBefore)} on.
+                  Choose a later term.
+                </p>
+              ) : hasFilters(query) ? (
+                <p>Try fewer filters, another term, or a different word.</p>
+              ) : (
+                <p>The {termLabel(term)} schedule has no courses in it yet.</p>
+              )
+            }
+            action={
+              view.unavailableBefore ? (
+                <Button asChild variant="secondary">
+                  <Link href={routes.courses()}>Search the latest schedule</Link>
+                </Button>
+              ) : hasFilters(query) ? (
+                <Button asChild variant="secondary">
+                  <Link href={routes.courses({ term })}>Clear filters</Link>
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <section aria-labelledby={RESULTS_HEADING_ID}>
+            <ol className="flex flex-col gap-3" data-testid="course-results">
+              {view.rows.map((row) => (
+                <li key={row.summary.code}>
+                  <CourseRow
+                    row={row}
+                    currentTerm={view.window.current}
+                    planHref={planHref}
+                    loginHref={loginHref}
+                  />
+                </li>
+              ))}
+            </ol>
+            {pages > 1 ? (
+              <nav
+                aria-label="Result pages"
+                className="mt-5 flex items-center justify-between gap-3"
+              >
+                {page > 1 ? (
+                  <Button asChild variant="secondary">
+                    <Link href={coursesHref(query, term, { page: page - 1 })} rel="prev">
+                      <ChevronLeft aria-hidden />
+                      Previous
+                    </Link>
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <span className="text-sm text-fg-2">
+                  Page {page} of {pages}
+                </span>
+                {page < pages ? (
+                  <Button asChild variant="secondary">
+                    <Link href={coursesHref(query, term, { page: page + 1 })} rel="next">
+                      Next
+                      <ChevronRight aria-hidden />
+                    </Link>
+                  </Button>
+                ) : (
+                  <span />
+                )}
+              </nav>
+            ) : null}
+          </section>
+        )}
+      </div>
     </>
   );
 }

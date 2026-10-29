@@ -57,7 +57,7 @@ export interface CompletedStepProps {
 }
 
 export function CompletedStep({ terms, items }: CompletedStepProps) {
-  const plan = usePlanItems(items);
+  const plan = usePlanItems(items, (list) => completedItems(list).length > 0);
   const [term, setTerm] = useState<TermCode | null>(terms[0] ?? null);
   const [message, setMessage] = useState("");
   const [warnings, setWarnings] = useState<PlanWarning[]>([]);

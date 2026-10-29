@@ -105,7 +105,7 @@ export default function DesignGalleryPage() {
   return (
     <AppShell
       user={{ name: "Taylor Student", email: "tastudent@davidson.edu" }}
-      counts={{ courses: 676, plan: { done: 12, total: 32 } }}
+      counts={{ plan: { done: 12, total: 32 } }}
     >
       <PageHeader
         kicker="Design gallery · development only"
@@ -198,8 +198,11 @@ export default function DesignGalleryPage() {
                 { tag: "Caring", count: 5 },
               ]}
               tagRatingsCounted={21}
+              tagsAsOf="2026-09-30T13:05:00Z"
+              asOf="2026-09-30T13:00:00Z"
               url="https://www.ratemyprofessors.com/search/professors/3965?q=Aldridge"
               instructorName="Daniel Aldridge"
+              timeZone={TIME_ZONE}
             />
           </SectionCard>
         </div>
@@ -321,6 +324,8 @@ export default function DesignGalleryPage() {
                   numRatings={1}
                   avgDifficulty={2}
                   url="https://www.ratemyprofessors.com/search/professors/3965"
+                  asOf="2026-09-29T09:00:00Z"
+                  timeZone={TIME_ZONE}
                 />
               </li>
               <li>

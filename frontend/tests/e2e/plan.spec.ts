@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { collectErrors, labelInNameMismatches, primaryFills, SAME_ORIGIN } from "./helpers";
+import {
+  collectErrors,
+  expectAllAttributed,
+  labelInNameMismatches,
+  primaryFills,
+  SAME_ORIGIN,
+} from "./helpers";
 import {
   addItem,
   horizontalOverflow,
@@ -24,6 +30,7 @@ async function checkPage(page: Page, what: string) {
   expect(await horizontalOverflow(page), `${what}: horizontal overflow`).toBeLessThanOrEqual(0);
   expect(await seriousViolations(page), `${what}: axe`).toEqual([]);
   if (isMobile(page)) expect(await smallTapTargets(page), `${what}: tap targets`).toEqual([]);
+  await expectAllAttributed(page);
 }
 
 /**
@@ -95,6 +102,9 @@ test("the WebTree list: search, alternates, conflicts, keyboard reorder, copy an
   await expect(dates).toContainText("Tue, Nov 3, 5:00p");
   await expect(dates).toContainText("Fri, Nov 6, 5:00p");
   await expect(dates).toContainText("Mon, Nov 9, 7:00a – Fri, Nov 13");
+  // Said once for the list, quietly; every row carries its source for the provenance check.
+  await expect(dates).toContainText("From the Registrar’s academic calendar");
+  expect((await expectAllAttributed(page)).L0).toBeGreaterThan(0);
   await checkPage(page, "empty list");
 
   // Choice 1: CSC 221 A; choice 2: SPA 201 B (same MWF 10:30 slot); alternate for choice 1: CSC 221 B.

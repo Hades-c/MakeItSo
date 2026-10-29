@@ -125,7 +125,7 @@ test("register, verify with the e-mailed code, sign out, and sign back in", asyn
   await page.getByLabel("Verification code").fill(code);
   await page.getByRole("button", { name: "Verify", exact: true }).click();
   await expect(page).toHaveURL(/\/today$/);
-  await expect(page.getByTestId("day-summary")).toBeVisible();
+  await expect(page.getByTestId("today-headline")).toBeVisible();
 
   const me = await page.request.get("/api/me");
   expect(((await me.json()) as { me: { verifiedDavidson: boolean } }).me.verifiedDavidson).toBe(
@@ -145,7 +145,7 @@ test("register, verify with the e-mailed code, sign out, and sign back in", asyn
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/today$/);
-  await expect(page.getByTestId("day-summary")).toBeVisible();
+  await expect(page.getByTestId("today-headline")).toBeVisible();
 });
 
 test("registering an address that already has an account reveals nothing", async ({

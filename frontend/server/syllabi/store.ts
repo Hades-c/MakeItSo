@@ -5,14 +5,13 @@ import {
   type ExtractedDeadline,
   type Syllabus,
 } from "@/lib/types/syllabus";
-import type { SyllabusDocument } from "@/models/Syllabus";
 
 /**
  * The `syllabi` collection (models/Syllabus.ts) as the Syllabus type (lib/types/syllabus.ts): document ↔ type
  * mapping, mirroring server/plan/store.ts's pattern.
  */
 
-/** Syllabus uploads kept per student (generous: one per course they could ever take, plus some room to spare). */
+/** Syllabi kept per student (generous: one per course they could ever take, plus some room to spare). */
 export const MAX_SYLLABI = 60;
 
 type Raw = Record<string, unknown>;
@@ -42,14 +41,18 @@ function extractedDeadlineFromDoc(raw: Raw): ExtractedDeadline | null {
   return parsed.success ? parsed.data : null;
 }
 
-export function syllabusFromDoc(raw: Raw): Syllabus | null {
+/**
+ * The stored document as a Syllabus. `planDeadlineCount` is how many plan deadlines trace back to it (counted by the
+ * caller from the plan). A document from the earlier file-upload version has `uploadedAt` instead of `addedAt`.
+ */
+export function syllabusFromDoc(raw: Raw, planDeadlineCount = 0): Syllabus | null {
   const id = hex(raw._id);
   const parsed = SyllabusSchema.safeParse({
     id,
     courseCode: raw.courseCode,
     termCode: raw.termCode,
-    filename: raw.filename,
-    uploadedAt: iso(raw.uploadedAt),
+    addedAt: iso(raw.addedAt ?? raw.uploadedAt),
+    planDeadlineCount,
     extractedDeadlines: Array.isArray(raw.extractedDeadlines)
       ? (raw.extractedDeadlines as Raw[]).flatMap((d) => extractedDeadlineFromDoc(d) ?? [])
       : [],
@@ -61,12 +64,6 @@ export function syllabusFromDoc(raw: Raw): Syllabus | null {
   return parsed.data;
 }
 
-export function syllabusFromDocument(doc: SyllabusDocument): Syllabus | null {
-  return syllabusFromDoc(doc.toObject());
-}
-
 export function sortSyllabi(syllabi: Syllabus[]): Syllabus[] {
-  return syllabi.sort(
-    (a, b) => b.uploadedAt.localeCompare(a.uploadedAt) || a.id.localeCompare(b.id),
-  );
+  return syllabi.sort((a, b) => b.addedAt.localeCompare(a.addedAt) || a.id.localeCompare(b.id));
 }

@@ -1,5 +1,11 @@
 import "server-only";
-import { isSyncedSourceId, SOURCES, SYNCED_SOURCE_IDS, type SyncedSourceId } from "@/lib/sources";
+import {
+  isPerStudentSource,
+  isSyncedSourceId,
+  SOURCES,
+  SYNCED_SOURCE_IDS,
+  type SyncedSourceId,
+} from "@/lib/sources";
 import SourceSync from "@/models/SourceSync";
 import { getDb } from "@/server/db";
 import { isDuplicateKeyError } from "@/server/http/errors";
@@ -8,7 +14,8 @@ import { isDuplicateKeyError } from "@/server/http/errors";
  * Sync bookkeeping (PLAN §4.1.11). Every job that pulls from an upstream (catalog ingest, feeds, RMP roster,
  * Acalog programs) calls `recordSync` once per source per run; `getSourceStatuses()` reads the rows back (the
  * Events page uses it for each source's last-sync time). Only sources that have synced at least once are listed
- * (PLAN §3: no placeholders).
+ * (PLAN §3: no placeholders). A per-student source (PER_STUDENT_SOURCE_IDS: the Moodle calendar feed) has no
+ * shared row: recordSync refuses it, and the student's own connection keeps its sync time (server/moodle).
  */
 
 export interface SyncOutcome {
@@ -51,6 +58,8 @@ export const SYNC_MAX_AGE_MS: Readonly<Record<SyncedSourceId, number>> = {
   davidsonian: 12 * 60 * 60_000,
   "events-digest": 8 * 24 * 60 * 60_000,
   "davidson-news": 12 * 60 * 60_000,
+  // Per student (lib/moodle.ts MOODLE_SYNC_MAX_AGE_MS); never in getSourceStatuses.
+  "course-site": 6 * 60 * 60_000,
 };
 
 const MAX_ERROR_LENGTH = 500;
@@ -58,6 +67,9 @@ const MAX_ERROR_LENGTH = 500;
 /** Record one sync run for a source (atomic upsert). */
 export async function recordSync(sourceId: SyncedSourceId, outcome: SyncOutcome): Promise<void> {
   if (!isSyncedSourceId(sourceId)) throw new TypeError(`Not a synced source: ${String(sourceId)}`);
+  if (isPerStudentSource(sourceId)) {
+    throw new TypeError(`recordSync(${sourceId}): a per-student source has no shared status`);
+  }
   if (!Number.isInteger(outcome.count) || outcome.count < 0) {
     throw new TypeError(`recordSync(${sourceId}): count must be a non-negative integer`);
   }
@@ -100,6 +112,7 @@ export async function getSourceStatuses(now: Date = new Date()): Promise<SourceS
   const byId = new Map(docs.map((doc) => [doc.sourceId, doc]));
   const rows: SourceStatus[] = [];
   for (const id of SYNCED_SOURCE_IDS) {
+    if (isPerStudentSource(id)) continue;
     const doc = byId.get(id);
     if (!doc) continue;
     const lastSync = doc.lastSuccessAt ?? null;

@@ -14,7 +14,8 @@ import { requirementName } from "@/server/content/requirements";
  * Never sent: the student's name, e-mail address, account id, grades (or anything that implies one: failed,
  * dropped and withdrawn items are left out), free-text bio, notes, consent dates, IP or session data.
  *   - interests: career-path slugs only (unknown slugs dropped);
- *   - goals: goal-statement slugs only (lib/goals.ts, unknown slugs dropped);
+ *   - aspirations (career plan and cold e-mail only): the profile's goal slugs (lib/goals.ts, unknown slugs
+ *     dropped). Named apart from the <student_goals> block, which holds the career path the student chose;
  *   - majors / minors: official Acalog names only (anything else dropped);
  *   - plan items: exactly { termCode, courseCode, status } for active statuses;
  *   - cold e-mail: the student's name is the literal {{studentName}}, filled in by the browser; the alumnus is
@@ -27,7 +28,11 @@ export interface StudentProfilePayload {
   graduationYear: number;
   standing: ClassStanding;
   interests: string[];
-  goals: string[];
+}
+
+/** The career features' profile: the same fields plus what the student hopes to do at Davidson. */
+export interface CareerProfilePayload extends StudentProfilePayload {
+  aspirations: string[];
 }
 
 export interface ProfileSource {
@@ -36,6 +41,9 @@ export interface ProfileSource {
   graduationYear: number;
   standing: { standing: ClassStanding };
   interests: readonly string[];
+}
+
+export interface CareerProfileSource extends ProfileSource {
   goals: readonly string[];
 }
 
@@ -44,7 +52,7 @@ export interface OfficialProgramNames {
   minors: readonly string[];
 }
 
-/** The allow-listed profile: official program names, graduation year, standing, interest and goal slugs. */
+/** The allow-listed profile: official program names, graduation year, standing, interest slugs. */
 export function studentProfilePayload(
   profile: ProfileSource,
   official: OfficialProgramNames,
@@ -57,7 +65,17 @@ export function studentProfilePayload(
     graduationYear: profile.graduationYear,
     standing: profile.standing.standing,
     interests: [...new Set(profile.interests.filter((slug) => isCareerSlug(slug)))],
-    goals: [...new Set(profile.goals.filter((slug) => isGoalSlug(slug)))],
+  };
+}
+
+/** studentProfilePayload plus `aspirations` (the goal slugs), for career plans and cold e-mails. */
+export function careerProfilePayload(
+  profile: CareerProfileSource,
+  official: OfficialProgramNames,
+): CareerProfilePayload {
+  return {
+    ...studentProfilePayload(profile, official),
+    aspirations: [...new Set(profile.goals.filter((slug) => isGoalSlug(slug)))],
   };
 }
 

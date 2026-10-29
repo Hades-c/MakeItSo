@@ -191,18 +191,19 @@ describe("SectionItem", () => {
     const item = items[0]!;
     expect(item).toHaveAttribute("data-aggregated", "ratemyprofessors");
     expect(within(item).getByText(`${instructor.first} ${instructor.last}`)).toBeVisible();
-    // The source is said once per instructor: one provenance line with the profile link.
+    // The source is said once per instructor: one provenance line, the date and the profile link.
     expect(seenText(item)).toBe(
       "Katy Williams 4.2 / 5 17 ratings · Difficulty 3.0 of 5 · 80% would take again " +
-        "Most common tags (from 17 ratings): Participation matters (12), " +
-        "Get ready to read (9), Caring (8) RateMyProfessors",
+        "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12), " +
+        "Get ready to read (9), Caring (8) as of Sep 28, 2026 · RateMyProfessors",
     );
     expect(spokenText(item)).toContain(
       "Rating 4.2 out of 5 17 ratings for Katy Williams, Difficulty 3.0 of 5, 80% would take again " +
-        "Most common tags (from 17 ratings): Participation matters (12 ratings), " +
-        "Get ready to read (9 ratings), Caring (8 ratings) " +
+        "Most common tags (from 17 ratings, as of Sep 29, 2026): Participation matters (12 ratings), " +
+        "Get ready to read (9 ratings), Caring (8 ratings) as of Sep 28, 2026, " +
         "Source: RateMyProfessors",
     );
+    expect(within(item).getByText("as of Sep 28, 2026")).toBeVisible();
     expect(item.querySelectorAll('[data-source="ratemyprofessors"]')).toHaveLength(1);
     expect(within(item).getAllByRole("link")).toHaveLength(1);
     expect(
@@ -390,7 +391,7 @@ describe("course cards", () => {
     expect(
       within(programs).getByRole("link", { name: /Major in Computer Science/ }),
     ).toHaveAttribute("rel", "noopener noreferrer");
-    expect(programs).toHaveTextContent("Based on 3 of 52 program pages");
+    expect(programs).toHaveTextContent("Course catalog · based on 3 of 52 program pages");
   });
 
   it("about: makes no negative 'Also counts for' claim until every program page has been read", () => {
@@ -408,7 +409,7 @@ describe("course cards", () => {
       "Not every program page in the catalog has been read yet.",
     );
     expect(programs).not.toHaveTextContent(/names this course/);
-    expect(programs).toHaveTextContent("Based on 1 of 51 program pages");
+    expect(programs).toHaveTextContent("Course catalog · based on 1 of 51 program pages");
     rerender(
       <CourseAboutCard
         course={his}

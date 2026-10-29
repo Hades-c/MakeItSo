@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   eventTimeLabel,
-  formatEventLocation,
   groupEvents,
-  hoursChangeNotice,
   isDeadlineItem,
   lastDay,
   startDay,
   windowEndLabel,
 } from "@/app/(hub)/events/_lib/present";
+import { formatEventLocation } from "@/lib/event-location";
 import type { FeedItem } from "@/lib/types/feeds";
 
 const TZ = "America/New_York";
@@ -219,13 +218,16 @@ describe("formatEventLocation", () => {
     expect(formatEventLocation("")).toBeNull();
     expect(formatEventLocation("   ")).toBeNull();
   });
-});
 
-describe("hoursChangeNotice", () => {
-  it("is always null: no source feeds it yet, the slot is ready for one", () => {
+  it("leaves out the address tail a feed repeats, and the country", () => {
     expect(
-      hoursChangeNotice(item({ source: "library", location: "E.H. Little Library" })),
-    ).toBeNull();
-    expect(hoursChangeNotice(item({ source: "wildcatsync", location: null }))).toBeNull();
+      formatEventLocation(
+        "The Hurt Hub at Davidson College, 210 Delburg Street, Davidson, NC 28036, Davidson, NC, 28036, US",
+      ),
+    ).toBe("The Hurt Hub at Davidson College, 210 Delburg Street, Davidson, NC 28036");
+    expect(formatEventLocation("Chambers Building, Davidson")).toBe("Chambers Building, Davidson");
+    expect(formatEventLocation("Union Tables by the Fireplace")).toBe(
+      "Union Tables by the Fireplace",
+    );
   });
 });

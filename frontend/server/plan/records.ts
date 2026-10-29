@@ -217,50 +217,87 @@ export async function addDeadlineImpl(
 /**
  * Review-before-save (/syllabi): push every reviewed deadline from one syllabus at once, origin "syllabus",
  * tagged with `syllabusId` so a later replace or delete of that syllabus (removeDeadlinesBySyllabusImpl) can find
- * them again. Atomic and all-or-nothing against MAX_DEADLINES, same as a single manual add; empty input is a
- * no-op that still ensures the plan document exists.
+ * them again. A deadline this syllabus already has in the plan (same title and due time) is not added again, so
+ * saving the same review twice, or two tabs saving at once, never duplicates one: the update filter re-checks
+ * that none of the new ones is there, and a save that lost that race recomputes once. Atomic and all-or-nothing
+ * against MAX_DEADLINES, same as a single manual add. Returns every chosen deadline as the plan now holds it, and
+ * how many of them this call added.
  */
 export async function addSyllabusDeadlinesImpl(
   userId: string,
   syllabusId: string,
-  inputs: readonly Omit<StudentDeadline, "id" | "origin" | "syllabusId">[],
-): Promise<StudentDeadline[]> {
+  inputs: readonly Omit<StudentDeadline, "id" | "origin" | "syllabusId" | "allDay">[],
+): Promise<{ deadlines: StudentDeadline[]; added: number }> {
   const oid = userObjectId(userId);
   const syllabusOid = objectId(syllabusId, "syllabus");
-  const deadlines: StudentDeadline[] = inputs.map((input) => {
+  const chosen = inputs.map((input) => {
     const body = parseOr400(CreateDeadlineBodySchema, input);
     return {
-      id: newId(),
       title: body.title,
       dueAt: new Date(body.dueAt).toISOString(),
       ...(body.courseCode ? { courseCode: body.courseCode } : {}),
-      origin: "syllabus",
-      syllabusId,
     };
   });
-  if (deadlines.length === 0) return [];
+  if (chosen.length === 0) return { deadlines: [], added: 0 };
+  const keyOf = (deadline: { title: string; dueAt: string }) =>
+    `${deadline.dueAt}\n${deadline.title}`;
   await ensurePlanDoc(userId, oid, { create: true });
-  const result = await Plan.updateOne(
-    { userId: oid, [`deadlines.${MAX_DEADLINES - deadlines.length}`]: trusted({ $exists: false }) },
-    {
-      $push: {
-        deadlines: {
-          $each: deadlines.map((deadline) => ({
-            _id: new mongoose.Types.ObjectId(deadline.id),
-            title: deadline.title,
-            dueAt: new Date(deadline.dueAt),
-            ...(deadline.courseCode ? { courseCode: deadline.courseCode } : {}),
-            origin: deadline.origin,
-            syllabusId: syllabusOid,
-          })),
+
+  for (let attempt = 0; ; attempt++) {
+    const existing = new Map(
+      (await listDeadlinesImpl(userId))
+        .filter((deadline) => deadline.syllabusId === syllabusId)
+        .map((deadline) => [keyOf(deadline), deadline]),
+    );
+    const fresh = new Map<string, StudentDeadline>();
+    for (const input of chosen) {
+      const key = keyOf(input);
+      if (existing.has(key) || fresh.has(key)) continue;
+      fresh.set(key, { id: newId(), ...input, origin: "syllabus", syllabusId, allDay: true });
+    }
+    const adding = [...fresh.values()];
+    // Every chosen deadline once, as the plan holds it after this save.
+    const outcome = (added: readonly StudentDeadline[]) => {
+      const inPlan = new Map([...existing, ...added.map((d) => [keyOf(d), d] as const)]);
+      const keys = [...new Set(chosen.map(keyOf))];
+      return { deadlines: keys.flatMap((key) => inPlan.get(key) ?? []), added: added.length };
+    };
+    if (adding.length === 0) return outcome([]);
+
+    const update = await Plan.updateOne(
+      {
+        userId: oid,
+        [`deadlines.${MAX_DEADLINES - adding.length}`]: trusted({ $exists: false }),
+        deadlines: trusted({
+          $not: {
+            $elemMatch: {
+              syllabusId: syllabusOid,
+              $or: adding.map((d) => ({ title: d.title, dueAt: new Date(d.dueAt) })),
+            },
+          },
+        }),
+      },
+      {
+        $push: {
+          deadlines: {
+            $each: adding.map((deadline) => ({
+              _id: new mongoose.Types.ObjectId(deadline.id),
+              title: deadline.title,
+              dueAt: new Date(deadline.dueAt),
+              ...(deadline.courseCode ? { courseCode: deadline.courseCode } : {}),
+              origin: deadline.origin,
+              syllabusId: syllabusOid,
+            })),
+          },
         },
       },
-    },
-  );
-  if (result.matchedCount !== 1) {
-    throw new ApiError(409, "conflict", `You can keep at most ${MAX_DEADLINES} deadlines.`);
+    );
+    if (update.matchedCount === 1) return outcome(adding);
+    // Either the plan is full, or another save added some of these first: look again, once.
+    if (attempt >= 1) {
+      throw new ApiError(409, "conflict", `You can keep at most ${MAX_DEADLINES} deadlines.`);
+    }
   }
-  return deadlines;
 }
 
 /** Remove every plan deadline that came from this syllabus (its replace or delete, server/syllabi/records.ts). */

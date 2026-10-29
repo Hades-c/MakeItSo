@@ -2843,6 +2843,20 @@ export function getOffice(slug: string): Office | undefined {
   return OFFICE_BY_SLUG.get(slug);
 }
 
+/** Names too long for a meta line, shortened by hand; every other office drops its trailing "(…)" aside. */
+const OFFICE_SHORT_NAMES: Readonly<Record<string, string>> = {
+  "civic-engagement": "Mulliss Center for Civic Engagement",
+  "center-teaching-learning": "Center for Teaching and Learning",
+};
+
+/**
+ * The office's name as an item's source note says it ("via Office of Fellowships", "via Dean Rusk International
+ * Studies Program", "via Mulliss Center for Civic Engagement"): the published name without its "(OEAA)" aside.
+ */
+export function officeShortName(office: Pick<Office, "slug" | "name">): string {
+  return OFFICE_SHORT_NAMES[office.slug] ?? office.name.replace(/\s*\([^)]*\)$/, "");
+}
+
 export function getProgram(slug: string): Program | undefined {
   return PROGRAM_BY_SLUG.get(slug);
 }

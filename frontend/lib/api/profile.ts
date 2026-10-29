@@ -35,8 +35,6 @@ export const ProfileSchema = z.object({
   aiConsentAt: IsoDateTimeSchema.nullable(),
   adultAttestedAt: IsoDateTimeSchema.nullable(),
   onboardedAt: IsoDateTimeSchema.nullable(),
-  /** Set once an account onboarded before the Syllabi/Goals steps existed dismisses the one-time notice. */
-  newStepsPromptDismissedAt: IsoDateTimeSchema.nullable(),
   createdAt: IsoDateTimeSchema,
 });
 export type Profile = z.infer<typeof ProfileSchema>;
@@ -44,8 +42,7 @@ export type Profile = z.infer<typeof ProfileSchema>;
 /**
  * PATCH /api/profile (W3 target): strict whitelist; `null` → `$unset` for clearable fields. The booleans set or
  * clear the matching timestamps (aiConsent → aiConsentAt, adultAttested → adultAttestedAt, onboarded →
- * onboardedAt, dismissNewStepsPrompt → newStepsPromptDismissedAt, each set once and never unset). Wave-0
- * behaviour until W3: {name, major, minor, graduationYear, currentYear, bio, careerInterests}.
+ * onboardedAt). Wave-0 behaviour until W3: {name, major, minor, graduationYear, currentYear, bio, careerInterests}.
  */
 export const ProfilePatchBodySchema = z
   .object({
@@ -60,7 +57,6 @@ export const ProfilePatchBodySchema = z
     aiConsent: z.boolean(),
     adultAttested: z.boolean(),
     onboarded: z.literal(true),
-    dismissNewStepsPrompt: z.literal(true),
   })
   .partial()
   .strict();

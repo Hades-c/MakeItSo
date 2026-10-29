@@ -10,7 +10,7 @@ import {
   refundIfNothingAnswered,
   spendOnGeneration,
 } from "@/server/ai/features/common";
-import { alumnusPayload, studentProfilePayload } from "@/server/ai/payloads";
+import { alumnusPayload, careerProfilePayload } from "@/server/ai/payloads";
 import {
   coldEmailRequest,
   OutputSchema,
@@ -80,7 +80,7 @@ export async function generateColdEmail(
       alumnus: alumnusData,
       career: career ? { name: career.name, summary: career.summary } : null,
     },
-    profile: studentProfilePayload(profile, names),
+    profile: careerProfilePayload(profile, names),
     goals: { career: career?.name ?? null },
   };
   const inputHash = hashInput({
