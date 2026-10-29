@@ -31,11 +31,14 @@ export const metadata: Metadata = { title: "Today" };
  * - row 2: This week on campus (5) beside Opportunities (7), the wider half for the longer list;
  * - row 3: Quick links across the page.
  *
- * Without the events section, Opportunities (7) and Quick links (5) share row 2. The cards in a row stretch to
- * the row's height, so their bottoms line up.
+ * Without the events section, Opportunities (7) and Quick links (5) share row 2. From row 2 the cards in a row
+ * stretch to the row's height, so their bottoms line up. Row 1 does not (ROW_1): the day timeline is often much
+ * shorter than Due for you (a new student with no sections), and a stretched Today card ended in a third of
+ * empty card; each card there ends with its own content.
  */
 const GRID = "flex flex-col gap-5 lg:grid lg:grid-cols-12 lg:items-stretch";
 const SLOT = "min-w-0 lg:*:h-full";
+const ROW_1 = "min-w-0 lg:self-start";
 
 /**
  * /today (PLAN §3, W7): the student's day on one page, rendered on the server in America/New_York from the
@@ -82,7 +85,7 @@ export default async function TodayPage({
         <TodayActions userId={user.id} />
       </Suspense>
       <div className={GRID}>
-        <div className={cn(SLOT, "lg:col-span-7")}>
+        <div className={cn(ROW_1, "lg:col-span-7")}>
           <PanelBoundary id="timeline" title="Today" what="Your schedule">
             <Suspense fallback={<PanelSkeleton id="timeline" title="Today" rows={4} />}>
               <TimelinePanel
@@ -96,7 +99,7 @@ export default async function TodayPage({
             </Suspense>
           </PanelBoundary>
         </div>
-        <div className={cn(SLOT, "lg:col-span-5")}>
+        <div className={cn(ROW_1, "lg:col-span-5")}>
           <PanelBoundary id="due-soon" title={DUE_SOON_TITLE} what={DUE_SOON_TITLE}>
             <Suspense fallback={<PanelSkeleton id="due-soon" title={DUE_SOON_TITLE} />}>
               <DueSoonPanel userId={user.id} now={now} />

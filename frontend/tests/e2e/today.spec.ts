@@ -284,7 +284,29 @@ async function layoutBalance(page: Page) {
       const B = b.getBoundingClientRect();
       return Math.abs(A.top - B.top) > 8 ? A.top - B.top : A.left - B.left;
     });
+    // Row 1's cards end with their own content (they are not stretched to the row): the space between a card's
+    // deepest visible content and its bottom edge, for Today and Due for you.
+    const tails: Record<string, number> = {};
+    for (const s of main.querySelectorAll<HTMLElement>("section[aria-labelledby]")) {
+      const title = (
+        document.getElementById(s.getAttribute("aria-labelledby")!)?.textContent ?? ""
+      ).trim();
+      const key = /^Today/.test(title)
+        ? "Today"
+        : /^Due for you/.test(title)
+          ? "Due for you"
+          : null;
+      if (!key || !s.checkVisibility()) continue;
+      let deepest = s.getBoundingClientRect().top;
+      for (const el of s.querySelectorAll<HTMLElement>("*")) {
+        if (!el.checkVisibility()) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) deepest = Math.max(deepest, r.bottom);
+      }
+      tails[key] = Math.round(s.getBoundingClientRect().bottom - deepest);
+    }
     return {
+      tails,
       gap: Math.abs(end("left") - end("right")) / pageHeight,
       lopsided,
       dom: h2s.map(name),
@@ -293,33 +315,45 @@ async function layoutBalance(page: Page) {
   });
 }
 
-test("today: the desktop reads balanced, in the order of the page", async ({ page, request }) => {
-  test.skip(isMobile(page), "the phone is one column in the same order (checked above)");
-  test.setTimeout(120_000);
-  const api = await newStudent(page, request, "e2e-today-balance");
-  await seedMockupStudent(api);
-  await feedsStored(api);
-  for (const width of [1440, 1280, 1024]) {
-    await page.setViewportSize({ width, height: 900 });
-    await page.goto("/today");
-    await page.waitForLoadState("networkidle");
-    const at = await layoutBalance(page);
-    // Rows of cards (timeline and Due for you, then campus and opportunities, then quick links): both halves
-    // end close together and carry content at every scroll position.
-    expect(at.gap, `@${width}: left and right end apart`).toBeLessThanOrEqual(0.15);
-    expect(at.lopsided, `@${width}: scroll positions with one half empty`).toEqual([]);
-    // WCAG 1.3.2: the DOM reads the sections in the order the screen shows them, the phone's order.
-    expect(at.visual, `@${width}: h2 order`).toEqual(at.dom);
-    // The cards in phone order (the page may also carry the verify-email banner's h2 above them).
-    expect(at.dom.filter((h) => CARDS.test(h)).map((h) => CARDS.exec(h)?.[0])).toEqual([
-      "Today",
-      "Due for you",
-      "This week on campus",
-      "Opportunities",
-      "Quick links",
-    ]);
-  }
-});
+for (const student of ["seeded", "new"] as const) {
+  test(`today: the desktop reads balanced, in the order of the page (${student} student)`, async ({
+    page,
+    request,
+  }) => {
+    test.skip(isMobile(page), "the phone is one column in the same order (checked above)");
+    test.setTimeout(120_000);
+    // The seeded student has sections and a deadline; the new one (onboarded, nothing added) has a short
+    // timeline beside a full Due for you, which is where a stretched Today card ended mostly empty.
+    const api = await newStudent(page, request, `e2e-today-balance-${student}`);
+    if (student === "seeded") await seedMockupStudent(api);
+    await feedsStored(api);
+    for (const width of [1440, 1280, 1180, 1024]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/today");
+      await page.waitForLoadState("networkidle");
+      const at = await layoutBalance(page);
+      // Rows of cards (timeline and Due for you, then campus and opportunities, then quick links): both halves
+      // end close together and carry content at every scroll position.
+      expect(at.gap, `@${width}: left and right end apart`).toBeLessThanOrEqual(0.15);
+      expect(at.lopsided, `@${width}: scroll positions with one half empty`).toEqual([]);
+      // Row 1's cards end with their content: at most the card's own bottom padding below it.
+      for (const [card, tail] of Object.entries(at.tails)) {
+        expect(tail, `@${width}: empty space at the bottom of ${card}`).toBeLessThanOrEqual(40);
+      }
+      expect(Object.keys(at.tails).sort()).toEqual(["Due for you", "Today"]);
+      // WCAG 1.3.2: the DOM reads the sections in the order the screen shows them, the phone's order.
+      expect(at.visual, `@${width}: h2 order`).toEqual(at.dom);
+      // The cards in phone order (the page may also carry the verify-email banner's h2 above them).
+      expect(at.dom.filter((h) => CARDS.test(h)).map((h) => CARDS.exec(h)?.[0])).toEqual([
+        "Today",
+        "Due for you",
+        "This week on campus",
+        "Opportunities",
+        "Quick links",
+      ]);
+    }
+  });
+}
 
 test("today: a new student is asked to finish setting up", async ({ page, request }) => {
   test.setTimeout(60_000);
