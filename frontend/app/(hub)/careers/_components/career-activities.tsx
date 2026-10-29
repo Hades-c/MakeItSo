@@ -125,18 +125,23 @@ export function SummersCard({ views }: { views: readonly SummerView[] }) {
               </div>
               <p className="mt-1 text-sm text-fg-2">{view.description}</p>
               {view.audience || view.timing ? (
-                <dl className="mt-1.5 flex flex-col gap-1 text-sm">
+                // One layout for every row: the label beside its value, values aligned in one column, at every
+                // width (a wrapping flex row put short values beside their label and long ones under it).
+                <dl
+                  className="mt-1.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 text-sm"
+                  data-testid="summer-facts"
+                >
                   {view.audience ? (
-                    <div className="flex flex-wrap gap-x-2">
+                    <>
                       <dt className="font-semibold text-fg">For</dt>
-                      <dd className="text-fg-2">{view.audience}</dd>
-                    </div>
+                      <dd className="min-w-0 text-fg-2">{view.audience}</dd>
+                    </>
                   ) : null}
                   {view.timing ? (
-                    <div className="flex flex-wrap gap-x-2">
+                    <>
                       <dt className="font-semibold text-fg">{view.timing.label}</dt>
-                      <dd className="text-fg-2">{view.timing.text}</dd>
-                    </div>
+                      <dd className="min-w-0 text-fg-2">{view.timing.text}</dd>
+                    </>
                   ) : null}
                 </dl>
               ) : null}

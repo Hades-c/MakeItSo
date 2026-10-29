@@ -180,6 +180,20 @@ describe("SummersCard", () => {
     expect(card).toHaveTextContent("Confirm on the program’s page before you apply.");
   });
 
+  it("lays out every For / Timing row the same way: label beside value, in one two-column grid", () => {
+    render(<SummersCard views={resolveSummers(SE.summer, PROGRAMS, OFFICES)} />);
+    const lists = screen.getAllByTestId("summer-facts");
+    expect(lists.length).toBeGreaterThan(0);
+    for (const dl of lists) {
+      expect(dl).toHaveClass("grid", "grid-cols-[auto_minmax(0,1fr)]");
+      expect(dl.className).not.toMatch(/flex-wrap/);
+      // dt and dd are the grid's own cells, in pairs, so no row can wrap differently from the next.
+      const cells = [...dl.children].map((child) => child.tagName);
+      expect(cells.length % 2).toBe(0);
+      cells.forEach((tag, i) => expect(tag).toBe(i % 2 === 0 ? "DT" : "DD"));
+    }
+  });
+
   it("says a single source once, in a source line", () => {
     const marketing = getCareer("marketing")!;
     render(<SummersCard views={resolveSummers(marketing.summer, PROGRAMS, OFFICES)} />);
