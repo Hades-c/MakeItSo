@@ -234,6 +234,93 @@ test("today: the headline, timeline, strip and panels for a student with section
   expect(errors).toEqual([]);
 });
 
+/**
+ * The desktop layout's balance, measured on the page: the sections' own content (the last line inside each card,
+ * not the stretched card) on the left and on the right half of the page, the scroll positions where one half of the
+ * viewport shows no section, and the h2s in DOM order against their order on screen (row by row, left first).
+ */
+const CARDS = /^(Today|Due for you|This week on campus|Opportunities|Quick links)/;
+
+async function layoutBalance(page: Page) {
+  return page.evaluate(() => {
+    const main = document.querySelector("main")!;
+    const box = main.getBoundingClientRect();
+    const mid = box.left + box.width / 2;
+    const y0 = window.scrollY;
+    const sections = [...main.querySelectorAll<HTMLElement>("section[aria-labelledby]")]
+      .filter((s) => s.checkVisibility())
+      .map((s) => {
+        const r = s.getBoundingClientRect();
+        const content = Math.max(...[...s.children].map((c) => c.getBoundingClientRect().bottom));
+        const side =
+          r.width > box.width * 0.75 ? "full" : r.left + r.width / 2 < mid ? "left" : "right";
+        return { top: r.top + y0, bottom: content + y0, side };
+      });
+    const pageHeight = document.documentElement.scrollHeight;
+    const firstFull = Math.min(
+      pageHeight,
+      ...sections.filter((s) => s.side === "full").map((s) => s.top),
+    );
+    const end = (side: string) =>
+      Math.max(
+        0,
+        ...sections.filter((s) => s.side === side && s.top < firstFull).map((s) => s.bottom),
+      );
+    const lopsided: number[] = [];
+    for (let y = 0; y + window.innerHeight <= pageHeight; y += 50) {
+      const shows = (side: string) =>
+        sections.some(
+          (s) =>
+            (s.side === side || s.side === "full") &&
+            s.bottom > y + 60 &&
+            s.top < y + window.innerHeight - 60,
+        );
+      if (!shows("left") || !shows("right")) lopsided.push(y);
+    }
+    const h2s = [...main.querySelectorAll("h2")].filter((h) => h.checkVisibility());
+    const name = (h: Element) => (h.textContent ?? "").trim().replace(/\s+/g, " ");
+    const visual = [...h2s].sort((a, b) => {
+      const A = a.getBoundingClientRect();
+      const B = b.getBoundingClientRect();
+      return Math.abs(A.top - B.top) > 8 ? A.top - B.top : A.left - B.left;
+    });
+    return {
+      gap: Math.abs(end("left") - end("right")) / pageHeight,
+      lopsided,
+      dom: h2s.map(name),
+      visual: visual.map(name),
+    };
+  });
+}
+
+test("today: the desktop reads balanced, in the order of the page", async ({ page, request }) => {
+  test.skip(isMobile(page), "the phone is one column in the same order (checked above)");
+  test.setTimeout(120_000);
+  const api = await newStudent(page, request, "e2e-today-balance");
+  await seedMockupStudent(api);
+  await feedsStored(api);
+  for (const width of [1440, 1280, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/today");
+    await page.waitForLoadState("networkidle");
+    const at = await layoutBalance(page);
+    // Rows of cards (timeline and Due for you, then campus and opportunities, then quick links): both halves
+    // end close together and carry content at every scroll position.
+    expect(at.gap, `@${width}: left and right end apart`).toBeLessThanOrEqual(0.15);
+    expect(at.lopsided, `@${width}: scroll positions with one half empty`).toEqual([]);
+    // WCAG 1.3.2: the DOM reads the sections in the order the screen shows them, the phone's order.
+    expect(at.visual, `@${width}: h2 order`).toEqual(at.dom);
+    // The cards in phone order (the page may also carry the verify-email banner's h2 above them).
+    expect(at.dom.filter((h) => CARDS.test(h)).map((h) => CARDS.exec(h)?.[0])).toEqual([
+      "Today",
+      "Due for you",
+      "This week on campus",
+      "Opportunities",
+      "Quick links",
+    ]);
+  }
+});
+
 test("today: a new student is asked to finish setting up", async ({ page, request }) => {
   test.setTimeout(60_000);
   const errors = collectErrors(page);
