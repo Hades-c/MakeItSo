@@ -4,9 +4,11 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 import {
   collectErrors,
   horizontalOverflow,
+  isMobile,
   registerViaApi,
   seriousViolations,
   signIn,
+  smallTapTargets,
   uniqueEmail,
 } from "./helpers";
 
@@ -15,7 +17,7 @@ import {
  * (W5s), at desktop 1440 and phone 390: the whole first run (four steps, goals folded into the last) with axe on
  * every step and no sideways scrolling, resuming, a re-run that adds nothing twice, About required (later steps
  * closed and no Skip setup until it is saved), Classes never blocking, and a legacy account whose v1 plan shows up
- * in the steps.
+ * in the steps. A new account reaches step 1 straight from /register (owner's request, Eurekas tab).
  */
 
 const PASSWORD = "onboarding e2e password";
@@ -113,7 +115,7 @@ test("a new student completes every step, accessibly, and lands on Today", async
   await page.getByRole("button", { name: "Save and continue" }).press("Enter");
 
   await expect(page).toHaveURL(/\/onboarding\?step=classes$/);
-  await expectStepFocus(page, /^Step 2 of 4: Your Fall 2026 classes · Get started/);
+  await expectStepFocus(page, /^Step 2 of 4: Your Fall 2026 classes · Set up your account/);
   await checkStep(page, "Your Fall 2026 classes");
   // About is saved: the global Skip setup button appears from here on. Classes never blocks: with no class
   // chosen yet the way on is "Add classes later".
@@ -203,6 +205,36 @@ test("a new student completes every step, accessibly, and lands on Today", async
   ).toContainText("Check the highlighted field");
   await expect(page.getByLabel("Davidson course code")).toBeFocused();
   expect(keys(await planItems(page))).toEqual(before);
+  expect(errors).toEqual([]);
+});
+
+test("a new account from /register lands on step 1, accessibly, with the code line said once", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const email = uniqueEmail("e2e-onboarding-register");
+  await page.goto("/register");
+  await page.getByLabel("Full name").fill("Casey Wildcat");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Create account" }).click();
+
+  await expect(page).toHaveURL(/\/onboarding\?step=about&verify=sent$/);
+  await expect(page.getByText("Set up your account · Step 1 of 4 · Welcome, Casey")).toBeVisible();
+  await expect(page.getByTestId("verify-sent-note")).toContainText(email);
+  // The line and its link pass axe in light and dark, nothing scrolls sideways, and phone targets are 44px.
+  await checkStep(page, "About you");
+  if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
+
+  await page.getByLabel("Graduation year").selectOption("2029");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await expect(page).toHaveURL(/\/onboarding\?step=classes$/);
+  await expect(page.getByTestId("verify-sent-note")).toHaveCount(0);
+  // Back on step 1 from the step list: said once, not again.
+  await page.getByRole("link", { name: /Step 1: About you/ }).click();
+  await expect(page).toHaveURL(/\/onboarding\?step=about$/);
+  await expect(page.getByRole("heading", { level: 1, name: "About you" })).toBeVisible();
+  await expect(page.getByTestId("verify-sent-note")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

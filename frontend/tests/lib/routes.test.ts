@@ -52,6 +52,11 @@ describe("href builders (lib/routes.ts)", () => {
     expect(routes.onboarding("about", { next: "/plan" })).toBe(
       "/onboarding?step=about&next=%2Fplan",
     );
+    // /register's landing: step 1, saying once that a verification code was e-mailed.
+    expect(routes.onboarding("about", { verifySent: true })).toBe(
+      "/onboarding?step=about&verify=sent",
+    );
+    expect(routes.onboarding("about", { verifySent: false })).toBe("/onboarding?step=about");
     expect(parseOnboardingStep(["interests", "about"])).toBe("interests");
     expect(parseOnboardingStep("finish")).toBeNull();
   });
