@@ -11,6 +11,7 @@ import { unlistedPrograms } from "@/lib/unlisted-programs";
 import { CAREERS } from "@/server/content/careers";
 import { getDb } from "@/server/db";
 import { officialProgramNames } from "@/server/programs";
+import { compareOfferingNames } from "@/server/programs/names";
 
 /**
  * /profile against the real session, profile and programs code (in-memory MongoDB, fixtures mode): the loader's
@@ -88,11 +89,17 @@ describe("loadProfilePage", () => {
       ...(await officialProgramNames("major")),
       ...unlistedPrograms("major").map((program) => program.name),
     ]);
+    // Minors and interdisciplinary minors in one list by subject (Data Science after Dance), then the unlisted.
     expect(data.minors).toEqual([
-      ...(await officialProgramNames("minor")),
-      ...(await officialProgramNames("interdisciplinary-minor")),
+      ...[
+        ...(await officialProgramNames("minor")),
+        ...(await officialProgramNames("interdisciplinary-minor")),
+      ].sort(compareOfferingNames),
       ...unlistedPrograms("minor").map((program) => program.name),
     ]);
+    expect(data.minors.indexOf("Interdisciplinary Minor in Data Science")).toBe(
+      data.minors.indexOf("Minor in Dance") + 1,
+    );
     expect(data.careers).toEqual(
       CAREERS.map(({ slug, name, cluster }) => ({ slug, name, cluster })),
     );

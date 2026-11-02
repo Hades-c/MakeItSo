@@ -42,6 +42,29 @@ export function offeringName(label: string, subject: string, degree: string | nu
   return `${label} in ${subject}${degree ? ` (${degree} Degree)` : ""}`;
 }
 
+/** The subject of an official offering name: "Interdisciplinary Minor in Data Science" → "Data Science". */
+export function offeringSubject(name: string): string | null {
+  const match =
+    /^(?:interdisciplinary )?(?:major|minor|concentration|program) in (.+?)(?: \([^)]*\))?$/i.exec(
+      name.trim(),
+    );
+  return match ? match[1]! : null;
+}
+
+/**
+ * The order offering names are listed in (the onboarding and profile pickers, the AI enums): by subject, then by
+ * name. Sorting by the whole name put every "Interdisciplinary Minor in …" after "Minor in Theatre" and the
+ * interdisciplinary Environmental Studies major before "Major in Africana Studies", so a student looking for Data
+ * Science between Dance and Economics did not find it.
+ */
+export function compareOfferingNames(a: string, b: string): number {
+  const subject = (name: string) => offeringSubject(name) ?? name;
+  return (
+    subject(a).localeCompare(subject(b), "en", { sensitivity: "base" }) ||
+    a.localeCompare(b, "en", { sensitivity: "base" })
+  );
+}
+
 /** The kind of offering a name asks for: "… minor" means a minor or an interdisciplinary minor. */
 export type NameFamily = "major" | "minor" | "concentration";
 

@@ -96,6 +96,15 @@ export const UpstreamSectionSchema = z.looseObject({
   notes: z.array(z.looseObject({ code: text, description: text })).nullish(),
   cross_listings: z.array(ListingRefSchema).nullish(),
   cross_postings: z.array(z.string()).nullish(),
+  /**
+   * The departments the section is listed or posted under, with their names: the only place some cross-posting
+   * codes are named ("INEU" Neuroscience, "DIG" Digital Studies, and "IDAT" Data Science before 2024 are not on the
+   * filters endpoint). Names only, so a malformed list reads as none instead of dropping the section.
+   */
+  departments: z
+    .array(z.looseObject({ code: z.string(), description: text }))
+    .nullish()
+    .catch(null),
   reg_fors: z.array(ListingRefSchema).nullish(),
   term: z.looseObject({ code: idLike }).nullish(),
 });

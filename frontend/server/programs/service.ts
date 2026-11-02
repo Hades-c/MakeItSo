@@ -23,7 +23,7 @@ import {
   SYNC_DETAIL_CONCURRENCY,
 } from "@/server/programs/catalog-info";
 import { cleanText, MISSING_COURSE } from "@/server/programs/html";
-import { matchProgramName, programKey } from "@/server/programs/names";
+import { compareOfferingNames, matchProgramName, programKey } from "@/server/programs/names";
 import {
   type ParsedSection,
   parseProgramDetail,
@@ -186,7 +186,7 @@ export function listProgramsFrom(
   return out;
 }
 
-/** Sorted, distinct official names of the given kinds. */
+/** Distinct official names of the given kinds, by subject (compareOfferingNames). */
 export function namesOf(
   rows: readonly CatalogRow[],
   kinds: readonly ProgramOfferingKind[],
@@ -196,7 +196,7 @@ export function namesOf(
   for (const row of rows) {
     for (const offering of row.offerings) if (wanted.has(offering.kind)) names.add(offering.name);
   }
-  return [...names].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+  return [...names].sort(compareOfferingNames);
 }
 
 export interface ProgramMatch {

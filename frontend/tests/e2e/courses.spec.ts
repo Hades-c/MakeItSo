@@ -274,6 +274,34 @@ test("no sideways scroll at 360px on the pages with the longest upstream text", 
   }
 });
 
+test("the Department filter lists the interdisciplinary programs, cross-posted courses included", async ({
+  page,
+  request,
+}) => {
+  await newSignedInAccount(page, request, "e2e-courses-dept");
+  await page.goto("/courses?term=202602");
+  const department = page.getByLabel("Department");
+  const options = await department.locator("option").allTextContents();
+  // Data Science has its own code; Neuroscience and Digital Studies exist only as cross-postings, which the
+  // upstream filters list leaves out. All three sit in name order.
+  const dance = options.indexOf("Dance (DAN)");
+  expect(options.slice(dance, dance + 3)).toEqual([
+    "Dance (DAN)",
+    "Data Science (DAT)",
+    "Digital Studies (DIG)",
+  ]);
+  expect(options).toContain("Neuroscience (INEU)");
+  await department.selectOption("INEU");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page).toHaveURL(/dept=INEU/);
+  await expect(page.getByTestId("results-count")).toHaveText(/^\d+ courses in Spring 2027$/);
+  await expect(page.getByTestId("active-filters")).toContainText("Neuroscience");
+
+  // Fall 2022: Data Science was a cross-posting only (IDAT) then.
+  await page.goto("/courses?term=202201");
+  expect(await department.locator("option").allTextContents()).toContain("Data Science (IDAT)");
+});
+
 test("a past term MakeItSo keeps no schedule for says so", async ({ page, request }) => {
   await newSignedInAccount(page, request, "e2e-courses-past");
   await page.goto("/courses?term=202102");

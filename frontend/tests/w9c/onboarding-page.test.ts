@@ -18,6 +18,7 @@ import { AddPlanItemBodySchema } from "@/lib/api/plan";
 import { unlistedPrograms } from "@/lib/unlisted-programs";
 import { CAREERS } from "@/server/content/careers";
 import { officialProgramNames } from "@/server/programs";
+import { compareOfferingNames } from "@/server/programs/names";
 import { addItem, getPlan, getProgress, updateItem } from "@/server/plan";
 import { getProfile, updateProfile } from "@/server/auth";
 
@@ -94,9 +95,12 @@ describe("loadOnboarding", () => {
       ...unlistedPrograms("major").map((program) => program.name),
     ]);
     expect(data.majors).not.toContain("Undecided");
+    // Minors and interdisciplinary minors in one list by subject, then the unlisted.
     expect(data.minors).toEqual([
-      ...(await officialProgramNames("minor")),
-      ...(await officialProgramNames("interdisciplinary-minor")),
+      ...[
+        ...(await officialProgramNames("minor")),
+        ...(await officialProgramNames("interdisciplinary-minor")),
+      ].sort(compareOfferingNames),
       ...unlistedPrograms("minor").map((program) => program.name),
     ]);
     expect(data.careers).toEqual(

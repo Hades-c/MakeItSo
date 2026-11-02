@@ -206,6 +206,42 @@ test("a new student completes every step, accessibly, and lands on Today", async
   expect(errors).toEqual([]);
 });
 
+test("the major and minor pickers list interdisciplinary programs by subject", async ({
+  page,
+  request,
+}) => {
+  await newStudent(page, request, "e2e-onboarding-minors");
+  await page.goto("/onboarding");
+  await page.getByRole("button", { name: "Add a minor" }).click();
+  const minors = await page
+    .getByLabel("Minor", { exact: true })
+    .locator("option")
+    .allTextContents();
+  // Not after "Minor in Theatre": Data Science between Dance and Digital Studies, Neuroscience after Music.
+  const dance = minors.indexOf("Minor in Dance");
+  expect(minors.slice(dance, dance + 3)).toEqual([
+    "Minor in Dance",
+    "Interdisciplinary Minor in Data Science",
+    "Interdisciplinary Minor in Digital Studies",
+  ]);
+  expect(minors[minors.indexOf("Minor in Music") + 1]).toBe(
+    "Interdisciplinary Minor in Neuroscience",
+  );
+  const majors = await page
+    .getByLabel("Major", { exact: true })
+    .locator("option")
+    .allTextContents();
+  expect(majors[majors.indexOf("Major in English (A.B. Degree)") + 1]).toBe(
+    "Interdisciplinary Major in Environmental Studies (B.A. or B.S. Degree)",
+  );
+  await page
+    .getByLabel("Minor", { exact: true })
+    .selectOption("Interdisciplinary Minor in Data Science");
+  await expect(page.getByLabel("Minor", { exact: true })).toHaveValue(
+    "Interdisciplinary Minor in Data Science",
+  );
+});
+
 test("onboarding resumes where the student stopped, and every later step can be skipped", async ({
   page,
   request,
