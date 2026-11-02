@@ -1,6 +1,6 @@
 import "server-only";
 import mongoose from "mongoose";
-import type { CheckInboxResponse } from "@/lib/api/account";
+import type { CheckInboxResponse, PasswordResetResult } from "@/lib/api/account";
 import User from "@/models/User";
 import { eraseAccountData } from "@/server/account/erasers";
 import {
@@ -51,7 +51,8 @@ import { ApiError } from "@/server/http/errors";
  *   - A pending new sign-up (emailVerifiedAt stored as null, not legacy) may have been started by someone else
  *     with this address. The reset starts it fresh: its data is erased (every account-data eraser), the profile,
  *     consent, 18+ attestation and onboarding are cleared, and the name is reset (from the address), all in the
- *     same atomic update that verifies it. The inbox owner never inherits what the other person set up.
+ *     same atomic update that verifies it. The inbox owner never inherits what the other person set up. The reset
+ *     answers `startedFresh: true`, and /forgot-password continues into set-up, as /register does for a new account.
  *   - A legacy account that was never verified keeps its data (it predates the rewrite and is usually the
  *     student's own), but AI consent and the 18+ attestation are cleared when the reset verifies it: they must be
  *     given by the verified owner.
@@ -138,13 +139,16 @@ function badCode(): ApiError {
   ]);
 }
 
-/** Set the new password; for a pending sign-up, as a fresh start (see the module comment). */
+/**
+ * Set the new password; for a pending sign-up, as a fresh start (see the module comment). True when it was one:
+ * the account is then as new as a registration's, and the reset page takes the student straight to setting it up.
+ */
 async function applyReset(
   userId: mongoose.Types.ObjectId,
   codeEmail: string,
   passwordHash: string,
   at: Date,
-): Promise<void> {
+): Promise<boolean> {
   const unset = Object.fromEntries(PENDING_SIGNUP_RESET_FIELDS.map((field) => [field, ""]));
   const takenOver = await User.findOneAndUpdate(
     {
@@ -176,7 +180,7 @@ async function applyReset(
     } catch (error) {
       console.error("[auth] could not erase a taken-over sign-up's data:", error);
     }
-    return;
+    return true;
   }
   await User.updateOne(
     { _id: userId },
@@ -187,13 +191,14 @@ async function applyReset(
     { _id: userId, email: codeEmail, emailVerifiedAt: trusted({ $not: { $type: "date" } }) },
     { $set: { emailVerifiedAt: at }, $unset: { aiConsentAt: "", adultAttestedAt: "" } },
   );
+  return false;
 }
 
 export async function confirmPasswordReset(
   email: string,
   code: string,
   newPassword: string,
-): Promise<void> {
+): Promise<PasswordResetResult> {
   const at = now();
   if (!getMailer(() => at)) throw new ApiError(503, "unavailable", RESET_UNAVAILABLE_MESSAGE);
   // The policy does not depend on the account, so it is checked first, for every request.
@@ -211,8 +216,9 @@ export async function confirmPasswordReset(
   const check = await consumeCode(userId, "reset-password", code, at);
   if (!user || !check.ok || check.email !== user.email) throw badCode();
 
-  await applyReset(user._id, check.email, passwordHash, at);
+  const startedFresh = await applyReset(user._id, check.email, passwordHash, at);
   await clearLoginFailures(user.email);
+  return { startedFresh };
 }
 
 function badLink(): ApiError {
@@ -223,14 +229,15 @@ function badLink(): ApiError {
 
 /**
  * The e-mailed link: its token + the new password. Returns the account's address (the page signs the student in
- * with it). The token is the proof, so there is no address to enumerate: a link that does not open a live reset
- * is a 400 on `token`, a weak password a 400 on `newPassword` that leaves the link usable. Neither the code's
- * attempts nor the daily wrong-code budget apply (see the module comment).
+ * with it) and, like confirmPasswordReset, whether the reset started a pending sign-up fresh. The token is the
+ * proof, so there is no address to enumerate: a link that does not open a live reset is a 400 on `token`, a weak
+ * password a 400 on `newPassword` that leaves the link usable. Neither the code's attempts nor the daily
+ * wrong-code budget apply (see the module comment).
  */
 export async function confirmPasswordResetLink(
   token: string,
   newPassword: string,
-): Promise<{ email: string }> {
+): Promise<PasswordResetResult & { email: string }> {
   const at = now();
   if (!getMailer(() => at)) throw new ApiError(503, "unavailable", RESET_UNAVAILABLE_MESSAGE);
   const link = await findResetLink(token, at);
@@ -245,7 +252,7 @@ export async function confirmPasswordResetLink(
   }
   const passwordHash = await hashPassword(newPassword);
   if (!(await consumeResetLink(link, at))) throw badLink();
-  await applyReset(user._id, link.email, passwordHash, at);
+  const startedFresh = await applyReset(user._id, link.email, passwordHash, at);
   await clearLoginFailures(user.email);
-  return { email: user.email };
+  return { email: user.email, startedFresh };
 }

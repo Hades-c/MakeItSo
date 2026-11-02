@@ -123,10 +123,18 @@ export const DeleteAccountBodySchema = z.object({ password: z.string().min(1).ma
 /** POST /api/auth/password-reset: always 202 (no account enumeration); 503 while no mail provider exists. */
 export const PasswordResetRequestBodySchema = z.object({ email: EmailSchema }).strict();
 
-/** POST /api/auth/password-reset/confirm: the code from the e-mail + the new password → 204. */
+/** POST /api/auth/password-reset/confirm: the code from the e-mail + the new password → 200 { startedFresh }. */
 export const PasswordResetConfirmBodySchema = z
   .object({ email: EmailSchema, code: VerificationCodeSchema, newPassword: PasswordSchema })
   .strict();
+
+/**
+ * What a successful reset (code or link) answers. `startedFresh`: the address held a pending sign-up, which the
+ * reset started fresh (server/auth/password-reset.ts), so the account is as new as a registration's and the page
+ * continues into set-up (/onboarding?step=about) instead of Today. Only the inbox owner gets this answer.
+ */
+export const PasswordResetResultSchema = z.object({ startedFresh: z.boolean() });
+export type PasswordResetResult = z.infer<typeof PasswordResetResultSchema>;
 
 /**
  * POST /api/auth/password-reset/link: the token of the e-mailed reset link ("<userId>.<secret>", from the
@@ -142,7 +150,9 @@ export const ResetTokenSchema = z
 export const PasswordResetLinkBodySchema = z
   .object({ token: ResetTokenSchema, newPassword: PasswordSchema })
   .strict();
-export const PasswordResetLinkResponseSchema = z.object({ email: EmailSchema });
+export const PasswordResetLinkResponseSchema = PasswordResetResultSchema.extend({
+  email: EmailSchema,
+});
 
 /**
  * GET /api/auth/test-mailbox?email= (FIXTURES ONLY: EXTERNAL_MODE=fixtures + MAIL_PROVIDER=console, never on
@@ -241,15 +251,18 @@ export const accountApi = {
     response: CheckInboxResponseSchema,
     status: 202,
   }),
-  /** POST /api/auth/password-reset/confirm: address + code + new password → 204 (signs out other sessions). */
+  /**
+   * POST /api/auth/password-reset/confirm: address + code + new password → 200 { startedFresh } (signs out other
+   * sessions).
+   */
   confirmPasswordReset: apiRoute({
     method: "POST",
     path: "/api/auth/password-reset/confirm",
     auth: "public",
     body: PasswordResetConfirmBodySchema,
-    response: null,
+    response: PasswordResetResultSchema,
   }),
-  /** POST /api/auth/password-reset/link: the e-mailed link's token + new password → 200 { email }. */
+  /** POST /api/auth/password-reset/link: the e-mailed link's token + new password → 200 { email, startedFresh }. */
   confirmPasswordResetLink: apiRoute({
     method: "POST",
     path: "/api/auth/password-reset/link",

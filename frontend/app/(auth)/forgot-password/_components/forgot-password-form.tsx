@@ -55,6 +55,15 @@ function errorsFrom(caught: unknown): Errors {
 }
 
 /**
+ * Where a reset that signed the student in goes: Today, or straight to setting the account up when the reset started
+ * a pending sign-up fresh (its profile and set-up were cleared: as new as a registration's, so it goes where
+ * /register sends a new account).
+ */
+function afterReset(startedFresh: boolean): string {
+  return startedFresh ? routes.onboarding("about") : routes.today();
+}
+
+/**
  * Step 1: the address → an e-mail with a reset link and a code. Step 2: code + new password → signed in. Opened
  * from the e-mailed link (/forgot-password#token=…), it asks only for the new password; the token is read from the
  * fragment and removed from the address bar at once (kept out of the history).
@@ -92,15 +101,16 @@ export function ForgotPasswordForm() {
     setErrors({});
     setLoading(true);
     try {
-      const { email: account } = await callApi(accountEndpoints.confirmPasswordResetLink, {
-        body: { token, newPassword },
-      });
+      const { email: account, startedFresh } = await callApi(
+        accountEndpoints.confirmPasswordResetLink,
+        { body: { token, newPassword } },
+      );
       const result = await signIn("credentials", {
         email: account,
         password: newPassword,
         redirect: false,
       });
-      router.replace(result && !result.error ? routes.today() : routes.login());
+      router.replace(result && !result.error ? afterReset(startedFresh) : routes.login());
       router.refresh();
       return;
     } catch (caught) {
@@ -141,11 +151,11 @@ export function ForgotPasswordForm() {
     if (!codeCheck.success || !passwordCheck.success) return;
     setLoading(true);
     try {
-      await callApi(accountEndpoints.confirmPasswordReset, {
+      const { startedFresh } = await callApi(accountEndpoints.confirmPasswordReset, {
         body: { email, code: codeCheck.data, newPassword },
       });
       const result = await signIn("credentials", { email, password: newPassword, redirect: false });
-      router.replace(result && !result.error ? routes.today() : routes.login());
+      router.replace(result && !result.error ? afterReset(startedFresh) : routes.login());
       router.refresh();
       return;
     } catch (caught) {

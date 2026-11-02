@@ -134,7 +134,17 @@ describe("lib/api route contracts (PLAN §4.1.16)", () => {
     expect(
       accountApi.confirmPasswordReset.body.safeParse({ ...reset, code: "12345" }).success,
     ).toBe(false);
-    expect(accountApi.confirmPasswordReset.response).toBeNull();
+    // 200 { startedFresh }: whether the reset started a pending sign-up fresh (the page then opens set-up).
+    expect(accountApi.confirmPasswordReset.response?.parse({ startedFresh: true })).toEqual({
+      startedFresh: true,
+    });
+    expect(accountApi.confirmPasswordReset.response?.safeParse({}).success).toBe(false);
+    expect(
+      accountApi.confirmPasswordResetLink.response?.parse({
+        email: "casey@davidson.edu",
+        startedFresh: false,
+      }),
+    ).toEqual({ email: "casey@davidson.edu", startedFresh: false });
     // Legacy accounts may reset too: any address, not only @davidson.edu.
     expect(accountApi.requestPasswordReset.body.safeParse({ email: "a@gmail.com" }).success).toBe(
       true,

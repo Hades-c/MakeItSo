@@ -351,7 +351,7 @@ describe("ForgotPasswordForm", () => {
           message: "If an account uses that address, we sent it a reset code.",
         },
       ],
-      [204, null],
+      [200, { startedFresh: false }],
     );
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
     render(<ForgotPasswordForm />);
@@ -366,6 +366,23 @@ describe("ForgotPasswordForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/today"));
     expect(calls[1]?.url).toBe("/api/auth/password-reset/confirm");
+  });
+
+  it("continues into set-up when the reset started a pending sign-up fresh", async () => {
+    stubFetch(
+      [202, { status: "check-inbox", message: "If an account uses that address, ..." }],
+      [200, { startedFresh: true }],
+    );
+    nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
+    render(<ForgotPasswordForm />);
+    await userEvent.type(screen.getByLabelText("Email"), "casey@davidson.edu");
+    await userEvent.click(screen.getByRole("button", { name: "Send reset e-mail" }));
+    await userEvent.type(await screen.findByLabelText("Reset code"), "123456");
+    await userEvent.type(screen.getByLabelText("New password"), "brand new passphrase");
+    await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
+    // The account is as new as a registration's: it goes where /register sends one (no code was sent: the
+    // reset verified the address).
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/onboarding?step=about"));
   });
 
   it("announces a wrong reset code in an alert and focuses the code field (review regression)", async () => {
@@ -402,7 +419,7 @@ describe("ForgotPasswordForm opened from the e-mailed link", () => {
 
   it("asks only for the new password, drops the token from the address, resets and signs in", async () => {
     window.history.replaceState(null, "", `/forgot-password#token=${TOKEN}`);
-    stubFetch([200, { email: "casey@davidson.edu" }]);
+    stubFetch([200, { email: "casey@davidson.edu", startedFresh: false }]);
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
     render(<ForgotPasswordForm />);
     expect(
@@ -425,6 +442,16 @@ describe("ForgotPasswordForm opened from the e-mailed link", () => {
       password: "brand new passphrase",
       redirect: false,
     });
+  });
+
+  it("continues into set-up when the link's reset started a pending sign-up fresh", async () => {
+    window.history.replaceState(null, "", `/forgot-password#token=${TOKEN}`);
+    stubFetch([200, { email: "casey@davidson.edu", startedFresh: true }]);
+    nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
+    render(<ForgotPasswordForm />);
+    await userEvent.type(await screen.findByLabelText("New password"), "brand new passphrase");
+    await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/onboarding?step=about"));
   });
 
   it("says when the link no longer works and offers a new one", async () => {
