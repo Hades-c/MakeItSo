@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { PROGRAM_SOURCES } from "@/lib/types/content";
 import { PlanDraftSchema } from "@/lib/types/plan";
 import {
   AI_FAILURE_KINDS,
@@ -37,6 +38,7 @@ export const AI_FEATURES = [
   "cold-email",
   "professor-summary",
   "syllabus-deadlines",
+  "career-summers",
 ] as const;
 export const AiFeatureSchema = z.enum(AI_FEATURES);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
@@ -172,6 +174,38 @@ export const CareerPlanSchema = z.object({
   experiences: z.array(z.object({ title: z.string(), when: z.string(), why: z.string() })),
 });
 export type CareerPlan = z.infer<typeof CareerPlanSchema>;
+
+/**
+ * A summer option of the career pages' curated catalog, as the AI summer picks show it. Every field is the
+ * CONTENT's (server/content: the career's Summers entries and the curated office programs), attached by the server
+ * to the picked id; none of it is model text. `onThisPage` is true for an entry of this path's own Summers card.
+ */
+export const SummerOptionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  url: z.string(),
+  audience: z.string().nullable(),
+  timing: z.object({ label: z.enum(["Deadlines", "Timing"]), text: z.string() }).nullable(),
+  source: z.enum(PROGRAM_SOURCES).nullable(),
+  officeName: z.string().nullable(),
+  by: z.string().nullable(),
+  verifiedAt: IsoDateSchema,
+  onThisPage: z.boolean(),
+});
+export type SummerOption = z.infer<typeof SummerOptionSchema>;
+
+/**
+ * AI summer picks for a career path (personal). The model chose `option` by id and wrote only `outlook` (what kinds
+ * of summer fit the student's year), each pick's `why` and its optional `nextStep`; no picks means it found
+ * nothing that fits well, which the panel says instead of padding.
+ */
+export const CareerSummersSchema = z.object({
+  outlook: z.string(),
+  picks: z.array(
+    z.object({ option: SummerOptionSchema, why: z.string(), nextStep: z.string().nullable() }),
+  ),
+});
+export type CareerSummers = z.infer<typeof CareerSummersSchema>;
 
 /** Cold email to a contactable alumnus. The body contains the literal `{{studentName}}`, filled in the browser. */
 export const ColdEmailSchema = z.object({

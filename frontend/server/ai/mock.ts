@@ -61,6 +61,8 @@ export const MOCK_AI_SCENARIOS = [
   "forbidden_claims",
   "links",
   "quote_reviews",
+  // summer picks: nothing in the catalog fits (an empty list with an outlook)
+  "nothing_fits",
 ] as const;
 export type MockAiScenario = (typeof MOCK_AI_SCENARIOS)[number];
 
@@ -361,6 +363,50 @@ function careerPlan(data: Json, scenario: MockAiScenario): unknown {
   };
 }
 
+const SUMMER_OUTLOOK: Record<string, string> = {
+  "before-first-year":
+    "Before your first year, a summer to explore is plenty: the options below are open to students just starting out.",
+  "after-first-year":
+    "After your first year, research programs for early students and funded exploration fit well; many internship programs here look for students further along.",
+  "after-sophomore-year":
+    "After your sophomore year, research and your first internship both fit, and grants can fund an unpaid one.",
+  "after-junior-year":
+    "After your junior year, internships and programs for advanced students fit best.",
+  "after-graduation":
+    "Your coming summer falls after graduation, so most programs here, which are for current students, may not fit.",
+};
+
+/** Up to three options, this path's first, then programs for any path; the outlook follows the coming summer. */
+function careerSummers(data: Json, scenario: MockAiScenario): unknown {
+  const catalog = obj(data.catalog_data);
+  const careerName = str(obj(catalog.career).name, "this path");
+  const options = arr(catalog.options).map(obj);
+  const stage = str(obj(obj(data.student_profile).comingSummer).stage, "after-first-year");
+  const outlook = SUMMER_OUTLOOK[stage] ?? SUMMER_OUTLOOK["after-first-year"]!;
+  if (scenario === "nothing_fits") {
+    return { outlook: `${outlook} Nothing in this list fits you well right now.`, picks: [] };
+  }
+  const own = options.filter((o) => o.thisPath === true);
+  const anyPath = options.filter((o) => arr(o.listedFor).length === 0);
+  const chosen = [...own.slice(0, 2), ...anyPath.slice(0, own.length >= 2 ? 1 : 3 - own.length)];
+  const picks = chosen.map((o) => ({
+    id: str(o.id),
+    why:
+      o.thisPath === true
+        ? `It is on the ${careerName} page and fits your interests.`
+        : `It can support a summer on the ${careerName} path.`,
+    nextStep: `Read the ${str(o.name)} page.`,
+  }));
+  const fake = (n: number) => ({
+    id: `outside:invented-program-${n}`,
+    why: "A program that does not exist.",
+    nextStep: "",
+  });
+  if (scenario === "ungrounded") return { outlook, picks: [fake(1), fake(2), fake(3)] };
+  if (scenario === "one_ungrounded") return { outlook, picks: [...picks, fake(1)] };
+  return { outlook, picks };
+}
+
 function coldEmail(data: Json): unknown {
   const catalog = obj(data.catalog_data);
   const alumnus = obj(catalog.alumnus);
@@ -454,6 +500,8 @@ function answerFor(feature: AiFeature, data: Json, scenario: MockAiScenario): un
       return professorSummary(data, scenario);
     case "syllabus-deadlines":
       return syllabusDeadlines(data, scenario);
+    case "career-summers":
+      return careerSummers(data, scenario);
   }
 }
 

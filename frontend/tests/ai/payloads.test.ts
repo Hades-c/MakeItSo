@@ -7,11 +7,13 @@ import {
   alumnusPayload,
   careerPayload,
   careerProfilePayload,
+  careerSummersProfilePayload,
   courseAboutPayload,
   studentPlanPayload,
   studentProfilePayload,
 } from "@/server/ai/payloads";
 import * as careerPlan from "@/server/ai/prompts/career-plan";
+import * as careerSummers from "@/server/ai/prompts/career-summers";
 import * as coldEmail from "@/server/ai/prompts/cold-email";
 import * as courseAbout from "@/server/ai/prompts/course-about";
 import * as planSuggestions from "@/server/ai/prompts/plan-suggestions";
@@ -68,6 +70,32 @@ describe("student profile", () => {
       ...studentProfilePayload(PROFILE, OFFICIAL),
       aspirations: ["grad-school"],
     });
+  });
+});
+
+describe("summer picks profile", () => {
+  it("adds the coming summer, derived from the standing; from June 1 it is next year's", () => {
+    expect(careerSummersProfilePayload(PROFILE, OFFICIAL, "2026-09-30")).toEqual({
+      ...careerProfilePayload(PROFILE, OFFICIAL),
+      comingSummer: { year: 2027, stage: "after-sophomore-year" },
+    });
+    expect(careerSummersProfilePayload(PROFILE, OFFICIAL, "2027-05-31").comingSummer.year).toBe(
+      2027,
+    );
+    expect(careerSummersProfilePayload(PROFILE, OFFICIAL, "2027-06-01").comingSummer.year).toBe(
+      2028,
+    );
+    const stage = (standing: "incoming" | "first-year" | "junior" | "senior" | "graduated") =>
+      careerSummersProfilePayload(
+        { ...PROFILE, standing: { standing, estimated: true } },
+        OFFICIAL,
+        "2026-09-30",
+      ).comingSummer.stage;
+    expect(stage("incoming")).toBe("before-first-year");
+    expect(stage("first-year")).toBe("after-first-year");
+    expect(stage("junior")).toBe("after-junior-year");
+    expect(stage("senior")).toBe("after-graduation");
+    expect(stage("graduated")).toBe("after-graduation");
   });
 });
 
@@ -179,6 +207,7 @@ describe("prompts", () => {
     courseAbout,
     planSuggestions,
     careerPlan,
+    careerSummers,
     coldEmail,
     professorSummary,
     syllabusDeadlines,

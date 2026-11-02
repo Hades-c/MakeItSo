@@ -68,6 +68,7 @@ describe("lib/api route contracts (PLAN §4.1.16)", () => {
       "courseAbout",
       "planSuggestions",
       "careerPlan",
+      "careerSummers",
       "coldEmail",
       "professorSummary",
     ];
