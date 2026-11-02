@@ -155,13 +155,13 @@ describe("ProfilePage", () => {
     // Interests: every career path and every goal is a chip.
     expect(html.match(/aria-pressed="(true|false)"/g)).toHaveLength(CAREERS.length + GOALS.length);
     expect(html).toContain("Goals at Davidson");
-    // What the choices feed, truthfully: interests the AI plan suggestions, career plans and cold e-mails
-    // (server/ai/payloads.ts); goals only the last two.
+    // What the choices feed, truthfully: interests the AI plan suggestions, career plans, summer picks and cold
+    // e-mails (server/ai/payloads.ts); goals only the last three.
     expect(html).toContain(
-      "with AI features on, plan suggestions, career plans and cold-email drafts start from these",
+      "with AI features on, plan suggestions, career plans, summer picks and cold-email drafts start from these",
     );
     expect(html.replace(/\s+/g, " ")).toContain(
-      "With AI features on, career plans and cold-email drafts use these too.",
+      "With AI features on, career plans, summer picks and cold-email drafts use these too.",
     );
     // AI: off, with the notice and the attestation.
     expect(html).toContain("AI features stay off until you turn them on.");
