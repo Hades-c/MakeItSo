@@ -169,7 +169,7 @@ export function optionPayloads(catalog: readonly SummerCatalogEntry[]): SummerOp
   return catalog.map((entry) => ({
     id: entry.option.id,
     name: entry.option.name,
-    runBy: entry.runBy,
+    runBy: entry.option.runBy,
     about: entry.about,
     ...(entry.option.audience ? { for: entry.option.audience } : {}),
     ...(entry.option.timing

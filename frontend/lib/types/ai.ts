@@ -186,9 +186,10 @@ export const SummerOptionSchema = z.object({
   url: z.string(),
   audience: z.string().nullable(),
   timing: z.object({ label: z.enum(["Deadlines", "Timing"]), text: z.string() }).nullable(),
+  /** The curated source of an office program (its rows' data-source); null for an outside program. */
   source: z.enum(PROGRAM_SOURCES).nullable(),
-  officeName: z.string().nullable(),
-  by: z.string().nullable(),
+  /** Who runs it, as the row's "via" note says it ("Matthews Center", "National Science Foundation"). */
+  runBy: z.string(),
   verifiedAt: IsoDateSchema,
   onThisPage: z.boolean(),
 });

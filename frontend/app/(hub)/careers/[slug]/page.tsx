@@ -18,6 +18,7 @@ import { OnCampusCard, SummersCard } from "../_components/career-activities";
 import { CareerAlumni } from "../_components/career-alumni";
 import { CareerCourses } from "../_components/career-courses";
 import { CareerAiPanels } from "./_components/ai-panels";
+import { CareerAiSummers } from "./_components/ai-summers-panel";
 import { CareerPrograms } from "../_components/career-programs";
 import {
   DavidsonResourcesCard,
@@ -36,7 +37,7 @@ type Params = Promise<{ slug: string }>;
  *   live availability per term and Add to plan · related departments and official Acalog programs · Davidson
  *   resources and office programs (amounts and deadlines as published, tagged) · Handshake (base URL + search words)
  *   · summers (office programs by slug, outside programs) and student organizations on campus (WildcatSync), each
- *   card left out when the path has none · verified alumni (verified @davidson.edu + FEATURE_ALUMNI only) · outside resources.
+ *   card left out when the path has none · the AI summer picks (signed-in students, AI on) · verified alumni (verified @davidson.edu + FEATURE_ALUMNI only) · outside resources.
  *
  * The page itself only resolves the career (so an unknown slug answers 404 before anything streams); the parts that
  * read the catalog, the programs, the plan or the session render in their own Suspense boundaries. Behind
@@ -133,6 +134,11 @@ export default async function CareerPage({ params }: { params: Params }) {
             <OnCampusCard entries={onCampus} />
           </>
         )}
+
+        {/* AI summer picks: signed-in students only, gated per AI_ENABLED and the account, like the panels below. */}
+        <Suspense fallback={null}>
+          <CareerAiSummers career={career} />
+        </Suspense>
 
         <Suspense fallback={<CardSkeleton className="h-48" />}>
           <CareerAlumni career={career} />

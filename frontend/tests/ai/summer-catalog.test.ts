@@ -66,7 +66,7 @@ describe("summerCatalog", () => {
       (e) => e.option.id === "program:summer-internship-grants-common-application",
     );
     expect(grants?.listedFor).toEqual([]);
-    expect(grants?.runBy).toMatch(/Matthews Center/);
+    expect(grants?.option.runBy).toMatch(/Matthews Center/);
     expect(JSON.stringify(optionPayloads(catalog))).not.toMatch(/https?:|www\./);
   });
 

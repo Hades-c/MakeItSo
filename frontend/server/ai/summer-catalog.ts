@@ -28,8 +28,6 @@ export interface SummerCatalogEntry {
   option: SummerOption;
   /** What the option is, for the model only (see the module comment). */
   about: string;
-  /** Who runs it, in the words of the row's "via" note: the source's label, the office's name or the organization. */
-  runBy: string;
   /** The published amount of an office program (null for outside programs and when none is published). */
   amount: string | null;
   /** Names of the career paths whose Summers card lists it (this path's included). */
@@ -61,8 +59,9 @@ function optionOf(view: SummerView, id: string, onThisPage: boolean): SummerOpti
     audience: view.audience,
     timing: view.timing,
     source: view.source,
-    officeName: view.officeName,
-    by: view.by,
+    // The row's "via" words, as the Summers card says them: the office's name beside DAVIDSON OFFICES, the
+    // source's label for the other curated sources, the organization for an outside program.
+    runBy: view.officeName ?? (view.source ? SOURCES[view.source].label : (view.by ?? view.name)),
     verifiedAt: view.verifiedAt,
     onThisPage,
   };
@@ -86,7 +85,6 @@ export function summerCatalog(
     const program = entry.kind === "program" ? getProgram(entry.program) : undefined;
     byId.set(id, {
       option: optionOf(view, id, onThisPage),
-      runBy: view.officeName ?? (view.source ? SOURCES[view.source].label : (view.by ?? view.name)),
       about: truncate(view.description, ABOUT_MAX),
       amount: program?.amount ?? null,
       listedFor: careerName ? [careerName] : [],

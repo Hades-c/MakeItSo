@@ -86,11 +86,8 @@ describe("summer picks profile", () => {
       2028,
     );
     const stage = (standing: "incoming" | "first-year" | "junior" | "senior" | "graduated") =>
-      careerSummersProfilePayload(
-        { ...PROFILE, standing: { standing, estimated: true } },
-        OFFICIAL,
-        "2026-09-30",
-      ).comingSummer.stage;
+      careerSummersProfilePayload({ ...PROFILE, standing: { standing } }, OFFICIAL, "2026-09-30")
+        .comingSummer.stage;
     expect(stage("incoming")).toBe("before-first-year");
     expect(stage("first-year")).toBe("after-first-year");
     expect(stage("junior")).toBe("after-junior-year");
