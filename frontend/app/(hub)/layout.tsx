@@ -36,10 +36,12 @@ import { getSourceStatuses } from "@/server/sync";
  *   or nothing while all are current. A source with no sync row at all has never been asked for (a fresh
  *   database: feeds sync on their first read), which is not a failure; Events says "not synced yet" itself.
  * - Verify banner: unverified @davidson.edu accounts while mail can be sent (server/auth verifyBannerFor).
- * - First run (PLAN §3): an account that has neither finished nor skipped onboarding (SessionUser.onboardedAt null)
- *   is sent to /onboarding?next=<the page it asked for>, and Skip setup or Finish continues to that page, so a deep
- *   link still arrives. Today (its "Finish setting up" nudge and summary are for exactly these accounts) and Profile
- *   (the same fields) stay open. Like requireUser, this runs when the hub layout renders: on a full page load and
+ * - First run (PLAN §3): a brand-new account does not start here. /register (and a password reset that starts a
+ *   pending sign-up fresh) sends it straight to set-up, /onboarding?step=about, and Skip setup or Finish then opens
+ *   Today. Later, an account that has neither finished nor skipped onboarding (SessionUser.onboardedAt null) is
+ *   sent to /onboarding?next=<the page it asked for>, and Skip setup or Finish continues to that page, so a deep
+ *   link still arrives. Today (its "Finish setting up" nudge and summary are for exactly these accounts: one that
+ *   left set-up, or an older account that never had it) and Profile (the same fields) stay open. Like requireUser, this runs when the hub layout renders: on a full page load and
  *   on entering the hub from outside it, not on soft navigations between hub pages (Next keeps the layout), so a
  *   student who chose to leave Today for Courses is not pulled back into setup.
  */

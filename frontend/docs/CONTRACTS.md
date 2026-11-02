@@ -175,9 +175,17 @@ termCode, text })`, `deleteSyllabus`, `getSyllabus`, `syllabusTerms()` (the curr
   alumni gate, and the AI gate while AI_ALLOW_UNVERIFIED is off) take a SessionUser, a lean User or a Profile. Who
   is verified for AI is decided by `server/ai/access.ts isAiVerified` only (see "AI wire format").
 - **First run**: `SessionUser.onboardedAt` (ISO or null; `isOnboarded(user)`: a SessionUser without the field
-  counts as onboarded). The hub layout sends an account with `onboardedAt` null to
-  `routes.onboarding(undefined, { next: <requested path> })`, except on `/today` (its setup nudge and "not
-  onboarded" summary are for these accounts) and `/profile`; `/onboarding` is outside the hub. Onboarding keeps
+  counts as onboarded). A new account goes straight to set-up ("Set up your account", `SETUP_TITLE`): the register
+  form signs it in and opens `routes.onboarding("about", { verifySent: mailAvailable })`
+  (`/onboarding?step=about&verify=sent`, or without `verify` when no mail was sent), and a password reset that
+  started a pending sign-up fresh (`startedFresh: true`) opens `/onboarding?step=about`. With `verify=sent`, step 1
+  says once, in one quiet line, that a verification code went to the address, with a link to
+  `/verify?next=<that step>` (where "Send a new code" is), and only while the address is unverified @davidson.edu
+  and mail is available. `/verify` without `next` continues into set-up for an account that has not finished it
+  (`routes.onboarding()` resumes; "Not now" goes there too), else to Today. Later, the hub layout sends an account
+  with `onboardedAt` null to `routes.onboarding(undefined, { next: <requested path> })`, except on `/today` (its
+  setup nudge and "not onboarded" summary are for these accounts: one that left set-up, or an older account) and
+  `/profile`; `/onboarding` is outside the hub. Onboarding keeps
   `?next=` (`onboardingNext`, same-origin app paths only) on its step links, and Skip setup / Finish go there
   instead of Today. Like `requireUser`, it runs when the hub layout renders (full loads, entering the hub), not on
   soft navigations between hub pages.
@@ -207,13 +215,13 @@ termCode, text })`, `deleteSyllabus`, `getSyllabus`, `syllabusTerms()` (the curr
   legacy account, never before a code was sent), so turning on a mail provider does NOT need
   `scripts/flag-legacy-accounts.ts` first. A password reset e-mails a **link** too
   (`/forgot-password#token=<userId>.<secret>`, 128 random bits stored as an HMAC next to the code, same 15 minutes,
-  works once, replaced by the next send; `POST /api/auth/password-reset/link` → `{ email }`): no guess budget
-  applies to it, so wrong codes from someone else never block the owner's reset, and once the codes are locked the
+  works once, replaced by the next send; `POST /api/auth/password-reset/link` → `{ email, startedFresh }`): no
+  guess budget applies to it, so wrong codes from someone else never block the owner's reset, and once the codes are locked the
   e-mail carries the link alone.
 - **Pages and routes**: `/login`, `/register`, `/verify`, `/forgot-password` (`routes.forgotPassword()`),
   `/privacy`; contracts in `lib/api/account.ts` (`register` and `requestPasswordReset` answer 202
-  `{status: "check-inbox", message}`, `confirmPasswordReset` 204, `confirmPasswordResetLink` 200, and the fixtures-only `testMailbox`, which is a
-  404 unless `EXTERNAL_MODE=fixtures` + `MAIL_PROVIDER=console` off Vercel) and `lib/api/profile.ts`; the AI-consent
+  `{status: "check-inbox", message}`, `confirmPasswordReset` 200 `{ startedFresh }`, `confirmPasswordResetLink` 200
+  `{ email, startedFresh }`, and the fixtures-only `testMailbox`, which is a 404 unless `EXTERNAL_MODE=fixtures` + `MAIL_PROVIDER=console` off Vercel) and `lib/api/profile.ts`; the AI-consent
   endpoint's spec is still `app/(auth)/_lib/contracts.ts authExtraApi`.
 
 ## Route auth modes (`defineRoute`)
