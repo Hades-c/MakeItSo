@@ -19,6 +19,8 @@ export interface VerifyFormProps {
   email: string;
   /** Where to go once verified (same-origin, checked on the server). */
   next: string;
+  /** Where "Not now" goes (default Today; set-up, for an account that has not finished it). */
+  later?: string;
   /**
    * A live code exists (sent, unused, unexpired). When false, nothing claims a code was sent: the primary action
    * is "Email me a code" and the code field appears once one is on its way.
@@ -36,7 +38,13 @@ function messageOf(error: unknown): string {
   return GENERIC_ERROR;
 }
 
-export function VerifyForm({ email, next, codeSent, notice = null }: VerifyFormProps) {
+export function VerifyForm({
+  email,
+  next,
+  later = routes.today(),
+  codeSent,
+  notice = null,
+}: VerifyFormProps) {
   const router = useRouter();
   const codeInput = useRef<HTMLInputElement>(null);
   const [sent, setSent] = useState(codeSent);
@@ -113,7 +121,7 @@ export function VerifyForm({ email, next, codeSent, notice = null }: VerifyFormP
       footer={
         <>
           Not now?{" "}
-          <Link href={routes.today()} className={STANDALONE_LINK}>
+          <Link href={later} className={STANDALONE_LINK}>
             Continue to MakeItSo
           </Link>
           <span className="mt-1 block text-xs text-fg-3">

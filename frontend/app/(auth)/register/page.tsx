@@ -10,8 +10,9 @@ import { RegisterForm, type ClassYearOption } from "./_components/register-form"
 export const metadata: Metadata = { title: "Create an account" };
 
 /**
- * /register (PLAN §1 "Sign-up", §3): new accounts are @davidson.edu only. Signed-in visitors go to /today. The
- * class-year choices are computed here from the server's "now" (the academic year rolls over on June 1, ET).
+ * /register (PLAN §1 "Sign-up", §3): new accounts are @davidson.edu only, and a new account goes straight to setting
+ * it up (/onboarding?step=about; RegisterForm). Signed-in visitors go to /today. The class-year choices are computed
+ * here from the server's "now" (the academic year rolls over on June 1, ET).
  */
 export default async function RegisterPage() {
   if (await signedInUserOrNull()) redirect(routes.today());

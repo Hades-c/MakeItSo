@@ -163,12 +163,16 @@ describe("RegisterForm", () => {
     await waitFor(() => expect(screen.getByLabelText("Full name")).toHaveFocus());
   });
 
-  it("registers, signs in and continues to /verify", async () => {
+  it("registers, signs in and goes straight to setting the account up, saying a code was sent", async () => {
     stubFetch([202, { status: "check-inbox", message: "Check your Davidson inbox." }]);
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
     render(<RegisterForm classYears={CLASS_YEARS} mailAvailable />);
     await fillRegister();
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/verify"));
+    // Owner's request (Eurekas): a new account opens set-up, About first; /verify waits (set-up links to it).
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith("/onboarding?step=about&verify=sent"),
+    );
+    expect(router.replace).toHaveBeenCalledTimes(1);
     expect(calls[0]?.url).toBe("/api/auth/register");
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
       name: "Casey Wildcat",
@@ -178,12 +182,12 @@ describe("RegisterForm", () => {
     });
   });
 
-  it("goes to /today when verification is unavailable", async () => {
+  it("goes straight to set-up without a code claim when verification is unavailable", async () => {
     stubFetch([202, { status: "check-inbox", message: "Sign in with your password." }]);
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
     render(<RegisterForm classYears={CLASS_YEARS} mailAvailable={false} />);
     await fillRegister();
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/today"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/onboarding?step=about"));
   });
 
   it("shows 'check your inbox' (never 'already registered') when signing in does not follow", async () => {
@@ -258,6 +262,11 @@ describe("VerifyForm", () => {
     stubFetch([200, { verified: true, emailVerifiedAt: "2026-09-30T16:00:00.000Z" }]);
     render(<VerifyForm email="casey@davidson.edu" next="/alumni" codeSent />);
     expect(screen.getByText("casey@davidson.edu")).toBeInTheDocument();
+    // "Not now" goes to Today unless the page says otherwise.
+    expect(screen.getByRole("link", { name: "Continue to MakeItSo" })).toHaveAttribute(
+      "href",
+      "/today",
+    );
     await userEvent.type(screen.getByLabelText("Verification code"), "123 456");
     await userEvent.click(screen.getByRole("button", { name: "Verify" }));
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/alumni"));
@@ -305,6 +314,21 @@ describe("VerifyForm", () => {
       "We sent a 6-digit code to legacy@davidson.edu",
     );
     expect(calls[0]?.url).toBe("/api/account/verify/resend");
+  });
+
+  it("sends 'Not now' back into set-up for an account still setting up", () => {
+    render(
+      <VerifyForm
+        email="casey@davidson.edu"
+        next="/onboarding?step=about"
+        later="/onboarding?step=about"
+        codeSent
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Continue to MakeItSo" })).toHaveAttribute(
+      "href",
+      "/onboarding?step=about",
+    );
   });
 
   it("checks the format before sending", async () => {

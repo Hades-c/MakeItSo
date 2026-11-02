@@ -89,9 +89,9 @@ function meeting(patch: Partial<Meeting> = {}): Meeting {
 describe("steps", () => {
   it("titles each step with its place in the flow (read by the route announcer)", () => {
     expect(stepTitle("classes", "Fall 2026")).toBe(
-      "Step 2 of 4: Your Fall 2026 classes · Get started",
+      "Step 2 of 4: Your Fall 2026 classes · Set up your account",
     );
-    expect(stepTitle("about", "Fall 2026")).toBe("Step 1 of 4: About you · Get started");
+    expect(stepTitle("about", "Fall 2026")).toBe("Step 1 of 4: About you · Set up your account");
   });
 
   it("has the four steps of PLAN §3 in order, goals folded into the last one", () => {
