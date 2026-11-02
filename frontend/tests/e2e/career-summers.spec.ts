@@ -16,9 +16,9 @@ import {
  * "Your AI summer picks" on /careers/[slug] (owner request 2026-11-02) against the production build with
  * AI_PROVIDER=mock and fixtures (server "now" 2026-09-30): the panel right after the Summers card, picks whose
  * names, pages and For / Timing lines are the Summers content's, the AI's words under the AI chip, an honest
- * outlook for a first-year and for a junior, a path with no summers of its own (sports-management), and the gate
- * for an account without AI. Desktop 1440 and phone 390, light and dark, plus a 360px pass; driven by the
- * keyboard so focus is checked to stay in the panel. With SUMMERS_SHOTS_DIR set, each state is saved there.
+ * outlook for a first-year and for a junior, a path with no summers of its own (sports-management), and an account
+ * without AI (no panel: the shared "AI for this path" notice says it once). Desktop 1440 and phone 390, light and
+ * dark, plus a 360px pass; driven by the keyboard so focus is checked to stay in the panel. With SUMMERS_SHOTS_DIR set, each state is saved there.
  */
 
 const PASSWORD = "career summers e2e password 3";
@@ -158,7 +158,9 @@ test("a junior on a path with no summers of its own gets Davidson programs for a
   expect(errors).toEqual([]);
 });
 
-test("without AI turned on, the panel says so in place of the button", async ({ page }) => {
+test("without AI turned on, the page says so once, in the AI for this path card", async ({
+  page,
+}) => {
   const errors = collectErrors(page);
   await aiStudent(page, "e2e-sum-off", "Casey Noconsent", {
     verified: true,
@@ -166,13 +168,16 @@ test("without AI turned on, the panel says so in place of the button", async ({ 
     password: PASSWORD,
   });
   expect((await page.goto("/careers/law"))?.status()).toBe(200);
-  const gate = page.getByTestId("ai-summers-gate");
+  // The summer picks share the career plan's gate, so only the shared card carries the notice.
+  await expect(page.getByRole("region", { name: /^AI for this path/ })).toBeVisible();
+  await expect(page.getByText("Turn on AI features first")).toHaveCount(1);
+  const gate = page.getByTestId("ai-shared-gate");
   await expect(gate).toContainText("Turn on AI features first");
   await expect(gate.getByRole("link", { name: "Open AI settings" })).toHaveAttribute(
     "href",
     "/profile#ai-features",
   );
+  await expect(page.getByRole("region", { name: /^Your AI summer picks/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Suggest summers for me" })).toHaveCount(0);
-  await shot(page, "gate");
   expect(errors).toEqual([]);
 });

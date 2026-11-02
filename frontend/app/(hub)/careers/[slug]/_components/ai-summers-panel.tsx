@@ -1,7 +1,7 @@
 import { unstable_rethrow } from "next/navigation";
 import { SectionCard } from "@/components/ui/section-card";
 import type { Flags } from "@/lib/flags";
-import { aiGateFailure, type AiFailure, type AiGateInput } from "@/lib/types/ai";
+import { aiGateFailure, type AiGateInput } from "@/lib/types/ai";
 import type { Career } from "@/lib/types/content";
 import { aiFeatureEnabled, aiGateInput } from "@/server/ai/gate";
 import { isMailAvailable } from "@/server/auth/mailer";
@@ -18,9 +18,11 @@ import { AiSummersPanel } from "./ai-summers";
  * cards. Server component, decided on every request like the other AI panels (ai-panels.tsx):
  *
  *   - signed out, AI_ENABLED off or the careers section off → nothing is rendered;
- *   - otherwise the first gate failure of "career-summers" (aiGateInput: not_configured → unverified →
- *     consent_required) replaces the button, with its next step; the client island handles every AiResult kind
- *     the route answers later.
+ *   - a gate failure of "career-summers" (aiGateInput: not_configured → unverified → consent_required) → nothing
+ *     either: the career plan has the same gate (same section flag, same verification rule, the account-wide
+ *     consent), so the "AI for this path" card below (ai-panels.tsx) already says it with its next step, and the
+ *     page says it once instead of twice, 750px apart;
+ *   - otherwise the button; the client island handles every AiResult kind the route answers later.
  *
  * Only the career slug and name, the gate, the next-step links and the Matthews Center's page (for "nothing
  * fits") reach the browser: the picks and their content arrive from the route.
@@ -30,11 +32,10 @@ import { AiSummersPanel } from "./ai-summers";
 export const MATTHEWS_CENTER_SLUG = "matthews-center";
 
 export interface CareerAiSummersView {
-  gate: AiFailure | null;
   links: AiStepLinks;
 }
 
-/** Pure: what the panel shows for this student (null = nothing at all). */
+/** Pure: what the panel shows for this student (null = nothing at all, a gate failure included). */
 export function careerAiSummersView(input: {
   careerSlug: string;
   user: Pick<SessionUser, "email" | "emailVerifiedAt"> | null;
@@ -43,10 +44,8 @@ export function careerAiSummersView(input: {
   mailAvailable: boolean;
 }): CareerAiSummersView | null {
   if (!input.user || !aiFeatureEnabled(input.flags, "career-summers")) return null;
-  return {
-    gate: aiGateFailure({ ...input.gateInput, enabled: true }),
-    links: careerAiLinks(input.careerSlug, input.user, input.mailAvailable),
-  };
+  if (aiGateFailure({ ...input.gateInput, enabled: true })) return null;
+  return { links: careerAiLinks(input.careerSlug, input.user, input.mailAvailable) };
 }
 
 export async function CareerAiSummers({ career }: { career: Career }) {
@@ -81,7 +80,7 @@ export async function CareerAiSummers({ career }: { career: Career }) {
       <AiSummersPanel
         careerSlug={career.slug}
         careerName={career.name}
-        gate={view.gate}
+        gate={null}
         links={view.links}
         adviceHref={office.url}
       />

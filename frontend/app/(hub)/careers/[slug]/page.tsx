@@ -138,7 +138,8 @@ export default async function CareerPage({ params }: { params: Params }) {
           </>
         )}
 
-        {/* AI summer picks: signed-in students only, gated per AI_ENABLED and the account, like the panels below. */}
+        {/* AI summer picks: signed-in students with AI on; left out while the account is gated, since the
+            "AI for this path" card below gives the same notice (said once). */}
         <Suspense fallback={null}>
           <CareerAiSummers career={career} />
         </Suspense>

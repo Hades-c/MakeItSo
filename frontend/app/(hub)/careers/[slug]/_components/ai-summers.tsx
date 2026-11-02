@@ -31,7 +31,10 @@ export type SummersData = { summers: CareerSummers };
 export interface AiSummersPanelProps {
   careerSlug: string;
   careerName: string;
-  /** The first gate this student fails (not_configured / unverified / consent_required), or null. */
+  /**
+   * The first gate this student fails (not_configured / unverified / consent_required), or null. The career page
+   * passes null: it leaves the panel out while gated (ai-summers-panel.tsx), so the gate is said once.
+   */
   gate: AiFailure | null;
   links: AiStepLinks;
   /** The Matthews Center's page (server/content/offices.ts), offered when nothing fits. */
