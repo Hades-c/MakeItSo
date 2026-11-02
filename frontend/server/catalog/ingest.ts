@@ -94,7 +94,12 @@ interface Normalised {
   names: TermNames;
 }
 
-/** Validate and normalise raw upstream items; duplicates (same CRN across pages) keep the first. */
+/**
+ * Validate and normalise raw upstream items; duplicates (same CRN across pages) keep the first. `names` holds every
+ * department a course can be browsed under: each subject with its own name, and each cross-posting code with the
+ * name the section's `departments` list gives it (an interdisciplinary program such as Neuroscience, "INEU", has
+ * no courses of its own, only cross-postings). A subject's own name wins over a cross-posting's.
+ */
 export function normaliseItems(items: readonly unknown[], term: TermCode): Normalised {
   const byCrn = new Map<string, StoredSection>();
   const departments = new Map<string, string>();
@@ -129,6 +134,14 @@ export function normaliseItems(items: readonly unknown[], term: TermCode): Norma
     if (byCrn.has(section.crn)) continue;
     byCrn.set(section.crn, section);
     if (section.subjectName) departments.set(section.subject, section.subjectName);
+    for (const posting of section.crossPostings) {
+      if (departments.has(posting)) continue;
+      const listed = raw.data.departments?.find(
+        (dept) => cleanText(dept.code).toUpperCase() === posting,
+      );
+      const name = cleanText(listed?.description);
+      if (name) departments.set(posting, name);
+    }
     for (const requirement of raw.data.grad_requirements ?? []) {
       const name = cleanText(requirement.description);
       const code = requirement.code.trim().toUpperCase();

@@ -1,6 +1,11 @@
 import "server-only";
 import type { TermCode } from "@/lib/term";
-import { ReqCodeSchema, type CatalogFilters, type ResolvedTerms } from "@/lib/types/catalog";
+import {
+  DEPT_CODE_PATTERN,
+  ReqCodeSchema,
+  type CatalogFilters,
+  type ResolvedTerms,
+} from "@/lib/types/catalog";
 import CatalogMeta from "@/models/CatalogMeta";
 import { runInBackground } from "@/server/catalog/background";
 import { FILTERS_TTL_MS, RETRY_AFTER_MS, UPSTREAM_TIMEOUT_MS } from "@/server/catalog/config";
@@ -20,6 +25,12 @@ import { MissingFixtureError } from "@/server/http/fixtures";
  * (refreshed in the background, last good copy on failure). Other terms, and any term whose upstream list is
  * not cached yet or unavailable, use the names recorded while ingesting its sections, so a past term never calls
  * upstream and no read ever waits on the filters endpoint.
+ *
+ * Departments are every code a course of the term can be found under (search.ts matches a course's subject and
+ * its cross-postings): the upstream list plus the subjects and cross-postings the ingest saw that it leaves out.
+ * The filters endpoint omits some interdisciplinary programs whose courses are only cross-posted (Neuroscience,
+ * "INEU"; Digital Studies, "DIG"), and before 2024 Data Science was a cross-posting only ("IDAT"), so without the
+ * ingest's codes a student could not pick them. Sorted by name, as the Department select lists them.
  *
  * Refreshes are single flight: one in-process promise per term, and an atomic claim on the doc's lastAttemptAt
  * (at most one attempt per term every 5 minutes across instances), taken before the request goes out.
@@ -51,11 +62,29 @@ export function toCatalogFilters(term: TermCode, upstream: UpstreamFilters): Cat
   };
 }
 
+type Department = CatalogFilters["departments"][number];
+
+const byName = (a: Department, b: Department) =>
+  a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.code.localeCompare(b.code);
+
+/**
+ * `listed` (the upstream list, or none) plus the departments the ingest saw that it does not name, sorted by name.
+ * A code on both keeps the upstream name; a seen code the `dept` filter would not accept is left out.
+ */
+export function mergeDepartments(
+  listed: readonly Department[],
+  seen: readonly Department[],
+): Department[] {
+  const codes = new Set(listed.map((dept) => dept.code));
+  const added = seen.filter((dept) => !codes.has(dept.code) && DEPT_CODE_PATTERN.test(dept.code));
+  return [...listed, ...added].sort(byName);
+}
+
 /** Filters from what the ingest saw in the term's sections. */
 export function derivedFilters(term: TermCode, meta: TermMeta | null): CatalogFilters {
   return {
     term,
-    departments: meta?.data?.departments ?? [],
+    departments: mergeDepartments([], meta?.data?.departments ?? []),
     requirements: (meta?.data?.requirements ?? []).flatMap((req) => {
       const code = ReqCodeSchema.safeParse(req.code);
       return code.success ? [{ code: code.data, name: req.name }] : [];
@@ -196,7 +225,9 @@ export async function getCatalogFiltersImpl(
   if (due && !inflight.has(term)) {
     runInBackground(`filters ${term}`, () => refreshFilters(term));
   }
-  return cached ?? derivedFilters(term, meta);
+  const derived = derivedFilters(term, meta);
+  if (!cached) return derived;
+  return { ...cached, departments: mergeDepartments(cached.departments, derived.departments) };
 }
 
 /** The cron: fetch a hot term's upstream lists when they are missing or older than a day (awaited). */

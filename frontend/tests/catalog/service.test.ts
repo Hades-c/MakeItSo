@@ -23,7 +23,11 @@ import {
 import { drainBackground } from "@/server/catalog/background";
 import { UNAVAILABLE_MESSAGE } from "@/server/catalog/config";
 import { runCatalogCron } from "@/server/catalog/cron";
-import { refreshFilters, setFiltersFetchForTests } from "@/server/catalog/filters";
+import {
+  mergeDepartments,
+  refreshFilters,
+  setFiltersFetchForTests,
+} from "@/server/catalog/filters";
 import { ingestTerm } from "@/server/catalog/ingest";
 import { acquireTermLease, releaseTermLease, termKey } from "@/server/catalog/meta";
 import {
@@ -445,5 +449,56 @@ describe("getCatalogFilters", () => {
     const filters = await getCatalogFilters("202501");
     expect(filters.departments).toContainEqual({ code: "CSC", name: "Computer Science" });
     expect(filters.requirements).toContainEqual({ code: "LTRQ", name: expect.any(String) });
+  });
+
+  it("lists every department a course can be found under, cross-postings included, by name", async () => {
+    // The upstream list for Spring 2027 leaves out Neuroscience (INEU) and Digital Studies (DIG), whose courses
+    // are cross-posted; the ingest names them, so the hot term's list has both next to Data Science (DAT).
+    await searchCourses({ term: "202602" });
+    await getCatalogFilters("202602");
+    await drainBackground();
+    const spring = await getCatalogFilters("202602");
+    expect(spring.departments).toContainEqual({ code: "DAT", name: "Data Science" });
+    expect(spring.departments).toContainEqual({ code: "INEU", name: "Neuroscience" });
+    expect(spring.departments).toContainEqual({ code: "DIG", name: "Digital Studies" });
+    // Upstream names win for codes on both lists ("Film, Media, and Digital Studies", not the sections' spelling).
+    expect(spring.departments).toContainEqual({
+      code: "FMD",
+      name: "Film, Media, and Digital Studies",
+    });
+    const names = spring.departments.map((d) => d.name);
+    expect(names).toEqual(
+      [...names].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" })),
+    );
+    // Every listed department filters to courses (a Neuroscience student finds the minor's courses).
+    expect((await searchCourses({ term: "202602", dept: ["INEU"] })).total).toBeGreaterThan(0);
+
+    // Before 2024 Data Science was a cross-posting only (IDAT): a past term lists it under that code.
+    await searchCourses({ term: "202201" });
+    const fall2022 = await getCatalogFilters("202201");
+    expect(fall2022.departments).toContainEqual({ code: "IDAT", name: "Data Science" });
+    expect((await searchCourses({ term: "202201", dept: ["IDAT"] })).total).toBeGreaterThan(0);
+  });
+
+  it("merges the upstream list with the ingest's departments (mergeDepartments)", () => {
+    expect(
+      mergeDepartments(
+        [
+          { code: "MAT", name: "Mathematics" },
+          { code: "FMD", name: "Film, Media, and Digital Studies" },
+        ],
+        [
+          { code: "FMD", name: "Film, Media, Digital Studies" },
+          { code: "INEU", name: "Neuroscience" },
+          { code: "DAT", name: "Data Science" },
+          { code: "AB12", name: "Not a filterable code" },
+        ],
+      ),
+    ).toEqual([
+      { code: "DAT", name: "Data Science" },
+      { code: "FMD", name: "Film, Media, and Digital Studies" },
+      { code: "MAT", name: "Mathematics" },
+      { code: "INEU", name: "Neuroscience" },
+    ]);
   });
 });

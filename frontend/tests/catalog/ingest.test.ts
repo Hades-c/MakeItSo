@@ -5,7 +5,7 @@ import { SectionSchema } from "@/lib/types/catalog";
 import CatalogMeta from "@/models/CatalogMeta";
 import CatalogSection from "@/models/CatalogSection";
 import SourceSync from "@/models/SourceSync";
-import { ingestTerm } from "@/server/catalog/ingest";
+import { ingestTerm, normaliseItems } from "@/server/catalog/ingest";
 import { acquireTermLease, releaseTermLease, termKey } from "@/server/catalog/meta";
 import { searchCourses } from "@/server/catalog";
 import { drainBackground } from "@/server/catalog/background";
@@ -108,6 +108,14 @@ describe("ingestTerm", () => {
     const names = stored?.data as { departments: unknown[]; requirements: unknown[] };
     expect(names.departments).toContainEqual({ code: "AFR", name: "Africana Studies" });
     expect(names.requirements).toContainEqual({ code: "CULT", name: "Cultural Diversity" });
+    // Cross-posting codes are departments too, named from the sections' `departments` lists: Neuroscience has no
+    // courses of its own in Spring 2027, only courses posted under INEU.
+    expect(names.departments).toContainEqual({ code: "INEU", name: "Neuroscience" });
+    expect(names.departments).toContainEqual({ code: "DIG", name: "Digital Studies" });
+    // A subject's own name wins over the name another section's list gives its code.
+    expect(names.departments.filter((d) => (d as { code: string }).code === "DAT")).toEqual([
+      { code: "DAT", name: "Data Science" },
+    ]);
 
     const sync = await SourceSync.findOne({ sourceId: "course-schedule" }).lean();
     expect(sync).toMatchObject({ ok: true, lastCount: 485 });
@@ -178,6 +186,28 @@ describe("ingestTerm", () => {
       timeoutMs: 8000,
     });
     expect(outcome.sectionCount).toBe(485);
+  });
+});
+
+describe("department names (normaliseItems)", () => {
+  it("names cross-posting codes from the section's departments list, and survives a malformed list", () => {
+    const [first] = springItems();
+    const item = (crn: number, extra: Record<string, unknown>) => ({ ...first, crn, ...extra });
+    const { names, sections } = normaliseItems(
+      [
+        item(60001, {
+          cross_postings: ["IDAT", "XYZ"],
+          departments: [{ code: "idat ", description: "Data  Science" }],
+        }),
+        item(60002, { cross_postings: ["INEU"], departments: "not a list" }),
+      ],
+      SPRING,
+    );
+    expect(sections).toHaveLength(2);
+    expect(names.departments).toContainEqual({ code: "IDAT", name: "Data Science" });
+    // No name anywhere: left for the filters endpoint to name (or out of the list).
+    expect(names.departments.map((d) => d.code)).not.toContain("XYZ");
+    expect(names.departments.map((d) => d.code)).not.toContain("INEU");
   });
 });
 
