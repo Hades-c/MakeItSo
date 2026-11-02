@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SearchX, Users } from "lucide-react";
+import { FlaskConical, SearchX, Users } from "lucide-react";
+import { PREVIEW_NOTICE_TITLE } from "@/app/(hub)/alumni/preview/_components/preview-notice";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { routes } from "@/lib/routes";
 import { CAREERS, careersByCluster } from "@/server/content/careers";
 import { requireUser } from "@/server/auth/session";
-import { featureEnabled, featureMetadata, loadFlags, requireFeature } from "@/server/features";
+import {
+  alumniPreviewEnabled,
+  featureEnabled,
+  featureMetadata,
+  loadFlags,
+  requireFeature,
+} from "@/server/features";
 import {
   careersHref,
   clusterSlug,
@@ -24,7 +31,9 @@ import { CareerFilters } from "./_components/career-filters";
  *
  * Behind FEATURE_CAREERS (404 while it is off; the shell hides Careers then): featureMetadata() is the
  * generateMetadata and requireFeature() the page's first line. Alumni is nested under Careers in the sidebar, which
- * the 720-1179px rail has no room to show, so the header links to it (while the Alumni section is on).
+ * the 720-1179px rail has no room to show, so the header links to it (while the Alumni section is on). The header
+ * also opens the Davidson Connect preview (fictional sample profiles, /alumni/preview) while FEATURE_ALUMNI_PREVIEW
+ * is on, named and marked as such, so the sample data is never taken for the verified directory.
  */
 export async function generateMetadata(): Promise<Metadata> {
   return featureMetadata("careers", { title: "Careers" });
@@ -44,6 +53,9 @@ export default async function CareersPage({
     .map((group) => ({ ...group, careers: group.careers.filter((career) => shown.has(career)) }))
     .filter((group) => group.careers.length > 0);
   const filtered = filters.cluster !== null || filters.q !== "";
+  const flags = loadFlags();
+  const alumni = featureEnabled(flags, "alumni");
+  const preview = alumniPreviewEnabled(flags);
 
   return (
     <>
@@ -56,16 +68,7 @@ export default async function CareersPage({
             all experience levels, not starting pay) and the people who can help you get there.
           </>
         }
-        actions={
-          featureEnabled(loadFlags(), "alumni") ? (
-            <Button asChild variant="secondary">
-              <Link href={routes.alumni()}>
-                <Users aria-hidden className="size-4" />
-                Alumni
-              </Link>
-            </Button>
-          ) : null
-        }
+        actions={alumni || preview ? <HeaderLinks alumni={alumni} preview={preview} /> : null}
       />
       <CareerFilters
         filters={filters}
@@ -121,6 +124,35 @@ export default async function CareersPage({
           })}
         </div>
       )}
+    </>
+  );
+}
+
+/**
+ * The header's links into the alumni views, each while it is on: the verified directory ("Alumni", its one label
+ * everywhere, like the sidebar's) and the Davidson Connect preview, named and marked as the sample-data preview so
+ * the two never read as one.
+ */
+function HeaderLinks({ alumni, preview }: { alumni: boolean; preview: boolean }) {
+  return (
+    <>
+      {alumni ? (
+        <Button asChild variant="secondary">
+          <Link href={routes.alumni()}>
+            <Users aria-hidden className="size-4" />
+            Alumni
+          </Link>
+        </Button>
+      ) : null}
+      {preview ? (
+        <Button asChild variant="secondary">
+          <Link href={routes.alumniPreview()} data-testid="alumni-preview-link">
+            <FlaskConical aria-hidden className="size-4" />
+            {/* Named as sample data here too: the link sits beside the verified "Alumni" button. */}
+            {PREVIEW_NOTICE_TITLE}
+          </Link>
+        </Button>
+      ) : null}
     </>
   );
 }

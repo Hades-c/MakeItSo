@@ -57,9 +57,12 @@ export function stepLocked(
   );
 }
 
-/** The document title of a step: "Step 2 of 4: Your Fall 2026 classes · Get started". */
+/** What the flow is called: its document title, and the eyebrow above every step's heading. */
+export const SETUP_TITLE = "Set up your account";
+
+/** The document title of a step: "Step 2 of 4: Your Fall 2026 classes · Set up your account". */
 export function stepTitle(step: OnboardingStep, currentTermLabel: string): string {
-  return `Step ${stepIndex(step) + 1} of ${ONBOARDING_STEPS.length}: ${stepLabel(step, currentTermLabel)} · Get started`;
+  return `Step ${stepIndex(step) + 1} of ${ONBOARDING_STEPS.length}: ${stepLabel(step, currentTermLabel)} · ${SETUP_TITLE}`;
 }
 
 /** The step a `?step=` search param names, or null (missing, repeated or unknown). */

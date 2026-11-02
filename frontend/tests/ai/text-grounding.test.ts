@@ -6,6 +6,7 @@ import {
   programSubject,
   programSubjects,
   properNouns,
+  summerClaims,
   unknownCourses,
   unknownPrograms,
   vocabularyOf,
@@ -51,6 +52,40 @@ describe("deadlines and dates", () => {
     expect(deadlines("Research with faculty in the summer after sophomore year.")).toBe(false);
     expect(deadlines("Take it in Spring 2027.")).toBe(false);
     expect(deadlines("You may want to start early.")).toBe(false);
+  });
+});
+
+describe("summer claims", () => {
+  it.each([
+    "It pays a $5,000 stipend.",
+    "It pays 6k for the summer.",
+    "It pays $20/hr.",
+    "It is unpaid, so look for funding.",
+    "It covers housing and meals.",
+    "It lasts ten weeks.",
+    "It is a 10-week program.",
+    "It runs from June to August.",
+    "Applications open in late fall.",
+    "You qualify as a sophomore.",
+    "It is open only to juniors and seniors.",
+    "Admission is guaranteed for Davidson students.",
+    "You will likely be accepted.",
+    "Your chances are good.",
+    "It is very competitive.",
+  ])("drops %j", (text) => {
+    expect(summerClaims(text)).toBe(true);
+  });
+
+  it("keeps the student's year, fit and next steps", () => {
+    for (const text of [
+      "After your sophomore year, research fits your Computer Science major.",
+      "It suits students just starting out.",
+      "Grants can fund a summer internship.",
+      "Read the program's page and talk with the Matthews Center.",
+      "This summer could be a good time to try research.",
+    ]) {
+      expect(summerClaims(text), text).toBe(false);
+    }
   });
 });
 

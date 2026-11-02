@@ -58,6 +58,9 @@ describe("hub navigation", () => {
 
   it("finds the section of a path whether or not it is shown", () => {
     expect(navSectionOf("/alumni")).toBe("alumni");
+    // The Davidson Connect preview (sample data) is a Careers page, not the verified Alumni directory.
+    expect(navSectionOf("/alumni/preview")).toBe("careers");
+    expect(navSectionOf("/alumni/previews")).toBe("alumni");
     expect(navSectionOf("/events/whatever")).toBe("events");
     expect(navSectionOf("/profile")).toBeNull();
   });
@@ -91,6 +94,16 @@ describe("hub navigation with sections hidden", () => {
     expect(activeNavKey("/events", "tabs", noEvents)).toBeNull();
     expect(activeNavKey("/careers/law", "sidebar", [...CORE, "events"])).toBeNull();
     expect(activeNavKey("/today", "tabs", CORE)).toBe("today");
+  });
+
+  it("marks Careers, never Alumni, on the Davidson Connect preview, whether or not Alumni is shown", () => {
+    for (const nav of [
+      [...CORE, "careers", "alumni"],
+      [...CORE, "careers"],
+    ] as NavKey[][]) {
+      expect(activeNavKey("/alumni/preview", "sidebar", nav)).toBe("careers");
+      expect(activeNavKey("/alumni/preview", "tabs", nav)).toBe("careers");
+    }
   });
 
   it("highlights Careers on /alumni on phones only when both are shown", () => {

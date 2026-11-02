@@ -37,7 +37,10 @@ export interface ClassYearOption {
 export interface RegisterFormProps {
   /** First-year first (the default). */
   classYears: readonly ClassYearOption[];
-  /** A mail provider is configured: new accounts continue to /verify. */
+  /**
+   * A mail provider is configured: registering e-mailed a verification code, and set-up's first step says so once
+   * (/onboarding?step=about&verify=sent). Without one nothing was sent and set-up says nothing about it.
+   */
   mailAvailable: boolean;
 }
 
@@ -92,10 +95,12 @@ export function RegisterForm({ classYears, mailAvailable }: RegisterFormProps) {
     setLoading(true);
     try {
       const accepted = await callApi(accountEndpoints.register, { body });
-      // A new account can sign in straight away (unverified accounts use the catalog and the plan).
+      // A new account can sign in straight away (unverified accounts use the catalog and the plan) and goes
+      // straight to setting it up, About first: verifying can wait (set-up links to /verify), and Skip setup or
+      // Finish continue to Today.
       const result = await signIn("credentials", { email, password, redirect: false });
       if (result && !result.error) {
-        router.replace(mailAvailable ? routes.verify() : routes.today());
+        router.replace(routes.onboarding("about", { verifySent: mailAvailable }));
         router.refresh();
         return;
       }

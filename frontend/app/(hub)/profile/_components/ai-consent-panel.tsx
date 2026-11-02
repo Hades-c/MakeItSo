@@ -166,8 +166,8 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
           What turning them on means <AiChip />
         </h3>
         <p className="mt-2">
-          MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans and
-          cold-email drafts) use{" "}
+          MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans, summer
+          picks and cold-email drafts) use{" "}
           <b className="font-semibold text-fg">Claude, a model made by Anthropic</b>. When you use
           one, MakeItSo sends Anthropic only what that feature needs:
         </p>
@@ -175,8 +175,8 @@ export function AiConsentPanel(props: AiConsentPanelProps) {
           <li>course codes and public catalog information;</li>
           <li>
             the courses in your plan and the requirements they fill, your majors and minors,
-            graduation year and career interests, and for career plans and cold-email drafts, the
-            goals at Davidson you chose;
+            graduation year, class year and career interests, and for career plans, summer picks and
+            cold-email drafts, the goals at Davidson you chose;
           </li>
           <li>the goal or question you type into that feature.</li>
         </ul>

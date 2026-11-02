@@ -25,6 +25,95 @@ export type ResourceLink = z.infer<typeof ResourceLinkSchema>;
 
 // ---- Careers -----------------------------------------------------------------------------------------------------
 
+/** True when `url` parses and its host is one of `hosts` (exactly: no subdomains). */
+export function urlOnHost(url: string, hosts: readonly string[]): boolean {
+  try {
+    return hosts.includes(new URL(url).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Where a career's "On campus" entries are published, by source id: WildcatSync organization pages
+ * (wildcatsync.davidson.edu/organization/<key>) and, for groups the college runs itself, davidson.edu pages.
+ */
+export const ON_CAMPUS_HOSTS = {
+  wildcatsync: ["wildcatsync.davidson.edu"],
+  "davidson-offices": ["www.davidson.edu"],
+} as const satisfies Partial<Record<SourceId, readonly string[]>>;
+export type OnCampusSource = keyof typeof ON_CAMPUS_HOSTS;
+const ON_CAMPUS_SOURCES = Object.keys(ON_CAMPUS_HOSTS) as [OnCampusSource, ...OnCampusSource[]];
+
+/**
+ * A student organization relevant to a career path, as its own public page describes it: the page URL, one plain
+ * line from that page (no officer names, no emails), and the day the page was read. Only organizations whose page
+ * was fetched are listed; a path with none has no `onCampus`.
+ */
+export const CareerOnCampusSchema = z
+  .object({
+    name: z.string().min(1).max(120),
+    url: HttpsUrlSchema,
+    description: z.string().min(1).max(220),
+    source: z.enum(ON_CAMPUS_SOURCES),
+    verifiedAt: IsoDateSchema,
+  })
+  .strict()
+  .refine((entry) => urlOnHost(entry.url, ON_CAMPUS_HOSTS[entry.source]), {
+    path: ["url"],
+    message: "must be on the source's own host (ON_CAMPUS_HOSTS)",
+  });
+export type CareerOnCampus = z.infer<typeof CareerOnCampusSchema>;
+
+/**
+ * The official sites an outside summer program may link to (the program's own pages, never a third-party list).
+ * Add a host only with the program's official page.
+ */
+export const SUMMER_PROGRAM_HOSTS = [
+  "www.nsf.gov",
+  "www.ppiaprogram.org",
+  "career.seo-usa.org",
+  "dowjonesnewsfund.org",
+  "breakthroughcollaborative.org",
+  "www.lsac.org",
+  "www.getty.edu",
+] as const;
+
+/**
+ * A summer option for a career path. Either
+ * - `program`: one of the curated office programs (server/content/offices.ts PROGRAMS, by slug). Its name, page,
+ *   audience, deadlines, source and verifiedAt are the program's own; only `description` (one plain line on what
+ *   it is, from the program's page) is said here. server/content/careers.ts checks the slug at load.
+ * - `outside`: a national program with an official page: who runs it, what it is, who it is for as the page states
+ *   it, the timing when the page publishes one, and the day the page was read.
+ */
+export const CareerSummerSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("program"),
+      program: SlugSchema,
+      description: z.string().min(1).max(220),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("outside"),
+      name: z.string().min(1).max(120),
+      /** Who runs it, as its page names it ("National Science Foundation"): the row's "via" words. */
+      by: z.string().min(1).max(80),
+      url: HttpsUrlSchema.refine((url) => urlOnHost(url, SUMMER_PROGRAM_HOSTS), {
+        message: "must be an official program host (SUMMER_PROGRAM_HOSTS)",
+      }),
+      description: z.string().min(1).max(220),
+      eligibility: z.string().min(1).max(220),
+      /** As published ("Apply by November 6, 2026"); null when the page gives no dates. */
+      timing: z.string().min(1).max(160).nullable(),
+      verifiedAt: IsoDateSchema,
+    })
+    .strict(),
+]);
+export type CareerSummer = z.infer<typeof CareerSummerSchema>;
+
 export const CAREER_CLUSTERS = [
   "Technology",
   "Business & Finance",
@@ -77,6 +166,10 @@ export const CareerSchema = SourcedSchema.extend({
   externalResources: z.array(ResourceLinkSchema),
   /** Keywords for the Handshake search deep link (Handshake has no documented keyword URL: see HandshakeConfig). */
   handshakeQuery: z.string(),
+  /** Student organizations to join (each with its own page and verifiedAt); absent when none was verified. */
+  onCampus: z.array(CareerOnCampusSchema).min(1).optional(),
+  /** Summer programs, grants and internships (office programs by slug, or outside programs); absent when none. */
+  summer: z.array(CareerSummerSchema).min(1).optional(),
 }).strict();
 export type Career = z.infer<typeof CareerSchema>;
 

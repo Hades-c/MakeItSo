@@ -18,6 +18,7 @@ import { AddPlanItemBodySchema } from "@/lib/api/plan";
 import { unlistedPrograms } from "@/lib/unlisted-programs";
 import { CAREERS } from "@/server/content/careers";
 import { officialProgramNames } from "@/server/programs";
+import { compareOfferingNames } from "@/server/programs/names";
 import { addItem, getPlan, getProgress, updateItem } from "@/server/plan";
 import { getProfile, updateProfile } from "@/server/auth";
 
@@ -58,9 +59,9 @@ async function signIn(raw: Record<string, unknown> = {}, email = "casey@davidson
   return user;
 }
 
-async function render(step?: string): Promise<string> {
+async function render(step?: string, params: Record<string, string> = {}): Promise<string> {
   const page = await OnboardingPage({
-    searchParams: Promise.resolve(step === undefined ? {} : { step }),
+    searchParams: Promise.resolve(step === undefined ? params : { step, ...params }),
   });
   return renderToStaticMarkup(createElement("div", null, page));
 }
@@ -94,9 +95,12 @@ describe("loadOnboarding", () => {
       ...unlistedPrograms("major").map((program) => program.name),
     ]);
     expect(data.majors).not.toContain("Undecided");
+    // Minors and interdisciplinary minors in one list by subject, then the unlisted.
     expect(data.minors).toEqual([
-      ...(await officialProgramNames("minor")),
-      ...(await officialProgramNames("interdisciplinary-minor")),
+      ...[
+        ...(await officialProgramNames("minor")),
+        ...(await officialProgramNames("interdisciplinary-minor")),
+      ].sort(compareOfferingNames),
       ...unlistedPrograms("minor").map((program) => program.name),
     ]);
     expect(data.careers).toEqual(
@@ -301,12 +305,13 @@ describe("OnboardingPage", () => {
   it("is titled per step and sends signed-out visitors to /login, back to the same step", async () => {
     const meta = (step?: string) =>
       generateMetadata({ searchParams: Promise.resolve(step ? { step } : {}) });
-    expect(await meta()).toEqual({ title: "Get started" });
+    // Owner's request (Eurekas): the flow reads as setting up the account.
+    expect(await meta()).toEqual({ title: "Set up your account" });
     expect(await meta("classes")).toEqual({
-      title: "Step 2 of 4: Your Fall 2026 classes · Get started",
+      title: "Step 2 of 4: Your Fall 2026 classes · Set up your account",
     });
     expect(await meta("interests")).toEqual({
-      title: "Step 4 of 4: Interests and goals · Get started",
+      title: "Step 4 of 4: Interests and goals · Set up your account",
     });
     await expect(render("classes")).rejects.toMatchObject({
       digest: expect.stringMatching(
@@ -353,8 +358,10 @@ describe("OnboardingPage", () => {
     const html = await render("about");
     expect(html).toMatch(/<h1[^>]*>About you<\/h1>/);
     expect(html).toMatch(/<h1 id="onboarding-step-heading" tabindex="-1"/);
-    expect(html).toContain("Step 1 of 4");
+    expect(html).toContain("Set up your account · Step 1 of 4");
     expect(html).toContain("Welcome, Casey");
+    // Not from /register (no ?verify=sent): nothing about a code.
+    expect(html).not.toContain("verify-sent-note");
     expect(html).toMatch(/<nav aria-label="Setup steps"/);
     expect(html).toMatch(/aria-current="step"[^>]*href="\/onboarding\?step=about"/);
     expect(html.match(/aria-current="step"/g)).toHaveLength(1);
@@ -418,6 +425,34 @@ describe("OnboardingPage", () => {
     expect(html).not.toContain("Search Fall 2026 courses");
     const completed = await render("completed");
     expect(completed).toContain("This is your first semester");
+  });
+
+  it("tells a brand-new account once, on step 1, that a verification code was sent, linking to /verify", async () => {
+    await signIn({ graduationYear: 2029 });
+    const html = await render("about", { verify: "sent", next: "/plan?tab=four-year" });
+    expect(html).toContain('data-testid="verify-sent-note"');
+    expect(html).toContain("We sent a verification code to");
+    expect(html).toContain("casey@davidson.edu");
+    // /verify has "Send a new code"; verifying comes back to this step, set-up's own `next` kept.
+    expect(html).toContain(
+      `href="/verify?next=${encodeURIComponent("/onboarding?step=about&next=%2Fplan%3Ftab%3Dfour-year")}"`,
+    );
+    expect(html.match(/We sent a verification code/g)).toHaveLength(1);
+  });
+
+  it("says nothing about a code off step 1, once verified, without mail, or after set-up", async () => {
+    const user = await signIn({ graduationYear: 2029, firstTerm: "202501" });
+    expect(await render("classes", { verify: "sent" })).not.toContain("verify-sent-note");
+    vi.stubEnv("MAIL_PROVIDER", "none");
+    expect(await render("about", { verify: "sent" })).not.toContain("verify-sent-note");
+    vi.stubEnv("MAIL_PROVIDER", "console");
+    await updateProfile(user.id, { onboarded: true });
+    expect(await render("about", { verify: "sent" })).not.toContain("verify-sent-note");
+    await signIn(
+      { graduationYear: 2029, emailVerifiedAt: new Date("2026-09-01") },
+      "verified@davidson.edu",
+    );
+    expect(await render("about", { verify: "sent" })).not.toContain("verify-sent-note");
   });
 
   it("explains a legacy plan on the plan steps", async () => {

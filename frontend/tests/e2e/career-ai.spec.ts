@@ -118,7 +118,11 @@ test("the AI career plan: official titles and availability, then Send to my plan
     timeout: 30_000,
   });
   await expect(result).toBeFocused();
-  await expect(card.getByText(/shared by your plan and your emails/)).toBeVisible();
+  await expect(
+    card.getByText(
+      /ask the AI again up to 3 times a day, across your plan, your emails and your summer picks/,
+    ),
+  ).toBeVisible();
 
   await result.getByRole("button", { name: "Send to my plan" }).click();
   await expect(page).toHaveURL(/\/plan\?tab=suggestions$/);

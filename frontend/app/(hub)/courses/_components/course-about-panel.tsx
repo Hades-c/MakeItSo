@@ -6,6 +6,7 @@ import { Flag, LoaderCircle, RotateCcw, Sparkles } from "lucide-react";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
+import { useReportAboutOutcome, type AboutOutcome } from "./about-outcome";
 import { WRAP_CHIP } from "./wrap";
 import { Chip } from "@/components/ui/chip";
 import type { CourseAboutResultSchema } from "@/lib/api/ai";
@@ -53,6 +54,12 @@ export interface CourseAboutPanelProps {
   /** /verify?reason=davidson&next=… for an unverified @davidson.edu account, else null. */
   verifyHref?: string | null;
   timeZone?: string;
+  /**
+   * Where the panel sits (course-view.tsx): "lead" when the summary leads the page (the requirements card follows
+   * it and the official description is last, unless the panel fails); "after" in the gated order, after Sections,
+   * below the official About card. The summary's footer says where the official text is from there.
+   */
+  placement?: "lead" | "after";
 }
 
 function Heading() {
@@ -139,7 +146,30 @@ function ReportLink({ inputHash }: { inputHash: string }) {
   );
 }
 
-function OkView({ result, timeZone }: { result: Ok; timeZone?: string }) {
+/** The footer's pointer to the official text, from where the panel sits. */
+export function OfficialPointer({ placement }: { placement: "lead" | "after" }) {
+  return placement === "lead" ? (
+    <>
+      The requirements and prerequisites below, and the{" "}
+      <a href="#official-description" className="link">
+        official description
+      </a>{" "}
+      at the end of the page, are the official ones.
+    </>
+  ) : (
+    <>The description, requirements and prerequisites above are the official ones.</>
+  );
+}
+
+function OkView({
+  result,
+  timeZone,
+  placement,
+}: {
+  result: Ok;
+  timeZone?: string;
+  placement: "lead" | "after";
+}) {
   const { about, provenance } = result.data;
   const generated = new Date(provenance.generatedAt);
   return (
@@ -170,10 +200,12 @@ function OkView({ result, timeZone }: { result: Ok; timeZone?: string }) {
         </div>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
-        <p className="text-xs text-fg-3">
+        <p className="text-xs text-fg-3" data-testid="about-official-pointer">
           Summarized from the official course description
-          {Number.isNaN(generated.getTime()) ? "" : ` on ${formatMediumDate(generated, timeZone)}`}.
-          Prerequisites and requirements above are the official ones.
+          {Number.isNaN(generated.getTime())
+            ? ""
+            : ` on ${formatMediumDate(generated, timeZone)}`}.{" "}
+          <OfficialPointer placement={placement} />
         </p>
         <ReportLink inputHash={provenance.inputHash} />
       </div>
@@ -188,6 +220,7 @@ export function CourseAboutPanel({
   unverifiedMessage,
   verifyHref = null,
   timeZone,
+  placement = "after",
 }: CourseAboutPanelProps) {
   const [state, setState] = React.useState<State>({
     status: gate === "ready" ? "loading" : "idle",
@@ -226,6 +259,19 @@ export function CourseAboutPanel({
     void request().then(setState);
   };
 
+  // How the request settled, for the page's layout (about-outcome.tsx): only the summary itself is "ok".
+  const outcome: AboutOutcome | null =
+    gate !== "ready"
+      ? null
+      : state.status === "done"
+        ? state.result.kind === "ok"
+          ? "ok"
+          : "failed"
+        : state.status === "error"
+          ? "failed"
+          : "pending";
+  useReportAboutOutcome(outcome);
+
   let body: React.ReactNode;
   if (gate !== "ready") {
     body = (
@@ -253,7 +299,7 @@ export function CourseAboutPanel({
       </div>
     );
   } else if (state.result.kind === "ok") {
-    body = <OkView result={state.result} timeZone={timeZone} />;
+    body = <OkView result={state.result} timeZone={timeZone} placement={placement} />;
   } else {
     const { kind, message } = state.result;
     if (kind === "disabled" || kind === "not_configured") {

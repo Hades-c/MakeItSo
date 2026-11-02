@@ -11,6 +11,7 @@ import {
   type MockAiScenario,
 } from "@/server/ai/mock";
 import * as careerPlan from "@/server/ai/prompts/career-plan";
+import * as careerSummers from "@/server/ai/prompts/career-summers";
 import * as coldEmail from "@/server/ai/prompts/cold-email";
 import * as courseAbout from "@/server/ai/prompts/course-about";
 import * as planSuggestions from "@/server/ai/prompts/plan-suggestions";
@@ -86,6 +87,49 @@ const CAREER = careerPlan.careerPlanRequest({
   goals: { career: "software-engineering", careerName: "Software Engineering" },
 });
 
+const SUMMERS = careerSummers.careerSummersRequest({
+  catalog: {
+    today: "2026-09-30",
+    career: {
+      slug: "software-engineering",
+      name: "Software Engineering",
+      summary: "",
+      whatYouDo: [],
+      departments: [],
+      relatedPrograms: [],
+      davidsonResources: [],
+    },
+    options: [
+      {
+        id: "program:locke-white-jr-internship-fund",
+        name: "Locke White Jr. Internship Fund",
+        runBy: "Matthews Center",
+        about: "A grant for a summer internship.",
+        listedFor: ["Software Engineering"],
+        thisPath: true,
+      },
+      {
+        id: "program:butner-family-internship-fund",
+        name: "Butner Family Internship Fund",
+        runBy: "Matthews Center",
+        about: "Supports internships in any industry.",
+        listedFor: [],
+        thisPath: false,
+      },
+    ],
+  },
+  profile: {
+    majors: [],
+    minors: [],
+    graduationYear: 2030,
+    standing: "first-year",
+    interests: [],
+    aspirations: [],
+    comingSummer: { year: 2027, stage: "after-first-year" },
+  },
+  goals: { career: "software-engineering", careerName: "Software Engineering" },
+});
+
 const EMAIL = coldEmail.coldEmailRequest({
   catalog: { alumnus: { name: "Pat Alum", role: "Engineer" }, career: null },
   profile: {
@@ -113,6 +157,7 @@ const FEATURES: [string, GenerateRequest, { OutputSchema: Parameters<typeof gene
   ["course-about", ABOUT, courseAbout],
   ["plan-suggestions", SUGGEST, planSuggestions],
   ["career-plan", CAREER, careerPlan],
+  ["career-summers", SUMMERS, careerSummers],
   ["cold-email", EMAIL, coldEmail],
   ["professor-summary", SUMMARY, professorSummary],
   ["syllabus-deadlines", SYLLABUS, syllabusDeadlines],
@@ -147,6 +192,16 @@ describe("answers", () => {
       "SOC 101",
       "PHI 101",
     ]);
+    const summers = await generate(careerSummers.OutputSchema, SUMMERS, {
+      transport: mockTransport,
+    });
+    expect(summers.kind === "ok" && summers.data.picks.map((p) => p.id)).toEqual([
+      "program:locke-white-jr-internship-fund",
+      "program:butner-family-internship-fund",
+    ]);
+    setMockAiScenario("nothing_fits", { times: 1 });
+    const none = await generate(careerSummers.OutputSchema, SUMMERS, { transport: mockTransport });
+    expect(none.kind === "ok" && none.data.picks).toEqual([]);
     const email = await generate(coldEmail.OutputSchema, EMAIL, { transport: mockTransport });
     expect(email.kind === "ok" && email.data.body).toContain("{{studentName}}");
     const syllabus = await generate(syllabusDeadlines.OutputSchema, SYLLABUS, {
@@ -189,6 +244,7 @@ describe("the scenario knob", () => {
     forbidden_claims: "ok",
     links: "ok",
     quote_reviews: "ok",
+    nothing_fits: "ok",
   };
 
   it.each(MOCK_AI_SCENARIOS.map((s) => [s, expected[s]] as const))(

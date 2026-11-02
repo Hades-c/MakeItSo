@@ -759,7 +759,9 @@ describe("(c) every curated entry has a source URL and verifiedAt", () => {
   });
 
   it("writes dates out instead of 'today' or 'already past'", () => {
-    expect(ALL_STRINGS.filter(([, text]) => TIME_RELATIVE.test(text)).map(([p]) => p)).toEqual([]);
+    // Prose only: a URL is an address, not a claim ("…/organization/live-for-tomorrow-…" is a club's page).
+    const prose = ALL_STRINGS.filter(([, text]) => !/^https:\/\/\S+$/.test(text));
+    expect(prose.filter(([, text]) => TIME_RELATIVE.test(text)).map(([p]) => p)).toEqual([]);
     expect(TIME_RELATIVE.test("The nomination deadline is today (2026-09-30).")).toBe(true);
     expect(TIME_RELATIVE.test("Today's and this week's hours for Vail Commons")).toBe(false);
   });

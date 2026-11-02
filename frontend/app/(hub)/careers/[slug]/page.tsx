@@ -13,9 +13,13 @@ import { featureMetadata, requireFeature } from "@/server/features";
 import { careersHref } from "../_lib/filters";
 import { formatContentDate } from "../_lib/format";
 import { resolveResources } from "../_lib/resources";
+import { resolveSummers } from "../_lib/activities";
+import { OnCampusCard, SummersCard } from "../_components/career-activities";
 import { CareerAlumni } from "../_components/career-alumni";
+import { CareerAlumniPreview } from "../_components/career-alumni-preview";
 import { CareerCourses } from "../_components/career-courses";
 import { CareerAiPanels } from "./_components/ai-panels";
+import { CareerAiSummers } from "./_components/ai-summers-panel";
 import { CareerPrograms } from "../_components/career-programs";
 import {
   DavidsonResourcesCard,
@@ -33,7 +37,10 @@ type Params = Promise<{ slug: string }>;
  *   overview + what you do · pay (BLS: median, period, projected growth, source) · the real Davidson courses with
  *   live availability per term and Add to plan · related departments and official Acalog programs · Davidson
  *   resources and office programs (amounts and deadlines as published, tagged) · Handshake (base URL + search words)
- *   · verified alumni (verified @davidson.edu + FEATURE_ALUMNI only) · outside resources.
+ *   · summers (office programs by slug, outside programs) and student organizations on campus (WildcatSync), each
+ *   card left out when the path has none · the AI summer picks (signed-in students, AI on) · verified alumni
+ *   (verified @davidson.edu + FEATURE_ALUMNI only) · the Davidson Connect preview link (sample profiles,
+ *   FEATURE_ALUMNI_PREVIEW) · outside resources.
  *
  * The page itself only resolves the career (so an unknown slug answers 404 before anything streams); the parts that
  * read the catalog, the programs, the plan or the session render in their own Suspense boundaries. Behind
@@ -74,6 +81,8 @@ export default async function CareerPage({ params }: { params: Params }) {
   if (!career) notFound();
 
   const resources = resolveResources(career.davidsonResources, OFFICES, PROGRAMS);
+  const summers = resolveSummers(career.summer, PROGRAMS, OFFICES);
+  const onCampus = career.onCampus ?? [];
 
   return (
     <>
@@ -117,9 +126,29 @@ export default async function CareerPage({ params }: { params: Params }) {
           </div>
         </div>
 
+        {summers.length > 0 && onCampus.length > 0 ? (
+          <div className={GRID}>
+            <SummersCard views={summers} />
+            <OnCampusCard entries={onCampus} />
+          </div>
+        ) : (
+          <>
+            <SummersCard views={summers} />
+            <OnCampusCard entries={onCampus} />
+          </>
+        )}
+
+        {/* AI summer picks: signed-in students with AI on; left out while the account is gated, since the
+            "AI for this path" card below gives the same notice (said once). */}
+        <Suspense fallback={null}>
+          <CareerAiSummers career={career} />
+        </Suspense>
+
         <Suspense fallback={<CardSkeleton className="h-48" />}>
           <CareerAlumni career={career} />
         </Suspense>
+        {/* The Davidson Connect preview (fictional sample profiles), apart from the verified alumni above. */}
+        <CareerAlumniPreview career={career} />
 
         {/* AI career plan + cold e-mail (W9a-ai): signed-in students only, gated per AI_ENABLED and the account. */}
         <Suspense fallback={null}>

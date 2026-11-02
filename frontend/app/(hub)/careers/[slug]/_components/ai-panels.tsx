@@ -84,6 +84,23 @@ export function coldEmailAlumni(alumni: readonly Alumnus[]): ColdEmailAlumnus[] 
     }));
 }
 
+/** The hrefs of the panels' next steps on this career page (verify only where it can help and can send a code). */
+export function careerAiLinks(
+  careerSlug: string,
+  user: Pick<SessionUser, "email" | "emailVerifiedAt">,
+  mailAvailable: boolean,
+): AiStepLinks {
+  const page = routes.career(careerSlug);
+  return {
+    verify:
+      isDavidsonEmail(user.email) && !isEmailVerified(user) && mailAvailable
+        ? verifiedOnlyRedirect(page)
+        : null,
+    consent: `${routes.profile()}#ai-features`,
+    signIn: routes.login(page),
+  };
+}
+
 /** Pure: what the panels show for this student (null = nothing at all). */
 export function careerAiView(input: CareerAiViewInput): CareerAiView | null {
   const { user, flags, gateInput } = input;
@@ -92,15 +109,7 @@ export function careerAiView(input: CareerAiViewInput): CareerAiView | null {
   const emailEnabled = aiFeatureEnabled(flags, "cold-email");
   if (!planEnabled && !emailEnabled) return null;
 
-  const page = routes.career(input.careerSlug);
-  const links: AiStepLinks = {
-    verify:
-      isDavidsonEmail(user.email) && !isEmailVerified(user) && input.mailAvailable
-        ? verifiedOnlyRedirect(page)
-        : null,
-    consent: `${routes.profile()}#ai-features`,
-    signIn: routes.login(page),
-  };
+  const links = careerAiLinks(input.careerSlug, user, input.mailAvailable);
 
   const planGate = planEnabled ? aiGateFailure({ ...gateInput, enabled: true }) : null;
   const emailGate = emailEnabled

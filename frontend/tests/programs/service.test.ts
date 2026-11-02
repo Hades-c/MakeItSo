@@ -20,6 +20,7 @@ import {
   PROGRAM_DETAIL_TTL_MS,
   programDetailUrl,
 } from "@/server/programs/catalog-info";
+import { compareOfferingNames } from "@/server/programs/names";
 import { requirementsTextOf } from "@/server/programs/parse";
 import { getProgramWith, type ProgramsDeps } from "@/server/programs/service";
 import { programSnapshot } from "@/server/programs/snapshot";
@@ -134,13 +135,16 @@ describe("before any sync: the checked-in snapshot", () => {
     expect(await listPrograms({ kinds: ["concentration"] })).toEqual([]);
   });
 
-  it("officialProgramNames: sorted, distinct names of one kind", async () => {
+  it("officialProgramNames: distinct names of one kind, sorted by subject", async () => {
     const majors = await officialProgramNames("major");
     expect(majors).toContain("Major in Computer Science (B.S. Degree)");
-    expect(majors).toContain(
+    expect(majors).toEqual([...new Set(majors)].sort(compareOfferingNames));
+    // The interdisciplinary major sits under E, not ahead of "Major in Africana Studies".
+    const env = majors.indexOf(
       "Interdisciplinary Major in Environmental Studies (B.A. or B.S. Degree)",
     );
-    expect(majors).toEqual([...new Set(majors)].sort((a, b) => a.localeCompare(b, "en")));
+    expect(majors[env - 1]).toBe("Major in English (A.B. Degree)");
+    expect(majors[0]).toBe("Major in Africana Studies (A.B. Degree)");
     expect(await officialProgramNames("interdisciplinary-minor")).toContain(
       "Interdisciplinary Minor in Data Science",
     );
@@ -153,6 +157,14 @@ describe("before any sync: the checked-in snapshot", () => {
     expect(names.majors).toEqual(await officialProgramNames("major"));
     expect(names.minors).toContain("Minor in Economics");
     expect(names.minors).toContain("Interdisciplinary Minor in Neuroscience");
+    // Both kinds of minor in one list by subject: Data Science between Dance and Digital Studies.
+    const dance = names.minors.indexOf("Minor in Dance");
+    expect(names.minors.slice(dance, dance + 4)).toEqual([
+      "Minor in Dance",
+      "Interdisciplinary Minor in Data Science",
+      "Interdisciplinary Minor in Digital Studies",
+      "Interdisciplinary Minor in East Asian Studies",
+    ]);
     expect(names.all).toHaveLength(names.majors.length + names.minors.length);
   });
 });

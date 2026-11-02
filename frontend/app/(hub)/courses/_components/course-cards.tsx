@@ -277,6 +277,7 @@ export function CourseAboutCard({
   requirementsBySection,
   programs,
   disclaimer,
+  part = "all",
 }: {
   course: Course;
   requirements: RequirementTag[];
@@ -287,6 +288,12 @@ export function CourseAboutCard({
   requirementsBySection?: { sections: string[]; reqs: RequirementTag[] | null }[];
   programs: CoursePrograms | null;
   disclaimer: string;
+  /**
+   * "all": the description, then what the course counts for and its prerequisites (one card). The course page
+   * splits it when the AI summary leads: "facts" (counts for + prerequisites, near the top) and "description"
+   * (the official text, at the bottom).
+   */
+  part?: "all" | "facts" | "description";
 }) {
   const descriptions = distinctBySection(course.sections, (s) => s.descriptionText);
   const prereqs = distinctBySection(course.sections, (s) => s.prerequisitesText);
@@ -297,9 +304,22 @@ export function CourseAboutCard({
     programs.pagesRead > 0 &&
     (programs.matches.length > 0 || programs.pagesRead < programs.pagesTotal);
   return (
-    <section aria-labelledby="about-title" className={CARD}>
-      <CardHeading id="about-title" title="About" />
-      {descriptions.length === 0 ? (
+    <section
+      aria-labelledby={part === "description" ? "description-title" : "about-title"}
+      className={CARD}
+      {...(part === "description" ? { id: "official-description" } : {})}
+    >
+      <CardHeading
+        id={part === "description" ? "description-title" : "about-title"}
+        title={
+          part === "description"
+            ? "Official description"
+            : part === "facts"
+              ? "Requirements and prerequisites"
+              : "About"
+        }
+      />
+      {part === "facts" ? null : descriptions.length === 0 ? (
         <p className="text-sm text-fg-2">The schedule has no description for this course.</p>
       ) : (
         <div className="flex flex-col gap-3" data-testid="course-description">
@@ -320,101 +340,108 @@ export function CourseAboutCard({
         </div>
       )}
 
-      <dl className="mt-4 grid gap-x-6 gap-y-3 border-t border-line pt-4 text-sm md:grid-cols-[9rem_minmax(0,1fr)]">
-        <dt className="text-xs font-medium text-fg-3 md:pt-0.5">Requirements</dt>
-        <dd className="min-w-0" data-testid="course-requirements">
-          {requirementsBySection && requirementsBySection.length > 1 ? (
-            <ul className="flex flex-col gap-2" data-testid="requirements-by-section">
-              {requirementsBySection.map((group) => (
-                <li key={group.sections.join(",")} className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-fg-2">
-                    {group.sections.length === 1 ? "Section" : "Sections"}{" "}
-                    {group.sections.join(", ")}
-                  </span>
-                  {group.reqs && group.reqs.length > 0 ? (
-                    <RequirementChips reqs={group.reqs} />
-                  ) : (
-                    <span className="text-fg-2">No requirement data in the schedule</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : requirements.length > 0 ? (
-            <RequirementChips reqs={requirements} />
-          ) : (
-            <span className="text-fg-2">No requirement data in the schedule</span>
+      {part === "description" ? null : (
+        <dl
+          className={cn(
+            "grid gap-x-6 gap-y-3 text-sm md:grid-cols-[9rem_minmax(0,1fr)]",
+            part === "all" && "mt-4 border-t border-line pt-4",
           )}
-          <p className="mt-1.5 text-xs text-fg-3">{disclaimer}</p>
-        </dd>
-
-        <dt className="text-xs font-medium text-fg-3 md:pt-0.5">Also counts for</dt>
-        <dd
-          className="min-w-0"
-          data-testid="also-counts-for"
-          {...(catalogLine ? provenance(["catalog"]) : {})}
         >
-          {programs === null ? (
-            <span className="text-fg-2">The catalog’s programs can’t be read right now.</span>
-          ) : programs.matches.length === 0 && programs.pagesRead === 0 ? (
-            <span className="text-fg-2" data-testid="programs-not-read">
-              The catalog’s program pages haven’t been read yet.
-            </span>
-          ) : programs.matches.length === 0 && programs.pagesRead < programs.pagesTotal ? (
-            // No negative claim from part of the catalog: the unread pages may well name the course.
-            <span className="text-fg-2" data-testid="programs-incomplete">
-              Not every program page in the catalog has been read yet.
-            </span>
-          ) : programs.matches.length === 0 ? (
-            <span className="text-fg-2">No major or minor in the catalog names this course.</span>
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {programs.matches.map((match) => (
-                <li key={match.name} data-source="catalog">
-                  <a
-                    href={match.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center link md:inline md:min-h-0"
-                  >
-                    {match.name}
-                    <span className="sr-only">, catalog page (opens in a new tab)</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-          {programs && catalogLine ? (
-            <SourceLine className="mt-1.5">
-              Course catalog
-              {programs.pagesRead < programs.pagesTotal
-                ? ` · based on ${programs.pagesRead} of ${programs.pagesTotal} program pages`
-                : null}
-            </SourceLine>
-          ) : null}
-        </dd>
-
-        <dt id="prerequisites" className="text-xs font-medium text-fg-3 md:pt-0.5">
-          Prerequisites
-        </dt>
-        <dd className="min-w-0" data-testid="course-prerequisites">
-          {prereqs.length === 0 ? (
-            <span className="text-fg">None listed</span>
-          ) : (
-            <ul className="flex flex-col gap-1.5">
-              {prereqs.map((entry) => (
-                <li key={entry.value} className={cn("text-fg", BREAK_TEXT)}>
-                  {several(prereqs) ? (
-                    <span className="mr-1 text-xs font-semibold text-fg-2">
-                      {entry.sections.join(", ")}:
+          <dt className="text-xs font-medium text-fg-3 md:pt-0.5">Requirements</dt>
+          <dd className="min-w-0" data-testid="course-requirements">
+            {requirementsBySection && requirementsBySection.length > 1 ? (
+              <ul className="flex flex-col gap-2" data-testid="requirements-by-section">
+                {requirementsBySection.map((group) => (
+                  <li key={group.sections.join(",")} className="flex flex-col gap-1">
+                    <span className="text-xs font-semibold text-fg-2">
+                      {group.sections.length === 1 ? "Section" : "Sections"}{" "}
+                      {group.sections.join(", ")}
                     </span>
-                  ) : null}
-                  {entry.value}
-                </li>
-              ))}
-            </ul>
-          )}
-        </dd>
-      </dl>
+                    {group.reqs && group.reqs.length > 0 ? (
+                      <RequirementChips reqs={group.reqs} />
+                    ) : (
+                      <span className="text-fg-2">No requirement data in the schedule</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : requirements.length > 0 ? (
+              <RequirementChips reqs={requirements} />
+            ) : (
+              <span className="text-fg-2">No requirement data in the schedule</span>
+            )}
+            <p className="mt-1.5 text-xs text-fg-3">{disclaimer}</p>
+          </dd>
+
+          <dt className="text-xs font-medium text-fg-3 md:pt-0.5">Also counts for</dt>
+          <dd
+            className="min-w-0"
+            data-testid="also-counts-for"
+            {...(catalogLine ? provenance(["catalog"]) : {})}
+          >
+            {programs === null ? (
+              <span className="text-fg-2">The catalog’s programs can’t be read right now.</span>
+            ) : programs.matches.length === 0 && programs.pagesRead === 0 ? (
+              <span className="text-fg-2" data-testid="programs-not-read">
+                The catalog’s program pages haven’t been read yet.
+              </span>
+            ) : programs.matches.length === 0 && programs.pagesRead < programs.pagesTotal ? (
+              // No negative claim from part of the catalog: the unread pages may well name the course.
+              <span className="text-fg-2" data-testid="programs-incomplete">
+                Not every program page in the catalog has been read yet.
+              </span>
+            ) : programs.matches.length === 0 ? (
+              <span className="text-fg-2">No major or minor in the catalog names this course.</span>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {programs.matches.map((match) => (
+                  <li key={match.name} data-source="catalog">
+                    <a
+                      href={match.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-11 items-center link md:inline md:min-h-0"
+                    >
+                      {match.name}
+                      <span className="sr-only">, catalog page (opens in a new tab)</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {programs && catalogLine ? (
+              <SourceLine className="mt-1.5">
+                Course catalog
+                {programs.pagesRead < programs.pagesTotal
+                  ? ` · based on ${programs.pagesRead} of ${programs.pagesTotal} program pages`
+                  : null}
+              </SourceLine>
+            ) : null}
+          </dd>
+
+          <dt id="prerequisites" className="text-xs font-medium text-fg-3 md:pt-0.5">
+            Prerequisites
+          </dt>
+          <dd className="min-w-0" data-testid="course-prerequisites">
+            {prereqs.length === 0 ? (
+              <span className="text-fg">None listed</span>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {prereqs.map((entry) => (
+                  <li key={entry.value} className={cn("text-fg", BREAK_TEXT)}>
+                    {several(prereqs) ? (
+                      <span className="mr-1 text-xs font-semibold text-fg-2">
+                        {entry.sections.join(", ")}:
+                      </span>
+                    ) : null}
+                    {entry.value}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </dd>
+        </dl>
+      )}
     </section>
   );
 }

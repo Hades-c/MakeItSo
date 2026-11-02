@@ -112,20 +112,38 @@ describe("same-origin return paths", () => {
   });
 
   it("/verify never hands the form an off-site `next`", async () => {
+    const user = await insertUser({
+      raw: { emailVerifiedAt: null, onboardedAt: new Date("2026-09-01") },
+    });
+    auth.session = await sessionFor(user);
+    for (const value of EVIL) expect((await verifyProps(value)).next, value).toBe("/today");
+    expect(await verifyProps("/alumni")).toEqual({ next: "/alumni", later: "/today" });
+    expect(await verifyProps()).toEqual({ next: "/today", later: "/today" });
+  });
+
+  it("/verify continues into set-up for an account that has not finished it (the e-mail's plain link)", async () => {
     const user = await insertUser({ raw: { emailVerifiedAt: null } });
     auth.session = await sessionFor(user);
-    const nextOf = async (next: string) => {
-      const element = (await VerifyPage({
-        searchParams: Promise.resolve({ next }),
-      })) as ReactElement<{
-        next: string;
-      }>;
-      return element.props.next;
-    };
-    for (const value of EVIL) expect(await nextOf(value), value).toBe("/today");
-    expect(await nextOf("/alumni")).toBe("/alumni");
+    // No `next` (the e-mailed link) or an unsafe one: set-up resumes where the student stopped.
+    expect(await verifyProps()).toEqual({ next: "/onboarding", later: "/onboarding" });
+    for (const value of EVIL) expect((await verifyProps(value)).next, value).toBe("/onboarding");
+    // From set-up's own link: back to that step, and "Not now" too.
+    expect(await verifyProps("/onboarding?step=about")).toEqual({
+      next: "/onboarding?step=about",
+      later: "/onboarding?step=about",
+    });
+    // A page that asked for verification still gets it; "Not now" stays in set-up.
+    expect(await verifyProps("/alumni")).toEqual({ next: "/alumni", later: "/onboarding" });
   });
 });
+
+/** The `next` and "Not now" (`later`) the /verify page hands its form. */
+async function verifyProps(next?: string): Promise<{ next: string; later: string }> {
+  const element = (await VerifyPage({
+    searchParams: Promise.resolve(next === undefined ? {} : { next }),
+  })) as ReactElement<{ next: string; later: string }>;
+  return { next: element.props.next, later: element.props.later };
+}
 
 describe("requireUser keeps the destination (review regression: deep links lost it)", () => {
   it("sends signed-out visitors to /login with the page's own path", async () => {

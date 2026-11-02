@@ -101,8 +101,14 @@ function matches(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The section a path belongs to, shown or not: "/careers/law" → careers, "/profile" → null. */
+/**
+ * The section a path belongs to, shown or not: "/careers/law" → careers, "/profile" → null. One page under a
+ * section's path belongs to another: the Davidson Connect preview (/alumni/preview, sample data) is reached from
+ * Careers and is not the verified Alumni directory, so Alumni is never current there, whatever FEATURE_ALUMNI says
+ * (app/(hub)/alumni/preview/page.tsx). Inline, not a table: /plan's first-load JS has no bytes to spare.
+ */
 export function navSectionOf(pathname: string): NavKey | null {
+  if (matches(pathname, "/alumni/preview")) return "careers";
   return NAV_ITEMS.find((item) => matches(pathname, item.href))?.key ?? null;
 }
 
@@ -120,8 +126,8 @@ export function activeNavKey(
 ): NavKey | null {
   const section = navSectionOf(pathname);
   if (!section || !nav.includes(section)) return null;
-  if (surface === "sidebar") return section;
-  const parent = navParentOf(section);
+  // The tab bar's parent for a nested section (the sidebar marks the section itself).
+  const parent = surface === "tabs" && navParentOf(section);
   if (!parent) return section;
   return nav.includes(parent) ? parent : null;
 }

@@ -9,15 +9,15 @@ import "./account-data";
  *   gate        aiGateInput(userId, feature) → pass to lib/types/ai.ts aiGateFailure (disabled → not_configured
  *               → unverified → consent_required); aiConfigured(); aiFeatureEnabled(flags, feature); who counts
  *               as verified: access.ts isAiVerified (and the temporary AI_ALLOW_UNVERIFIED switch)
- *   features    generateCourseAbout, generatePlanSuggestions, generateCareerPlan, generateColdEmail,
- *               readProfessorSummary, extractSyllabusDeadlines (each returns an AiResult; bad ids or terms throw
- *               ApiError 400/404)
+ *   features    generateCourseAbout, generatePlanSuggestions, generateCareerPlan, generateCareerSummers,
+ *               generateColdEmail, readProfessorSummary, extractSyllabusDeadlines (each returns an AiResult;
+ *               bad ids or terms throw ApiError 400/404)
  *   jobs        pregenerateCourseAbout (GET /api/cron/ai), runProfessorSummaryJob (GET /api/cron/ai/professor-
  *               summaries; nothing runs unless RMP_SUMMARIES_ENABLED)
  *   shared      reportEntry ("Report this", 3 distinct reporters hide an entry), purgeEntries (admin)
  *   internals   server/ai/client.ts generate() (the only model call), mock.ts (AI_PROVIDER=mock), payloads.ts
  *               (the allow-list), prompts/*.ts (frozen system prompts with PROMPT_VERSION), grounding.ts,
- *               candidates.ts, sanitize.ts, cache.ts, usage.ts (budget + quotas)
+ *               candidates.ts, summer-catalog.ts, sanitize.ts, cache.ts, usage.ts (budget + quotas)
  */
 
 export { aiConfigured, aiProvider } from "./provider";
@@ -41,6 +41,7 @@ export {
 export { generateCourseAbout, type CourseAboutResult } from "./features/course-about";
 export { generatePlanSuggestions, type PlanSuggestionsResult } from "./features/plan-suggestions";
 export { generateCareerPlan, type CareerPlanResult } from "./features/career-plan";
+export { generateCareerSummers, type CareerSummersResult } from "./features/career-summers";
 export { generateColdEmail, type ColdEmailResult } from "./features/cold-email";
 export {
   ProfessorSummaryJobResultSchema,

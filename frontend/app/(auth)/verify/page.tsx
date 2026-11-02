@@ -16,7 +16,7 @@ import {
   signedInUserOrNull,
   type SearchParams,
 } from "@/server/auth/pages";
-import { isEmailVerified } from "@/server/auth/session";
+import { isEmailVerified, isOnboarded } from "@/server/auth/session";
 import { verificationUnavailableMessage } from "@/server/auth/verification";
 import { now } from "@/server/clock";
 import { VerifyForm } from "./_components/verify-form";
@@ -29,7 +29,9 @@ export const metadata: Metadata = { title: "Verify your email" };
  * temporary AI_ALLOW_UNVERIFIED switch is on, AI needs no verified address except for cold-email drafts, and the
  * page says so: the rule follows the switch, the "AI features in the meantime" offer also needs AI to be on and
  * set up, aiOpenWithoutVerifying), and requireUser({ verifiedDavidson: true }) sends other accounts here with
- * ?reason=davidson. `next` is where to go afterwards (same-origin only).
+ * ?reason=davidson. `next` is where to go afterwards (same-origin only). Without one, an account that has not
+ * finished set-up continues into it (/onboarding resumes where it stopped: the e-mail's /verify link, opened by a
+ * brand-new account, leads back into set-up), and so does "Not now"; every other account continues to Today.
  *
  * The page only says a code was sent when there is a live one (VerificationCode for verify-email: unused,
  * unexpired, attempts left). Otherwise (legacy accounts, an expired code, a first send skipped by the 3-per-hour
@@ -46,11 +48,19 @@ async function hasLiveCode(userId: string): Promise<boolean> {
   }
 }
 
+function isOnboardingPath(path: string): boolean {
+  const pathname = path.split(/[?#]/)[0] ?? "";
+  return pathname === routes.onboarding();
+}
+
 export default async function VerifyPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const user = await signedInUserOrNull();
   if (!user) redirect(routes.login(routes.verify()));
-  const next = callbackPathFrom(params.next);
+  const setUp = !isOnboarded(user);
+  const next = callbackPathFrom(params.next, setUp ? routes.onboarding() : routes.today());
+  // "Not now": back into set-up for an account still in it (to the step it came from, when it did), else Today.
+  const later = setUp ? (isOnboardingPath(next) ? next : routes.onboarding()) : routes.today();
   const gated = firstParam(params.reason) === "davidson";
   const davidson = isDavidsonEmail(user.email);
   const allowUnverifiedAi = loadAiAllowsUnverified();
@@ -98,6 +108,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Searc
     <VerifyForm
       email={user.email}
       next={next}
+      later={later}
       codeSent={await hasLiveCode(user.id)}
       notice={gated || !davidson ? lock : null}
     />

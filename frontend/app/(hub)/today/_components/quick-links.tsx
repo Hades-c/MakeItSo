@@ -13,7 +13,7 @@ export function QuickLinks() {
   return (
     <SectionCard id="quick-links" title="Quick links">
       <div className="@container">
-        <ul className="grid grid-cols-1 gap-2 @min-[26rem]:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2 @min-[26rem]:grid-cols-2 @min-[44rem]:grid-cols-3">
           {links.map((link) => (
             <li key={link.slug}>
               <a

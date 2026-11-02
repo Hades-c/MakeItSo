@@ -366,6 +366,63 @@ test("office programs on a career page: published deadlines and amounts", async 
   if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
 });
 
+test("summers and student organizations on a career page, each with its source", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000);
+  await newSignedInAccount(page, request, "e2e-career-activities");
+  await page.goto("/careers/software-engineering");
+
+  // On campus: WildcatSync organizations, the source said once under the list.
+  const campus = page.getByRole("region", { name: "On campus" });
+  await expect(campus.getByRole("heading", { level: 2, name: "On campus" })).toHaveClass(
+    /font-display/,
+  );
+  const clubs = campus.getByTestId("career-on-campus").locator(":scope > li");
+  expect(await clubs.count()).toBeGreaterThanOrEqual(3);
+  await expect(clubs.first()).toHaveAttribute("data-source", "wildcatsync");
+  await expect(campus.getByTestId("on-campus-source")).toHaveText(
+    /^From WildcatSync, Davidson’s student organization directory · checked [A-Z][a-z]{2} \d{1,2}, \d{4}$/,
+  );
+  const acm = campus.getByRole("link", { name: /^Davidson College ACM Student Chapter/ });
+  await expect(acm).toHaveAttribute("href", "https://wildcatsync.davidson.edu/organization/acm");
+  await expect(acm).toHaveAttribute("target", "_blank");
+  await expect(acm).toHaveAccessibleName(/\(opens in a new tab\)$/);
+
+  // Summers: a mixed list, so each row says where it comes from ("via …"), office programs with their audience.
+  const summers = page.getByRole("region", { name: "Summers" });
+  const rows = summers.getByTestId("career-summers").locator(":scope > li");
+  expect(await rows.count()).toBeGreaterThanOrEqual(3);
+  await expect(summers.getByText("via National Science Foundation")).toBeVisible();
+  await expect(summers.getByText("via Matthews Center")).toBeVisible();
+  const locke = rows.filter({ has: page.getByRole("link", { name: /^Locke White Jr\./ }) });
+  await expect(locke).toHaveAttribute("data-source", "matthews-center");
+  await expect(locke).toContainText("Students pursuing science, technology or medicine careers");
+  for (const link of await summers.getByRole("link").all()) {
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("href", /^https:\/\//);
+  }
+
+  const attribution = await expectAllAttributed(page);
+  expect(attribution.items).toBeGreaterThan(12);
+  expect(await horizontalOverflow(page), "scrolls sideways").toBeLessThanOrEqual(0);
+  expect(await seriousViolations(page)).toEqual([]);
+  if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
+
+  // A single-source summer list says its source once; a path with no summer options has no Summers card.
+  await page.goto("/careers/investment-banking");
+  await expect(
+    page.getByRole("region", { name: "Summers" }).getByTestId("summers-source"),
+  ).toHaveText(/^From Sponsors for Educational Opportunity · checked /);
+  await expectAllAttributed(page);
+  await page.goto("/careers/sports-management");
+  await expect(page.getByRole("region", { name: "On campus" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Summers" })).toHaveCount(0);
+  await expectAllAttributed(page);
+  if (isMobile(page)) expect(await smallTapTargets(page), "tap targets under 44px").toEqual([]);
+});
+
 test("a verified account sees the verified alumni on a career page", async ({ page, request }) => {
   test.setTimeout(60_000);
   await newVerifiedAccount(page, request, "e2e-career-alumni");

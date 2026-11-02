@@ -12,7 +12,6 @@ import type { ReqCode } from "@/lib/types/catalog";
 import { normalizeCourseCode } from "@/lib/types/common";
 import { generate, type GenerateOutcome, type GenerateRequest } from "@/server/ai/client";
 import { AI_MIN_RETRY_MS } from "@/server/ai/config";
-import type { GroundingResult } from "@/server/ai/grounding";
 import {
   budgetFailure,
   consumeQuotas,
@@ -94,6 +93,16 @@ export const GROUNDING_RETRY_NOTE =
 export const GROUNDING_FAILED_MESSAGE =
   "The AI suggested courses MakeItSo could not match to the catalog, so nothing is shown. Please try again.";
 
+/**
+ * What generateGrounded needs of a feature's grounding: whether the answer is usable, and what was dropped (logged
+ * by problem). Course features use grounding.ts GroundingResult; the summer picks have their own (ids, not codes).
+ */
+export interface GroundingVerdict {
+  items: readonly unknown[];
+  dropped: readonly { problem: string }[];
+  invalid: boolean;
+}
+
 export type GroundedOutcome<T, G> =
   | { kind: "ok"; outcome: Extract<GenerateOutcome<T>, { kind: "ok" }>; grounded: G }
   | {
@@ -106,9 +115,10 @@ export type GroundedOutcome<T, G> =
 /**
  * Call the model and ground its answer; when grounding fails (> 30% dropped, or nothing usable), log it with the
  * promptVersion and retry once when at least AI_MIN_RETRY_MS is left before the deadline. Never cached when it
- * fails.
+ * fails. `retryNote` and `failedMessage` default to the course features' (GROUNDING_RETRY_NOTE,
+ * GROUNDING_FAILED_MESSAGE).
  */
-export async function generateGrounded<S extends z.ZodType, G extends GroundingResult>(
+export async function generateGrounded<S extends z.ZodType, G extends GroundingVerdict>(
   schema: S,
   request: GenerateRequest,
   ground: (data: z.output<S>) => G,
@@ -117,6 +127,8 @@ export async function generateGrounded<S extends z.ZodType, G extends GroundingR
     regeneration: boolean;
     promptVersion: string;
     deadlineAt: number;
+    retryNote?: string;
+    failedMessage?: string;
   },
 ): Promise<GroundedOutcome<z.output<S>, G>> {
   let answered = false;
@@ -125,7 +137,10 @@ export async function generateGrounded<S extends z.ZodType, G extends GroundingR
     const attemptRequest =
       attempt === 1
         ? request
-        : { ...request, userBlocks: [...request.userBlocks, GROUNDING_RETRY_NOTE] };
+        : {
+            ...request,
+            userBlocks: [...request.userBlocks, options.retryNote ?? GROUNDING_RETRY_NOTE],
+          };
     const outcome = await callModel(schema, attemptRequest, {
       userId: options.userId,
       regeneration: options.regeneration && attempt === 1,
@@ -150,7 +165,7 @@ export async function generateGrounded<S extends z.ZodType, G extends GroundingR
   }
   return {
     kind: "failed",
-    failure: aiFailure("invalid", GROUNDING_FAILED_MESSAGE),
+    failure: aiFailure("invalid", options.failedMessage ?? GROUNDING_FAILED_MESSAGE),
     nothingAnswered: false,
   };
 }

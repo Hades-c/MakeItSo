@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { routes } from "@/lib/routes";
 import { MAX_SYLLABUS_CHARS } from "@/lib/syllabus-text";
 import { loadAiAllowsUnverified } from "@/server/ai/access";
-import { loadFlags } from "@/server/features";
+import { alumniPreviewEnabled, loadFlags } from "@/server/features";
 
 const SYLLABUS_LIMIT = MAX_SYLLABUS_CHARS.toLocaleString("en-US");
 
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 /** When this notice last changed (update it with every change to the text). */
-const LAST_UPDATED = "October 28, 2026";
+const LAST_UPDATED = "November 2, 2026";
 
 /**
  * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Rendered per request only because of the owner's
@@ -32,7 +32,8 @@ const LAST_UPDATED = "October 28, 2026";
  * covered), the cookies NextAuth sets, the mail adapter (server/auth/mailer.ts: Resend), pasted syllabi
  * (lib/syllabus-text.ts limit, server/syllabi: the text is sent once and never stored) and the Moodle import
  * (server/moodle: the encrypted feed URL, what is read from each event, the 6-hour sync). Change the text in the
- * same commit as the behaviour. The Moodle section follows MOODLE_IMPORT_ENABLED.
+ * same commit as the behaviour. The Moodle section follows MOODLE_IMPORT_ENABLED, the Davidson Connect preview
+ * paragraph FEATURE_ALUMNI_PREVIEW (sample profiles only: no real person's data, nothing sent).
  */
 
 function Section({
@@ -69,7 +70,9 @@ export default async function PrivacyPage() {
   // Read per request, never at build time.
   await connection();
   const aiWithoutVerifying = loadAiAllowsUnverified();
-  const moodleOn = loadFlags().moodle;
+  const flags = loadFlags();
+  const moodleOn = flags.moodle;
+  const alumniPreviewOn = alumniPreviewEnabled(flags);
   return (
     <div className="min-h-dvh bg-bg">
       <header className="border-b border-line bg-surface">
@@ -204,10 +207,11 @@ export default async function PrivacyPage() {
 
           <Section id="ai" title="AI features (optional)">
             <p>
-              MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans,
-              cold-email drafts and finding the deadlines in a pasted syllabus) use{" "}
-              <b>Claude, a model made by Anthropic</b>. They are <b>off until you turn them on</b>{" "}
-              in your profile, which asks you to confirm that you are 18 or older, and they need{" "}
+              MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans, summer
+              picks for a career path, cold-email drafts and finding the deadlines in a pasted
+              syllabus) use <b>Claude, a model made by Anthropic</b>. They are{" "}
+              <b>off until you turn them on</b> in your profile, which asks you to confirm that you
+              are 18 or older, and they need{" "}
               {aiWithoutVerifying ? (
                 <>
                   an @davidson.edu account. For now, while email verification is being set up, the
@@ -226,8 +230,8 @@ export default async function PrivacyPage() {
               <li>course codes and public catalog information;</li>
               <li>
                 the courses in your plan and which requirements they fill, your majors and minors,
-                graduation year and career interests, and for career plans and cold-email drafts,
-                the goals at Davidson you chose;
+                graduation year, class year and career interests, and for career plans, summer picks
+                and cold-email drafts, the goals at Davidson you chose;
               </li>
               <li>the goal or question you type into that feature;</li>
               <li>
@@ -302,6 +306,15 @@ export default async function PrivacyPage() {
               <b>If you are listed and want to be removed or corrected</b>, contact us (below) and
               we will remove or fix the entry.
             </p>
+            {alumniPreviewOn ? (
+              <p data-testid="privacy-alumni-preview">
+                <b>Davidson Connect preview.</b> Careers also has a preview with sample data of how
+                Davidson Connect, the college’s alumni platform, could appear here. Its profiles are
+                fictional and say so; they are not real alumni. MakeItSo is not connected to
+                Davidson Connect and receives none of its data, and the preview sends nothing to
+                anyone.
+              </p>
+            ) : null}
           </Section>
 
           <Section id="retention" title="How long we keep things">

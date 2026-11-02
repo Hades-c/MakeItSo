@@ -320,6 +320,179 @@ describe("/courses/[term]/[code]", () => {
     );
   });
 
+  /** The level-2 headings of the rendered page, in document order. */
+  const h2s = () => screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent?.trim());
+
+  it("when the AI summary can load, it leads and the official description goes last", async () => {
+    // The panel asks for its summary on mount; this answer never settles, so it stays in "loading".
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    try {
+      state.resolved = resolved();
+      state.page = { ...pageData(), aboutGate: "ready" };
+      render(
+        await coursePage.default({
+          ...params("202602", "CSC-221"),
+          searchParams: Promise.resolve({}),
+        }),
+      );
+      const order = h2s();
+      const at = (title: string) => order.findIndex((text) => text?.startsWith(title));
+      expect(at("About this course")).toBe(0);
+      expect(at("Requirements and prerequisites")).toBe(1);
+      expect(at("About this course")).toBeLessThan(at("Add to plan"));
+      expect(at("Official description")).toBe(order.length - 1);
+      expect(at("Other terms")).toBeLessThan(at("Official description"));
+      // Exactly one description card, and no "About" card left over at the top.
+      expect(order).not.toContain("About");
+      expect(screen.getByRole("region", { name: "Official description" })).toHaveAttribute(
+        "id",
+        "official-description",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  /** Answers the panel's request with one AiResult, as the route would. */
+  const answerWith = (status: number, body: unknown) =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify(body), {
+            status,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
+    );
+
+  const renderReady = async () => {
+    state.resolved = resolved();
+    state.page = { ...pageData(), aboutGate: "ready" };
+    render(
+      await coursePage.default({
+        ...params("202602", "CSC-221"),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+  };
+
+  it("when the summary loads, its footer points down to the official text, which stays last", async () => {
+    answerWith(200, {
+      kind: "ok",
+      data: {
+        about: { summary: "A tour of data structures.", goodFor: [], topics: [] },
+        provenance: {
+          model: "m",
+          promptVersion: "course-about-v1",
+          inputHash: "abc123",
+          generatedAt: "2026-09-29T14:00:00.000Z",
+        },
+      },
+      servedModel: "m",
+      fallbackUsed: false,
+      cached: true,
+    });
+    try {
+      await renderReady();
+      const pointer = await screen.findByTestId("about-official-pointer");
+      expect(pointer).toHaveTextContent(
+        "The requirements and prerequisites below, and the official description at the end of the page, are the official ones.",
+      );
+      expect(pointer).not.toHaveTextContent(/above/);
+      expect(within(pointer).getByRole("link", { name: "official description" })).toHaveAttribute(
+        "href",
+        "#official-description",
+      );
+      const order = h2s();
+      const at = (title: string) => order.findIndex((text) => text?.startsWith(title));
+      expect(at("About this course")).toBe(0);
+      expect(at("Requirements and prerequisites")).toBe(1);
+      expect(at("Official description")).toBe(order.length - 1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each([
+    ["quota", 429, "You have used today's AI requests. They reset tomorrow."],
+    ["budget", 503, "AI is paused for today."],
+    ["consent_required", 403, "Turn on AI features in your profile to use this."],
+  ])(
+    "when the panel ends in %s under gate ready, the official description comes back to the top",
+    async (kind, status, message) => {
+      answerWith(status, { kind, message });
+      try {
+        await renderReady();
+        expect(await screen.findByText(message)).toBeVisible();
+        const order = h2s();
+        const at = (title: string) => order.findIndex((text) => text?.startsWith(title));
+        expect(at("Official description")).toBe(0);
+        expect(at("About this course")).toBe(1);
+        expect(at("Requirements and prerequisites")).toBe(2);
+        // One description card, never one at each end.
+        expect(order.filter((text) => text === "Official description")).toHaveLength(1);
+        expect(screen.getAllByRole("region", { name: "Official description" })).toHaveLength(1);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+
+  it("when the request itself fails, the official description comes back to the top too", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("network");
+      }),
+    );
+    try {
+      await renderReady();
+      expect(
+        await screen.findByText("The AI summary could not be loaded. Try again."),
+      ).toBeVisible();
+      expect(h2s()[0]).toBe("Official description");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("when a verify step comes first, the official About card leads and the panel follows Sections", async () => {
+    state.resolved = resolved();
+    state.page = { ...pageData(), aboutGate: "unverified" };
+    render(
+      await coursePage.default({
+        ...params("202602", "CSC-221"),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    const order = h2s();
+    const at = (title: string) => order.findIndex((text) => text?.startsWith(title));
+    expect(order[0]).toBe("About");
+    expect(at("Sections")).toBeLessThan(at("About this course"));
+    expect(at("About this course")).toBeLessThan(at("Other terms"));
+    expect(at("Official description")).toBe(-1);
+    expect(at("Requirements and prerequisites")).toBe(-1);
+  });
+
+  it("with AI off, the official About card leads and no AI panel renders", async () => {
+    state.resolved = resolved();
+    state.page = pageData();
+    render(
+      await coursePage.default({
+        ...params("202602", "CSC-221"),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    const order = h2s();
+    expect(order[0]).toBe("About");
+    expect(order.some((text) => text?.startsWith("About this course"))).toBe(false);
+    expect(order.some((text) => text?.startsWith("Official description"))).toBe(false);
+  });
+
   it("a legacy non-Davidson account gets the explanation without a /verify link", async () => {
     state.email = "student@gmail.com";
     state.resolved = resolved();

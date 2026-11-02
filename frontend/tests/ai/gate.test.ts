@@ -103,16 +103,18 @@ describe("gate order", () => {
 });
 
 describe("feature sections", () => {
-  it("career plans need the careers section; cold e-mail the alumni section (which needs careers)", async () => {
+  it("career plans and summer picks need the careers section; cold e-mail the alumni section (which needs careers)", async () => {
     vi.stubEnv("AI_PROVIDER", "mock");
     const user = await insertStudent();
     vi.stubEnv("FEATURE_CAREERS", "false");
     expect(await gate(user.id, "career-plan")).toBe("disabled");
+    expect(await gate(user.id, "career-summers")).toBe("disabled");
     expect(await gate(user.id, "cold-email")).toBe("disabled");
     expect(await gate(user.id, "plan-suggestions")).toBeNull();
     vi.stubEnv("FEATURE_CAREERS", "true");
     vi.stubEnv("FEATURE_ALUMNI", "false");
     expect(await gate(user.id, "career-plan")).toBeNull();
+    expect(await gate(user.id, "career-summers")).toBeNull();
     expect(await gate(user.id, "cold-email")).toBe("disabled");
   });
 
@@ -157,6 +159,7 @@ describe("AI_ALLOW_UNVERIFIED (temporary owner switch)", () => {
       "course-about",
       "plan-suggestions",
       "career-plan",
+      "career-summers",
       "professor-summary",
     ] as const) {
       expect(await failure(user.id, feature), feature).toBeNull();

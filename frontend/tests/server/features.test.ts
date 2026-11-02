@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as alumniPage from "@/app/(hub)/alumni/page";
+import * as alumniPreviewPage from "@/app/(hub)/alumni/preview/page";
 import * as careerPage from "@/app/(hub)/careers/[slug]/page";
 import * as careersPage from "@/app/(hub)/careers/page";
 import * as eventsPage from "@/app/(hub)/events/page";
@@ -7,13 +8,14 @@ import { metadata as hubNotFoundMetadata } from "@/app/(hub)/not-found";
 import { getFlags } from "@/lib/flags";
 import type { NavKey } from "@/lib/nav";
 import {
+  alumniPreviewEnabled,
   featureEnabled,
   featureMetadata,
   HUB_FEATURES,
   hubNavKeys,
   loadFlags,
   requireFeature,
-  type HubFeature,
+  type GatedPage,
 } from "@/server/features";
 
 // connection() needs a Next.js request scope; here it only has to be awaited.
@@ -83,6 +85,17 @@ describe("featureEnabled", () => {
     expect(featureEnabled({ ...off, alumni: true, careers: true }, "alumni")).toBe(true);
     expect(featureEnabled({ careers: true, events: true, alumni: false }, "alumni")).toBe(false);
   });
+
+  it("opens the Davidson Connect preview with its own flag and Careers, whatever Alumni says", () => {
+    expect(alumniPreviewEnabled({ careers: true, alumniPreview: true })).toBe(true);
+    expect(alumniPreviewEnabled({ careers: false, alumniPreview: true })).toBe(false);
+    expect(alumniPreviewEnabled({ careers: true, alumniPreview: false })).toBe(false);
+    expect(alumniPreviewEnabled(getFlags({ FEATURE_ALUMNI: "false" }))).toBe(true);
+    // A page, not a nav section: the shell's sections never change with it.
+    expect(hubNavKeys(getFlags({ FEATURE_ALUMNI_PREVIEW: "false" }))).toEqual(
+      hubNavKeys(getFlags({})),
+    );
+  });
 });
 
 describe("loadFlags", () => {
@@ -106,6 +119,7 @@ describe("loadFlags", () => {
       careers: false,
       events: true,
       alumni: true,
+      alumniPreview: true,
       ai: true,
       moodle: true,
       rmp: true,
@@ -158,7 +172,7 @@ describe("loadFlags", () => {
 });
 
 describe("requireFeature", () => {
-  const cases: [HubFeature, Record<string, string>, boolean][] = [
+  const cases: [GatedPage, Record<string, string>, boolean][] = [
     ["careers", {}, true],
     ["careers", { FEATURE_CAREERS: "false" }, false],
     ["careers", { FEATURE_EVENTS: "false", FEATURE_ALUMNI: "false" }, true],
@@ -169,6 +183,10 @@ describe("requireFeature", () => {
     ["alumni", { FEATURE_ALUMNI: "false" }, false],
     ["alumni", { FEATURE_CAREERS: "false" }, false],
     ["alumni", { FEATURE_EVENTS: "false" }, true],
+    ["alumniPreview", {}, true],
+    ["alumniPreview", { FEATURE_ALUMNI_PREVIEW: "false" }, false],
+    ["alumniPreview", { FEATURE_CAREERS: "false" }, false],
+    ["alumniPreview", { FEATURE_ALUMNI: "false" }, true],
   ];
 
   it.each(cases)("%s with %j: open %s", async (feature, env, open) => {
@@ -224,6 +242,20 @@ describe("flagged hub pages", () => {
     ["/events", "FEATURE_EVENTS", eventsPage, "Events", () => eventsPage.default()],
     ["/alumni", "FEATURE_ALUMNI", alumniPage, "Alumni", () => alumniPage.default()],
     ["/alumni", "FEATURE_CAREERS", alumniPage, "Alumni", () => alumniPage.default()],
+    [
+      "/alumni/preview",
+      "FEATURE_ALUMNI_PREVIEW",
+      alumniPreviewPage,
+      "Davidson Connect preview · sample data",
+      () => alumniPreviewPage.default(),
+    ],
+    [
+      "/alumni/preview",
+      "FEATURE_CAREERS",
+      alumniPreviewPage,
+      "Davidson Connect preview · sample data",
+      () => alumniPreviewPage.default(),
+    ],
   ] as const)("%s answers 404 while %s is off", async (_route, name, page, title, render) => {
     await expect(render()).resolves.toBeTruthy();
     await expect(page.generateMetadata()).resolves.toEqual({ title });

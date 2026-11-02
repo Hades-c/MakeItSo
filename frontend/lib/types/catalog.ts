@@ -248,10 +248,13 @@ export type CourseLevel = z.infer<typeof CourseLevelSchema>;
  * - openOnly: at least one registrable section with seats: remaining > 0, where a cross-listed listing with max 0
  *   ("Register as <sibling>") counts its CRN-matched siblings' remaining seats.
  */
+/** A department code a `dept` filter accepts ("CSC", "INEU"): course subjects and cross-posting codes. */
+export const DEPT_CODE_PATTERN = /^[A-Z]{2,4}$/;
+
 export const CatalogQuerySchema = z.object({
   term: TermCodeSchema.optional(),
   q: queryText(100),
-  dept: queryList(z.string().regex(/^[A-Z]{2,4}$/)),
+  dept: queryList(z.string().regex(DEPT_CODE_PATTERN)),
   req: queryList(ReqCodeSchema),
   days: queryList(MeetingDaySchema),
   after: ClockTimeSchema.optional(),

@@ -40,6 +40,7 @@ export const aiEndpoints: ApiEndpoints<typeof aiApi> = {
   courseAbout: { method: "POST", path: "/api/ai/course-about", aiResult: true },
   planSuggestions: { method: "POST", path: "/api/ai/plan-suggestions", aiResult: true },
   careerPlan: { method: "POST", path: "/api/ai/career-plan", aiResult: true },
+  careerSummers: { method: "POST", path: "/api/ai/career-summers", aiResult: true },
   coldEmail: { method: "POST", path: "/api/ai/cold-email", aiResult: true },
   professorSummary: { method: "POST", path: "/api/ai/professor-summary", aiResult: true },
   report: { method: "POST", path: "/api/ai/report" },

@@ -24,6 +24,7 @@ import { isCareerSlug } from "@/server/content/careers";
 import { getDb } from "@/server/db";
 import { ApiError, zodIssues } from "@/server/http/errors";
 import { officialProgramNames } from "@/server/programs";
+import { compareOfferingNames } from "@/server/programs/names";
 import { snapshotOfferingNames } from "@/server/programs/snapshot";
 
 /**
@@ -96,13 +97,17 @@ const KINDS_OF: Readonly<Record<ProgramKind, readonly ProgramOfferingKind[]>> = 
   minor: ["minor", "interdisciplinary-minor"],
 };
 
+/**
+ * Minors and interdisciplinary minors in one list by subject, as the snapshot fallback lists them: appended after
+ * "Minor in Theatre", "Interdisciplinary Minor in Data Science" was not where a student looks for Data Science.
+ */
 async function namesFromPrograms(kind: ProgramKind): Promise<string[]> {
   if (kind === "major") return officialProgramNames("major");
   const [minors, interdisciplinary] = await Promise.all([
     officialProgramNames("minor"),
     officialProgramNames("interdisciplinary-minor"),
   ]);
-  return [...minors, ...interdisciplinary];
+  return [...minors, ...interdisciplinary].sort(compareOfferingNames);
 }
 
 /**
