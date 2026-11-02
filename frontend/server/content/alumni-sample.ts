@@ -112,9 +112,7 @@ export const SampleAlumnusSchema = z
     majors: z.array(z.string().min(1)).min(1).max(2),
     role: z.string().min(1),
     /** A generic descriptor ("a regional hospital system"), never a real organization's name. */
-    organization: z
-      .string()
-      .regex(/^an? \S/, 'a generic descriptor such as "a ..." or "an ..."'),
+    organization: z.string().regex(/^an? \S/, 'a generic descriptor such as "a ..." or "an ..."'),
     /** City or region ("Charlotte, NC"). */
     location: z.string().min(1),
     industry: z.enum(SAMPLE_INDUSTRIES),
