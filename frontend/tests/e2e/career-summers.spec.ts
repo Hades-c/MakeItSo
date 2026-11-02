@@ -129,7 +129,9 @@ test("a first-year's summer picks: after the Summers card, from its content, hon
   await expect(card.getByRole("button", { name: "Pick again" })).toBeVisible({ timeout: 30_000 });
   await expect(result).toBeFocused();
   await expect(
-    card.getByText(/shared by your plan, your emails and your summer picks/),
+    card.getByText(
+      /ask the AI again up to 3 times a day, across your plan, your emails and your summer picks/,
+    ),
   ).toBeVisible();
   expect(errors).toEqual([]);
 });

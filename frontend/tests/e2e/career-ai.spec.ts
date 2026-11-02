@@ -119,7 +119,9 @@ test("the AI career plan: official titles and availability, then Send to my plan
   });
   await expect(result).toBeFocused();
   await expect(
-    card.getByText(/shared by your plan, your emails and your summer picks/),
+    card.getByText(
+      /ask the AI again up to 3 times a day, across your plan, your emails and your summer picks/,
+    ),
   ).toBeVisible();
 
   await result.getByRole("button", { name: "Send to my plan" }).click();
