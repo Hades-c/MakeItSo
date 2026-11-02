@@ -16,6 +16,7 @@ import { resolveResources } from "../_lib/resources";
 import { resolveSummers } from "../_lib/activities";
 import { OnCampusCard, SummersCard } from "../_components/career-activities";
 import { CareerAlumni } from "../_components/career-alumni";
+import { CareerAlumniPreview } from "../_components/career-alumni-preview";
 import { CareerCourses } from "../_components/career-courses";
 import { CareerAiPanels } from "./_components/ai-panels";
 import { CareerPrograms } from "../_components/career-programs";
@@ -36,7 +37,8 @@ type Params = Promise<{ slug: string }>;
  *   live availability per term and Add to plan · related departments and official Acalog programs · Davidson
  *   resources and office programs (amounts and deadlines as published, tagged) · Handshake (base URL + search words)
  *   · summers (office programs by slug, outside programs) and student organizations on campus (WildcatSync), each
- *   card left out when the path has none · verified alumni (verified @davidson.edu + FEATURE_ALUMNI only) · outside resources.
+ *   card left out when the path has none · verified alumni (verified @davidson.edu + FEATURE_ALUMNI only) · the
+ *   Davidson Connect preview link (sample profiles, FEATURE_ALUMNI_PREVIEW) · outside resources.
  *
  * The page itself only resolves the career (so an unknown slug answers 404 before anything streams); the parts that
  * read the catalog, the programs, the plan or the session render in their own Suspense boundaries. Behind
@@ -137,6 +139,8 @@ export default async function CareerPage({ params }: { params: Params }) {
         <Suspense fallback={<CardSkeleton className="h-48" />}>
           <CareerAlumni career={career} />
         </Suspense>
+        {/* The Davidson Connect preview (fictional sample profiles), apart from the verified alumni above. */}
+        <CareerAlumniPreview career={career} />
 
         {/* AI career plan + cold e-mail (W9a-ai): signed-in students only, gated per AI_ENABLED and the account. */}
         <Suspense fallback={null}>
