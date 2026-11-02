@@ -25,7 +25,8 @@ function careersOf(record: SampleAlumnus): AlumnusCareer[] {
 
 /**
  * The preview's body under its notice: the filters, the count ("28 sample profiles", never "alumni" alone) and the
- * sample cards. Sample data only (server/content/alumni-sample.ts); it never reads the verified directory.
+ * sample cards. The count is said once, in that line (which also carries "Showing N of M" while filtered): the
+ * one section's heading has none, unlike the verified directory, whose two sections each count their own. Sample data only (server/content/alumni-sample.ts); it never reads the verified directory.
  */
 export function SampleDirectory({ params }: { params: SearchParamsRecord }) {
   const filters = parseSampleFilters(params, CAREER_SLUGS);
@@ -58,10 +59,7 @@ export function SampleDirectory({ params }: { params: SearchParamsRecord }) {
             id="sample-profiles-title"
             className="mb-3 font-display text-lg font-strong tracking-title text-fg"
           >
-            Sample profiles{" "}
-            <span className="font-sans text-xs font-medium text-fg-3 tabular-nums">
-              {shown.length}
-            </span>
+            Sample profiles
           </h2>
           <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {shown.map((record) => (

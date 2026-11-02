@@ -71,6 +71,8 @@ describe("/alumni/preview", () => {
     expect(screen.getByTestId("sample-count")).toHaveTextContent(
       `${SAMPLE_ALUMNI.length} sample profiles`,
     );
+    // Said once: the one section's heading carries no second count.
+    expect(screen.getByRole("heading", { level: 2, name: "Sample profiles" })).toBeVisible();
     for (const card of cards()) {
       expect(card).toHaveAttribute("data-sample", "true");
       expect(card).not.toHaveAttribute("data-alumnus");
