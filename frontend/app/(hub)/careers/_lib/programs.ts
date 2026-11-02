@@ -5,6 +5,7 @@ import type { Career } from "@/lib/types/content";
 import { foldText } from "@/server/content/define";
 import { MissingFixtureError } from "@/server/http/fixtures";
 import { programPublicUrl } from "@/server/programs/catalog-info";
+import { offeringSubject } from "@/server/programs/names";
 import { catalogRowsForRequest, type CatalogRow } from "@/server/programs/service";
 
 /**
@@ -48,14 +49,8 @@ export function fallbackProgramName(program: Career["relatedPrograms"][number]):
   return `${program.name} ${KIND_WORD[program.type]}`;
 }
 
-/** The subject of an official offering name: "Interdisciplinary Minor in Data Science" → "Data Science". */
-export function offeringSubject(name: string): string | null {
-  const match =
-    /^(?:interdisciplinary )?(?:major|minor|concentration) in (.+?)(?: \([^)]*\))?$/i.exec(
-      name.trim(),
-    );
-  return match ? match[1]! : null;
-}
+// The subject of an official offering name ("Interdisciplinary Minor in Data Science" → "Data Science").
+export { offeringSubject };
 
 type Row = Pick<CatalogRow, "acalogId" | "legacyId" | "name" | "offerings">;
 

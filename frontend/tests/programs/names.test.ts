@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ProgramOfferingKind } from "@/lib/types/catalog";
 import {
+  compareOfferingNames,
   matchProgramName,
   offeringName,
+  offeringSubject,
   parseNameQuery,
   programKey,
   subjectKey,
@@ -127,6 +129,48 @@ const programs: { name: string; offerings: Offering[] }[] = [
 function match(input: string, kinds?: ProgramOfferingKind[]) {
   return matchProgramName(programs, input, kinds)?.offering.name ?? null;
 }
+
+describe("compareOfferingNames", () => {
+  it("lists offerings by subject, so interdisciplinary programs sit among the others", () => {
+    const names = [
+      "Minor in Theatre",
+      "Interdisciplinary Minor in Neuroscience",
+      "Minor in Economics",
+      "Interdisciplinary Minor in Data Science",
+      "Minor in Dance",
+      "Interdisciplinary Minor in Applied Mathematics",
+      "Minor in Applied Physics",
+    ];
+    expect([...names].sort(compareOfferingNames)).toEqual([
+      "Interdisciplinary Minor in Applied Mathematics",
+      "Minor in Applied Physics",
+      "Minor in Dance",
+      "Interdisciplinary Minor in Data Science",
+      "Minor in Economics",
+      "Interdisciplinary Minor in Neuroscience",
+      "Minor in Theatre",
+    ]);
+    expect(
+      [
+        "Major in Africana Studies (A.B. Degree)",
+        "Interdisciplinary Major in Environmental Studies (B.A. or B.S. Degree)",
+        "Major in English (A.B. Degree)",
+      ].sort(compareOfferingNames),
+    ).toEqual([
+      "Major in Africana Studies (A.B. Degree)",
+      "Major in English (A.B. Degree)",
+      "Interdisciplinary Major in Environmental Studies (B.A. or B.S. Degree)",
+    ]);
+  });
+
+  it("reads the subject of an official name, null for anything else", () => {
+    expect(offeringSubject("Interdisciplinary Minor in Data Science")).toBe("Data Science");
+    expect(offeringSubject("Major in Computer Science (B.S. Degree)")).toBe("Computer Science");
+    expect(
+      offeringSubject("Student-designed major (Center for Interdisciplinary Studies)"),
+    ).toBeNull();
+  });
+});
 
 describe("matchProgramName", () => {
   it("matches official names whatever the spelling of '&'/'and', punctuation or case", () => {

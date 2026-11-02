@@ -433,6 +433,26 @@ describe("official program names", () => {
     expect((await officialNames("minor")).names).toEqual(names.minors);
   });
 
+  it("list minors and interdisciplinary minors together by subject (Data Science after Dance)", async () => {
+    programs.names = {
+      minor: ["Minor in Dance", "Minor in Economics", "Minor in Theatre"],
+      "interdisciplinary-minor": [
+        "Interdisciplinary Minor in Data Science",
+        "Interdisciplinary Minor in Neuroscience",
+      ],
+    };
+    expect(await officialNames("minor")).toEqual({
+      source: "programs",
+      names: [
+        "Minor in Dance",
+        "Interdisciplinary Minor in Data Science",
+        "Minor in Economics",
+        "Interdisciplinary Minor in Neuroscience",
+        "Minor in Theatre",
+      ],
+    });
+  });
+
   it("match by core name", () => {
     expect(programNameCore("Major in Computer Science (B.S. Degree)")).toBe("computer science");
     expect(programNameCore("Interdisciplinary Minor in Data Science")).toBe("data science");

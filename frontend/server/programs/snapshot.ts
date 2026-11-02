@@ -3,7 +3,7 @@ import * as z from "zod";
 import { ProgramOfferingKindSchema, type ProgramOfferingKind } from "@/lib/types/catalog";
 import { IsoDateSchema } from "@/lib/types/common";
 import { ACALOG_CATALOG } from "@/server/programs/catalog-info";
-import { programKey } from "@/server/programs/names";
+import { compareOfferingNames, programKey } from "@/server/programs/names";
 import { parseProgramDetail } from "@/server/programs/parse";
 import snapshotData from "@/server/programs/snapshot.json";
 import {
@@ -81,7 +81,7 @@ export function snapshotOfferingNames(kinds: readonly ProgramOfferingKind[]): st
     for (const offering of program.offerings)
       if (wanted.has(offering.kind)) names.add(offering.name);
   }
-  return [...names].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+  return [...names].sort(compareOfferingNames);
 }
 
 export const SNAPSHOT_SOURCE =
