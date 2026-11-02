@@ -176,6 +176,7 @@ Set these in `frontend/.env.local` locally, or in the Vercel project settings. N
 | `FEATURE_CAREERS`       | no           | Careers pages on/off. Default `true`                                                                      |
 | `FEATURE_EVENTS`        | no           | Events page and feeds on/off. Default `true`                                                              |
 | `FEATURE_ALUMNI`        | no           | Alumni directory on/off. Default `true`                                                                   |
+| `FEATURE_ALUMNI_PREVIEW` | no         | Davidson Connect preview (fictional sample profiles, `/alumni/preview`) on/off. Default `true`            |
 | `APP_TIMEZONE`          | no           | IANA time zone for "today" logic. Default `America/New_York`                                              |
 | `RMP_ENABLED`           | no           | RateMyProfessors ratings on/off. Default `true`                                                           |
 | `RMP_SUMMARIES_ENABLED` | no           | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)                           |

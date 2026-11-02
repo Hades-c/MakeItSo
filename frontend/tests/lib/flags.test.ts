@@ -8,6 +8,7 @@ describe("getFlags (PLAN §4.1.14)", () => {
       careers: true,
       events: true,
       alumni: true,
+      alumniPreview: true,
       ai: true,
       moodle: true,
       rmp: true,
@@ -21,6 +22,7 @@ describe("getFlags (PLAN §4.1.14)", () => {
         FEATURE_CAREERS: "false",
         FEATURE_EVENTS: "0",
         FEATURE_ALUMNI: "off",
+        FEATURE_ALUMNI_PREVIEW: "false",
         AI_ENABLED: "false",
         MOODLE_IMPORT_ENABLED: "false",
         RMP_ENABLED: "true",
@@ -30,13 +32,23 @@ describe("getFlags (PLAN §4.1.14)", () => {
       careers: false,
       events: false,
       alumni: false,
+      alumniPreview: false,
       ai: false,
       moodle: false,
       rmp: true,
       rmpSummaries: true,
     });
     expect(Object.keys(FLAG_ENV_VARS).sort()).toEqual(
-      ["ai", "alumni", "careers", "events", "moodle", "rmp", "rmpSummaries"].sort(),
+      [
+        "ai",
+        "alumni",
+        "alumniPreview",
+        "careers",
+        "events",
+        "moodle",
+        "rmp",
+        "rmpSummaries",
+      ].sort(),
     );
   });
 

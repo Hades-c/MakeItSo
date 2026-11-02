@@ -206,6 +206,17 @@ export const routes = {
   events: (params: EventsParams = {}) =>
     `/events${queryString({ sources: params.sources, kinds: params.kinds, q: params.q?.trim() })}`,
   alumni: (params: { career?: string } = {}) => `/alumni${queryString({ career: params.career })}`,
+  /**
+   * The Davidson Connect preview (fictional sample profiles, never real alumni): /alumni/preview with the
+   * directory's filters (`career` slug, `year`, `industry` slug, `q`).
+   */
+  alumniPreview: (params: { career?: string; year?: number; industry?: string; q?: string } = {}) =>
+    `/alumni/preview${queryString({
+      career: params.career,
+      year: params.year,
+      industry: params.industry,
+      q: params.q?.trim(),
+    })}`,
   /** One alumnus's card in the directory: /alumni#<id> (the card's element id is the Alumnus id). */
   alumnus: (id: string) => `/alumni#${encodeURIComponent(id)}`,
   profile: () => "/profile",

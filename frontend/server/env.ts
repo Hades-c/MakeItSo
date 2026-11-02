@@ -200,6 +200,12 @@ export const envSchema = z.object({
   FEATURE_CAREERS: flag(true),
   FEATURE_EVENTS: flag(true),
   FEATURE_ALUMNI: flag(true),
+  /**
+   * The Davidson Connect preview (/alumni/preview): fictional sample profiles that show how the college's alumni
+   * platform will look here once it is connected, for pitching. Holds no personal data. Default on; turn it off
+   * once the real integration lands.
+   */
+  FEATURE_ALUMNI_PREVIEW: flag(true),
   /** Moodle calendar import on /syllabi (connect, sync, Today's Moodle deadlines). Default on. */
   MOODLE_IMPORT_ENABLED: flag(true),
   RMP_ENABLED: flag(true),

@@ -8,11 +8,14 @@ import { readEnv } from "@/server/env";
  * Every R2 surface is built behind these so either release can ship without rework (PLAN §0). A flag only switches
  * a surface off: AI additionally needs configuration + consent + a verified @davidson.edu account at request time
  * (server/ai/access.ts; the temporary AI_ALLOW_UNVERIFIED switch, read there and not a flag here, relaxes the last
- * for everything but cold e-mail), and alumni need a verified account.
+ * for everything but cold e-mail), and alumni need a verified account. The Davidson Connect preview (/alumni/preview,
+ * fictional sample profiles, server/content/alumni-sample.ts) needs only a signed-in student and Careers.
  *
  *   careers       FEATURE_CAREERS        default on
  *   events        FEATURE_EVENTS         default on
  *   alumni        FEATURE_ALUMNI         default on
+ *   alumniPreview FEATURE_ALUMNI_PREVIEW default on  (the Davidson Connect preview with sample data; off once the
+ *                                                     real integration lands)
  *   ai            AI_ENABLED             default on
  *   moodle        MOODLE_IMPORT_ENABLED  default on  (Moodle calendar import on /syllabi; turning it off stops
  *                                                     syncing, already imported deadlines stay in the plan)
@@ -23,6 +26,7 @@ export interface Flags {
   careers: boolean;
   events: boolean;
   alumni: boolean;
+  alumniPreview: boolean;
   ai: boolean;
   moodle: boolean;
   rmp: boolean;
@@ -33,6 +37,7 @@ export const FLAG_ENV_VARS = {
   careers: "FEATURE_CAREERS",
   events: "FEATURE_EVENTS",
   alumni: "FEATURE_ALUMNI",
+  alumniPreview: "FEATURE_ALUMNI_PREVIEW",
   ai: "AI_ENABLED",
   moodle: "MOODLE_IMPORT_ENABLED",
   rmp: "RMP_ENABLED",
@@ -50,6 +55,7 @@ export function getFlags(source: Record<string, string | undefined> = process.en
     careers: readEnv(FLAG_ENV_VARS.careers, source),
     events: readEnv(FLAG_ENV_VARS.events, source),
     alumni: readEnv(FLAG_ENV_VARS.alumni, source),
+    alumniPreview: readEnv(FLAG_ENV_VARS.alumniPreview, source),
     ai: readEnv(FLAG_ENV_VARS.ai, source),
     moodle: readEnv(FLAG_ENV_VARS.moodle, source),
     rmp,

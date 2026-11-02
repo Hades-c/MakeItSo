@@ -12,6 +12,7 @@ import { EnvError, readEnv } from "@/server/env";
  *   loadFlags()                  getFlags() that never throws: a malformed flag is logged (once) and takes its default
  *   featureEnabled(flags, f)     whether a flagged section is on (Alumni also needs Careers)
  *   hubNavKeys(flags)            the sections the hub layout passes to <AppShell nav>
+ *   alumniPreviewEnabled(flags)  whether the Davidson Connect preview (/alumni/preview, sample profiles) is on
  *   requireFeature(f)            first line of a flagged page (and its sub-pages): notFound() while the section is off
  *   featureMetadata(f, metadata) a flagged page's generateMetadata, so its 404 is not titled after the hidden section
  *
@@ -46,6 +47,23 @@ export function featureEnabled(flags: Pick<Flags, HubFeature>, feature: HubFeatu
     case "alumni":
       return flags.alumni && flags.careers;
   }
+}
+
+/**
+ * Whether the Davidson Connect preview is on: FEATURE_ALUMNI_PREVIEW and FEATURE_CAREERS (it is reached from the
+ * Careers pages and filters by career path). Independent of FEATURE_ALUMNI: the preview shows fictional sample
+ * profiles (server/content/alumni-sample.ts), no real person, so it needs no verified account and no Alumni section.
+ * It is a page, not a nav section: it adds nothing to the sidebar, tabs or ⌘K.
+ */
+export function alumniPreviewEnabled(flags: Pick<Flags, "careers" | "alumniPreview">): boolean {
+  return flags.alumniPreview && flags.careers;
+}
+
+/** What a flagged page can be gated on: a hub section, or the Davidson Connect preview. */
+export type GatedPage = HubFeature | "alumniPreview";
+
+function pageEnabled(flags: Flags, page: GatedPage): boolean {
+  return page === "alumniPreview" ? alumniPreviewEnabled(flags) : featureEnabled(flags, page);
 }
 
 /** The hub sections to show, in sidebar order: careers off hides Careers (and Alumni), events off hides Events. */
@@ -103,9 +121,9 @@ export function loadFlags(source: Record<string, string | undefined> = process.e
  *
  * Reads the flags per request (it opts the page out of prerendering first), never at build time.
  */
-export async function requireFeature(feature: HubFeature): Promise<void> {
+export async function requireFeature(feature: GatedPage): Promise<void> {
   await connection();
-  if (!featureEnabled(loadFlags(), feature)) notFound();
+  if (!pageEnabled(loadFlags(), feature)) notFound();
 }
 
 /**
@@ -113,7 +131,7 @@ export async function requireFeature(feature: HubFeature): Promise<void> {
  * `metadata` (which Next.js keeps on the 404). While the section is off it answers 404 as well, so the tab and the
  * title screen readers announce come from the not-found page and never name a section the shell hides.
  */
-export async function featureMetadata(feature: HubFeature, metadata: Metadata): Promise<Metadata> {
+export async function featureMetadata(feature: GatedPage, metadata: Metadata): Promise<Metadata> {
   await requireFeature(feature);
   return metadata;
 }
