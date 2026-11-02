@@ -163,12 +163,16 @@ describe("RegisterForm", () => {
     await waitFor(() => expect(screen.getByLabelText("Full name")).toHaveFocus());
   });
 
-  it("registers, signs in and continues to /verify", async () => {
+  it("registers, signs in and goes straight to setting the account up, saying a code was sent", async () => {
     stubFetch([202, { status: "check-inbox", message: "Check your Davidson inbox." }]);
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
     render(<RegisterForm classYears={CLASS_YEARS} mailAvailable />);
     await fillRegister();
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/verify"));
+    // Owner's request (Eurekas): a new account opens set-up, About first; /verify waits (set-up links to it).
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith("/onboarding?step=about&verify=sent"),
+    );
+    expect(router.replace).toHaveBeenCalledTimes(1);
     expect(calls[0]?.url).toBe("/api/auth/register");
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
       name: "Casey Wildcat",
@@ -178,12 +182,12 @@ describe("RegisterForm", () => {
     });
   });
 
-  it("goes to /today when verification is unavailable", async () => {
+  it("goes straight to set-up without a code claim when verification is unavailable", async () => {
     stubFetch([202, { status: "check-inbox", message: "Sign in with your password." }]);
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
     render(<RegisterForm classYears={CLASS_YEARS} mailAvailable={false} />);
     await fillRegister();
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/today"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/onboarding?step=about"));
   });
 
   it("shows 'check your inbox' (never 'already registered') when signing in does not follow", async () => {
@@ -258,6 +262,11 @@ describe("VerifyForm", () => {
     stubFetch([200, { verified: true, emailVerifiedAt: "2026-09-30T16:00:00.000Z" }]);
     render(<VerifyForm email="casey@davidson.edu" next="/alumni" codeSent />);
     expect(screen.getByText("casey@davidson.edu")).toBeInTheDocument();
+    // "Not now" goes to Today unless the page says otherwise.
+    expect(screen.getByRole("link", { name: "Continue to MakeItSo" })).toHaveAttribute(
+      "href",
+      "/today",
+    );
     await userEvent.type(screen.getByLabelText("Verification code"), "123 456");
     await userEvent.click(screen.getByRole("button", { name: "Verify" }));
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/alumni"));
@@ -307,6 +316,21 @@ describe("VerifyForm", () => {
     expect(calls[0]?.url).toBe("/api/account/verify/resend");
   });
 
+  it("sends 'Not now' back into set-up for an account still setting up", () => {
+    render(
+      <VerifyForm
+        email="casey@davidson.edu"
+        next="/onboarding?step=about"
+        later="/onboarding?step=about"
+        codeSent
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Continue to MakeItSo" })).toHaveAttribute(
+      "href",
+      "/onboarding?step=about",
+    );
+  });
+
   it("checks the format before sending", async () => {
     stubFetch();
     render(<VerifyForm email="casey@davidson.edu" next="/today" codeSent />);
@@ -327,7 +351,7 @@ describe("ForgotPasswordForm", () => {
           message: "If an account uses that address, we sent it a reset code.",
         },
       ],
-      [204, null],
+      [200, { startedFresh: false }],
     );
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
     render(<ForgotPasswordForm />);
@@ -342,6 +366,23 @@ describe("ForgotPasswordForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/today"));
     expect(calls[1]?.url).toBe("/api/auth/password-reset/confirm");
+  });
+
+  it("continues into set-up when the reset started a pending sign-up fresh", async () => {
+    stubFetch(
+      [202, { status: "check-inbox", message: "If an account uses that address, ..." }],
+      [200, { startedFresh: true }],
+    );
+    nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
+    render(<ForgotPasswordForm />);
+    await userEvent.type(screen.getByLabelText("Email"), "casey@davidson.edu");
+    await userEvent.click(screen.getByRole("button", { name: "Send reset e-mail" }));
+    await userEvent.type(await screen.findByLabelText("Reset code"), "123456");
+    await userEvent.type(screen.getByLabelText("New password"), "brand new passphrase");
+    await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
+    // The account is as new as a registration's: it goes where /register sends one (no code was sent: the
+    // reset verified the address).
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/onboarding?step=about"));
   });
 
   it("announces a wrong reset code in an alert and focuses the code field (review regression)", async () => {
@@ -378,7 +419,7 @@ describe("ForgotPasswordForm opened from the e-mailed link", () => {
 
   it("asks only for the new password, drops the token from the address, resets and signs in", async () => {
     window.history.replaceState(null, "", `/forgot-password#token=${TOKEN}`);
-    stubFetch([200, { email: "casey@davidson.edu" }]);
+    stubFetch([200, { email: "casey@davidson.edu", startedFresh: false }]);
     nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
     render(<ForgotPasswordForm />);
     expect(
@@ -401,6 +442,16 @@ describe("ForgotPasswordForm opened from the e-mailed link", () => {
       password: "brand new passphrase",
       redirect: false,
     });
+  });
+
+  it("continues into set-up when the link's reset started a pending sign-up fresh", async () => {
+    window.history.replaceState(null, "", `/forgot-password#token=${TOKEN}`);
+    stubFetch([200, { email: "casey@davidson.edu", startedFresh: true }]);
+    nextAuth.signIn.mockResolvedValue({ ok: true, error: null });
+    render(<ForgotPasswordForm />);
+    await userEvent.type(await screen.findByLabelText("New password"), "brand new passphrase");
+    await userEvent.click(screen.getByRole("button", { name: "Set new password" }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/onboarding?step=about"));
   });
 
   it("says when the link no longer works and offers a new one", async () => {

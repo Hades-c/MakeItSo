@@ -1,9 +1,21 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { E2E_ORIGIN, formError, registerViaApi, SAME_ORIGIN, signIn, uniqueEmail } from "./helpers";
+import {
+  E2E_ORIGIN,
+  formError,
+  newVerifiedAccount,
+  PASSWORD,
+  registerViaApi,
+  SAME_ORIGIN,
+  signIn,
+  uniqueEmail,
+} from "./helpers";
 
 /**
  * Sign-up, verification, sign-in and account flows (W3). The e2e server runs the console mailer, and
- * GET /api/auth/test-mailbox (fixtures + console mailer only, never on Vercel) hands the tests the codes.
+ * GET /api/auth/test-mailbox (fixtures + console mailer only, never on Vercel) hands the tests the codes. A new
+ * account goes straight to setting it up (owner's request, Eurekas tab): /onboarding?step=about, with one quiet
+ * line about the e-mailed code. (Both e2e servers can send mail; the register form's no-mail path, the same URL
+ * without `verify=sent`, is unit-tested in tests/w3/auth-pages.test.tsx.)
  */
 
 interface MailboxMessage {
@@ -99,7 +111,9 @@ test("a signed-out deep link goes through /login and comes back to the same page
   }
 });
 
-test("register, verify with the e-mailed code, sign out, and sign back in", async ({ page }) => {
+test("register, set up straight away, verify with the e-mailed code, sign out, and sign back in", async ({
+  page,
+}) => {
   const email = uniqueEmail("e2e-auth");
   const password = "e2e password 123";
 
@@ -110,10 +124,23 @@ test("register, verify with the e-mailed code, sign out, and sign back in", asyn
   await expect(page.getByLabel("Class year")).toHaveText("First-year");
   await page.getByRole("button", { name: "Create account" }).click();
 
-  // A new account is signed in straight away and asked for its code.
-  await expect(page).toHaveURL(/\/verify$/);
+  // A new account is signed in straight away and opens set-up at its first step, told once about the code.
+  await expect(page).toHaveURL(/\/onboarding\?step=about&verify=sent$/);
+  await expect(page).toHaveTitle(/^Step 1 of 4: About you · Set up your account/);
+  await expect(page.getByRole("heading", { level: 1, name: "About you" })).toBeVisible();
+  const note = page.getByTestId("verify-sent-note");
+  await expect(note).toHaveText(
+    `We sent a verification code to ${email}. Enter the code now or later (you can ask for a new one there).`,
+  );
+  await note.getByRole("link", { name: "Enter the code" }).click();
+  await expect(page).toHaveURL(/\/verify\?next=%2Fonboarding%3Fstep%3Dabout$/);
   await expect(page.getByRole("heading", { level: 1, name: "Verify your email" })).toBeVisible();
   await expect(page.getByText(email)).toBeVisible();
+  // "Not now" goes back into set-up, not past it.
+  await expect(page.getByRole("link", { name: "Continue to MakeItSo" })).toHaveAttribute(
+    "href",
+    "/onboarding?step=about",
+  );
 
   const code = await latestCode(page.request, email, "verify-email");
   const wrong = code === "000000" ? "111111" : "000000";
@@ -124,14 +151,19 @@ test("register, verify with the e-mailed code, sign out, and sign back in", asyn
 
   await page.getByLabel("Verification code").fill(code);
   await page.getByRole("button", { name: "Verify", exact: true }).click();
-  await expect(page).toHaveURL(/\/today$/);
-  await expect(page.getByTestId("today-headline")).toBeVisible();
+  // Back to the step it came from; verified now, so the line is gone.
+  await expect(page).toHaveURL(/\/onboarding\?step=about$/);
+  await expect(page.getByRole("heading", { level: 1, name: "About you" })).toBeVisible();
+  await expect(page.getByTestId("verify-sent-note")).toHaveCount(0);
 
   const me = await page.request.get("/api/me");
   expect(((await me.json()) as { me: { verifiedDavidson: boolean } }).me.verifiedDavidson).toBe(
     true,
   );
 
+  // Today stays open before set-up is finished (its "Finish setting up" nudge).
+  await page.goto("/today");
+  await expect(page.getByTestId("today-headline")).toBeVisible();
   await page.getByRole("button", { name: /Account menu/ }).click();
   await expect(page.getByTestId("hub-user-email")).toHaveText(email);
   await page.keyboard.press("Escape");
@@ -144,6 +176,37 @@ test("register, verify with the e-mailed code, sign out, and sign back in", asyn
 
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(page.getByTestId("today-headline")).toBeVisible();
+});
+
+test("the e-mailed /verify link leads a new account back into set-up; Skip setup then opens Today", async ({
+  page,
+}) => {
+  const email = uniqueEmail("e2e-auth-link");
+  await page.goto("/register");
+  await page.getByLabel("Full name").fill("Robin Wildcat");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill("e2e password 456");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(/\/onboarding\?step=about&verify=sent$/);
+
+  // The e-mail names the plain /verify page (no `next`): verifying there resumes set-up.
+  await page.goto("/verify");
+  await expect(page.getByRole("link", { name: "Continue to MakeItSo" })).toHaveAttribute(
+    "href",
+    "/onboarding",
+  );
+  await page
+    .getByLabel("Verification code")
+    .fill(await latestCode(page.request, email, "verify-email"));
+  await page.getByRole("button", { name: "Verify", exact: true }).click();
+  await expect(page).toHaveURL(/\/onboarding\?step=about$/);
+
+  await page.getByLabel("Graduation year").selectOption("2030");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await expect(page).toHaveURL(/\/onboarding\?step=classes$/);
+  await page.getByRole("button", { name: "Skip setup" }).click();
   await expect(page).toHaveURL(/\/today$/);
   await expect(page.getByTestId("today-headline")).toBeVisible();
 });
@@ -287,8 +350,9 @@ test("sign out everywhere revokes the other device's session", async ({ browser,
 });
 
 test("forgot password: reset with an e-mailed code", async ({ page, request }) => {
-  const email = uniqueEmail("e2e-reset");
-  await registerViaApi(request, { name: "Reset Me", email, password: "old e2e password" });
+  // A verified account: a reset changes only its password and continues to Today, as before.
+  const email = await newVerifiedAccount(page, request, "e2e-reset");
+  await signOutFromMenu(page);
 
   await page.goto("/login");
   await page.getByRole("link", { name: "Forgot password?" }).click();
@@ -305,12 +369,15 @@ test("forgot password: reset with an e-mailed code", async ({ page, request }) =
 
   await signOutFromMenu(page);
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("old e2e password");
+  await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(formError(page)).toHaveText("Invalid email or password");
 });
 
-test("forgot password: reset with the e-mailed link", async ({ page, request }) => {
+test("forgot password: the e-mailed link resets a pending sign-up fresh and opens set-up", async ({
+  page,
+  request,
+}) => {
   const email = uniqueEmail("e2e-reset-link");
   await registerViaApi(request, { name: "Link Reset", email, password: "old e2e password" });
   const asked = await request.post("/api/auth/password-reset", {
@@ -335,7 +402,11 @@ test("forgot password: reset with the e-mailed link", async ({ page, request }) 
   await expect(page.getByLabel("Reset code")).toHaveCount(0);
   await page.getByLabel("New password").fill("new link e2e password");
   await page.getByRole("button", { name: "Set new password" }).click();
-  await expect(page).toHaveURL(/\/today$/);
+  // The unverified sign-up was started fresh (its set-up cleared): set-up, as for a new account. The reset
+  // verified the address, so there is no line about a code.
+  await expect(page).toHaveURL(/\/onboarding\?step=about$/);
+  await expect(page.getByRole("heading", { level: 1, name: "About you" })).toBeVisible();
+  await expect(page.getByTestId("verify-sent-note")).toHaveCount(0);
 });
 
 test("download my data, then delete the account", async ({ page, request }) => {

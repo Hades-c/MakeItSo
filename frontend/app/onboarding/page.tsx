@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { routes } from "@/lib/routes";
+import { isDavidsonEmail } from "@/lib/api/account";
+import { routes, VERIFY_SENT } from "@/lib/routes";
 import { requireUser } from "@/server/auth";
+import { isMailAvailable } from "@/server/auth/mailer";
+import { isEmailVerified } from "@/server/auth/session";
 import { AboutStep } from "./_components/about-step";
 import { ClassesStep } from "./_components/classes-step";
 import { CompletedStep } from "./_components/completed-step";
@@ -9,6 +12,7 @@ import { InterestsStep } from "./_components/interests-step";
 import { SkipSetup } from "./_components/skip-setup";
 import { StepHeading } from "./_components/step-heading";
 import { StepList } from "./_components/step-list";
+import { VerifySentNote } from "./_components/verify-sent-note";
 import { currentTermLabel, loadOnboarding, type OnboardingData } from "./_lib/load";
 import {
   ONBOARDING_STEPS,
@@ -16,6 +20,7 @@ import {
   parseStep,
   requiredStepsSaved,
   resumeStep,
+  SETUP_TITLE,
   stepHref,
   stepIndex,
   stepLabel,
@@ -25,7 +30,10 @@ import {
 } from "./_lib/steps";
 
 /**
- * /onboarding (PLAN §3; R1; PLAN-UX §8): the first run, in four steps with the step in the URL. "About you" is
+ * /onboarding (PLAN §3; R1; PLAN-UX §8): "Set up your account", the first run in four steps with the step in the
+ * URL. A new account comes here straight from /register (`?step=about`, plus `&verify=sent` when registering
+ * e-mailed a verification code: step 1 then says so in one quiet line, VerifySentNote, while the address is still
+ * unverified and mail can be sent; the line links to /verify, which has "Send a new code"). "About you" is
  * required: it has no "Skip this step" link, the later steps stay closed until it is saved (a later step's URL
  * redirects to it), and the global "Skip setup" button only appears once it is saved. Every later step can be
  * skipped; "Your classes" never blocks (its skip link reads "Add classes later", and it counts as done for a
@@ -39,8 +47,8 @@ import {
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 /**
- * A step-specific title ("Step 2 of 4: Your Fall 2026 classes · Get started"): Next's route announcer reads the
- * document title after a client navigation, so every step change is announced.
+ * A step-specific title ("Step 2 of 4: Your Fall 2026 classes · Set up your account"): Next's route announcer reads
+ * the document title after a client navigation, so every step change is announced.
  */
 export async function generateMetadata({
   searchParams,
@@ -48,7 +56,7 @@ export async function generateMetadata({
   searchParams: SearchParams;
 }): Promise<Metadata> {
   const step = parseStep((await searchParams).step);
-  if (!step) return { title: "Get started" };
+  if (!step) return { title: SETUP_TITLE };
   return { title: stepTitle(step, await currentTermLabel()) };
 }
 
@@ -80,13 +88,21 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
   }
   const step = requested;
   const firstName = data.profile.name.trim().split(/\s+/)[0];
+  // Said once: only on step 1 of a first run, only on the URL /register sent here, only while still true.
+  const verifySent =
+    step === "about" &&
+    !onboarded &&
+    params.verify === VERIFY_SENT &&
+    !isEmailVerified(user) &&
+    isDavidsonEmail(user.email) &&
+    isMailAvailable();
 
   return (
     <div data-testid="onboarding" data-step={step}>
       <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="mb-1.5 text-xs font-medium tracking-label text-fg-3 uppercase">
-            Step {stepIndex(step) + 1} of {ONBOARDING_STEPS.length}
+            {SETUP_TITLE} · Step {stepIndex(step) + 1} of {ONBOARDING_STEPS.length}
             {step === "about" && firstName ? ` · Welcome, ${firstName}` : ""}
           </p>
           <StepHeading step={step}>{stepLabel(step, data.terms.currentLabel)}</StepHeading>
@@ -102,6 +118,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: S
         currentTermLabel={data.terms.currentLabel}
         next={next}
       />
+
+      {verifySent ? <VerifySentNote email={user.email} returnTo={stepHref(step, next)} /> : null}
 
       {data.legacyPlan && (step === "classes" || step === "completed") ? (
         <p className="mb-4 rounded-md border border-line bg-surface-2 px-3.5 py-2.5 text-sm text-fg-2">

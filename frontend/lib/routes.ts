@@ -163,6 +163,9 @@ export interface EventsParams {
   q?: string;
 }
 
+/** The `?verify=` value routes.onboarding({ verifySent: true }) writes. */
+export const VERIFY_SENT = "sent";
+
 export const routes = {
   home: () => "/",
   login: (callbackUrl?: string) => `/login${queryString({ callbackUrl })}`,
@@ -176,12 +179,13 @@ export const routes = {
     `/forgot-password${params.token ? `#${RESET_TOKEN_PARAM}=${encodeURIComponent(params.token)}` : ""}`,
   privacy: () => "/privacy",
   /**
-   * /onboarding, at `step` (none: resume where the student stopped). `next` is the page to continue to once setup
-   * is finished or skipped (the hub sends first-run deep links here with it); the page re-checks it with
-   * safeAppPath, so pass any same-origin path.
+   * /onboarding ("Set up your account"), at `step` (none: resume where the student stopped). `next` is the page to
+   * continue to once setup is finished or skipped (the hub sends first-run deep links here with it); the page
+   * re-checks it with safeAppPath, so pass any same-origin path. `verifySent` (`?verify=sent`): the register form
+   * just had a verification code e-mailed, so step 1 says so once (only while the address is still unverified).
    */
-  onboarding: (step?: OnboardingStep, params: { next?: string } = {}) =>
-    `/onboarding${queryString({ step, next: params.next })}`,
+  onboarding: (step?: OnboardingStep, params: { next?: string; verifySent?: boolean } = {}) =>
+    `/onboarding${queryString({ step, next: params.next, verify: params.verifySent ? VERIFY_SENT : undefined })}`,
   /** /today, or another day of the five-day strip (`day` = YYYY-MM-DD; the page ignores days off the strip). */
   today: (params: { day?: string } = {}) => `/today${queryString({ day: params.day })}`,
   courses: (params: CoursesParams = {}) =>

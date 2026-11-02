@@ -11,9 +11,9 @@ export function firstParam(value: string | string[] | undefined): string | undef
   return Array.isArray(value) ? value[0] : value;
 }
 
-/** A same-origin path to continue to (server/auth/paths.ts safeAppPath); /today otherwise. */
-export function callbackPathFrom(value: string | string[] | undefined): string {
-  return safeAppPath(firstParam(value));
+/** A same-origin path to continue to (server/auth/paths.ts safeAppPath); `fallback` (/today) otherwise. */
+export function callbackPathFrom(value: string | string[] | undefined, fallback?: string): string {
+  return safeAppPath(firstParam(value), fallback);
 }
 
 /**

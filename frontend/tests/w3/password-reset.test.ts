@@ -165,7 +165,9 @@ describe("POST /api/auth/password-reset/confirm", () => {
       code,
       newPassword: "brand new passphrase",
     });
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(200);
+    // An unverified new-flow sign-up: the reset started it fresh, so the page continues into set-up.
+    expect(await res.json()).toEqual({ startedFresh: true });
     expect(await storedSessionVersion(user.id)).toBe(1);
     expect((await me(getRequest("/api/me"))).status).toBe(401);
     expect((await User.findById(user.id).lean())?.emailVerifiedAt?.toISOString()).toBe(
@@ -240,7 +242,7 @@ describe("POST /api/auth/password-reset/confirm", () => {
     expect(
       (await postConfirm({ email: "victim@davidson.edu", code, newPassword: "the real owner now" }))
         .status,
-    ).toBe(204);
+    ).toBe(200);
 
     auth.session = squatterSession;
     expect((await me(getRequest("/api/me"))).status).toBe(401);
@@ -314,7 +316,8 @@ describe("a reset that verifies an unverified account is a change of owner (revi
       code: mail.code!,
       newPassword: "the real owner now",
     });
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ startedFresh: true });
 
     const doc = await User.collection.findOne({ email: VICTIM });
     expect(doc?._id.toString()).toBe(squat.id);
@@ -353,9 +356,10 @@ describe("a reset that verifies an unverified account is a change of owner (revi
     await postRequest(legacy.email);
     const code = lastConsoleMessage(legacy.email)!.code!;
     expect(lastConsoleMessage(legacy.email)!.text).not.toMatch(/starts it fresh/);
-    expect(
-      (await postConfirm({ email: legacy.email, code, newPassword: "a new legacy pw" })).status,
-    ).toBe(204);
+    const res = await postConfirm({ email: legacy.email, code, newPassword: "a new legacy pw" });
+    expect(res.status).toBe(200);
+    // Not a fresh start: the account keeps its data and goes to Today as before.
+    expect(await res.json()).toEqual({ startedFresh: false });
     const doc = await User.collection.findOne({ email: legacy.email });
     expect(doc).toMatchObject({ name: legacy.name, major: "History", bio: "old bio" });
     expect(doc?.emailVerifiedAt).toBeInstanceOf(Date);
@@ -377,9 +381,9 @@ describe("a reset that verifies an unverified account is a change of owner (revi
     });
     await postRequest(user.email);
     const code = lastConsoleMessage(user.email)!.code!;
-    expect(
-      (await postConfirm({ email: user.email, code, newPassword: "brand new passphrase" })).status,
-    ).toBe(204);
+    const res = await postConfirm({ email: user.email, code, newPassword: "brand new passphrase" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ startedFresh: false });
     expect(await User.collection.findOne({ email: user.email })).toMatchObject({
       name: user.name,
       emailVerifiedAt: verifiedAt,
@@ -472,7 +476,10 @@ describe("the e-mailed reset link (abuse fix: someone else's wrong codes cannot 
     expect(JSON.stringify(stored)).not.toContain(token.split(".")[1]);
 
     const res = await postLink({ token, newPassword: "brand new passphrase" });
-    expect(await answer(res)).toEqual({ status: 200, body: { email: "casey@davidson.edu" } });
+    expect(await answer(res)).toEqual({
+      status: 200,
+      body: { email: "casey@davidson.edu", startedFresh: false },
+    });
     const after = await User.collection.findOne({ email: user.email });
     expect(await bcrypt.compare("brand new passphrase", String(after?.password))).toBe(true);
     expect(after?.sessionVersion).toBe(4);
@@ -551,6 +558,25 @@ describe("the e-mailed reset link (abuse fix: someone else's wrong codes cannot 
     expect(
       await answer(await postLink({ token: second, newPassword: "a fine passphrase" })),
     ).toMatchObject(linkError);
+  });
+
+  it("starts a pending sign-up fresh like a code does, and says so (the page then opens set-up)", async () => {
+    const pending = await insertUser({
+      email: "victim@davidson.edu",
+      raw: { emailVerifiedAt: null, sessionVersion: 0, onboardedAt: new Date("2026-09-01") },
+    });
+    await postRequest(pending.email);
+    const res = await postLink({
+      token: linkTokenOf(pending.email),
+      newPassword: "the real owner now",
+    });
+    expect(await answer(res)).toEqual({
+      status: 200,
+      body: { email: "victim@davidson.edu", startedFresh: true },
+    });
+    expect(await User.collection.findOne({ email: pending.email })).not.toHaveProperty(
+      "onboardedAt",
+    );
   });
 
   it("verifies an unverified legacy account like a code does, clearing its AI consent", async () => {
