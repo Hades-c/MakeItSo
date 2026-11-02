@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PrivacyPage from "@/app/(marketing)/privacy/page";
@@ -125,5 +126,34 @@ describe("/privacy", () => {
     render(await PrivacyPage());
     expect(screen.queryByTestId("privacy-alumni-preview")).toBeNull();
     expect(document.body.textContent).not.toMatch(/Davidson Connect/);
+  });
+
+  it("shows a new date whenever the wording changes", async () => {
+    // The notice's text in every state its switches give (defaults; then AI_ALLOW_UNVERIFIED on, Moodle import
+    // and the Davidson Connect preview off), with the date taken out. A change to the wording fails here:
+    // set LAST_UPDATED in app/(marketing)/privacy/page.tsx to the day of the change and add a line below.
+    const texts: string[] = [];
+    const read = async () => {
+      const { unmount } = render(await PrivacyPage());
+      texts.push((document.body.textContent ?? "").replace(/\s+/g, " "));
+      unmount();
+    };
+    await read();
+    vi.stubEnv("AI_ALLOW_UNVERIFIED", "true");
+    vi.stubEnv("MOODLE_IMPORT_ENABLED", "false");
+    vi.stubEnv("FEATURE_ALUMNI_PREVIEW", "false");
+    await read();
+    const date = /Last updated ([A-Z][a-z]+ \d{1,2}, \d{4})/.exec(texts[0]!)?.[1];
+    const sha256 = createHash("sha256")
+      .update(texts.map((t) => t.replace(/Last updated [^P]*Privacy at MakeItSo/, "")).join("\n"))
+      .digest("hex");
+    const WORDINGS = [
+      {
+        date: "November 2, 2026",
+        sha256: "031d08341d3bcf15279a0d26b22c9ba0baef5d282e38e97e179ca8948a425ff5",
+      },
+    ];
+    expect(new Set(WORDINGS.map((w) => w.date)).size).toBe(WORDINGS.length);
+    expect({ date, sha256 }).toEqual(WORDINGS.at(-1));
   });
 });

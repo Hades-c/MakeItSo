@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 /** When this notice last changed (update it with every change to the text). */
-const LAST_UPDATED = "October 28, 2026";
+const LAST_UPDATED = "November 2, 2026";
 
 /**
  * /privacy (PLAN §3, §6.1 W3): the Lakeside privacy notice. Rendered per request only because of the owner's
