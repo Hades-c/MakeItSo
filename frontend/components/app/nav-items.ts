@@ -101,8 +101,19 @@ function matches(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The section a path belongs to, shown or not: "/careers/law" → careers, "/profile" → null. */
+/**
+ * Pages under one section's path that belong to another, checked before the prefix match: the Davidson Connect
+ * preview (/alumni/preview, sample data) is reached from Careers and is not the verified Alumni directory, so
+ * Alumni is never current there, whatever FEATURE_ALUMNI says (app/(hub)/alumni/preview/page.tsx).
+ */
+const SECTION_EXCEPTIONS: readonly { href: string; key: NavKey }[] = [
+  { href: "/alumni/preview", key: "careers" },
+];
+
+/** The section a path belongs to, shown or not: "/careers/law" → careers, "/profile" → null (exceptions above). */
 export function navSectionOf(pathname: string): NavKey | null {
+  const exception = SECTION_EXCEPTIONS.find((entry) => matches(pathname, entry.href));
+  if (exception) return exception.key;
   return NAV_ITEMS.find((item) => matches(pathname, item.href))?.key ?? null;
 }
 

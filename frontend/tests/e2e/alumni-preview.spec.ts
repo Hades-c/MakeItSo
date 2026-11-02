@@ -66,6 +66,14 @@ test("Careers opens the preview: notice first, Sample on every card, nothing sen
     page.getByRole("heading", { level: 1, name: "Davidson Connect preview" }),
   ).toBeVisible();
 
+  // Careers is the current section (sidebar or tab bar), never the verified Alumni directory.
+  const current = page.locator('a[aria-current="page"]:visible');
+  await expect(current.first()).toBeVisible();
+  expect(await current.evaluateAll((links) => links.map((l) => l.getAttribute("href")))).toEqual(
+    expect.arrayContaining(["/careers"]),
+  );
+  await expect(page.locator('a[aria-current="page"][href="/alumni"]')).toHaveCount(0);
+
   const notice = page.getByRole("note", { name: NOTICE });
   await expect(notice).toBeVisible();
   await expect(notice).toContainText("These are fictional profiles");
