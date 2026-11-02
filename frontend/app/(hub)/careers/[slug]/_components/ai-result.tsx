@@ -45,10 +45,10 @@ export interface AiStepLinks {
 /**
  * The regeneration allowance is one daily count shared by every personal AI item (server/ai/usage.ts
  * ai-regenerations-<day>: 3 a day across the career plan, cold emails and summer picks), so every panel says it
- * the same way.
+ * the same way, in words that fit each panel's button ("Draft a new plan", "Pick again"): asking again, not drafts.
  */
 export const REGENERATION_HINT =
-  "Up to 3 new drafts a day, shared by your plan, your emails and your summer picks.";
+  "You can ask the AI again up to 3 times a day, across your plan, your emails and your summer picks.";
 
 const TITLES: Readonly<Record<AiFailureKind, string>> = {
   refused: "The AI declined this request",
