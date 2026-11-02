@@ -4,7 +4,6 @@ import * as React from "react";
 import { Info, Sparkles } from "lucide-react";
 import { AiChip } from "@/components/ui/ai-chip";
 import { Button } from "@/components/ui/button";
-import { runHeads, SourceNote } from "@/components/ui/source-tag";
 import { callApi } from "@/lib/api/client";
 import { aiEndpoints } from "@/lib/api/endpoints";
 import type { AiFailure, AiOk, CareerSummers, SummerOption } from "@/lib/types/ai";
@@ -55,6 +54,16 @@ export function pickCheckedWords(options: readonly Pick<SummerOption, "verifiedA
     : `checked between ${formatContentDate(from)} and ${formatContentDate(to)}`;
 }
 
+/** For each row, whether it starts a run of rows with the same "via" words (source-tag.tsx runHeads). */
+export function pickRunHeads(labels: readonly string[]): boolean[] {
+  return labels.map((label, i) => i === 0 || labels[i - 1] !== label);
+}
+
+/**
+ * A row's "via" note, the markup of components/ui/source-tag.tsx SourceNote (data-source on a curated source, the
+ * sr-only "Source:" prefix, `hidden` rows of a run say it to screen readers only), written out here: importing
+ * source-tag into this island moved it into a chunk /plan loads and put /plan over its check:js ceiling.
+ */
 function PickNote({
   option,
   label,
@@ -64,13 +73,17 @@ function PickNote({
   label: string;
   hidden: boolean;
 }) {
-  if (option.source) {
-    return <SourceNote source={option.source} label={label} hidden={hidden} className="text-xs" />;
+  const source = option.source ?? undefined;
+  if (hidden) {
+    return (
+      <span className="sr-only" data-source={source} data-source-run={source ? "" : undefined}>
+        Source: {label}
+      </span>
+    );
   }
   // An outside program has no source id (lib/sources.ts): the same quiet words, without data-source.
-  if (hidden) return <span className="sr-only">Source: {label}</span>;
   return (
-    <span className="font-sans text-xs text-fg-3">
+    <span className="font-sans text-xs text-fg-3" data-source={source}>
       <span className="sr-only">Source: </span>
       {label}
     </span>
@@ -90,7 +103,7 @@ function PicksView({
 }) {
   const { outlook, picks } = result.data.summers;
   const labels = picks.map((pick) => pickLabel(pick.option));
-  const heads = runHeads(labels);
+  const heads = pickRunHeads(labels);
   return (
     <div
       ref={focusRef}
