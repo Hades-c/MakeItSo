@@ -5,6 +5,7 @@ import {
   AiFeatureSchema,
   AiProvenanceSchema,
   CareerPlanSchema,
+  CareerSummersSchema,
   ColdEmailSchema,
   CourseAboutSchema,
   ProfessorSummarySchema,
@@ -55,6 +56,12 @@ export const CareerPlanBodySchema = z
 export const CareerPlanResultSchema = aiResultSchema(
   z.object({ plan: CareerPlanSchema, draft: PlanDraftSchema.nullable() }),
 );
+
+/** Personal per career path; `regenerate` counts against the same 3 regenerations/day. Picks are catalog ids. */
+export const CareerSummersBodySchema = z
+  .object({ careerSlug: SlugSchema, regenerate: z.boolean().default(false) })
+  .strict();
+export const CareerSummersResultSchema = aiResultSchema(z.object({ summers: CareerSummersSchema }));
 
 /** Only for contactable alumni; the body keeps the literal {{studentName}} placeholder. */
 export const ColdEmailBodySchema = z
@@ -112,6 +119,14 @@ export const aiApi = {
     aiResult: true,
     body: CareerPlanBodySchema,
     response: CareerPlanResultSchema,
+  }),
+  careerSummers: apiRoute({
+    method: "POST",
+    path: "/api/ai/career-summers",
+    auth: "user",
+    aiResult: true,
+    body: CareerSummersBodySchema,
+    response: CareerSummersResultSchema,
   }),
   coldEmail: apiRoute({
     method: "POST",

@@ -207,10 +207,11 @@ export default async function PrivacyPage() {
 
           <Section id="ai" title="AI features (optional)">
             <p>
-              MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans,
-              cold-email drafts and finding the deadlines in a pasted syllabus) use{" "}
-              <b>Claude, a model made by Anthropic</b>. They are <b>off until you turn them on</b>{" "}
-              in your profile, which asks you to confirm that you are 18 or older, and they need{" "}
+              MakeItSo&apos;s AI features (course summaries, plan suggestions, career plans, summer
+              picks for a career path, cold-email drafts and finding the deadlines in a pasted
+              syllabus) use <b>Claude, a model made by Anthropic</b>. They are{" "}
+              <b>off until you turn them on</b> in your profile, which asks you to confirm that you
+              are 18 or older, and they need{" "}
               {aiWithoutVerifying ? (
                 <>
                   an @davidson.edu account. For now, while email verification is being set up, the
@@ -229,8 +230,8 @@ export default async function PrivacyPage() {
               <li>course codes and public catalog information;</li>
               <li>
                 the courses in your plan and which requirements they fill, your majors and minors,
-                graduation year and career interests, and for career plans and cold-email drafts,
-                the goals at Davidson you chose;
+                graduation year, class year and career interests, and for career plans, summer picks
+                and cold-email drafts, the goals at Davidson you chose;
               </li>
               <li>the goal or question you type into that feature;</li>
               <li>

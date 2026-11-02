@@ -756,3 +756,42 @@ export const CAREER_ACTIVITIES: Readonly<Record<string, CareerActivities>> = {
     ],
   },
 };
+
+// ---- Summer options for any path (AI summer picks) -------------------------------------------------------------------
+
+/**
+ * Davidson office programs that are a summer option, or fund one, for a student on any path (owner request,
+ * 2026-11-02: "AI recommended summers for each career path"). Only the career pages' AI summer picks offer them
+ * (server/ai/summer-catalog.ts), next to every path's own Summers entries, so a path with few entries of its own
+ * (sports-management has none) still gets useful picks. Slugs of the curated programs in server/content/offices.ts:
+ * their name, page, audience, deadlines, amount, source and verifiedAt are the program's own (re-read 2026-09-30);
+ * nothing is said about them here. Chosen from the programs whose page describes a summer internship, research,
+ * study or service program, or a grant for one; left out: programs closed in summer (Try It Fund), for incoming
+ * students (Bonner Scholars), multi-year programs (Chidsey Leadership Fellows), evaluations (PAC) and programs
+ * whose next cycle is not posted (MAGIC).
+ */
+export const SUMMER_OFFICE_PROGRAMS: readonly string[] = [
+  "summer-internship-grants-common-application",
+  "frank-matthews-ii-49-center-for-career-development-summer-internship-grant",
+  "butner-family-internship-fund",
+  "morehead-family-internship-grant",
+  "macdonald-family-internship-grant",
+  "janet-burt-anderson-first-generation-internship-fund",
+  "gerald-lee-wilson-58-and-virginia-s-wilson-internship-fund-grant",
+  "boswell-family-experiential-learning-grant",
+  "layendecker-family-internship-fund",
+  "scholarships-for-tuck-business-bridge-dartmouth-and-vanderbilt-summer-business",
+  "davidson-college-consulting-group-dccg",
+  "nonprofit-leadership-fellows",
+  "mulliss-center-for-civic-engagement-and-service-odyssey-interns",
+  "leonard-fund",
+  "robert-t-stone-fund",
+  "ruth-pittard-fund-for-love-in-action",
+  "sustainability-scholars",
+  "davidson-research-network-drn",
+  "dean-rusk-travel-grants",
+  "study-abroad-away-application-summer-fall-academic-year-programs",
+  "bertis-e-downs-iii-and-eugene-m-downs-sr-education-abroad-fund",
+  "douglass-o-connell-global-internship-ciee",
+  "fulbright-uk-summer-institutes",
+];

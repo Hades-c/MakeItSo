@@ -114,9 +114,10 @@ describe("aiErrorCopy (errors outside the AiResult wire format)", () => {
 });
 
 describe("REGENERATION_HINT", () => {
-  it("says the 3 daily regenerations are shared by plans and emails (server/ai/usage.ts)", () => {
+  it("says the 3 daily regenerations are shared by plans, emails and summer picks (server/ai/usage.ts)", () => {
     expect(REGENERATION_HINT).toMatch(/3/);
     expect(REGENERATION_HINT).toMatch(/plan/);
     expect(REGENERATION_HINT).toMatch(/email/);
+    expect(REGENERATION_HINT).toMatch(/summer/);
   });
 });

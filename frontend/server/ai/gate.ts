@@ -11,7 +11,7 @@ import { featureEnabled } from "@/server/features";
 /**
  * What an AI route knows before it calls a model (lib/types/ai.ts aiGateFailure order: disabled →
  * not_configured → unverified → consent_required):
- *   enabled     AI_ENABLED, plus the section the feature lives in: careers for the career plan, alumni (which also
+ *   enabled     AI_ENABLED, plus the section the feature lives in: careers for the career plan and the summer picks, alumni (which also
  *               needs careers) for the cold e-mail, RMP_SUMMARIES_ENABLED (which needs RMP_ENABLED) for professor
  *               summaries;
  *   configured  server/ai/provider.ts aiConfigured();
@@ -34,6 +34,7 @@ export function aiFeatureEnabled(flags: Flags, feature: AiFeature): boolean {
     case "syllabus-deadlines":
       return true;
     case "career-plan":
+    case "career-summers":
       return featureEnabled(flags, "careers");
     case "cold-email":
       return featureEnabled(flags, "alumni");

@@ -53,6 +53,15 @@ describe("/privacy", () => {
     }
     // AI_ALLOW_UNVERIFIED off (the default): AI needs a verified address.
     expect(text).toMatch(/they need a verified @davidson\.edu account\./);
+    // Every AI feature is named, the career pages' summer picks included, with what it sends.
+    const ai = (document.getElementById("ai")!.closest("section")!.textContent ?? "").replace(
+      /\s+/g,
+      " ",
+    );
+    expect(ai).toMatch(/career plans, summer picks for a career path, cold-email drafts/);
+    expect(ai).toMatch(
+      /for career plans, summer picks and cold-email drafts, the goals at Davidson/,
+    );
     const contact = screen.getByRole("link", { name: /MakeItSo project on GitHub/ });
     expect(contact).toHaveAttribute("rel", "noopener noreferrer");
     expect(contact.getAttribute("href")).toMatch(/^https:\/\//);

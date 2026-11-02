@@ -14,7 +14,7 @@ import { requirementName } from "@/server/content/requirements";
  * Never sent: the student's name, e-mail address, account id, grades (or anything that implies one: failed,
  * dropped and withdrawn items are left out), free-text bio, notes, consent dates, IP or session data.
  *   - interests: career-path slugs only (unknown slugs dropped);
- *   - aspirations (career plan and cold e-mail only): the profile's goal slugs (lib/goals.ts, unknown slugs
+ *   - aspirations (career plan, summer picks and cold e-mail only): the profile's goal slugs (lib/goals.ts, unknown slugs
  *     dropped). Named apart from the <student_goals> block, which holds the career path the student chose;
  *   - majors / minors: official Acalog names only (anything else dropped);
  *   - plan items: exactly { termCode, courseCode, status } for active statuses;
@@ -76,6 +76,48 @@ export function careerProfilePayload(
   return {
     ...studentProfilePayload(profile, official),
     aspirations: [...new Set(profile.goals.filter((slug) => isGoalSlug(slug)))],
+  };
+}
+
+/** Where the coming summer falls in the student's time at Davidson (the summer at the end of this academic year). */
+export type SummerStage =
+  | "before-first-year"
+  | "after-first-year"
+  | "after-sophomore-year"
+  | "after-junior-year"
+  | "after-graduation";
+
+const SUMMER_STAGE: Readonly<Record<ClassStanding, SummerStage>> = {
+  incoming: "before-first-year",
+  "first-year": "after-first-year",
+  sophomore: "after-sophomore-year",
+  junior: "after-junior-year",
+  senior: "after-graduation",
+  graduated: "after-graduation",
+};
+
+/** The summer picks' profile: the career profile plus the coming summer (derived, never typed by the student). */
+export interface CareerSummersProfilePayload extends CareerProfilePayload {
+  comingSummer: { year: number; stage: SummerStage };
+}
+
+/**
+ * careerProfilePayload plus the coming summer: from June 1 (when class standing rolls over, lib/term.ts
+ * classStanding) it is next year's, so the stage always pairs with the standing the profile shows.
+ */
+export function careerSummersProfilePayload(
+  profile: CareerProfileSource,
+  official: OfficialProgramNames,
+  today: string,
+): CareerSummersProfilePayload {
+  const [year, month] = today.split("-").map(Number);
+  const payload = careerProfilePayload(profile, official);
+  return {
+    ...payload,
+    comingSummer: {
+      year: (month ?? 1) >= 6 ? (year ?? 0) + 1 : (year ?? 0),
+      stage: SUMMER_STAGE[payload.standing],
+    },
   };
 }
 

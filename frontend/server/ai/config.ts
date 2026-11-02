@@ -58,6 +58,7 @@ export const FEATURE_SETTINGS: Readonly<Record<AiFeature, FeatureSettings>> = {
   "cold-email": { effort: "low", maxTokens: 3_000 },
   "professor-summary": { effort: "low", maxTokens: 3_000 },
   "syllabus-deadlines": { effort: "low", maxTokens: 4_000 },
+  "career-summers": { effort: "medium", maxTokens: 6_000 },
 };
 
 /** Cache-miss generations per student per America/New_York day, all features together. */
