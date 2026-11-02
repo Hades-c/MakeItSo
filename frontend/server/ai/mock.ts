@@ -365,11 +365,11 @@ function careerPlan(data: Json, scenario: MockAiScenario): unknown {
 
 const SUMMER_OUTLOOK: Record<string, string> = {
   "before-first-year":
-    "Before your first year, a summer to explore is plenty: the options below are open to students just starting out.",
+    "Before your first year, a summer to explore is plenty: the options below suit students just starting out.",
   "after-first-year":
     "After your first year, research programs for early students and funded exploration fit well; many internship programs here look for students further along.",
   "after-sophomore-year":
-    "After your sophomore year, research and your first internship both fit, and grants can fund an unpaid one.",
+    "After your sophomore year, research and your first internship both fit, and grants can fund one.",
   "after-junior-year":
     "After your junior year, internships and programs for advanced students fit best.",
   "after-graduation":

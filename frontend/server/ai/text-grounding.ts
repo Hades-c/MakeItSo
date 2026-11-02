@@ -12,6 +12,10 @@ import type { SentenceFilter } from "@/server/ai/sanitize";
  *   anyCourseCode    any course code at all (course "About": the only codes it could name are prerequisites)
  *   deadlines        "apply by", deadlines, due dates, month + day and numeric dates: no "Apply by" dates unless
  *                    from a sourced curated entry, and the model is never given one
+ *   summerClaims     what a summer option pays or covers (amounts, stipends, pay, housing), how long it runs, months
+ *                    and seasons, and whether the student qualifies, will be admitted or has good odds: the summer
+ *                    picks show each option's own published "for" and timing lines, and the model is never given
+ *                    an amount, so any such sentence is the model's own claim about a real program
  *   unknownPrograms  "Major/Minor in X" or "X major/minor" where X is not an official Acalog subject of that kind
  *   properNouns      names of organisations, programs or people that appear nowhere in the data the model was
  *                    given (employers, internship programs): acronyms and runs of capitalised words always, and
@@ -59,6 +63,47 @@ const DEADLINE_PATTERN = new RegExp(
 
 /** Drop deadlines and dates. */
 export const deadlines: SentenceFilter = (text) => DEADLINE_PATTERN.test(text);
+
+/** Full month names ("may" is left out: it is mostly the verb; "May 1" is caught by DEADLINE_PATTERN). */
+const MONTH_NAME =
+  "january|february|march|april|june|july|august|september|october|november|december";
+const SEASON = "spring|summer|fall|autumn|winter";
+const NUMBER_WORD =
+  "one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a\\s+few|several";
+
+const SUMMER_CLAIM_PATTERN = new RegExp(
+  [
+    // amounts and pay
+    String.raw`[$€£]\s?\d`,
+    String.raw`\b\d[\d,.]*\s*(?:k|dollars?|usd)\b`,
+    String.raw`\b(?:per|an?)\s+(?:hour|day|week|month)\b`,
+    String.raw`\/\s?(?:hr|hour|wk|week|mo|month)\b`,
+    String.raw`\b(?:stipends?|salar(?:y|ies)|wages?|(?:un)?paid|pays?|paying|compensat\w*|honorari(?:um|a))\b`,
+    String.raw`\b(?:housing|lodging|room\s+and\s+board|meals|travel\s+costs?|tuition|free\s+of\s+charge|fully\s+funded|cover(?:s|ed)?\s+(?:the\s+|your\s+)?(?:costs?|expenses|travel|housing))\b`,
+    // how long it runs
+    String.raw`\b(?:\d+|${NUMBER_WORD})[\s-]+(?:weeks?|months?|days?)\b`,
+    String.raw`\b(?:weeks?|months?)[\s-]+long\b`,
+    // months and seasons (a day of the month is a deadline, above)
+    String.raw`\b(?:${MONTH_NAME})\b`,
+    String.raw`\b(?:early|mid|late|end\s+of|start\s+of|beginning\s+of)[\s-]+(?:${SEASON})\b`,
+    String.raw`\b(?:this|next|in\s+the)\s+(?:spring|fall|autumn|winter)\b`,
+    // qualification, admission and odds
+    String.raw`\bqualif(?:y|ies|ied|ying|ications?)\b`,
+    String.raw`\bguarantee\w*`,
+    String.raw`\b(?:accept|admit)(?:s|ed|ance|tance)?\b`,
+    String.raw`\badmissions?\b`,
+    String.raw`\b(?:odds|selective|selectivity|competitive)\b`,
+    String.raw`\bchances?\s+(?:of|are|is)\b`,
+    String.raw`\bstrong\s+(?:candidate|applicant)s?\b`,
+    String.raw`\b(?:open|limited|restricted)\s+(?:only\s+)?to\b`,
+    String.raw`\b(?:only\s+(?:for|open)|reserved\s+for|not\s+open)\b`,
+    String.raw`\b(?:easily|sure\s+to|certain\s+to|likely\s+to\s+(?:get|be))\b`,
+  ].join("|"),
+  "i",
+);
+
+/** Drop what a summer option pays, covers or lasts, when it runs, and qualification or odds claims. */
+export const summerClaims: SentenceFilter = (text) => SUMMER_CLAIM_PATTERN.test(text);
 
 // ---- Programs ------------------------------------------------------------------------------------------------------
 

@@ -20,6 +20,7 @@ import { readDataBlocks } from "@/server/ai/blocks";
 import { DAILY_GENERATION_QUOTA } from "@/server/ai/config";
 import {
   groundCareerSummers,
+  optionPayloads,
   resolveStoredSummers,
   SUMMERS_GROUNDING_FAILED_MESSAGE,
   SUMMERS_RETRY_NOTE,
@@ -379,7 +380,7 @@ describe("career-summers grounding", () => {
           },
           {
             id: "program:locke-white-jr-internship-fund",
-            why: "It can fund an unpaid tech internship.",
+            why: "It can fund a tech internship.",
             nextStep: "Talk with the Matthews Center.",
           },
         ],
@@ -394,10 +395,54 @@ describe("career-summers grounding", () => {
       { id: "outside:seo-career", why: "It suits your Computer Science major.", nextStep: null },
       {
         id: "program:locke-white-jr-internship-fund",
-        why: "It can fund an unpaid tech internship.",
+        why: "It can fund a tech internship.",
         nextStep: "Talk with the Matthews Center.",
       },
     ]);
+  });
+
+  it("pay, amounts, lengths, months and seasons, qualification and odds claims are dropped", () => {
+    const claims = [
+      "It pays a $5,000 stipend and lasts ten weeks.",
+      "It pays up to $6,000 for your summer.",
+      "It pays a stipend of 5000 dollars.",
+      "It is fully paid and covers housing for ten weeks.",
+      "It runs from early June to mid-August.",
+      "It lasts 8 weeks.",
+      "Applications close in early spring.",
+      "You qualify for it as a sophomore.",
+      "It is open only to juniors and seniors.",
+      "You will be accepted easily.",
+      "Most applicants are accepted, so your odds are good.",
+      "It is highly selective.",
+    ];
+    for (const claim of claims) {
+      const grounded = groundCareerSummers(
+        {
+          outlook: `After your first year, research fits. ${claim}`,
+          picks: [
+            {
+              id: "outside:seo-career",
+              why: `It suits your Computer Science major. ${claim}`,
+              nextStep: claim,
+            },
+          ],
+        },
+        context,
+      );
+      expect(grounded.invalid, claim).toBe(false);
+      expect(grounded.summers.outlook, claim).toBe("After your first year, research fits.");
+      expect(grounded.summers.picks, claim).toEqual([
+        { id: "outside:seo-career", why: "It suits your Computer Science major.", nextStep: null },
+      ]);
+    }
+  });
+
+  it("the model is never sent a program's amount", () => {
+    const options = optionPayloads(summerCatalog(getCareer("software-engineering")!));
+    expect(options.length).toBeGreaterThan(0);
+    // (A figure inside a published description can still reach the model: summerClaims drops it from the answer.)
+    for (const option of options) expect(option).not.toHaveProperty("amount");
   });
 
   it("no picks with an outlook is an answer; nothing at all is invalid", () => {

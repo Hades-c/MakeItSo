@@ -22,6 +22,7 @@ import {
   deadlines,
   programSubjects,
   properNouns,
+  summerClaims,
   unknownPrograms,
   vocabularyOf,
 } from "@/server/ai/text-grounding";
@@ -48,8 +49,10 @@ import { programNames } from "@/server/programs";
  *
  * The model's text (outlook, why, next step) is cleaned like the career plan's: links and Markdown removed, and
  * sentences dropped that name a course, an unofficial major or minor, a date or deadline, an eligibility,
- * requirement, GPA or difficulty claim (sanitize.ts), or an organisation that is nowhere in the data the model was
- * given. A next step that fails becomes null; the outlook is optional when there are picks.
+ * requirement, GPA or difficulty claim (sanitize.ts), what an option pays, covers or lasts, a month or season,
+ * a qualification, admission or odds claim (summerClaims), or an organisation that is nowhere in the data the
+ * model was given. The model is never sent a program's amount (summer-catalog.ts), so it has no figure to repeat.
+ * A next step that fails becomes null; the outlook is optional when there are picks.
  */
 
 export interface CareerSummersResult {
@@ -109,6 +112,7 @@ export function groundCareerSummers(
     forbiddenClaims,
     anyCourseCode,
     deadlines,
+    summerClaims,
     unknownPrograms(programSubjects(context.official)),
   );
   const loose = anyOf(base, properNouns(vocabulary, { strict: false }));
@@ -164,7 +168,7 @@ export function resolveStoredSummers(
   };
 }
 
-/** The options as the model reads them (null fields left out; no URLs). */
+/** The options as the model reads them (null fields left out; no URLs and no amounts, see summer-catalog.ts). */
 export function optionPayloads(catalog: readonly SummerCatalogEntry[]): SummerOptionPayload[] {
   return catalog.map((entry) => ({
     id: entry.option.id,
@@ -175,7 +179,6 @@ export function optionPayloads(catalog: readonly SummerCatalogEntry[]): SummerOp
     ...(entry.option.timing
       ? { timing: `${entry.option.timing.label}: ${entry.option.timing.text}` }
       : {}),
-    ...(entry.amount ? { amount: entry.amount } : {}),
     listedFor: [...entry.listedFor],
     thisPath: entry.option.onThisPage,
   }));

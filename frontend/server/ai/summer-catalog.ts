@@ -21,15 +21,15 @@ import { getProgram, OFFICES, PROGRAMS } from "@/server/content/offices";
  * timing or deadlines, source, verifiedAt) is the content's, resolved through the careers page's own resolveSummers,
  * so an AI pick and the Summers card can never disagree. `about` is the one line the model reads about it: the
  * career entry's description (this path's when it has one), or for an office program no path lists, the
- * program's own published description cut to ABOUT_MAX characters. The model never sees a URL.
+ * program's own published description cut to ABOUT_MAX characters. The model never sees a URL, nor a program's
+ * published amount: no pick shows an amount, so a figure the model repeated (or got wrong) could not be checked
+ * on the page.
  */
 
 export interface SummerCatalogEntry {
   option: SummerOption;
   /** What the option is, for the model only (see the module comment). */
   about: string;
-  /** The published amount of an office program (null for outside programs and when none is published). */
-  amount: string | null;
   /** Names of the career paths whose Summers card lists it (this path's included). */
   listedFor: string[];
 }
@@ -82,11 +82,9 @@ export function summerCatalog(
     }
     const [view] = resolveSummers([entry], PROGRAMS, OFFICES);
     if (!view) return;
-    const program = entry.kind === "program" ? getProgram(entry.program) : undefined;
     byId.set(id, {
       option: optionOf(view, id, onThisPage),
       about: truncate(view.description, ABOUT_MAX),
-      amount: program?.amount ?? null,
       listedFor: careerName ? [careerName] : [],
     });
   };

@@ -60,7 +60,7 @@ const SUMMERS: CareerSummers = {
   picks: [
     {
       option: LOCKE,
-      why: "It can fund an unpaid tech internship.",
+      why: "It can fund a tech internship.",
       nextStep: "Talk with the Matthews Center.",
     },
     { option: BUTNER, why: "It funds an internship in any field.", nextStep: null },
