@@ -13,6 +13,7 @@ const ON: Flags = {
   careers: true,
   events: true,
   alumni: true,
+  alumniPreview: true,
   ai: true,
   moodle: true,
   rmp: true,

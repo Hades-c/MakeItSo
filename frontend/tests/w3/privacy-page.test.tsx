@@ -103,4 +103,18 @@ describe("/privacy", () => {
       /Moodle import is turned off right now/,
     );
   });
+
+  it("says the Davidson Connect preview is sample data and not connected, only while it is on", async () => {
+    const { unmount } = render(await PrivacyPage());
+    const alumni = document.getElementById("alumni")!.closest("section")!;
+    expect(screen.getByTestId("privacy-alumni-preview")).toHaveTextContent(
+      /preview with sample data.*fictional.*not real alumni.*not connected to Davidson\s+Connect/,
+    );
+    expect(alumni).toContainElement(screen.getByTestId("privacy-alumni-preview"));
+    unmount();
+    vi.stubEnv("FEATURE_ALUMNI_PREVIEW", "false");
+    render(await PrivacyPage());
+    expect(screen.queryByTestId("privacy-alumni-preview")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Davidson Connect/);
+  });
 });

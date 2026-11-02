@@ -40,6 +40,10 @@ describe("href builders (lib/routes.ts)", () => {
     expect(routes.forgotPassword()).toBe("/forgot-password");
     expect(routes.alumnus("stephen-curry")).toBe("/alumni#stephen-curry");
     expect(routes.alumni({ career: "law" })).toBe("/alumni?career=law");
+    expect(routes.alumniPreview()).toBe("/alumni/preview");
+    expect(
+      routes.alumniPreview({ career: "law", year: 2016, industry: "legal", q: "  attorney " }),
+    ).toBe("/alumni/preview?career=law&year=2016&industry=legal&q=attorney");
     expect(routes.plan("next", { term: "202602", view: "print" })).toBe(
       "/plan?tab=next&term=202602&view=print",
     );

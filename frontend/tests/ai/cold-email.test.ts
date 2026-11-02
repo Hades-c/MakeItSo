@@ -21,6 +21,7 @@ import { cleanColdEmail } from "@/server/ai/features/cold-email";
 import { mockAiRequests, resetMockAi, setMockAiScenario } from "@/server/ai/mock";
 import { SYSTEM } from "@/server/ai/prompts/cold-email";
 import { getAlumnus } from "@/server/content/alumni";
+import { SAMPLE_ALUMNI } from "@/server/content/alumni-sample";
 import { getDb } from "@/server/db";
 import { isDefinedRoute } from "@/server/http";
 
@@ -89,6 +90,15 @@ describe("POST /api/ai/cold-email", () => {
       expect((await errorOf(res)).code).toBe("not_found");
     }
     expect((await post({ alumnusId: "neil-patel", careerSlug: "astronaut" })).status).toBe(404);
+    expect(mockAiRequests()).toHaveLength(0);
+  });
+
+  it("never drafts to a Davidson Connect preview profile (fictional sample data)", async () => {
+    await signIn();
+    for (const sample of SAMPLE_ALUMNI) {
+      const res = await post({ alumnusId: sample.id, careerSlug: sample.careerPathSlugs[0] });
+      expect(res.status, sample.id).toBe(404);
+    }
     expect(mockAiRequests()).toHaveLength(0);
   });
 

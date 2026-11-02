@@ -154,33 +154,34 @@ Open [http://localhost:3000](http://localhost:3000) and create an account.
 Set these in `frontend/.env.local` locally, or in the Vercel project settings. None of them are needed to
 **build**; they are validated on first use at runtime (`server/env.ts`), with an error that names what is missing.
 
-| Variable                | Required     | Description                                                                                               |
-| ----------------------- | ------------ | --------------------------------------------------------------------------------------------------------- |
-| `MONGODB_URI`           | yes          | MongoDB connection string, e.g. `mongodb://127.0.0.1:27017/makeitso` or `mongodb+srv://…`                 |
-| `NEXTAUTH_SECRET`       | yes          | Session signing secret: `openssl rand -base64 32`. In production ≥ 32 characters, not the placeholder     |
-| `NEXTAUTH_URL`          | yes\*        | Public URL of the app, e.g. `http://localhost:3000`. \*Optional on Vercel                                 |
-| `APP_ORIGIN`            | production   | Public origin checked against the `Origin` of every POST/PUT/PATCH/DELETE (not needed on Vercel previews) |
-| `ANTHROPIC_API_KEY`     | for AI       | Anthropic API key, used by AI features when `AI_PROVIDER=anthropic`                                       |
-| `AI_PROVIDER`           | no           | `anthropic` (default) or `mock` (tests and e2e, answers as model `mock`; rejected on Vercel production)   |
-| `AI_ENABLED`            | no           | All AI features on/off. Default `true` (AI also needs a verified @davidson.edu account and consent)       |
-| `AI_DAILY_TOKEN_BUDGET` | no           | Tokens per day across all users before AI pauses. Default `2000000`                                       |
-| `AI_ALLOW_UNVERIFIED`   | no           | Temporary (remove once mail works): `true` lets unverified @davidson.edu accounts use AI. Default `false` |
-| `MAIL_PROVIDER`         | no           | `none`, `console` (codes in the server log; dev/test default) or `resend`. Default `none` in production   |
-| `MAIL_API_KEY`          | for `resend` | Mail provider API key                                                                                     |
-| `MAIL_FROM`             | for `resend` | Sender, e.g. `MakeItSo <noreply@example.org>`                                                             |
-| `CRON_SECRET`           | for cron     | Bearer secret Vercel Cron sends (≥ 16 characters). Cron routes answer 503 without it                      |
-| `ADMIN_EMAILS`          | no           | Comma-separated addresses allowed on admin routes (with a verified mailbox)                               |
-| `EXTERNAL_MODE`         | no           | `live` (default) or `fixtures` (serve `tests/fixtures/external`; tests, e2e, CI)                          |
-| `FIXTURES_NOW`          | tests only   | With `fixtures`: pins server "now" (`server/clock.ts`); vitest and e2e use `2026-09-30T12:00:00-04:00`    |
-| `RATE_LIMITS`           | tests only   | `on` (default) or `off` (skip rate limits; needs `EXTERNAL_MODE=fixtures`; the e2e server sets it)        |
-| `FEATURE_CAREERS`       | no           | Careers pages on/off. Default `true`                                                                      |
-| `FEATURE_EVENTS`        | no           | Events page and feeds on/off. Default `true`                                                              |
-| `FEATURE_ALUMNI`        | no           | Alumni directory on/off. Default `true`                                                                   |
-| `APP_TIMEZONE`          | no           | IANA time zone for "today" logic. Default `America/New_York`                                              |
-| `RMP_ENABLED`           | no           | RateMyProfessors ratings on/off. Default `true`                                                           |
-| `RMP_SUMMARIES_ENABLED` | no           | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)                           |
-| `MOODLE_IMPORT_ENABLED` | no           | Moodle calendar import on /syllabi on/off. Default `true` (off: no connecting or syncing)                 |
-| `MOODLE_FEED_KEY`       | no           | Key (≥ 32 characters) for the encrypted Moodle calendar URLs. Default: derived from `NEXTAUTH_SECRET`     |
+| Variable                 | Required     | Description                                                                                               |
+| ------------------------ | ------------ | --------------------------------------------------------------------------------------------------------- |
+| `MONGODB_URI`            | yes          | MongoDB connection string, e.g. `mongodb://127.0.0.1:27017/makeitso` or `mongodb+srv://…`                 |
+| `NEXTAUTH_SECRET`        | yes          | Session signing secret: `openssl rand -base64 32`. In production ≥ 32 characters, not the placeholder     |
+| `NEXTAUTH_URL`           | yes\*        | Public URL of the app, e.g. `http://localhost:3000`. \*Optional on Vercel                                 |
+| `APP_ORIGIN`             | production   | Public origin checked against the `Origin` of every POST/PUT/PATCH/DELETE (not needed on Vercel previews) |
+| `ANTHROPIC_API_KEY`      | for AI       | Anthropic API key, used by AI features when `AI_PROVIDER=anthropic`                                       |
+| `AI_PROVIDER`            | no           | `anthropic` (default) or `mock` (tests and e2e, answers as model `mock`; rejected on Vercel production)   |
+| `AI_ENABLED`             | no           | All AI features on/off. Default `true` (AI also needs a verified @davidson.edu account and consent)       |
+| `AI_DAILY_TOKEN_BUDGET`  | no           | Tokens per day across all users before AI pauses. Default `2000000`                                       |
+| `AI_ALLOW_UNVERIFIED`    | no           | Temporary (remove once mail works): `true` lets unverified @davidson.edu accounts use AI. Default `false` |
+| `MAIL_PROVIDER`          | no           | `none`, `console` (codes in the server log; dev/test default) or `resend`. Default `none` in production   |
+| `MAIL_API_KEY`           | for `resend` | Mail provider API key                                                                                     |
+| `MAIL_FROM`              | for `resend` | Sender, e.g. `MakeItSo <noreply@example.org>`                                                             |
+| `CRON_SECRET`            | for cron     | Bearer secret Vercel Cron sends (≥ 16 characters). Cron routes answer 503 without it                      |
+| `ADMIN_EMAILS`           | no           | Comma-separated addresses allowed on admin routes (with a verified mailbox)                               |
+| `EXTERNAL_MODE`          | no           | `live` (default) or `fixtures` (serve `tests/fixtures/external`; tests, e2e, CI)                          |
+| `FIXTURES_NOW`           | tests only   | With `fixtures`: pins server "now" (`server/clock.ts`); vitest and e2e use `2026-09-30T12:00:00-04:00`    |
+| `RATE_LIMITS`            | tests only   | `on` (default) or `off` (skip rate limits; needs `EXTERNAL_MODE=fixtures`; the e2e server sets it)        |
+| `FEATURE_CAREERS`        | no           | Careers pages on/off. Default `true`                                                                      |
+| `FEATURE_EVENTS`         | no           | Events page and feeds on/off. Default `true`                                                              |
+| `FEATURE_ALUMNI`         | no           | Alumni directory on/off. Default `true`                                                                   |
+| `FEATURE_ALUMNI_PREVIEW` | no           | Davidson Connect preview (fictional sample profiles, `/alumni/preview`) on/off. Default `true`            |
+| `APP_TIMEZONE`           | no           | IANA time zone for "today" logic. Default `America/New_York`                                              |
+| `RMP_ENABLED`            | no           | RateMyProfessors ratings on/off. Default `true`                                                           |
+| `RMP_SUMMARIES_ENABLED`  | no           | AI summaries of RateMyProfessors reviews on/off. Default `false` (owner opt-in)                           |
+| `MOODLE_IMPORT_ENABLED`  | no           | Moodle calendar import on /syllabi on/off. Default `true` (off: no connecting or syncing)                 |
+| `MOODLE_FEED_KEY`        | no           | Key (≥ 32 characters) for the encrypted Moodle calendar URLs. Default: derived from `NEXTAUTH_SECRET`     |
 
 **Moodle calendar import.** On /syllabi a student can paste the calendar URL Moodle gives them (Calendar → Import or
 export calendars → Export calendar → All courses, Recent and next 60 days → Get calendar URL); its due dates come in
@@ -278,12 +279,12 @@ so `CRON_SECRET` must be set in Production. The schedules are Hobby-plan safe (a
 stale data in the background, so the jobs only keep data warm. On the Pro plan you can raise the feeds job to every
 30 minutes.
 
-| Route                | Schedule (UTC) | Job                                                                                                     |
-| -------------------- | -------------- | ------------------------------------------------------------------------------------------------------- |
-| `/api/cron/feeds`    | daily 10:23    | campus feeds (WildcatSync, Hurt Hub…)                                                                   |
+| Route                | Schedule (UTC) | Job                                                                                                      |
+| -------------------- | -------------- | -------------------------------------------------------------------------------------------------------- |
+| `/api/cron/feeds`    | daily 10:23    | campus feeds (WildcatSync, Hurt Hub…)                                                                    |
 | `/api/cron/rmp`      | daily 07:17    | RateMyProfessors: the roster (weekly: skipped while under 6 days old), then tag counts (up to 4 minutes) |
-| `/api/cron/catalog`  | daily 07:13    | course schedule: the terms list, past terms and the first-run backfill from Fall 2022 (up to 5 minutes) |
-| `/api/cron/programs` | Mondays 06:23  | majors and minors from the Acalog catalog                                                               |
+| `/api/cron/catalog`  | daily 07:13    | course schedule: the terms list, past terms and the first-run backfill from Fall 2022 (up to 5 minutes)  |
+| `/api/cron/programs` | Mondays 06:23  | majors and minors from the Acalog catalog                                                                |
 
 The current and registration terms also refresh in the background on reads (every 15 minutes), so the catalog job
 matters most for past terms: "Other terms" availability and the first ingest of a new deployment.
