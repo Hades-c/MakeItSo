@@ -75,6 +75,27 @@ describe("sample alumni (Davidson Connect preview)", () => {
     }
   });
 
+  it("never pairs a descriptor with a place where it singles out one real organization", () => {
+    // Pairs a review found, each pointing to one employer (2026-11-02): kept so they cannot come back.
+    const singleEmployer = [
+      ["public research university", "Columbia, SC"],
+      ["state budget office", "Raleigh, NC"],
+      ["state environmental agency", "Raleigh, NC"],
+      ["city planning department", "Charlotte, NC"],
+      ["academic medical center", "Durham, NC"],
+      ["professional soccer club", "Charlotte, NC"],
+      ["contemporary art museum", "Atlanta, GA"],
+    ];
+    for (const record of SAMPLE_ALUMNI) {
+      for (const [descriptor, location] of singleEmployer) {
+        expect(
+          record.organization.includes(descriptor!) && record.location === location,
+          `${record.id}: ${record.organization}, ${record.location}`,
+        ).toBe(false);
+      }
+    }
+  });
+
   it("rejects a record that is not marked sample, a real-looking id, or an unknown major or path", () => {
     const base = { ...SAMPLE_ALUMNI[0]! };
     expect(SampleAlumnusSchema.safeParse(base).success).toBe(true);

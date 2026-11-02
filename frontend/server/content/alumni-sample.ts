@@ -12,7 +12,10 @@ import { defineContent, defineContentObject } from "@/server/content/define";
  *
  * - Every person here is FICTIONAL: plain, ordinary invented names (none is a real person we know of, none is in
  *   server/content/alumni.ts), no photos (initials only), and organizations given only as generic descriptors
- *   ("a Charlotte fintech startup"), never a real company's name next to an invented person. Cities, Davidson
+ *   ("a Charlotte fintech startup"), never a real company's name next to an invented person. Nor a descriptor
+ *   that, with the location, singles out one real organization ("a public research university" in Columbia, SC
+ *   is the University of South Carolina): the pair must fit several employers there, or the location is a region
+ *   ("North Carolina", "the Southeast"; tests/content/alumni-sample.test.ts keeps the pairs once found). Cities, Davidson
  *   majors (checked against the career content's official majors) and career paths are real, so the filters work
  *   as they will.
  * - Every record says `sample: true` (a literal in its schema), every id starts with "sample-", and the record
@@ -216,7 +219,7 @@ const RECORDS: z.input<typeof SampleAlumnusSchema>[] = [
     majors: ["Biology"],
     role: "Physician, internal medicine",
     organization: "an academic medical center",
-    location: "Durham, NC",
+    location: "the Southeast",
     industry: "Health care",
     careerPathSlugs: ["medicine"],
     canHelpWith: ["Job shadowing", "Grad school advice", "Informational chat"],
@@ -255,7 +258,7 @@ const RECORDS: z.input<typeof SampleAlumnusSchema>[] = [
     majors: ["Chemistry"],
     role: "Assistant professor of chemistry",
     organization: "a public research university",
-    location: "Columbia, SC",
+    location: "the Southeast",
     industry: "Higher education",
     careerPathSlugs: ["research-academia"],
     canHelpWith: ["Grad school advice", "Informational chat"],
@@ -267,7 +270,7 @@ const RECORDS: z.input<typeof SampleAlumnusSchema>[] = [
     classYear: 2016,
     majors: ["Political Science"],
     role: "Policy analyst",
-    organization: "a state budget office",
+    organization: "a state government agency",
     location: "Raleigh, NC",
     industry: "Government & policy",
     careerPathSlugs: ["public-policy"],
@@ -345,7 +348,7 @@ const RECORDS: z.input<typeof SampleAlumnusSchema>[] = [
     classYear: 2015,
     majors: ["Environmental Studies", "Biology"],
     role: "Environmental scientist",
-    organization: "a state environmental agency",
+    organization: "an environmental consulting firm",
     location: "Raleigh, NC",
     industry: "Environment & energy",
     careerPathSlugs: ["environmental-science"],
@@ -410,7 +413,7 @@ const RECORDS: z.input<typeof SampleAlumnusSchema>[] = [
     classYear: 2016,
     majors: ["Environmental Studies"],
     role: "Urban planner",
-    organization: "a city planning department",
+    organization: "an urban planning firm",
     location: "Charlotte, NC",
     industry: "Architecture & planning",
     careerPathSlugs: ["architecture-urban-planning", "public-policy"],
@@ -423,7 +426,7 @@ const RECORDS: z.input<typeof SampleAlumnusSchema>[] = [
     classYear: 2018,
     majors: ["Economics"],
     role: "Partnerships manager",
-    organization: "a professional soccer club",
+    organization: "a professional sports team",
     location: "Charlotte, NC",
     industry: "Sports",
     careerPathSlugs: ["sports-management", "marketing"],
@@ -449,7 +452,7 @@ const RECORDS: z.input<typeof SampleAlumnusSchema>[] = [
     classYear: 2020,
     majors: ["Art"],
     role: "Assistant curator",
-    organization: "a contemporary art museum",
+    organization: "an art museum",
     location: "Atlanta, GA",
     industry: "Arts & culture",
     careerPathSlugs: ["arts-museum-curation"],
@@ -502,7 +505,7 @@ const RECORDS: z.input<typeof SampleAlumnusSchema>[] = [
     majors: ["Biology"],
     role: "Clinical research coordinator",
     organization: "an academic medical center",
-    location: "Durham, NC",
+    location: "North Carolina",
     industry: "Health care",
     careerPathSlugs: ["medicine", "research-academia"],
     canHelpWith: ["Job shadowing", "Grad school advice"],
