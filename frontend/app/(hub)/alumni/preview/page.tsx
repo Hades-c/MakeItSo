@@ -7,13 +7,14 @@ import { routes } from "@/lib/routes";
 import { requireUser } from "@/server/auth/session";
 import { featureEnabled, featureMetadata, loadFlags, requireFeature } from "@/server/features";
 import type { SearchParamsRecord } from "@/app/(hub)/careers/_lib/filters";
-import { PreviewNotice } from "./_components/preview-notice";
+import { PREVIEW_NOTICE_TITLE, PreviewNotice } from "./_components/preview-notice";
 import { SampleDirectory } from "./_components/sample-directory";
 
 /**
  * /alumni/preview: the Davidson Connect preview (owner's request, for pitching). FICTIONAL sample profiles
- * (server/content/alumni-sample.ts) laid out as the college's alumni platform will be once it is connected; MakeItSo
- * has no Davidson Connect data and no connection to it.
+ * (server/content/alumni-sample.ts) laid out as the college's alumni platform could be if it were connected; MakeItSo
+ * has no Davidson Connect data, no connection to it and no agreement to connect. Its copy stays conditional
+ * ("could", "if it were connected"): nothing here promises an integration.
  *
  * - Behind FEATURE_ALUMNI_PREVIEW and FEATURE_CAREERS (server/features.ts alumniPreviewEnabled; 404 while off):
  *   featureMetadata() is the generateMetadata and requireFeature() the page's first line. Independent of
@@ -21,10 +22,12 @@ import { SampleDirectory } from "./_components/sample-directory";
  * - The non-dismissable notice comes first, every card says "Sample", and Connect / Message are disabled with the
  *   reason. Nothing here reads the verified directory; its header links to it ("Alumni", its label everywhere) only
  *   while the Alumni section is on.
- * - Reached from the Careers header and each career page; it is not a nav section and not in ⌘K or site search.
+ * - Reached from the Careers header (its link and this page's tab title both say "sample data") and each career
+ *   page; it is not a nav section and not in ⌘K or site search.
  */
 export async function generateMetadata(): Promise<Metadata> {
-  return featureMetadata("alumniPreview", { title: "Davidson Connect preview" });
+  // The tab says what the page is, like its notice: a preview with sample data.
+  return featureMetadata("alumniPreview", { title: PREVIEW_NOTICE_TITLE });
 }
 
 export default async function AlumniPreviewPage({
@@ -39,7 +42,7 @@ export default async function AlumniPreviewPage({
     <>
       <PageHeader
         title="Davidson Connect preview"
-        subtitle="How alumni on Davidson Connect, the college’s alumni platform, will appear here once it is connected."
+        subtitle="How alumni on Davidson Connect, the college’s alumni platform, could appear here if it were connected."
         actions={
           featureEnabled(loadFlags(), "alumni") ? (
             <Button asChild variant="secondary">

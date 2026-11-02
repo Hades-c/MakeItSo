@@ -52,7 +52,7 @@ describe("/alumni/preview", () => {
     ).toBeVisible();
     const notice = screen.getByRole("note", { name: PREVIEW_NOTICE_TITLE });
     expect(notice).toHaveTextContent(SAMPLE_PROFILES_SENTENCE);
-    expect(notice).toHaveTextContent(/not connected to Davidson Connect yet/);
+    expect(notice).toHaveTextContent(/MakeItSo is not connected to Davidson Connect, and nothing/);
     // Nothing closes it.
     expect(within(notice).queryByRole("button")).toBeNull();
     // It comes before the filters and the cards.
@@ -171,7 +171,7 @@ describe("/alumni/preview", () => {
     "answers 404 (page and title) while %s is off",
     async (flag) => {
       await expect(previewPage.generateMetadata()).resolves.toEqual({
-        title: "Davidson Connect preview",
+        title: "Davidson Connect preview · sample data",
       });
       vi.stubEnv(flag, "false");
       await expect(previewPage.default(search({}))).rejects.toMatchObject(NOT_FOUND);
@@ -185,7 +185,7 @@ describe("the Careers header", () => {
     render(await careersPage.default(search({})));
     const header = screen.getByRole("banner");
     expect(within(header).getByRole("link", { name: "Alumni" })).toHaveAttribute("href", "/alumni");
-    expect(within(header).getByRole("link", { name: "Davidson Connect preview" })).toHaveAttribute(
+    expect(within(header).getByRole("link", { name: PREVIEW_NOTICE_TITLE })).toHaveAttribute(
       "href",
       "/alumni/preview",
     );
@@ -195,11 +195,11 @@ describe("the Careers header", () => {
     vi.stubEnv("FEATURE_ALUMNI", "false");
     const { unmount } = render(await careersPage.default(search({})));
     expect(screen.queryByRole("link", { name: "Alumni" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Davidson Connect preview" })).toBeVisible();
+    expect(screen.getByRole("link", { name: PREVIEW_NOTICE_TITLE })).toBeVisible();
     unmount();
     vi.stubEnv("FEATURE_ALUMNI_PREVIEW", "false");
     render(await careersPage.default(search({})));
-    expect(screen.queryByRole("link", { name: "Davidson Connect preview" })).toBeNull();
+    expect(screen.queryByRole("link", { name: PREVIEW_NOTICE_TITLE })).toBeNull();
   });
 });
 

@@ -246,14 +246,14 @@ describe("flagged hub pages", () => {
       "/alumni/preview",
       "FEATURE_ALUMNI_PREVIEW",
       alumniPreviewPage,
-      "Davidson Connect preview",
+      "Davidson Connect preview · sample data",
       () => alumniPreviewPage.default(),
     ],
     [
       "/alumni/preview",
       "FEATURE_CAREERS",
       alumniPreviewPage,
-      "Davidson Connect preview",
+      "Davidson Connect preview · sample data",
       () => alumniPreviewPage.default(),
     ],
   ] as const)("%s answers 404 while %s is off", async (_route, name, page, title, render) => {

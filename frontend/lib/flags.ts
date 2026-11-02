@@ -14,8 +14,8 @@ import { readEnv } from "@/server/env";
  *   careers       FEATURE_CAREERS        default on
  *   events        FEATURE_EVENTS         default on
  *   alumni        FEATURE_ALUMNI         default on
- *   alumniPreview FEATURE_ALUMNI_PREVIEW default on  (the Davidson Connect preview with sample data; off once the
- *                                                     real integration lands)
+ *   alumniPreview FEATURE_ALUMNI_PREVIEW default on  (the Davidson Connect preview with sample data; off if a
+ *                                                     real integration ever lands)
  *   ai            AI_ENABLED             default on
  *   moodle        MOODLE_IMPORT_ENABLED  default on  (Moodle calendar import on /syllabi; turning it off stops
  *                                                     syncing, already imported deadlines stay in the plan)

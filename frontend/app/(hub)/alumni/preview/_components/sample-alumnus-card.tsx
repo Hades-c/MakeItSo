@@ -11,10 +11,10 @@ import type { SampleAlumnus } from "@/server/content/alumni-sample";
 import { initialsOf } from "../_lib/sample-directory";
 
 /** Why Connect and Message do nothing (shown under them, and read with them). */
-export const UNAVAILABLE_REASON = "Available once Davidson Connect is connected";
+export const UNAVAILABLE_REASON = "Not available: MakeItSo is not connected to Davidson Connect";
 
 /**
- * One SAMPLE profile, laid out as a Davidson Connect directory card will be: initials (no photos), name, class year,
+ * One SAMPLE profile, laid out as a Davidson Connect directory card could be: initials (no photos), name, class year,
  * majors, role, organization, city, industry, career paths and what the person can help with, then Connect and
  * Message. Fictional: the "Sample" badge is on every card (and in the card's accessible name), and Connect and
  * Message are disabled with the reason beside them; nothing sends anything. Never used for a verified alumnus

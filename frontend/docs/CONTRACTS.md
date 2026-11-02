@@ -99,16 +99,16 @@ The frozen interfaces every workstream codes against. They change only through t
 - Every course code content quotes exists in the fixture terms (gate (a), no exemptions).
 - The alumni search result links `routes.alumnus(id)`: the directory renders each card with `id={alumnus.id}`.
 - Davidson Connect preview (owner's request, 2026-11; `server/content/alumni-sample.ts`, `/alumni/preview`):
-  FICTIONAL sample profiles that show how the college's alumni platform will look here once it is connected, for
-  pitching. Every record is `sample: true` with a `sample-` id, has invented ordinary names, no photo and only
+  FICTIONAL sample profiles that show how the college's alumni platform could look here if it were connected, for
+  pitching (conditional wording everywhere: nothing promises an integration). Every record is `sample: true` with a `sample-` id, has invented ordinary names, no photo and only
   generic organization descriptors ("a regional hospital system"); every career path has one. The module is not in
   the content barrel and only the preview page and the career pages' preview card import it
   (`tests/content/alumni-sample-isolation.test.ts`): never the verified directory, search, AI (cold e-mail answers
   404 for a sample id), the export or an API route. Every view says so: a non-dismissable "Davidson Connect
-  preview · sample data" notice first, a "Sample" badge on every card, Connect / Message disabled with "Available
-  once Davidson Connect is connected". Gated by `alumniPreviewEnabled(flags)` (FEATURE_ALUMNI_PREVIEW + Careers;
-  `requireFeature("alumniPreview")`), any signed-in student; not a nav section. Remove it when the real
-  integration lands.
+  preview · sample data" notice first, a "Sample" badge on every card, Connect / Message disabled with "Not
+  available: MakeItSo is not connected to Davidson Connect". Gated by `alumniPreviewEnabled(flags)` (FEATURE_ALUMNI_PREVIEW + Careers;
+  `requireFeature("alumniPreview")`), any signed-in student; not a nav section. Remove it if a real
+  integration ever lands.
 
 ## Syllabi and Moodle (`server/syllabi`, `server/moodle`, /syllabi)
 

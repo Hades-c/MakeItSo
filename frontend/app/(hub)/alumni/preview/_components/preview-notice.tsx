@@ -9,7 +9,7 @@ export const PREVIEW_NOTICE_TITLE = "Davidson Connect preview · sample data";
 
 /** What every sample profile is, in words (the notice, the career pages' link, the cards' screen-reader label). */
 export const SAMPLE_PROFILES_SENTENCE =
-  "These are fictional profiles that show how the Davidson Connect directory will look here once it is connected. They are not real alumni.";
+  "These are fictional profiles that show how the Davidson Connect directory could look here if it were connected. They are not real alumni.";
 
 /**
  * The Davidson Connect preview's notice (owner's request: sample data for pitching). Always shown, at the top of the
@@ -34,8 +34,8 @@ export function PreviewNotice({ className }: { className?: string }) {
           {PREVIEW_NOTICE_TITLE}
         </p>
         <p className="mt-1">
-          {SAMPLE_PROFILES_SENTENCE} MakeItSo is not connected to Davidson Connect yet, and nothing
-          on this page contacts anyone.
+          {SAMPLE_PROFILES_SENTENCE} MakeItSo is not connected to Davidson Connect, and nothing on
+          this page contacts anyone.
         </p>
         <p className="mt-2 text-xs text-fg-3" data-testid="preview-about">
           {DAVIDSON_CONNECT.name} is the college’s alumni platform for mentoring, jobs and

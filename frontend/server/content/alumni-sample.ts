@@ -6,9 +6,9 @@ import { defineContent, defineContentObject } from "@/server/content/define";
 
 /**
  * The Davidson Connect preview's SAMPLE profiles (owner's request, "Eurekas" tab, 2026-11: an alumni button that shows
- * sample data from the Davidson Connect directory, which is not connected yet, for pitching). Davidson Connect is
+ * sample data from the Davidson Connect directory, which is not connected, for pitching). Davidson Connect is
  * the college's alumni platform (DAVIDSON_CONNECT below, sourced); MakeItSo has none of its data. These records show
- * what a connected directory card will look like, and nothing more:
+ * what a connected directory card could look like, and nothing more:
  *
  * - Every person here is FICTIONAL: plain, ordinary invented names (none is a real person we know of, none is in
  *   server/content/alumni.ts), no photos (initials only), and organizations given only as generic descriptors

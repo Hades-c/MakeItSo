@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FlaskConical, SearchX, Users } from "lucide-react";
+import { PREVIEW_NOTICE_TITLE } from "@/app/(hub)/alumni/preview/_components/preview-notice";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -147,7 +148,8 @@ function HeaderLinks({ alumni, preview }: { alumni: boolean; preview: boolean })
         <Button asChild variant="secondary">
           <Link href={routes.alumniPreview()} data-testid="alumni-preview-link">
             <FlaskConical aria-hidden className="size-4" />
-            Davidson Connect preview
+            {/* Named as sample data here too: the link sits beside the verified "Alumni" button. */}
+            {PREVIEW_NOTICE_TITLE}
           </Link>
         </Button>
       ) : null}

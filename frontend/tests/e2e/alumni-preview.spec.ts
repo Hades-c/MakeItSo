@@ -60,7 +60,7 @@ test("Careers opens the preview: notice first, Sample on every card, nothing sen
     "href",
     "/alumni",
   );
-  await tap(page, header.getByRole("link", { name: "Davidson Connect preview" }));
+  await tap(page, header.getByRole("link", { name: "Davidson Connect preview · sample data" }));
   await expect(page).toHaveURL(/\/alumni\/preview$/);
   await expect(
     page.getByRole("heading", { level: 1, name: "Davidson Connect preview" }),
@@ -88,7 +88,7 @@ test("Careers opens the preview: notice first, Sample on every card, nothing sen
     await expect(buttons).toHaveCount(total);
     await expect(buttons.first()).toBeDisabled();
     await expect(buttons.first()).toHaveAccessibleDescription(
-      "Available once Davidson Connect is connected",
+      "Not available: MakeItSo is not connected to Davidson Connect",
     );
   }
   await shot(page, "preview");
